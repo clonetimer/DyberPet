@@ -51,6 +51,7 @@ class PetAssistantDialog(QDialog):
         self._job = None
         self._last_reply = ""
         self._ppl_snapshot = ""
+        self._session_generation = 0
         try:
             self._prefs = load_preferences()
             self._prefs_error = ""
@@ -332,6 +333,7 @@ class PetAssistantDialog(QDialog):
         endpoint, model = self.llm_endpoint.text(), self.llm_model.text()
         character, persona = self.character_name, self.persona.currentData()
         snapshot = self._ppl_snapshot
+        generation = self._session_generation
         ppl = (self.ppl_endpoint.text() if self.ppl_enabled.isChecked()
                else None)
         self.message.clear()
@@ -341,12 +343,17 @@ class PetAssistantDialog(QDialog):
             state = PPLCharacterClient(ppl).state(character) if ppl else None
             answer = chat_local(text, persona_key=persona, state=state,
                                 ppl_prompt=snapshot, base_url=endpoint, model=model)
-            return character, answer
+            return character, generation, answer
         self._submit(task, self._message_reply)
 
     def _message_reply(self, result):
         if isinstance(result, tuple):
-            character, reply = result
+            if len(result) == 3:
+                character, generation, reply = result
+                if generation != self._session_generation:
+                    return
+            else:
+                character, reply = result
             if character != self.character_name:
                 self.chat_log.appendPlainText(
                     "[旧角色回复已丢弃] 切换角色后不展示之前的人设内容")
@@ -426,6 +433,16 @@ class PetAssistantDialog(QDialog):
             self.status.setText("此目录仅在当前窗口会话中获得授权。")
         except (WorkspaceError, OSError) as exc:
             self._job_error(str(exc))
+
+    def closeEvent(self, event):
+        # QDialog.close() does not necessarily destroy the dialog; release
+        # any user-granted folder even when the widget is reopened later.
+        self._session_generation += 1
+        self._ppl_snapshot = ""
+        self._last_reply = ""
+        self.workspace = PetWorkspace(self._default_workspace)
+        self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
+        super().closeEvent(event)
 
     def reset_workspace(self):
         self.workspace = PetWorkspace(self._default_workspace)
