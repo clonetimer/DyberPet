@@ -62,12 +62,29 @@ class RustBridgeTests(unittest.TestCase):
     def test_rust_requested_without_wheel_falls_back(self):
         with patch.dict(os.environ, {"DYBERPET_NATIVE_BACKEND": "rust"}), patch(
                 "DyberPet.assistant.native_bridge.importlib.import_module",
-                side_effect=ImportError("synthetic missing native wheel")):
+                side_effect=ModuleNotFoundError(
+                    "No module named 'dyberpet_native'", name="dyberpet_native")):
             self.assertTrue(backend_status()["fallback"])
             self.assertEqual(backend_status()["active"], "python")
             self.assertEqual(png_metadata(self.frame)["height"], 208)
             self.assertEqual(sha256_file(self.sample),
                              hashlib.sha256(self.sample.read_bytes()).hexdigest())
+
+    def test_installed_broken_native_import_never_silently_falls_back(self):
+        # Missing dependencies and invalid DLL/PYD binaries must not be
+        # confused with an extension that was never installed.
+        for problem in (
+                ImportError("DLL load failed while importing dyberpet_native"),
+                ModuleNotFoundError(
+                    "No module named 'native_runtime'", name="native_runtime")):
+            with self.subTest(problem=str(problem)), patch.dict(
+                    os.environ, {"DYBERPET_NATIVE_BACKEND": "rust"}), patch(
+                    "DyberPet.assistant.native_bridge.importlib.import_module",
+                    side_effect=problem):
+                with self.assertRaises((ImportError, ModuleNotFoundError)):
+                    backend_status()
+                with self.assertRaises((ImportError, ModuleNotFoundError)):
+                    png_metadata(self.frame)
 
     def test_python_stays_strict_for_invalid_image(self):
         with patch.dict(os.environ, {"DYBERPET_NATIVE_BACKEND": "python"}):
