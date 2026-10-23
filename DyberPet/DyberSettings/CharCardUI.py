@@ -2,7 +2,8 @@
 import os
 import json
 from datetime import datetime
-from shutil import copytree
+from shutil import copytree, rmtree
+from pathlib import Path
 import subprocess
 
 from qfluentwidgets import (ScrollArea, ExpandLayout, SettingCardGroup, InfoBar, FlowLayout,
@@ -73,6 +74,7 @@ class CharInterface(ScrollArea):
         # Button to add chars from local file
         self.addButton = PushButton(self.tr("Add Characters"), self, FIF.ADD)
         self.addButton.setSizePolicy(QSizePolicy.Maximum, self.addButton.sizePolicy().verticalPolicy())
+        self.addButton.setToolTip("支持 DyberPet 角色文件夹，以及 Codex Pets 图集文件夹")
 
         # Button to show instructions on how to manually add chars
         #self.instructButton = TransparentPushButton(self.tr("Add Chars Manually"), self, FIF.QUESTION)
@@ -265,6 +267,14 @@ class CharInterface(ScrollArea):
             print(folder)
             #return
 
+        # Codex Pets folders can be imported with the same button; no layout changes.
+        # Only folders containing a Codex manifest (not standard DyberPet config)
+        # are passed through the optional sprite converter.
+        if (os.path.isfile(os.path.join(folder, "pet.json")) and
+                not os.path.isfile(os.path.join(folder, "pet_conf.json"))):
+            self._importCodexCharacter(folder)
+            return
+
         # Check files integrity
         statCode, errorList = CheckCharFiles(os.path.abspath(folder))
         if 0 < statCode < 7:
@@ -290,6 +300,40 @@ class CharInterface(ScrollArea):
         #    return
         #return
 
+
+    def _importCodexCharacter(self, sourceFolder):
+        """Import a local Codex atlas as an ordinary DyberPet character MOD."""
+        self.addButton.setEnabled(False)
+        new_folder = None
+        try:
+            # Lazily import to keep regular DyberPet characters working without Pillow.
+            from tools.import_codex_pet import convert
+            manifest = json.loads(
+                (Path(sourceFolder) / "pet.json").read_text(encoding="utf-8"))
+            source_id = manifest.get("id", "")
+            # Only exact asset variants have confirmed matching attribution metadata.
+            known = {"guga--circus": "guga",
+                     "doro--lingxiaotian": "doro"}
+            preset = known.get(source_id)
+            new_folder = convert(Path(sourceFolder),
+                                 Path(basedir) / "res" / "role",
+                                 preset=preset)
+            statCode, errorList = CheckCharFiles(str(new_folder))
+            if statCode != 0:
+                rmtree(new_folder)
+                new_folder = None
+                self._send_CharImportResult(statCode, errorList)
+                return
+            self.newPetFolder = new_folder.name
+            self.__onAddClickedContinue()
+        except (ValueError, FileNotFoundError, FileExistsError, OSError,
+                ImportError, json.JSONDecodeError) as exc:
+            self.__showMessageBox(self.tr("Adding Failed"),
+                self.tr("Could not import Codex character: ") + str(exc) +
+                "\\n" + self.tr("The input must contain pet.json and a V1/V2 spritesheet. "
+                                  "Pillow is required for this feature."))
+        finally:
+            self.addButton.setEnabled(True)
 
     def _importChar(self, sourceFolder, destinationFolder):
 
