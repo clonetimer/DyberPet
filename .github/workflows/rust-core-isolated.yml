@@ -11,7 +11,9 @@ on:
       - "DyberPet/assistant/character_audio.py"
       - "DyberPet/assistant/guga_audio.py"
       - "tests/test_rust_bridge.py"
+      - "tests/test_rust_frame_index.py"
       - "tools/benchmark_rust_core.py"
+      - "tools/benchmark_frame_index.py"
       - ".github/workflows/rust-core-isolated.yml"
   pull_request:
     paths:
@@ -21,7 +23,9 @@ on:
       - "DyberPet/assistant/character_audio.py"
       - "DyberPet/assistant/guga_audio.py"
       - "tests/test_rust_bridge.py"
+      - "tests/test_rust_frame_index.py"
       - "tools/benchmark_rust_core.py"
+      - "tools/benchmark_frame_index.py"
       - ".github/workflows/rust-core-isolated.yml"
   workflow_dispatch:
 
@@ -57,7 +61,7 @@ jobs:
       - name: Confirm native module and Rust/Python equivalence
         env:
           DYBERPET_REQUIRE_RUST: "1"
-        run: python -m unittest discover -s tests -p "test_rust_bridge.py" -v
+        run: python -m unittest discover -s tests -p "test_rust_*.py" -v
       - name: Entire assistant test suite on unchanged Python path
         env:
           DYBERPET_NATIVE_BACKEND: python
@@ -69,3 +73,5 @@ jobs:
         run: python -m unittest discover -s tests -p "test_assistant_*.py" -v
       - name: Report synthetic microbenchmark without enforcing speed claims
         run: python tools/benchmark_rust_core.py --frames 300 --rounds 3 --hash-mb 1
+      - name: Compare real role-asset indexing throughput
+        run: python tools/benchmark_frame_index.py --frames 100 --rounds 5
