@@ -4,7 +4,7 @@
 
 ## 当前可追溯的参照
 
-1. B站《咕嘎桌宠v0.3：和你的小咕嘎聊天吧》：https://www.bilibili.com/video/BV1MGLN6eEuh/ ，可参考桌宠互动界面、聊天与演示效果。视频标明未经作者授权禁止转载；**不能把视频声音/逐帧画面直接抓取作为可公开再分发资源**。
+1. B站《咕嘎桌宠v0.3：和你的小咕嘎聊天吧》：https://www.bilibili.com/video/BV1MGLN6eEuh/ ，可参考桌宠互动界面、聊天与演示效果。视频简介中由发布者提供了原始网盘配布入口（百度网盘：https://pan.baidu.com/s/1J_OwCkQtNMaEmSSOgABlpQ?pwd=6657 ；夸克：https://pan.quark.cn/s/982ecc723efa ）。**这些只是来源定位，不能据此推断素材可被我们公开重新打包或用于声音训练**；视频本身标明未经作者授权禁止转载。尚未检验网盘内的文件格式、授权文本及音效是否存在。
 2. B站《咕嘎桌宠v0.2》：https://www.bilibili.com/video/BV1UJoEBrE9J ，观察站立、移动及动作连贯性。
 3. 咕咕嘎嘎企鹅来源背景：https://knowyourmeme.com/memes/gugu-gaga-penguin 。这一形象由《明日方舟：终末地》玩家对管理员的企鹅化二创扩展而成，互联网存在多位作者的不同版本，不存在可自动推断的“唯一原版”素材。
 4. 网络上另外还有 https://github.com/lmj798/gugugaga-penguin-pet 的公开 Codex 桌宠参考，但它自己说明是个人二创并非官方资源；**公开仓库不自动代表其素材适用你的分发许可**。
