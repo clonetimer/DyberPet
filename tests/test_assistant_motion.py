@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 from DyberPet.assistant.character_motion import (
-    GROUND, DORO, PAIMON, style_for
+    GROUND, DORO, PAIMON, style_for, is_authored_gait_frame
 )
 
 
@@ -51,6 +51,20 @@ class MotionPolicyTests(unittest.TestCase):
                 self.assertTrue(any("native" in p or "Paimon" in p or "Doro" in p
                                     for p in result["issues"]))
 
+    def test_authored_gait_requires_four_distinct_real_frames(self):
+        import types
+        frames = [object() for _ in range(4)]
+        act = types.SimpleNamespace(images=frames, direction="right", frame_move=4)
+        pet = types.SimpleNamespace(right=act, left=None)
+        self.assertTrue(is_authored_gait_frame(act, pet))
+        self.assertFalse(is_authored_gait_frame(
+            types.SimpleNamespace(images=frames[:3], direction="right", frame_move=4), pet))
+        act.images = [frames[0]] * 4
+        self.assertFalse(is_authored_gait_frame(act, pet))
+        act.images = frames
+        act.direction = "up"
+        self.assertFalse(is_authored_gait_frame(act, pet))
+
     def test_other_characters_keep_native_physics(self):
         for character in ("纳西妲", "阿丽莎", "咕嘎", "Kitty", "可莉"):
             with self.subTest(name=character):
@@ -67,7 +81,8 @@ def extract_pet_methods():
     widget = next(item for item in code.body
                   if isinstance(item, ast.ClassDef) and item.name == "PetWidget")
     names = {"_configure_character_motion", "_hover_motion_tick",
-             "_move_customized", "_set_character_motion_enabled"}
+             "_move_customized", "_move_native_gait",
+             "_set_character_motion_enabled"}
     methods = [item for item in widget.body
                if isinstance(item, ast.FunctionDef) and item.name in names]
     if len(methods) != len(names):
@@ -165,6 +180,9 @@ class FakePet:
     def _move_customized(self, dx, dy):
         return _CALLS["_move_customized"](self, dx, dy)
 
+    def _move_native_gait(self, dx, dy):
+        return _CALLS["_move_native_gait"](self, dx, dy)
+
 
 _CALLS = {}
 _GLOBALS = {
@@ -219,10 +237,12 @@ class ActualNativeHooksTests(unittest.TestCase):
         pet._configure_character_motion()
         self.assertFalse(pet._motion_timer.running)
         pet._move_customized(10, 0)
-        self.assertEqual(pet.pos().x(), 163)
-        pet.is_follow_mouse = True
-        pet._move_customized(10, 0)
+        self.assertEqual(pet.pos().x(), 160)
+        pet._move_native_gait(10, 0)
         self.assertEqual(pet.pos().x(), 173)
+        pet.is_follow_mouse = True
+        pet._move_native_gait(10, 0)
+        self.assertEqual(pet.pos().x(), 183)
 
     def test_gui_motion_opt_out_disables_hover_and_pace(self):
         pet = FakePet("派蒙")
