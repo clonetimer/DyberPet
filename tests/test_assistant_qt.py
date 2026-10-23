@@ -103,6 +103,48 @@ class AssistantQtTests(unittest.TestCase):
             self.assertEqual(self.dialog._last_reply, "")
             self.assertEqual(self.dialog._ppl_snapshot, "")
 
+    def test_character_presets_and_role_scoped_audio_controls(self):
+        self.dialog.set_character("Doro")
+        self.assertEqual(self.dialog.persona.currentData(), "doro")
+        self.assertFalse(self.dialog.guga_preview.isHidden())
+        self.assertIn("Doro", self.dialog.guga_sample_label.text())
+        self.dialog.set_character("派蒙")
+        self.assertEqual(self.dialog.persona.currentData(), "paimon")
+        self.assertFalse(self.dialog.guga_audit.isHidden())
+        self.dialog.set_character("纳西妲")
+        self.assertEqual(self.dialog.persona.currentData(), "nahida")
+        self.dialog.set_character("阿丽莎")
+        self.assertEqual(self.dialog.persona.currentData(), "arrisa")
+        self.dialog.set_character("Kitty")
+        self.assertEqual(self.dialog.persona.currentData(), "companion")
+        self.assertTrue(self.dialog.guga_preview.isHidden())
+
+    def test_other_character_sound_dialog_no_auto_permission(self):
+        self.dialog.set_character("Doro")
+        with patch("PySide6.QtWidgets.QFileDialog.getOpenFileName",
+                   return_value=("/tmp/doro.wav", "WAV")), patch(
+                   "PySide6.QtWidgets.QInputDialog.getText",
+                   side_effect=[("Demo Creator", True), ("https://example.com/clip", True)]), patch(
+                   "PySide6.QtWidgets.QMessageBox.warning",
+                   return_value=QMessageBox.StandardButton.No), patch(
+                   "DyberPet.assistant.ui.register_character_audio") as register:
+            self.dialog.select_character_sample()
+        register.assert_not_called()
+
+    def test_other_character_audit_reads_only_current_install(self):
+        self.dialog.set_character("派蒙")
+        with patch("DyberPet.assistant.ui.read_character_audio", return_value=None), patch(
+                "DyberPet.assistant.ui.inspect_character_role", return_value={
+                    "action_coverage": {"idle": {"available": True},
+                                        "speak": {"available": False}},
+                    "issues": ["Missing speaking animation"],
+                }) as inspector, patch(
+                "PySide6.QtWidgets.QMessageBox.information") as dialog:
+            self.dialog.audit_character()
+        inspector.assert_called_once_with(
+            self.dialog.role_root / "派蒙", "派蒙", None)
+        self.assertIn("未核实", dialog.call_args.args[2])
+
     def test_guga_role_audit_reports_missing_or_manual_verification(self):
         role = self.dialog.role_root / self.dialog.character_name
         with patch("DyberPet.assistant.ui.inspect_guga_role", return_value={
@@ -145,7 +187,7 @@ class AssistantQtTests(unittest.TestCase):
             self.assertIn("尚未认证", self.dialog.status.text())
             self.dialog.set_character("Doro")
             self.assertFalse(self.dialog._is_guga())
-            self.assertTrue(self.dialog.guga_preview.isHidden())
+            self.assertFalse(self.dialog.guga_preview.isHidden())
 
     def test_create_requires_confirmation(self):
         with patch("PySide6.QtWidgets.QInputDialog.getText",
