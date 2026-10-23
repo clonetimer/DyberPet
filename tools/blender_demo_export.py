@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 import bpy
 
-# Blender supplies the script directory as importable path for --python.
+# Blender --python does NOT guarantee scripts/ directory is importable.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from blender_chibi_scene import demo_model
 
 
