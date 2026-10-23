@@ -151,6 +151,9 @@ def camera_and_lighting():
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
     scene.cycles.samples = 8
+    # Ubuntu's distro Blender can omit OpenImageDenoise. Avoid making
+    # rendering dependent on optional denoiser binaries.
+    bpy.context.view_layer.cycles.use_denoising = False
     scene.render.threads_mode = "FIXED"
     scene.render.threads = 2
     scene.camera.data.lens = 45
