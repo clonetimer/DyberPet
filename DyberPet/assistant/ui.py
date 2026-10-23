@@ -49,6 +49,7 @@ class PetAssistantDialog(QDialog):
     reply_ready = Signal(str)
     action_notice = Signal(str)
     action_requested = Signal(str)
+    motion_toggled = Signal(bool)
 
     def __init__(self, character_name: str, workspace: Path, parent=None,
                  role_root: Path | None = None):
@@ -117,10 +118,13 @@ class PetAssistantDialog(QDialog):
         form.addRow("离线识别模型", voice_model_row)
         self.bubble_enabled = QCheckBox("对话回复/文件操作时显示桌宠气泡")
         self.auto_speak = QCheckBox("自动朗读模型回复（本机离线 TTS）")
+        self.motion_enabled = QCheckBox("角色运动增强（Doro步速／派蒙悬浮）")
+        self.motion_enabled.toggled.connect(self.motion_toggled.emit)
         self.action_menu = QComboBox()
         self.action_menu.addItem("无额外动作", "")
         form.addRow(self.bubble_enabled)
         form.addRow(self.auto_speak)
+        form.addRow(self.motion_enabled)
         form.addRow("交互成功时播放已解锁动作", self.action_menu)
         self.save_pref_button = QPushButton("保存助手设置（不保存聊天记录与人设快照）")
         self.save_pref_button.clicked.connect(self.save_preferences)
@@ -418,6 +422,7 @@ class PetAssistantDialog(QDialog):
         self.ppl_enabled.setChecked(prefs["ppl_enabled"])
         self.bubble_enabled.setChecked(prefs["bubble_enabled"])
         self.auto_speak.setChecked(prefs["auto_speak"])
+        self.motion_enabled.setChecked(prefs["motion_enabled"])
         saved = prefs["personas"].get(self.character_name)
         if saved in PERSONAS:
             self.persona.setCurrentIndex(self.persona.findData(saved))
@@ -432,6 +437,7 @@ class PetAssistantDialog(QDialog):
             "ppl_enabled": self.ppl_enabled.isChecked(),
             "bubble_enabled": self.bubble_enabled.isChecked(),
             "auto_speak": self.auto_speak.isChecked(),
+            "motion_enabled": self.motion_enabled.isChecked(),
         })
         prefs["personas"] = dict(prefs["personas"])
         prefs["personas"][self.character_name] = self.persona.currentData()
