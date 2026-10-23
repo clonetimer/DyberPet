@@ -7,6 +7,7 @@ and FBX are directly imported; PMX/VRM need authorized Blender add-ons/export.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -59,7 +60,8 @@ def validate_frames(directory: Path, expected: tuple[str, ...], num: int):
 
 def render_blender(blender: str, output: Path, *, source: Path | None = None,
                    demo: bool = False, actions: tuple[str, ...] = ("idle", "wave"),
-                   frames: int = 2, timeout: int = 600) -> Path:
+                   frames: int = 2, timeout: int = 600,
+                   require_clips: bool = False, clip_map: Path | None = None) -> Path:
     if demo == (source is not None):
         raise RenderError("Choose exactly one of demo=True or source=...")
     if not 1 <= frames <= 24:
@@ -93,6 +95,21 @@ def render_blender(blender: str, output: Path, *, source: Path | None = None,
                     "External GLTF textures or buffers are not hashed by this "
                     "single-file pipeline. Export self-contained GLB first."
                 )
+    clip_map_sha = None
+    if clip_map is not None:
+        clip_map = Path(clip_map).expanduser().resolve()
+        if not clip_map.is_file():
+            raise RenderError("Clip map JSON file not found")
+        raw_map = clip_map.read_bytes()
+        clip_map_sha = hashlib.sha256(raw_map).hexdigest()
+        try:
+            mapping = json.loads(raw_map.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise RenderError("Clip map must contain valid UTF-8 JSON") from exc
+        if (not isinstance(mapping, dict) or any(
+                key not in actions or not isinstance(value, str) or not value
+                for key, value in mapping.items())):
+            raise RenderError("Clip map must map requested actions to NLA track names")
     output = Path(output).expanduser().resolve()
     if output.exists():
         raise FileExistsError("Output directory already exists; never overwrite: " + str(output))
@@ -115,6 +132,10 @@ def render_blender(blender: str, output: Path, *, source: Path | None = None,
         command += ["--demo"] if demo else ["--input", str(source)]
         command += ["--output", str(temp_output), "--frames", str(frames),
                     "--actions", ",".join(actions)]
+        if require_clips:
+            command.append("--require-clips")
+        if clip_map is not None:
+            command += ["--clip-map", str(clip_map)]
         try:
             process = subprocess.run(
                 command, text=True, stdout=subprocess.PIPE,
@@ -134,7 +155,11 @@ def render_blender(blender: str, output: Path, *, source: Path | None = None,
         qa = validate_frames(temp_output, actions, frames)
         report["frame_qa"] = qa
         report["launcher"] = {"disable_autoexec": True, "rendered_locally": True,
-                              "automated_rights_verification": False}
+                              "automated_rights_verification": False,
+                              "clip_map_sha256": clip_map_sha}
+        modes = report.get("animation_sources", {})
+        if require_clips and any(modes.get(action) != "clip" for action in actions):
+            raise RenderError("Strict mode: renderer did not confirm every requested clip")
         report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False)+"\n",
                                encoding="utf-8")
         if output.exists():
@@ -154,12 +179,17 @@ def main():
     parser.add_argument("--frames", type=int, default=6)
     parser.add_argument("--actions", default="idle,left_walk,right_walk,wave,jump,wait,review")
     parser.add_argument("--timeout", type=int, default=600)
+    parser.add_argument("--require-clips", action="store_true",
+                        help="Block missing imported motion clips")
+    parser.add_argument("--clip-map", type=Path,
+                        help="JSON object mapping action names to imported NLA names")
     args = parser.parse_args()
     actions = tuple(a.strip() for a in args.actions.split(","))
     try:
         result = render_blender(args.blender, args.output, source=args.source,
                                 demo=args.demo, actions=actions, frames=args.frames,
-                                timeout=args.timeout)
+                                timeout=args.timeout, require_clips=args.require_clips,
+                                clip_map=args.clip_map)
     except (RenderError, OSError, ValueError, json.JSONDecodeError) as exc:
         parser.exit(1, "Render blocked: " + str(exc) + "\n")
     print(result)
