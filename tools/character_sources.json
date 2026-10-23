@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-10-23",
+  "disclaimer": "Source channel entries are discovery links, NOT item licenses. Each asset must be reviewed independently; the registry never downloads files.",
+  "channels": [
+    {
+      "id": "dyberpet_collection",
+      "name": "DyberPet 角色合集",
+      "url": "https://github.com/clonetimer/DyberPet/blob/main/docs/collection.md",
+      "formats": [
+        "native_role",
+        "mini_pet"
+      ],
+      "discovery": "author-maintained list; manual download",
+      "requires_manual_review": true,
+      "priority": 1,
+      "notes": "纳西妲为主角色，派蒙为迷你宠物；不能互换主角色/迷你宠物结构"
+    },
+    {
+      "id": "codex_pets",
+      "name": "Codex Pets 资源",
+      "url": "https://codex-pet.org/zh/pets/",
+      "formats": [
+        "codex_v1_v2"
+      ],
+      "discovery": "public catalog, inspect author and asset-specific terms",
+      "requires_manual_review": true,
+      "priority": 2,
+      "notes": "优先导入现成 2D 图集；未知许可的美术不能随仓库分发"
+    },
+    {
+      "id": "aplaybox",
+      "name": "模之屋（AplayBox）",
+      "url": "https://www.aplaybox.com/model",
+      "formats": [
+        "pmx",
+        "pmd",
+        "vrm",
+        "blend",
+        "fbx",
+        "motion"
+      ],
+      "discovery": "search Q版/萌系/桌宠/角色名; download only via permitted author workflows",
+      "requires_manual_review": true,
+      "priority": 3,
+      "notes": "公开配布/联系作者/仅展示并非相同权限；模型规约和动作数据规约须分别核实；3D先离线渲染透明动画"
+    },
+    {
+      "id": "bilibili",
+      "name": "哔哩哔哩创作者",
+      "url": "https://www.bilibili.com",
+      "formats": [
+        "native_role",
+        "animated_gif",
+        "png_sequence",
+        "pmx",
+        "vrm",
+        "motion"
+      ],
+      "discovery": "search 角色名 + Q版 / 桌宠 / 模型配布 / 动作配布，逐个打开作者发布页",
+      "requires_manual_review": true,
+      "priority": 4,
+      "notes": "视频展示不等于源文件授权；作者 README、引用链与素材来源要留证"
+    },
+    {
+      "id": "vroid_hub",
+      "name": "VRoid Hub",
+      "url": "https://hub.vroid.com",
+      "formats": [
+        "vrm"
+      ],
+      "discovery": "creator-controlled VRM access; inspect per-model rules",
+      "requires_manual_review": true,
+      "priority": 5,
+      "notes": "只作为候选 3D 来源，不保证任何具体模型允许离线桌宠或二次分发"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "genshin_nahida_existing",
+      "name": "纳西妲（主角色）",
+      "channel": "dyberpet_collection",
+      "asset_url": "https://github.com/clonetimer/DyberPet/blob/main/docs/collection.md",
+      "format": "native_role",
+      "rights_status": "unknown",
+      "status": "discovered"
+    },
+    {
+      "id": "genshin_paimon_codex",
+      "name": "派蒙（主桌宠转换候选）",
+      "channel": "codex_pets",
+      "asset_url": "https://codex-pet.org/zh/pets/paimon/",
+      "format": "codex_v1_v2",
+      "rights_status": "unknown",
+      "status": "discovered"
+    },
+    {
+      "id": "ailimit_arrisa_pending",
+      "name": "阿丽莎（Q版模型/动作待寻）",
+      "channel": "aplaybox",
+      "asset_url": "",
+      "format": "model3d",
+      "rights_status": "unknown",
+      "status": "research_needed"
+    }
+  ]
+}
