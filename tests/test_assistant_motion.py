@@ -68,6 +68,9 @@ class MockPos:
     def y(self):
         return self._y
 
+    def topLeft(self):
+        return self
+
 
 class MockTimer:
     def __init__(self):
