@@ -34,4 +34,13 @@ jobs:
         env:
           BLENDER_BIN: blender
           LIBGL_ALWAYS_SOFTWARE: "1"
+          BLENDER_CI_ARTIFACT_DIR: blender-demo-preview
         run: python -m unittest discover -s tests -p "test_real_blender_smoke.py" -v
+      - name: Upload original synthetic role preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-chibi-render-preview
+          path: blender-demo-preview/
+          if-no-files-found: ignore
+          retention-days: 14
