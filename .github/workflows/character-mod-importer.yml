@@ -4,12 +4,18 @@ on:
   pull_request:
     paths:
       - "tools/import_codex_pet.py"
+      - "tools/__init__.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "docs/codex_character_import.md"
       - "tests/test_import_codex_pet.py"
       - ".github/workflows/character-mod-importer.yml"
   push:
     branches: [main]
     paths:
       - "tools/import_codex_pet.py"
+      - "tools/__init__.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "docs/codex_character_import.md"
       - "tests/test_import_codex_pet.py"
       - ".github/workflows/character-mod-importer.yml"
 
