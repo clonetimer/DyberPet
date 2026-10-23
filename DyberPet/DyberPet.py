@@ -1042,11 +1042,29 @@ class PetWidget(QWidget):
                 self.curr_pet_name, workspace, self)
             self._pet_assistant.reply_ready.connect(self._assistant_reply_bubble)
             self._pet_assistant.action_notice.connect(self._assistant_notice_bubble)
+            self._pet_assistant.action_requested.connect(self._assistant_play_action)
         else:
             self._pet_assistant.set_character(self.curr_pet_name)
+        self._sync_assistant_actions()
         self._pet_assistant.show()
         self._pet_assistant.raise_()
         self._pet_assistant.activateWindow()
+
+    def _sync_assistant_actions(self):
+        try:
+            options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+            unlocked = [key for key, value in options.items()
+                        if isinstance(value, dict) and value.get("unlocked")]
+            self._pet_assistant.set_actions(unlocked)
+        except (AttributeError, KeyError):
+            self._pet_assistant.set_actions([])
+
+    def _assistant_play_action(self, name):
+        """Never trigger a locked or nonexistent animation."""
+        available = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+        if (name in available and isinstance(available[name], dict)
+                and available[name].get("unlocked")):
+            self._show_act(name)
 
     def _assistant_reply_bubble(self, message):
         """Use the existing DPNote bubble path; do not create a new overlay."""
@@ -1154,6 +1172,7 @@ class PetWidget(QWidget):
         self.init_conf(pet_name)
         if getattr(self, "_pet_assistant", None) is not None:
             self._pet_assistant.set_character(pet_name)
+            self._sync_assistant_actions()
 
         # Change status
         self.pet_hp.init_HP(settings.pet_data.hp, sys_hp_interval) #2)
