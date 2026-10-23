@@ -159,7 +159,10 @@ def profile(role: Path, character: str, rounds: int = 5,
             warmup: int = 1, require_rust: bool = False):
     if not (1 <= rounds <= 20 and 0 <= warmup <= 5):
         raise ValueError("Rounds must be 1..20 and warmup must be 0..5")
-    role = Path(role).expanduser().resolve(strict=True)
+    candidate = Path(role).expanduser()
+    if candidate.is_symlink():
+        raise ValueError("Role/action must be ordinary directories")
+    role = candidate.resolve(strict=True)
     if not role.is_dir() or (role / "action").is_symlink():
         raise ValueError("Role/action must be ordinary directories")
     from DyberPet.assistant.character_profiles import resolve_profile
