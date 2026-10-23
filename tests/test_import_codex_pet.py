@@ -52,6 +52,14 @@ class ImportCodexPetTests(unittest.TestCase):
             self.assertEqual(image.size, (192, 208))
             self.assertEqual(image.convert("RGBA").getpixel((0, 0))[3], 0)
         self.assertIn("Unverified", (out / "ASSET_SOURCE.txt").read_text())
+        info = json.loads((out / "info" / "info.json").read_text(encoding="utf-8"))
+        self.assertEqual(info["pfp"], "pfp.png")
+        self.assertEqual(info["coverImages"], ["cover.png"])
+        with Image.open(out / "info" / "pfp.png") as icon:
+            self.assertEqual(icon.size, (160, 160))
+            self.assertEqual(icon.convert("RGBA").getpixel((0, 0))[3], 0)
+        with Image.open(out / "info" / "cover.png") as cover:
+            self.assertEqual(cover.size, (300, 169))
 
     def test_import_v2_16_way_look(self):
         self.make_atlas(version=2)
@@ -69,6 +77,7 @@ class ImportCodexPetTests(unittest.TestCase):
             self.assertIn(conf[key], acts)
         for group in conf["random_act"]:
             self.assertTrue(all(action in acts for action in group["act_list"]))
+        self.assertNotIn("打招呼", [group["name"] for group in conf["random_act"]])
 
     def test_do_not_overwrite_existing_character(self):
         self.make_atlas()
@@ -86,6 +95,31 @@ class ImportCodexPetTests(unittest.TestCase):
         Image.new("RGBA", (100, 100)).save(self.source / "spritesheet.webp")
         with self.assertRaises(ValueError):
             read_atlas(self.source / "spritesheet.webp", {})
+
+    def test_v2_missing_direction_gives_warning(self):
+        self.make_atlas(version=2)
+        atlas_path = self.source / "spritesheet.webp"
+        with Image.open(atlas_path) as atlas:
+            image = atlas.convert("RGBA")
+        image.paste((0, 0, 0, 0), (20, 9 * 208 + 20, 75, 9 * 208 + 80))
+        image.save(atlas_path, lossless=True)
+        out = convert(self.source, self.dest)
+        report = json.loads((out / "IMPORT_REPORT.json").read_text(encoding="utf-8"))
+        self.assertLess(report["frame_counts"]["lookaround"], 16)
+        self.assertTrue(any("look-direction" in w for w in report["warnings"]))
+
+    def test_discontinuous_row_emits_qa_warning(self):
+        self.make_atlas()
+        atlas_path = self.source / "spritesheet.webp"
+        with Image.open(atlas_path) as atlas:
+            image = atlas.convert("RGBA")
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((2 * 192 + 20, 208 + 20, 2 * 192 + 70, 208 + 75),
+                       fill=(180, 30, 30, 255))
+        image.save(atlas_path, lossless=True)
+        out = convert(self.source, self.dest)
+        report = json.loads((out / "IMPORT_REPORT.json").read_text(encoding="utf-8"))
+        self.assertTrue(any("transparent gaps" in w for w in report["warnings"]))
 
     def test_manifest_traversal_rejected(self):
         (self.source / "pet.json").write_text(
