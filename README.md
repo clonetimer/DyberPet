@@ -42,6 +42,10 @@
   <img src="https://raw.githubusercontent.com/ChaozhongLiu/DyberPet/main/docs/DyberPet.gif" alt="DyberPet interface demo" width="92%">
 </p>
 
+## Windows 便携版候选包（PR #2）
+
+新增了可复现的 [Windows EXE 便携打包与自动自检](docs/windows_portable.md)：GitHub Actions 运行 PyInstaller 构建，在不同工作目录下启动**实际打包的 EXE**，检查桌宠助手 Qt 窗口、必需资源及可选离线语音模块，并提供 ZIP 测试产物。已验证打包程序能初始化，但**尚未完成实机麦克风、系统托盘、真实角色动画与音频质量验收**；不是正式安装程序或 Release。
+
 ## 多角色贴近原设验收（开发分支）
 
 新增 [Doro、派蒙、纳西妲、可莉、芙宁娜、阿丽莎及咕嘎的专属档案](docs/character_fidelity.md)：分别核查角色辨识特征、动画、对白人设与短音效来源。桌宠助手新增当前人物的原设核查/独立 WAV 登记与试听；**此处仅为技术验收框架，未自动安装任何受版权保护的模型或原声**。
