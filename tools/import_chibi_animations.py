@@ -22,10 +22,12 @@ except ImportError:
 if __package__:
     from .chibi_layout import normalize_grounded_frames, quality_metrics, suggested_scale
     from .chibi_profiles import CHIBI_PROFILES, get_profile, make_bubble_config
+    from .chibi_preview import create_contact_sheet
     from .import_codex_pet import build_configs, json_text, make_info_images
 else:
     from chibi_layout import normalize_grounded_frames, quality_metrics, suggested_scale
     from chibi_profiles import CHIBI_PROFILES, get_profile, make_bubble_config
+    from chibi_preview import create_contact_sheet
     from import_codex_pet import build_configs, json_text, make_info_images
 
 # First matches are canonical; aliases are permitted for user convenience.
@@ -210,6 +212,7 @@ def convert_animation_folder(source: Path, output_root: Path, *,
         for state, images in raw_frames.items():
             for i, frame in enumerate(images):
                 frame.save(staged / "action" / f"{state}_{i}.png")
+        preview = create_contact_sheet(raw_frames, staged / "ANIMATION_PREVIEW.png")
         (staged / "pet_conf.json").write_text(json_text(pet_conf), encoding="utf-8")
         (staged / "act_conf.json").write_text(json_text(act_conf), encoding="utf-8")
         make_info_images(raw_frames["idle"][0], staged / "info", style=style)
@@ -225,6 +228,7 @@ def convert_animation_folder(source: Path, output_root: Path, *,
             "recommended_scale": pet_conf["scale"],
             "frame_counts": {k: len(v) for k, v in raw_frames.items()},
             "geometry": quality_metrics(raw_frames),
+            "preview": preview,
             "aligned_frames_per_action": shifted,
             "source_files": {key: [p.name for p in value]
                              for key, value in sources.items()},
