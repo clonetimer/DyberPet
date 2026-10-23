@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 from .files import PetWorkspace, WorkspaceError
 from .persona import (
     DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, PPLCharacterClient,
-    chat_local, AssistantServiceError,
+    chat_local, list_local_models, AssistantServiceError,
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
 
@@ -77,10 +77,20 @@ class PetAssistantDialog(QDialog):
         self.llm_model = QLineEdit()
         self.llm_model.setPlaceholderText("例如：本地 LM Studio 已加载模型的 ID")
         form.addRow("本地模型地址", self.llm_endpoint)
-        form.addRow("模型 ID", self.llm_model)
+        model_row = QHBoxLayout()
+        model_row.addWidget(self.llm_model, 1)
+        detect_button = QPushButton("检测")
+        detect_button.clicked.connect(self.detect_models)
+        model_row.addWidget(detect_button)
+        form.addRow("模型 ID", model_row)
         self.voice_model = QLineEdit()
         self.voice_model.setPlaceholderText("Vosk 已下载的本地模型文件夹路径")
-        form.addRow("离线识别模型", self.voice_model)
+        voice_model_row = QHBoxLayout()
+        voice_model_row.addWidget(self.voice_model, 1)
+        browse_button = QPushButton("浏览")
+        browse_button.clicked.connect(self.browse_voice_model)
+        voice_model_row.addWidget(browse_button)
+        form.addRow("离线识别模型", voice_model_row)
         body.addLayout(form)
 
         self.chat_log = QPlainTextEdit()
@@ -174,6 +184,25 @@ class PetAssistantDialog(QDialog):
             return None
         return PPLCharacterClient(self.ppl_endpoint.text()).state(
             self.character_name)
+
+    def detect_models(self):
+        self.status.setText("正在读取本地 LM Studio 模型列表…")
+        self._submit(list_local_models, self._choose_model,
+                     self.llm_endpoint.text())
+
+    def _choose_model(self, names):
+        name, ok = QInputDialog.getItem(
+            self, "本地模型", "选择已加载的模型：", names, 0, False)
+        if ok:
+            self.llm_model.setText(name)
+            self.status.setText("已选择本地模型：" + name)
+
+    def browse_voice_model(self):
+        folder = QFileDialog.getExistingDirectory(
+            self, "请选择已下载并解压的 Vosk 模型文件夹",
+            str(Path.home()))
+        if folder:
+            self.voice_model.setText(folder)
 
     def load_ppl_snapshot(self):
         path, _ = QFileDialog.getOpenFileName(
