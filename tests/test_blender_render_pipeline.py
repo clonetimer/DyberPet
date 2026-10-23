@@ -65,7 +65,7 @@ class RenderLaunchTests(unittest.TestCase):
         with patch("tools.render_chibi_blender.subprocess.run", side_effect=fake_blender_process):
             result = render_blender(str(self.exe), self.output, source=self.model,
                                     frames=2, actions=("idle", "wave"))
-        self.assertEqual(result, self.output)
+        self.assertEqual(result, self.output.resolve())
         report = json.loads((result / "BLENDER_RENDER_REPORT.json").read_text("utf-8"))
         self.assertEqual(report["frame_qa"]["idle"]["frames"], 2)
         self.assertFalse(report["launcher"]["automated_rights_verification"])
