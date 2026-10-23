@@ -15,6 +15,9 @@ from pathlib import Path
 
 import bpy
 from mathutils import Vector
+# Blender --python does not consistently prepend the script folder to
+# sys.path; imports here must work under the packaged headless executable.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from chibi_clip_map import choose_clips
 
 SUPPORTED = {"idle", "left_walk", "right_walk", "wave", "jump", "wait", "sleep", "review"}
