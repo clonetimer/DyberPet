@@ -111,6 +111,9 @@
 ### 素材开发
 若您想要在现有功能下，开发一套新的宠物形象、动作，请参考[素材开发文档](docs/art_dev.md)
 
+### 角色新增流水线（模之屋 / B站 / 原生MOD / Codex）
+新增[角色来源登记、授权审查、Q版动画转换、质量验收和发布流水线](docs/character_pipeline.md)，内置结构化的模之屋、B站及角色合集[来源登记](tools/character_sources.json)。流水线默认把所有第三方素材留在本地 data/character_pipeline 目录；**公开可下载的模型不代表拥有再分发权**。PMX/VRM 需经过授权审查和离线透明动画渲染，不能直接给2D桌宠引擎播放。
+
 ### 咕嘎 / Doro 等 Codex Pets 角色图集
 在 **系统 → 角色管理 → 添加角色** 里选择本地包含 `pet.json` 与 `spritesheet.webp` 的角色文件夹，可自动将 V1/V2 图集转为 DyberPet 角色动画、头像、信息卡与气泡（详见[角色图集导入指南](docs/codex_character_import.md)）。该功能依赖 Pillow；仓库不附带第三方角色美术素材，下载和再分发请遵守原作者授权。
 
