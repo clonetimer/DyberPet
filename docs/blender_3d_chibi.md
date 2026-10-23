@@ -50,6 +50,31 @@ render 命令在被忽略的 data/character_pipeline/renders 下保存透明 PNG
 
 角色包构建后检查 ANIMATION_PREVIEW.png 和 IMPORT_REPORT.json，导入 Windows DyberPet 实际播放；人工确认真实视觉与运行，再记录 QA。公开打包必须另外核查允许再分发的权利。
 
+## P6：优先使用模型自带动画片段
+
+经过授权的 GLB/GLTF 导入 Blender 后，glTF 的骨骼/对象动作通常被组织在 NLA 轨道中。新增的导入器现在支持按轨道名称将动作映射到 DyberPet 的 idle、left_walk、right_walk、wave、jump、wait、sleep、review。
+
+- 有对应片段：同时启用该动作名在各对象上的 NLA 轨道，采样真实动作，输出报告的 animation_sources 标为 clip。
+- 无匹配片段：只输出程序生成的整体运动 procedural_fallback；不将其宣称为真实骨骼/表情动作。
+- 开启 --require-clips：所选全部动作必须有对应 NLA 片段，缺少任何一个都拒绝输出。
+- 可用 --clip-map <映射文件.json> 为不规范的片段名建立显式对应关系。文件内容的 SHA-256 记录在渲染报告中。
+- 不将名称为 walk 的单一片段自动当作左右两个动作；真实骨骼动作可能依赖分别提供左右动画或人工重新制作。
+
+仅包含 Idle、WalkLeft、WalkRight 和 Wave 的模型示例：
+
+    py tools/render_chibi_blender.py --source "D:\Models\Character.glb" --output "D:\Art\ActionFrames" --frames 8 --actions idle,left_walk,right_walk,wave --require-clips
+
+如果作者命名为 Character_Stand 和 Hand_Greet，先在本地建立 clip_map.json：
+
+    {
+      "idle": "Character_Stand",
+      "wave": "Hand_Greet"
+    }
+
+    py tools/render_chibi_blender.py --source "D:\Models\Character.glb" --output "D:\Art\ActionFrames" --frames 8 --actions idle,wave --require-clips --clip-map "D:\Models\clip_map.json"
+
+完整新增流水线也提供 render 命令的 --require-clips 与 --clip-map 参数。动作轨道存在并不代表骨骼绑定正确或作品已授权公开发布，必须另行人工验收。
+
 ## 自动化测试的验收口径
 
 代码测试：Python 3.9/3.11 × Windows/Linux 的输入校验、安全路径、GLTF 外部资源拒绝、来源追溯与发布闸门。真实渲染：单独的 Blender chibi render smoke 在 Ubuntu 安装系统 Blender，以原创几何模型生成透明 PNG 后直接构建 DyberPet 角色。GUI：保留 Windows PySide6 PetConfig/QPixmap 真实动作加载冒烟。
