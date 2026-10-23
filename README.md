@@ -42,6 +42,12 @@
   <img src="https://raw.githubusercontent.com/ChaozhongLiu/DyberPet/main/docs/DyberPet.gif" alt="DyberPet interface demo" width="92%">
 </p>
 
+## 新增：受控文件操作、离线语音与 PPL 人设（开发分支）
+
+桌宠右键菜单中新增 **Desktop Pet Assistant (Files / Voice / Persona)**：经确认的文件创建/可恢复删除/恢复、可选 Vosk 按键录音识别和 pyttsx3 离线朗读、LM Studio 本地文字对话，以及 PPL Character Governance 关系状态与 Persona DSL 渲染快照。
+
+**文件操作仅限 Documents/DyberPetAssistant 专属文件夹，模型不能自主调用文件工具。** 麦克风和模型连接默认不启动，使用前须配置可选依赖及本地服务。完整步骤和当前限制见 [桌宠助手使用说明](docs/pet_assistant.md)。此功能在独立 PR 开发，尚未包含在公开发布的 EXE 中。
+
 ## 为什么值得一试
 
 - 不只是“GIF 展示器”：从动画、互动到养成与任务系统，已经是一套完整可玩的桌面宠物 App。
