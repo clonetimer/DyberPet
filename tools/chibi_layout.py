@@ -92,6 +92,12 @@ def quality_metrics(frames):
                 (rect[3] - rect[1]) for image in images if (rect := bbox(image))
             ],
             "foot_baseline_px": [rect[3] for image in images if (rect := bbox(image))],
+            "touching_cell_edge": [
+                index for index, image in enumerate(images)
+                if (rect := bbox(image)) and
+                (rect[0] <= 0 or rect[1] <= 0 or
+                 rect[2] >= image.width or rect[3] >= image.height)
+            ],
         }
         for state, images in frames.items()
     }
