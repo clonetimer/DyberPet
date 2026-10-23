@@ -42,6 +42,10 @@
   <img src="https://raw.githubusercontent.com/ChaozhongLiu/DyberPet/main/docs/DyberPet.gif" alt="DyberPet interface demo" width="92%">
 </p>
 
+## Rust 原生核心（独立 Draft PR #3）
+
+本分支可选启用 [Rust 批量动画资源索引与音效 SHA-256](docs/rust_refactor.md)，默认继续使用原 Python + PySide6。Rust 以 PyO3 扩展形式接入，不替换现有角色动画、文件创建删除、PPL 或语音交互；未安装 native wheel 时回退 Python。另有 `Windows Rust Portable (Experimental)` 工作流单独打包测试含 Rust 扩展的 Windows EXE，不影响原 Python Portable ZIP。**该实验不属于正式 Stable Release。**
+
 ## Windows 便携版候选包（PR #2）
 
 新增了可复现的 [Windows EXE 便携打包与自动自检](docs/windows_portable.md)：GitHub Actions 运行 PyInstaller 构建，在不同工作目录下启动**实际打包的 EXE**，检查桌宠助手 Qt 窗口、必需资源及可选离线语音模块，并提供 ZIP 测试产物。已验证打包程序能初始化，但**尚未完成实机麦克风、系统托盘、真实角色动画与音频质量验收**；不是正式安装程序或 Release。
