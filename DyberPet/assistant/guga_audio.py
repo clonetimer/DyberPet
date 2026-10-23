@@ -121,7 +121,7 @@ def play_local_clip(destination: str | Path | None = None) -> str:
                 samplerate=inp.getframerate(), channels=inp.getnchannels(),
                 dtype="int16"
             ) as device:
-                for _ in iter(int, 1):
+                while True:
                     part = inp.readframes(4096)
                     if not part:
                         break
