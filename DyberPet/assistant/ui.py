@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout,
 )
 
-from .files import PetWorkspace, WorkspaceError
+from .files import PetWorkspace, WorkspaceError, validate_session_folder
 from .persona import (
     DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, PPLCharacterClient,
     chat_local, list_local_models, AssistantServiceError,
@@ -45,7 +45,8 @@ class PetAssistantDialog(QDialog):
     def __init__(self, character_name: str, workspace: Path, parent=None):
         super().__init__(parent)
         self.character_name = character_name
-        self.workspace = PetWorkspace(workspace)
+        self._default_workspace = Path(workspace)
+        self.workspace = PetWorkspace(self._default_workspace)
         self._job = None
         self._last_reply = ""
         self._ppl_snapshot = ""
@@ -142,9 +143,17 @@ class PetAssistantDialog(QDialog):
         voice_row.addWidget(self.ppl_button)
         body.addLayout(voice_row)
 
-        label = QLabel("文件操作只限专属工作区：" + str(self.workspace.root))
-        label.setWordWrap(True)
-        body.addWidget(label)
+        self.folder_label = QLabel("当前文件操作目录：" + str(self.workspace.root))
+        self.folder_label.setWordWrap(True)
+        body.addWidget(self.folder_label)
+        folder_row = QHBoxLayout()
+        grant_button = QPushButton("本次授权其他文件夹")
+        grant_button.clicked.connect(self.grant_session_folder)
+        reset_button = QPushButton("恢复默认目录")
+        reset_button.clicked.connect(self.reset_workspace)
+        folder_row.addWidget(grant_button)
+        folder_row.addWidget(reset_button)
+        body.addLayout(folder_row)
         file_row = QHBoxLayout()
         create_button = QPushButton("创建文件")
         delete_button = QPushButton("删除到可恢复区")
@@ -369,6 +378,39 @@ class PetAssistantDialog(QDialog):
             lambda state: self.chat_log.appendPlainText(
                 "[PPL] 关系状态：" + str(state)))
 
+    def grant_session_folder(self):
+        folder = QFileDialog.getExistingDirectory(
+            self, "授权一个具体的个人子文件夹（本次会话有效）",
+            str(Path.home()))
+        if not folder:
+            return
+        try:
+            approved = validate_session_folder(Path(folder))
+        except WorkspaceError as exc:
+            self._job_error(str(exc))
+            return
+        if QMessageBox.warning(
+                self, "确认文件夹授权",
+                "此操作允许桌宠的手动按钮在下列目录创建、移入可恢复区和恢复文本文件："
+                + "\n" + str(approved)
+                + "\n仅本次窗口会话有效；不递归操作、不授予模型自动工具权限。"
+                + "\n确认授权？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+                ) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self.workspace = PetWorkspace(approved)
+            self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
+            self.status.setText("此目录仅在当前窗口会话中获得授权。")
+        except (WorkspaceError, OSError) as exc:
+            self._job_error(str(exc))
+
+    def reset_workspace(self):
+        self.workspace = PetWorkspace(self._default_workspace)
+        self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
+        self.status.setText("已回到默认专属文件目录；临时授权已撤销。")
+
     def create_file(self):
         name, ok = QInputDialog.getText(
             self, "创建文本文件", "新文件名（支持 .txt/.md/.json/.csv）：")
@@ -380,7 +422,7 @@ class PetAssistantDialog(QDialog):
             return
         if QMessageBox.question(
                 self, "确认创建文件",
-                f"仅在桌宠专属目录内创建：{name}\n不覆盖任何已有文件。"
+                f"仅在当前授权目录内创建：{name}\n{self.workspace.root}\n不覆盖任何已有文件。"
                 ) != QMessageBox.StandardButton.Yes:
             return
         try:
@@ -401,7 +443,8 @@ class PetAssistantDialog(QDialog):
             return
         if QMessageBox.warning(
                 self, "确认移入可恢复区",
-                "仅移动本应用工作区文件，不会永久删除。\n确认移动：" + name,
+                "仅移动当前授权目录内的文件，不会永久删除。\n"
+                + str(self.workspace.root) + "\n确认移动：" + name,
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No
                 ) != QMessageBox.StandardButton.Yes:
