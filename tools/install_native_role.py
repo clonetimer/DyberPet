@@ -59,6 +59,15 @@ def inspect_zip(archive: zipfile.ZipFile):
     if len(roots) != 1:
         raise ValueError("ZIP must contain exactly one DyberPet role with pet_conf.json")
     prefix = roots[0]
+    # DyberPet mini companions live under res/pet, not res/role. They have
+    # similar JSON filenames but use another loader and must not be installed
+    # as a main character merely because the archive contains pet_conf.json.
+    parts = prefix.parts
+    if len(parts) >= 3 and parts[:2] == ("res", "pet"):
+        raise ValueError(
+            "This is a mini-pet companion pack (res/pet), not a main role. "
+            "Use DyberPet's mini-pet management rather than Character Management."
+        )
     if not any(p == prefix / "act_conf.json" for _, p in selected):
         raise ValueError("ZIP role has no act_conf.json")
     if not any(len(p.relative_to(prefix).parts) == 2 and
