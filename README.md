@@ -111,6 +111,9 @@
 ### 素材开发
 若您想要在现有功能下，开发一套新的宠物形象、动作，请参考[素材开发文档](docs/art_dev.md)
 
+### Blender 3D 模型转 Q版动作帧（P5）
+新增[Blender 离线透明帧渲染入口与 Windows 使用教程](docs/blender_3d_chibi.md)：合规 GLB/FBX、内嵌式 GLTF 可以在 Blender 中以固定正交相机渲染 192×208 RGBA 动作帧，并自动接入既有 GIF/PNG 角色构建器。提供完全原创几何角色的 CI 验证，不包含任何第三方模型。**PMX/VRM 仍须先在有授权的本地 MMD/Blender 插件中导入并导出，复杂骨骼动作重定向尚未实现。**
+
 ### 角色新增流水线（模之屋 / B站 / 原生MOD / Codex）
 新增[角色来源登记、授权审查、Q版动画转换、质量验收和发布流水线](docs/character_pipeline.md)，内置结构化的模之屋、B站及角色合集[来源登记](tools/character_sources.json)。流水线默认把所有第三方素材留在本地 data/character_pipeline 目录；**公开可下载的模型不代表拥有再分发权**。PMX/VRM 需经过授权审查和离线透明动画渲染，不能直接给2D桌宠引擎播放。
 
