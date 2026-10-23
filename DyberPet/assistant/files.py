@@ -31,20 +31,23 @@ def validate_session_folder(folder: Path, home: Path | None = None) -> Path:
     folder = Path(folder).expanduser()
     if not folder.is_dir():
         raise WorkspaceError("Selected folder does not exist")
-    resolved = folder.resolve()
     try:
-        parts = resolved.relative_to(home).parts
+        requested_parts = folder.absolute().relative_to(home).parts
     except ValueError as exc:
         raise WorkspaceError("Only subfolders inside your user home may be authorized") from exc
-    if len(parts) < 2:
+    if len(requested_parts) < 2 or ".." in requested_parts:
         raise WorkspaceError("Select a specific subfolder, not Desktop/Documents/home itself")
     if any(part.startswith(".") or part.lower() in (
-            "appdata", "application data", "system32", "windows") for part in parts):
+            "appdata", "application data", "system32", "windows")
+           for part in requested_parts):
         raise WorkspaceError("Private application/system folders are not authorized")
-    for index in range(1, len(parts) + 1):
-        current = home.joinpath(*parts[:index])
+    for index in range(1, len(requested_parts) + 1):
+        current = home.joinpath(*requested_parts[:index])
         if current.is_symlink():
             raise WorkspaceError("Linked folders cannot be authorized")
+    resolved = folder.resolve()
+    if not resolved.is_relative_to(home):
+        raise WorkspaceError("Folder resolves outside your user home")
     return resolved
 
 
