@@ -5,6 +5,7 @@ on:
     paths:
       - "tools/import_codex_pet.py"
       - "docs/chibi_character_pipeline.md"
+      - "docs/chibi_character_sources.md"
       - "tools/chibi_layout.py"
       - "tools/chibi_preview.py"
       - "tools/import_chibi_animations.py"
@@ -21,6 +22,7 @@ on:
     paths:
       - "tools/import_codex_pet.py"
       - "docs/chibi_character_pipeline.md"
+      - "docs/chibi_character_sources.md"
       - "tools/chibi_layout.py"
       - "tools/chibi_preview.py"
       - "tools/import_chibi_animations.py"
