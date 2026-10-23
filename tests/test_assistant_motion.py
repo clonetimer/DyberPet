@@ -34,6 +34,23 @@ class MotionPolicyTests(unittest.TestCase):
         self.assertEqual(DORO.dx(4, on_floor=True, dragging=True), 4)
         self.assertEqual(style_for("Dorothy"), GROUND)
 
+    def test_character_audit_reports_motion_heuristic_without_claiming_gait(self):
+        import json
+        from DyberPet.assistant.character_fidelity import inspect_character_role
+        with tempfile.TemporaryDirectory() as td:
+            for name, kind in (("Doro", "quadruped"), ("派蒙", "hover")):
+                role = Path(td) / name
+                (role / "action").mkdir(parents=True)
+                (role / "pet_conf.json").write_text(
+                    json.dumps({"width": 64, "height": 64}), encoding="utf-8")
+                (role / "act_conf.json").write_text(
+                    json.dumps({"default": {"images": "idle"}}), encoding="utf-8")
+                result = inspect_character_role(role, name)
+                self.assertEqual(result["runtime_motion_policy"]["kind"], kind)
+                self.assertEqual(result["authenticity_status"], "not_verified")
+                self.assertTrue(any("native" in p or "Paimon" in p or "Doro" in p
+                                    for p in result["issues"]))
+
     def test_other_characters_keep_native_physics(self):
         for character in ("纳西妲", "阿丽莎", "咕嘎", "Kitty", "可莉"):
             with self.subTest(name=character):
