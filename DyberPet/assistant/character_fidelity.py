@@ -13,6 +13,7 @@ import wave
 from pathlib import Path
 from .character_profiles import resolve_profile, PROFILES, CharacterProfile
 from .character_motion import style_for
+from .mini_motion import MiniHover
 
 REFERENCE_PAGES = {
     "character_background": "https://knowyourmeme.com/memes/gugu-gaga-penguin",
@@ -197,6 +198,40 @@ def inspect_character_role(role_dir: str | Path, character_name: str,
         "not_verified_reason":
             "Metadata and frame counts cannot prove resemblance or permissions",
     }
+
+
+def inspect_mini_character_role(role_dir: str | Path,
+                                character_name: str, voice_path=None) -> dict:
+    """Audit a genuine res/pet mini-role and its authoritative follow flags."""
+    result = inspect_character_role(role_dir, character_name, voice_path)
+    role = Path(role_dir).expanduser()
+    try:
+        conf = json.loads((role / "pet_conf.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise FidelityError("Mini-pet configuration is missing or invalid") from exc
+    if not isinstance(conf, dict):
+        raise FidelityError("Mini-pet configuration must be an object")
+    follow_x, follow_y = conf.get("follow_main_x", True), conf.get("follow_main_y", False)
+    if type(follow_x) is not bool or type(follow_y) is not bool:
+        raise FidelityError("Mini-pet follow flags must be booleans")
+    control = MiniHover.for_pet(character_name, is_subpet=True,
+                                follows_main_y=follow_y, enabled=True)
+    result["runtime"] = "SubPet"
+    result["mini_follow"] = {
+        "follow_main_x": follow_x, "follow_main_y": follow_y,
+        "optional_hover_supported": control.enabled,
+        "reason": ("Native X/Y follow has priority; extra hover disabled"
+                   if follow_y else
+                   "Optional hover applies to a floor-following Paimon mini-pet"
+                   if control.enabled else
+                   "No character-specific mini-hover configured"),
+    }
+    if control.enabled and result["frame_count_by_action"].get(
+            conf.get("default", ""), 0) < 2:
+        result["issues"].append(
+            "Paimon mini-pet can move its window but still lacks a confirmed"
+            " multi-frame floating idle animation")
+    return result
 
 
 def inspect_guga_role(role_dir: str | Path, voice_path=None) -> dict:
