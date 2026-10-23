@@ -2,6 +2,7 @@
 import os
 import tempfile
 import unittest
+import wave
 from pathlib import Path
 from unittest.mock import patch
 
@@ -101,6 +102,32 @@ class AssistantQtTests(unittest.TestCase):
             self.assertNotEqual(self.dialog.workspace.root, specific.resolve())
             self.assertEqual(self.dialog._last_reply, "")
             self.assertEqual(self.dialog._ppl_snapshot, "")
+
+    def test_guga_sample_ui_does_not_claim_to_be_tts_or_licensed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            clip = Path(tmp) / "synthetic.wav"
+            with wave.open(str(clip), "wb") as stream:
+                stream.setnchannels(1)
+                stream.setsampwidth(2)
+                stream.setframerate(16000)
+                stream.writeframes(bytes(6400))
+            self.assertTrue(self.dialog._is_guga())
+            with patch("PySide6.QtWidgets.QFileDialog.getOpenFileName",
+                       return_value=(str(clip), "WAV")), patch(
+                       "PySide6.QtWidgets.QInputDialog.getText",
+                       side_effect=[("Synthetic Creator", True),
+                                    ("https://example.com/fixture", True)]), patch(
+                       "PySide6.QtWidgets.QMessageBox.warning",
+                       return_value=QMessageBox.StandardButton.Yes), patch(
+                       "DyberPet.assistant.ui.record_local_clip",
+                       return_value={"creator": "Synthetic Creator"}) as register:
+                self.dialog.select_guga_sample()
+            self.assertEqual(register.call_count, 1)
+            self.assertTrue(register.call_args.kwargs["acknowledged_local_rights"])
+            self.assertIn("尚未认证", self.dialog.status.text())
+            self.dialog.set_character("Doro")
+            self.assertFalse(self.dialog._is_guga())
+            self.assertTrue(self.dialog.guga_preview.isHidden())
 
     def test_create_requires_confirmation(self):
         with patch("PySide6.QtWidgets.QInputDialog.getText",
