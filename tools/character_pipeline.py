@@ -261,6 +261,74 @@ def create_render_plan(case_file):
     return target
 
 
+def render_3d_case(case_file, *, blender="blender", frames=6,
+                   actions=("idle", "left_walk", "right_walk", "wave",
+                            "jump", "wait", "review"), timeout=600,
+                   frames_case_id=None):
+    """Render an approved local GLB/FBX into a *new* unapproved frames case.
+
+    This is deliberately not equivalent to a successful role build or rights
+    clearance. The child frames case requires a second human rights review
+    before it may become an installed role or published ZIP.
+    """
+    data = load_case(case_file)
+    if data["source"]["kind"] != "model3d":
+        raise PipelineError("Only model3d candidates may use render")
+    source = asset_path(data)
+    if source is None or not source.is_file():
+        raise PipelineError("Attach one local 3D model file first")
+    if data["source"]["sha256"] != fingerprint(source):
+        raise PipelineError("3D source changed after intake; attach and review again")
+    rights = data["rights"]
+    if not (rights["reviewer"] and rights["evidence"] and
+            rights["local_use"] and rights["derivative_use"]):
+        raise PipelineError(
+            "3D rendering needs author-specific human rights evidence "
+            "and permission for local use and derivatives"
+        )
+    child_id = frames_case_id or data["id"] + "_frames"
+    root = Path(case_file).resolve().parent.parent
+    child_path = record_path(root, child_id)
+    if child_path.exists():
+        raise FileExistsError("Derived frames candidate already exists")
+    output_root = root / "renders" / data["id"]
+    if output_root.exists():
+        raise FileExistsError("Render output already exists, no overwrite allowed")
+    if __package__:
+        from .render_chibi_blender import render_blender
+    else:
+        from render_chibi_blender import render_blender
+    try:
+        rendered = render_blender(
+            blender, output_root, source=source,
+            frames=frames, actions=tuple(actions), timeout=timeout
+        )
+        if fingerprint(source) != data["source"]["sha256"]:
+            raise PipelineError("3D source changed during Blender render")
+        child = init_case(
+            root, child_id, data["character"], data["source"]["channel"],
+            data["source"]["url"], "frames", data.get("profile"),
+            data["source"]["artist"]
+        )
+        child_data = attach_case(child, rendered)
+        child_data["derived_from"] = {
+            "parent_case": data["id"],
+            "parent_asset_sha256": data["source"]["sha256"],
+            "render_report": str(rendered / "BLENDER_RENDER_REPORT.json")
+        }
+        dump_json(child_data, child)
+    except Exception:
+        # Do not leave an apparently usable unreviewed render after failure.
+        if output_root.is_dir():
+            shutil.rmtree(output_root)
+        raise
+    data["status"] = "rendered"
+    data["render"] = {"frames_case": child_id, "render_path": str(output_root)}
+    advance(data, "rendered_to_frames_candidate", child_id=child_id)
+    dump_json(data, case_file)
+    return child_path
+
+
 def build_case(case_file):
     data = load_case(case_file)
     source = check_build_gate(data)
@@ -436,9 +504,15 @@ def main(argv=None):
     a.add_argument("--local-use", action="store_true")
     a.add_argument("--derivatives", action="store_true")
     a.add_argument("--redistribution", action="store_true")
-    for command in ("inspect", "render-plan", "build", "qa", "package"):
+    for command in ("inspect", "render-plan", "render", "build", "qa", "package"):
         a = sub.add_parser(command)
         a.add_argument("id")
+        if command == "render":
+            a.add_argument("--blender", default="blender")
+            a.add_argument("--frames", type=int, default=6)
+            a.add_argument("--actions", default="idle,left_walk,right_walk,wave,jump,wait,review")
+            a.add_argument("--timeout", type=int, default=600)
+            a.add_argument("--frames-case-id")
         if command == "qa":
             a.add_argument("--reviewer", required=True)
             a.add_argument("--visual-pass", action="store_true")
@@ -463,6 +537,12 @@ def main(argv=None):
                 output = inspect_case(case)
             elif args.command == "render-plan":
                 output = str(create_render_plan(case))
+            elif args.command == "render":
+                output = str(render_3d_case(
+                    case, blender=args.blender, frames=args.frames,
+                    actions=tuple(a.strip() for a in args.actions.split(",")),
+                    timeout=args.timeout, frames_case_id=args.frames_case_id
+                ))
             elif args.command == "build":
                 output = str(build_case(case))
             elif args.command == "qa":
