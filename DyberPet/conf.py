@@ -400,7 +400,12 @@ def CheckCharFiles(folder):
     error_action = []
     missing_imgs = []
     for action, actDic in act_conf.items():
-        if "images" not in actDic.keys():
+        # Imported third-party MODs may contain malformed action entries.
+        # Report them instead of raising AttributeError/TypeError in the UI.
+        if (not isinstance(actDic, dict) or
+                not isinstance(actDic.get("images"), str) or
+                not actDic["images"] or
+                any(bad in actDic["images"] for bad in ("/", chr(92), ".."))):
             error_action.append(action)
             continue
         else:
@@ -443,7 +448,8 @@ def CheckCharFiles(folder):
         return 5, missAct
 
     # Check action in pet_conf.json are all defined in act_conf
-    actionsKey = ["default", "up", "down", "left", "right", "drag", "fall", "on_floor"]
+    actionsKey = ["default", "up", "down", "left", "right", "drag",
+                  "fall", "prefall", "on_floor", "focus"]
     actions = [pet_conf[i] for i in actionsKey if i in pet_conf.keys()]
 
     if "patpat" in pet_conf.keys():
