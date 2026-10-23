@@ -260,7 +260,7 @@ def main():
     modes = {}
     for name in args.actions:
         clip_name = selected.get(name)
-        window = select_animation(tracks, clip_name) if clip_name else None
+        window = select_animation(tracks, clip_name)
         modes[name] = ("clip" if window is not None else "procedural_fallback")
         for index in range(args.frames):
             t = index / args.frames
