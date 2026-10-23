@@ -59,3 +59,28 @@ def style_for(character_name: str) -> MotionStyle:
     if profile.key == "paimon":
         return PAIMON
     return GROUND
+
+def is_authored_gait_frame(act, pet_conf, *, minimum_frames: int = 4) -> bool:
+    """Recognize a true configured left/right Act with enough authored sprites.
+
+    Never promote arbitrary jump/gesture displacement to quadruped movement.
+    Counts distinct frame identities, not copies of one still frame.
+    """
+    if act is None or pet_conf is None:
+        return False
+    if act is not getattr(pet_conf, "left", None) and act is not getattr(pet_conf, "right", None):
+        return False
+    images = getattr(act, "images", None)
+    if not isinstance(images, (list, tuple)) or len(images) < minimum_frames:
+        return False
+    if getattr(act, "direction", None) not in ("left", "right"):
+        return False
+    if not getattr(act, "need_move", False):
+        return False
+    ids = []
+    for frame in images:
+        # Qt's QPixmap.cacheKey identifies real backing buffers; for synthetic
+        # test objects object id is adequate. Never compare QPixmap pixels here.
+        key = frame.cacheKey() if hasattr(frame, "cacheKey") else id(frame)
+        ids.append(key)
+    return len(set(ids)) >= minimum_frames
