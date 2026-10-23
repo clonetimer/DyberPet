@@ -160,7 +160,10 @@ def convert_animation_folder(source: Path, output_root: Path, *,
     sources, warnings = resolve_animations(source)
     raw_frames, delays, more_warnings = prepare_animation_frames(sources)
     warnings.extend(more_warnings)
+    requested_folder = folder
     folder = folder or re.sub(r"[^A-Za-z0-9_-]+", "_", source.name)
+    if requested_folder is None and not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,39}", folder):
+        folder = "ChibiPet"
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,39}", folder):
         raise ValueError("Output folder must start with ASCII letter, max 40 characters")
     name = name or (profile_info or {}).get("name") or source.name
