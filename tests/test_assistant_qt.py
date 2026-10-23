@@ -55,6 +55,8 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog._last_reply = "这个是测试回复"
         with patch.object(self.dialog, "_submit"):
             self.dialog.read_reply()
+        self.assertEqual(started, [])  # signal waits for real local TTS engine
+        self.dialog._on_voice_engine_ready("咕嘎", "这个是测试回复")
         self.assertEqual(started, [("咕嘎", "这个是测试回复")])
         self.assertEqual(self.dialog._speaking_session[0], "咕嘎")
         self.dialog._job_finished()
@@ -65,6 +67,18 @@ class AssistantQtTests(unittest.TestCase):
             self.dialog.read_reply()
             self.dialog.set_character("Doro")
         self.assertEqual(stopped, ["咕嘎", "咕嘎"])
+        self.assertIsNone(self.dialog._speaking_session)
+
+    def test_speech_engine_failure_retains_text_bubble(self):
+        visible = []
+        self.dialog.reply_ready.connect(visible.append)
+        self.dialog.bubble_enabled.setChecked(True)
+        self.dialog._last_reply = "可以展示的回答"
+        with patch.object(self.dialog, "_submit"):
+            self.dialog.read_reply()
+        self.assertEqual(visible, [])
+        self.dialog._job_error("no sound engine")
+        self.assertEqual(visible, ["可以展示的回答"])
         self.assertIsNone(self.dialog._speaking_session)
 
     def test_speech_failure_removes_visual_speaking_state(self):
