@@ -21,9 +21,11 @@ except ImportError:
 if __package__:
     from .chibi_layout import normalize_grounded_frames, suggested_scale, quality_metrics
     from .chibi_profiles import CHIBI_PROFILES, get_profile, make_bubble_config
+    from .chibi_preview import create_contact_sheet
 else:
     from chibi_layout import normalize_grounded_frames, suggested_scale, quality_metrics
     from chibi_profiles import CHIBI_PROFILES, get_profile, make_bubble_config
+    from chibi_preview import create_contact_sheet
 
 CELL = (192, 208)
 COLUMNS = 8
@@ -287,6 +289,7 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
                 frame.save(action / f"{state}_{idx}.png", "PNG")
         (working / "pet_conf.json").write_text(json_text(pet_conf), encoding="utf-8")
         (working / "act_conf.json").write_text(json_text(act_conf), encoding="utf-8")
+        preview = create_contact_sheet(frames, working / "ANIMATION_PREVIEW.png")
         (working / "info").mkdir()
         make_info_images(frames["idle"][0], working / "info", style=style)
         (working / "info" / "info.json").write_text(json_text(info), encoding="utf-8")
@@ -302,6 +305,7 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
                        "warnings": warnings,
                        "aligned_frames_per_action": shifts,
                        "geometry": quality_metrics(frames),
+                       "preview": preview,
                        "frame_counts": {k: len(v) for k, v in frames.items()},
                        "actions": sorted(act_conf)}), encoding="utf-8")
         provenance = (
