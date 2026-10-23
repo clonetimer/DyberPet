@@ -1,0 +1,229 @@
+#!/usr/bin/env python3
+"""Convert a local Codex Pets V1/V2 sprite atlas to a DyberPet role MOD.
+
+Artwork must be supplied by the user; this tool does not fetch or redistribute
+third-party assets. Requires Pillow (python -m pip install Pillow).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+import tempfile
+from pathlib import Path
+
+try:
+    from PIL import Image
+except ImportError as exc:
+    raise SystemExit("Missing Pillow: python -m pip install Pillow") from exc
+
+CELL = (192, 208)
+COLUMNS = 8
+# name, row, maximum frame count, refresh seconds
+STATES = (
+    ("idle", 0, 6, 0.18),
+    ("right_walk", 1, 8, 0.12),
+    ("left_walk", 2, 8, 0.12),
+    ("wave", 3, 4, 0.18),
+    ("jump", 4, 5, 0.16),
+    ("failed", 5, 8, 0.17),
+    ("wait", 6, 6, 0.18),
+    ("run", 7, 6, 0.14),
+    ("review", 8, 6, 0.18),
+)
+PRESETS = {
+    "guga": {"name": "咕嘎", "folder": "Guga", "author": "CIRCUS",
+             "license": "Unverified; obtain creator permission before redistribution"},
+    "doro": {"name": "Doro", "folder": "Doro", "author": "legeling",
+             "license": "CC BY-NC 4.0 (specific doro--lingxiaotian artwork); underlying IP rights separate"},
+}
+
+
+def json_text(value: dict) -> str:
+    return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
+
+
+def resolve_source(path: Path) -> tuple[Path, dict]:
+    """Accept image file or a local Codex Pets directory with optional manifest."""
+    path = path.expanduser().resolve()
+    if path.is_file():
+        if path.suffix.lower() not in (".webp", ".png"):
+            raise ValueError("Source image must be .webp or .png")
+        return path, {}
+    if not path.is_dir():
+        raise ValueError(f"Input not found: {path}")
+    manifest_path = path / "pet.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else {}
+    relative = manifest.get("spritesheetPath", "spritesheet.webp")
+    if not isinstance(relative, str) or not relative:
+        raise ValueError("Invalid spritesheetPath")
+    atlas = (path / relative).resolve()
+    if not atlas.is_relative_to(path) or not atlas.is_file():
+        raise ValueError("Atlas is missing or outside the supplied folder")
+    if atlas.suffix.lower() not in (".webp", ".png"):
+        raise ValueError("Sprite atlas must be .webp or .png")
+    return atlas, manifest
+
+
+def read_atlas(atlas: Path, manifest: dict) -> tuple[Image.Image, int]:
+    with Image.open(atlas) as original:
+        size = original.size
+        if size == (1536, 1872):
+            version = 1
+        elif size == (1536, 2288):
+            version = 2
+        else:
+            raise ValueError(f"Unsupported atlas {size}; expected V1 1536x1872 or V2 1536x2288")
+        declared = manifest.get("spriteVersionNumber")
+        if declared is not None and declared != version:
+            raise ValueError(f"Manifest says V{declared}, image dimensions indicate V{version}")
+        return original.convert("RGBA"), version
+
+
+def extract_frames(atlas: Image.Image, row: int, maximum: int) -> list[Image.Image]:
+    frames = []
+    for index in range(maximum):
+        left = (index % COLUMNS) * CELL[0]
+        top = (row + index // COLUMNS) * CELL[1]
+        frame = atlas.crop((left, top, left + CELL[0], top + CELL[1]))
+        if frame.getchannel("A").getbbox() is not None:
+            frames.append(frame)
+    return frames
+
+
+def build_configs(available: set[str], version: int, name: str,
+                  author: str) -> tuple[dict, dict, dict]:
+    if "idle" not in available:
+        raise ValueError("Required idle row contains no visible frames")
+
+    def use(state: str) -> str:
+        return state if state in available else "idle"
+
+    act_conf = {}
+    for state, _, _, refresh in STATES:
+        if state not in available:
+            continue
+        action = {"images": state, "act_num": 1, "frame_refresh": refresh}
+        if state in ("left_walk", "right_walk"):
+            action.update({"need_move": True,
+                           "direction": "left" if state == "left_walk" else "right",
+                           "frame_move": 4.0})
+        act_conf[state] = action
+    if "lookaround" in available:
+        act_conf["lookaround"] = {"images": "lookaround", "act_num": 1, "frame_refresh": 0.13}
+
+    groups = [
+        ("站立", ["idle"], 1.0, [2, 0]),
+        ("左右散步", [use("left_walk"), use("right_walk")], 0.24, [3, 0]),
+        ("打招呼", [use("wave")], 0.18, [2, 0]),
+        ("蹦一蹦", [use("jump")], 0.10, [3, 0]),
+        ("休息", [use("wait")], 0.12, [1, 0]),
+        ("认真观察", [use("review")], 0.07, [2, 0]),
+    ]
+    if "lookaround" in available:
+        groups.append(("左顾右盼", ["lookaround"], 0.08, [2, 0]))
+    random_act = [
+        {"name": title, "act_list": refs, "act_prob": weight, "act_type": state}
+        for title, refs, weight, state in groups
+    ]
+    random_act.append({
+        "name": "onfloor", "act_list": [use("jump")],
+        "act_prob": 0, "act_type": [0, 10000]
+    })
+    pet_conf = {
+        "width": CELL[0], "height": CELL[1], "scale": 0.65, "interact_speed": 0.02,
+        "default": "idle", "up": "idle", "down": "idle",
+        "left": use("left_walk"), "right": use("right_walk"),
+        "drag": use("jump"), "prefall": use("jump"),
+        "fall": use("jump"), "on_floor": use("jump"),
+        "focus": use("review"), "patpat": use("wave"),
+        "random_act": random_act,
+    }
+    info = {
+        "coverImages": [], "petName": name,
+        "tages": {"Codex图集转换": "#B9D7EA", "V" + str(version): "#D6D6F0"},
+        "intro": f"由用户提供的 Codex Pets V{version} 图集转换，请遵守素材许可。",
+        "author": {"name": author, "infos": "来源标注不构成再分发授权。"},
+    }
+    return act_conf, pet_conf, info
+
+
+def convert(source: Path, dest_root: Path, *, preset: str | None = None,
+            folder: str | None = None, name: str | None = None,
+            author: str | None = None, license_name: str | None = None,
+            source_url: str | None = None) -> Path:
+    atlas_path, manifest = resolve_source(source)
+    preset_data = PRESETS.get(preset or "", {})
+    folder = folder or preset_data.get("folder") or re.sub(
+        r"[^A-Za-z0-9_-]+", "_", str(manifest.get("id", "CodexPet"))
+    )
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,39}", folder):
+        raise ValueError("Output folder: ASCII letters/digits/_/-, begins with a letter, max 40")
+    name = name or preset_data.get("name") or manifest.get("displayName") or folder
+    author = author or preset_data.get("author") or "Unspecified"
+    license_name = license_name or preset_data.get("license") or "Unverified; do not redistribute"
+    dest_root = dest_root.expanduser().resolve()
+    output = dest_root / folder
+    if output.exists():
+        raise FileExistsError(f"Role already exists, refusing to overwrite: {output}")
+
+    atlas, version = read_atlas(atlas_path, manifest)
+    frames = {state: extract_frames(atlas, row, count) for state, row, count, _ in STATES}
+    if version == 2:
+        frames["lookaround"] = extract_frames(atlas, 9, 16)
+    available = {state for state, items in frames.items() if items}
+    act_conf, pet_conf, info = build_configs(available, version, str(name), str(author))
+
+    dest_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".dyberpet-import-", dir=dest_root) as tmp:
+        working = Path(tmp) / folder
+        action = working / "action"
+        action.mkdir(parents=True)
+        for state in sorted(available):
+            for idx, frame in enumerate(frames[state]):
+                frame.save(action / f"{state}_{idx}.png", "PNG")
+        (working / "pet_conf.json").write_text(json_text(pet_conf), encoding="utf-8")
+        (working / "act_conf.json").write_text(json_text(act_conf), encoding="utf-8")
+        (working / "info").mkdir()
+        (working / "info" / "info.json").write_text(json_text(info), encoding="utf-8")
+        provenance = (
+            f"Character: {name}\nAuthor/credit: {author}\n"
+            f"Artwork license (user/preset): {license_name}\n"
+            f"Original URL: {source_url or 'Not supplied'}\n"
+            f"Input: {atlas_path.name}\nFormat: Codex Pets V{version}\n\n"
+            "Conversion does not confer rights to original characters, drawings,"
+            " voices or trademarks. Verify permission before publishing.\n"
+        )
+        (working / "ASSET_SOURCE.txt").write_text(provenance, encoding="utf-8")
+        shutil.move(str(working), str(output))
+    return output
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("source", type=Path, help="Local pet folder or spritesheet.webp/.png")
+    parser.add_argument("--preset", choices=sorted(PRESETS))
+    parser.add_argument("--output-root", type=Path,
+                        default=Path(__file__).resolve().parents[1] / "res" / "role")
+    parser.add_argument("--folder", help="ASCII folder for new character")
+    parser.add_argument("--name", help="Display name")
+    parser.add_argument("--author", help="Original asset author")
+    parser.add_argument("--license", dest="license_name", help="Verified asset license")
+    parser.add_argument("--source-url", help="Original asset URL for attribution")
+    args = parser.parse_args()
+    try:
+        output = convert(
+            args.source, args.output_root, preset=args.preset,
+            folder=args.folder, name=args.name, author=args.author,
+            license_name=args.license_name, source_url=args.source_url
+        )
+    except (ValueError, FileNotFoundError, FileExistsError, OSError, json.JSONDecodeError) as exc:
+        parser.exit(1, f"Import failed: {exc}\n")
+    print(f"Imported DyberPet role: {output}")
+    print("Restart DyberPet, then choose the character in 系统 → 角色管理.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
