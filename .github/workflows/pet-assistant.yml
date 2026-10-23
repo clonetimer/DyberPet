@@ -61,6 +61,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: clonetimer/PPL
+          # Qualified against PPL main at 2026-10-23; keep cross-repo smoke deterministic.
+          ref: a587e5b6ffb62fd005ac67e98eed79fac3dd66de
           path: ppl-src
       - uses: actions/setup-python@v5
         with:
