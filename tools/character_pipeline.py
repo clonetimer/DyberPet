@@ -181,7 +181,10 @@ def attach_case(case_file, source):
     data["source"]["local_asset"] = str(target)
     data["source"]["sha256"] = fingerprint(target)
     data["status"] = "source_attached"
-    # A new source invalidates any previous review or build approval.
+    # A new source invalidates earlier permissions, author attestations and QA.
+    data["rights"] = {"evidence": "", "reviewer": "", "reviewed_on": "",
+                      "local_use": False, "derivative_use": False,
+                      "redistribution": False}
     data["qa"] = {"reviewer": "", "reviewed_on": "", "visual_pass": False,
                   "runtime_pass": False, "asset_sha256": ""}
     data["build"] = {"role": "", "report": ""}
