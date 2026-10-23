@@ -66,7 +66,8 @@ def extract_pet_methods():
     code = ast.parse(source.read_text(encoding="utf-8"))
     widget = next(item for item in code.body
                   if isinstance(item, ast.ClassDef) and item.name == "PetWidget")
-    names = {"_configure_character_motion", "_hover_motion_tick", "_move_customized"}
+    names = {"_configure_character_motion", "_hover_motion_tick",
+             "_move_customized", "_set_character_motion_enabled"}
     methods = [item for item in widget.body
                if isinstance(item, ast.FunctionDef) and item.name in names]
     if len(methods) != len(names):
@@ -135,6 +136,7 @@ class FakePet:
         self.current_screen = MockPos(0, 0)
         self._screen_max = [1500, 900]
         self._motion_style = GROUND
+        self._motion_enabled = True
 
     def pos(self):
         return MockPos(*self._xy)
@@ -154,6 +156,9 @@ class FakePet:
     def _configure_character_motion(self):
         return _CALLS["_configure_character_motion"](self)
 
+    def _set_character_motion_enabled(self, enabled):
+        return _CALLS["_set_character_motion_enabled"](self, enabled)
+
     def _hover_motion_tick(self):
         return _CALLS["_hover_motion_tick"](self)
 
@@ -165,6 +170,7 @@ _CALLS = {}
 _GLOBALS = {
     "style_for": style_for,
     "settings": Settings,
+    "GROUND": GROUND,
 }
 exec(extract_pet_methods(), _GLOBALS, _CALLS)
 
@@ -217,6 +223,23 @@ class ActualNativeHooksTests(unittest.TestCase):
         pet.is_follow_mouse = True
         pet._move_customized(10, 0)
         self.assertEqual(pet.pos().x(), 173)
+
+    def test_gui_motion_opt_out_disables_hover_and_pace(self):
+        pet = FakePet("派蒙")
+        pet._configure_character_motion()
+        self.assertEqual(pet.pos().y(), 386)
+        pet._set_character_motion_enabled(False)
+        self.assertEqual(pet._motion_style.kind, "ground")
+        self.assertEqual(pet.pos().y(), 420)
+        self.assertFalse(pet._motion_timer.running)
+        pet._set_character_motion_enabled(True)
+        self.assertEqual(pet._motion_style.kind, "hover")
+        self.assertEqual(pet.pos().y(), 386)
+        doro = FakePet("Doro")
+        doro._configure_character_motion()
+        doro._set_character_motion_enabled(False)
+        doro._move_customized(10, 0)
+        self.assertEqual(doro.pos().x(), 160)
 
     def test_original_role_switch_restores_ground(self):
         pet = FakePet("派蒙")
