@@ -11,6 +11,45 @@ from DyberPet.assistant.character_motion import style_for
 from DyberPet.assistant.mini_motion import MiniHover
 
 
+class MiniAuditTests(unittest.TestCase):
+    def test_mini_follow_flags_are_reported_from_native_pet_conf(self):
+        import json
+        import tempfile
+        from DyberPet.assistant.character_fidelity import inspect_mini_character_role
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "Paimon"
+            (root / "action").mkdir(parents=True)
+            (root / "act_conf.json").write_text(
+                json.dumps({"idle": {"images": "idle_hero"}}), encoding="utf-8")
+            conf = {"default": "idle", "width": 96, "height": 128,
+                    "follow_main_x": True, "follow_main_y": False}
+            (root / "pet_conf.json").write_text(json.dumps(conf), encoding="utf-8")
+            report = inspect_mini_character_role(root, "Paimon")
+            self.assertEqual(report["runtime"], "SubPet")
+            self.assertTrue(report["mini_follow"]["optional_hover_supported"])
+            self.assertEqual(report["authenticity_status"], "not_verified")
+            conf["follow_main_y"] = True
+            (root / "pet_conf.json").write_text(json.dumps(conf), encoding="utf-8")
+            report = inspect_mini_character_role(root, "派蒙")
+            self.assertFalse(report["mini_follow"]["optional_hover_supported"])
+            self.assertIn("priority", report["mini_follow"]["reason"])
+
+    def test_invalid_follow_mode_is_not_guessed(self):
+        import json
+        import tempfile
+        from DyberPet.assistant.character_fidelity import (
+            inspect_mini_character_role, FidelityError)
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "Paimon"
+            (root / "action").mkdir(parents=True)
+            (root / "act_conf.json").write_text("{}", encoding="utf-8")
+            (root / "pet_conf.json").write_text(
+                json.dumps({"default": "idle", "follow_main_y": "false"}),
+                encoding="utf-8")
+            with self.assertRaisesRegex(FidelityError, "booleans"):
+                inspect_mini_character_role(root, "Paimon")
+
+
 class MiniHoverPolicyTests(unittest.TestCase):
     def test_only_floor_following_mini_paimon_gets_hover(self):
         args = dict(is_subpet=True, follows_main_y=False, enabled=True)
