@@ -21,8 +21,13 @@ def _rust_module():
         return None
     try:
         return importlib.import_module("dyberpet_native")
-    except ImportError:
-        return None
+    except ModuleNotFoundError as exc:
+        # A wheel missing altogether is safe to fall back from. If a module
+        # exists but a transitive dependency is broken, preserve the error:
+        # silently choosing Python would disguise a defective Rust install.
+        if exc.name == "dyberpet_native":
+            return None
+        raise
 
 
 def backend_status() -> dict:
