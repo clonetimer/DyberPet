@@ -10,7 +10,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from .persona import DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, _local_base
+from .persona import DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, _local_base, AssistantServiceError
 
 PREF_VERSION = 1
 MAX_PREF_BYTES = 16384
@@ -44,8 +44,11 @@ def validate(raw) -> dict:
         if not isinstance(val, str) or len(val) > size:
             raise ValueError("Invalid assistant preference: " + key)
         result[key] = val
-    _local_base(result["llm_url"])
-    _local_base(result["ppl_url"])
+    try:
+        _local_base(result["llm_url"])
+        _local_base(result["ppl_url"])
+    except AssistantServiceError as exc:
+        raise ValueError("Assistant endpoints must be local loopback services") from exc
     for key in ("ppl_enabled", "bubble_enabled", "auto_speak"):
         val = raw.get(key, result[key])
         if type(val) is not bool:
