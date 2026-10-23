@@ -100,6 +100,28 @@ CHIBI_PROFILES = {
     },
 }
 
+def available_role_folder(root, suggested):
+    """Pick a safe unused role folder name; never overwrite existing artwork.
+
+    GUI imports may use non-Latin source names; unlike an explicit CLI
+    --folder override, these should not force a manual rename.
+    """
+    import re
+    from pathlib import Path
+
+    clean = re.sub(r"[^A-Za-z0-9_-]+", "_", str(suggested or "")).strip("_")
+    clean = clean[:34].strip("_")
+    if not clean or not re.match(r"^[A-Za-z]", clean):
+        clean = "ChibiPet"
+    root = Path(root)
+    for count in range(1, 1001):
+        suffix = f"_{count}" if count > 1 else ""
+        folder = clean + suffix
+        if not (root / folder).exists():
+            return folder
+    raise ValueError("Too many similarly named character folders")
+
+
 def get_profile(profile_id: str | None) -> dict | None:
     """Return a copy to keep global templates immutable for callers."""
     if profile_id is None:
