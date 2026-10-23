@@ -52,6 +52,9 @@ class ImportCodexPetTests(unittest.TestCase):
             self.assertEqual(image.size, (192, 208))
             self.assertEqual(image.convert("RGBA").getpixel((0, 0))[3], 0)
         self.assertIn("Unverified", (out / "ASSET_SOURCE.txt").read_text())
+        bubbles = json.loads((out / "note" / "bubble_conf.json").read_text(encoding="utf-8"))
+        self.assertIn("咕嘎", bubbles["pat_random_1"]["message"])
+        self.assertIsNone(bubbles["pat_random_1"]["start_audio"])
         info = json.loads((out / "info" / "info.json").read_text(encoding="utf-8"))
         self.assertEqual(info["pfp"], "pfp.png")
         self.assertEqual(info["coverImages"], ["cover.png"])
@@ -67,6 +70,8 @@ class ImportCodexPetTests(unittest.TestCase):
         self.assertEqual(len(list((out / "action").glob("lookaround_*.png"))), 16)
         conf = json.loads((out / "pet_conf.json").read_text(encoding="utf-8"))
         self.assertTrue(any(group["name"] == "左顾右盼" for group in conf["random_act"]))
+        bubbles = json.loads((out / "note" / "bubble_conf.json").read_text(encoding="utf-8"))
+        self.assertIn("Doro", bubbles["pat_random_1"]["message"])
 
     def test_missing_optional_actions_fall_back(self):
         self.make_atlas(populated_rows=[0])
