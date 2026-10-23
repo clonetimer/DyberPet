@@ -156,6 +156,41 @@ class AssistantQtTests(unittest.TestCase):
             self.dialog.role_root / "派蒙", "派蒙", None)
         self.assertIn("未核实", dialog.call_args.args[2])
 
+    def test_mini_paimon_audit_recognizes_native_follow_mode(self):
+        import json
+        with tempfile.TemporaryDirectory() as td:
+            parent = Path(td) / "res"
+            role = parent / "role"
+            root = parent / "pet" / "Paimon"
+            role.mkdir(parents=True)
+            (root / "action").mkdir(parents=True)
+            (root / "pet_conf.json").write_text(
+                json.dumps({"width": 64, "height": 64, "default": "idle",
+                            "follow_main_x": True, "follow_main_y": False}),
+                encoding="utf-8")
+            (root / "act_conf.json").write_text(
+                json.dumps({"idle": {"images": "idle"}}), encoding="utf-8")
+            self.dialog.role_root = role
+            with patch("PySide6.QtWidgets.QMessageBox.information") as msg:
+                self.dialog.audit_mini_paimon()
+            self.assertIn("可用", msg.call_args.args[2])
+            self.assertIn("尚未", msg.call_args.args[2])
+            self.assertIn("Paimon", msg.call_args.args[2])
+            # The existing two-axis follower owns vertical placement.
+            (root / "pet_conf.json").write_text(
+                json.dumps({"width": 64, "height": 64, "default": "idle",
+                            "follow_main_x": True, "follow_main_y": True}),
+                encoding="utf-8")
+            with patch("PySide6.QtWidgets.QMessageBox.information") as msg:
+                self.dialog.audit_mini_paimon()
+            self.assertIn("不启用", msg.call_args.args[2])
+
+    def test_missing_mini_paimon_is_not_misreported_as_main_role(self):
+        with tempfile.TemporaryDirectory() as td:
+            self.dialog.role_root = Path(td) / "res" / "role"
+            self.dialog.audit_mini_paimon()
+            self.assertIn("没有检测到派蒙迷你宠物", self.dialog.status.text())
+
     def test_guga_role_audit_reports_missing_or_manual_verification(self):
         role = self.dialog.role_root / self.dialog.character_name
         with patch("DyberPet.assistant.ui.inspect_guga_role", return_value={
