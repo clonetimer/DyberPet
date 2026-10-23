@@ -1013,6 +1013,7 @@ class PetWidget(QWidget):
             #Action(FIF.MENU, self.tr('More Options'), triggered=self._show_right_menu),
             Action(QIcon(os.path.join(basedir,'res/icons/dashboard.svg')), self.tr('Dashboard'), triggered=self._show_dashboard),
             Action(QIcon(os.path.join(basedir,'res/icons/SystemPanel.png')), self.tr('System'), triggered=self._show_controlPanel),
+            Action(FIF.EDIT, self.tr('Desktop Pet Assistant (Files / Voice / Persona)'), triggered=self._show_pet_assistant),
         ])
         self.StatMenu.addSeparator()
 
@@ -1030,6 +1031,20 @@ class PetWidget(QWidget):
     #     statusText = self.tr("Status: ") + f"{settings.TIER_NAMES[hp_tier]}"
     #     self.statLabel.setText(statusText)
 
+
+    def _show_pet_assistant(self):
+        """Open the optional assistant without interrupting pet animations."""
+        from DyberPet.assistant.ui import PetAssistantDialog
+        from pathlib import Path
+        if not hasattr(self, "_pet_assistant") or self._pet_assistant is None:
+            workspace = Path.home() / "Documents" / "DyberPetAssistant"
+            self._pet_assistant = PetAssistantDialog(
+                self.curr_pet_name, workspace, self)
+        else:
+            self._pet_assistant.set_character(self.curr_pet_name)
+        self._pet_assistant.show()
+        self._pet_assistant.raise_()
+        self._pet_assistant.activateWindow()
 
     def _show_Staus_menu(self):
         """
