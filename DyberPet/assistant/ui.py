@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout, QHBoxLayout, QInputDialog,
     QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout,
@@ -20,6 +20,7 @@ from .persona import (
     chat_local, list_local_models, AssistantServiceError,
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
+from .preferences import load as load_preferences, save as save_preferences, defaults as default_preferences
 
 
 class _AssistantJob(QThread):
@@ -38,6 +39,9 @@ class _AssistantJob(QThread):
 
 
 class PetAssistantDialog(QDialog):
+    reply_ready = Signal(str)
+    action_notice = Signal(str)
+
     def __init__(self, character_name: str, workspace: Path, parent=None):
         super().__init__(parent)
         self.character_name = character_name
@@ -45,7 +49,16 @@ class PetAssistantDialog(QDialog):
         self._job = None
         self._last_reply = ""
         self._ppl_snapshot = ""
+        try:
+            self._prefs = load_preferences()
+            self._prefs_error = ""
+        except (OSError, ValueError, KeyError) as exc:
+            self._prefs = default_preferences()
+            self._prefs_error = str(exc)
         self._build_ui()
+        self._apply_preferences()
+        if self._prefs_error:
+            self.status.setText("旧配置未加载（未覆盖原文件）：" + self._prefs_error)
 
     def _build_ui(self):
         self.setWindowTitle("桌宠助手 · " + self.character_name)
@@ -91,6 +104,13 @@ class PetAssistantDialog(QDialog):
         browse_button.clicked.connect(self.browse_voice_model)
         voice_model_row.addWidget(browse_button)
         form.addRow("离线识别模型", voice_model_row)
+        self.bubble_enabled = QCheckBox("对话回复/文件操作时显示桌宠气泡")
+        self.auto_speak = QCheckBox("自动朗读模型回复（本机离线 TTS）")
+        form.addRow(self.bubble_enabled)
+        form.addRow(self.auto_speak)
+        self.save_pref_button = QPushButton("保存助手设置（不保存聊天记录与人设快照）")
+        self.save_pref_button.clicked.connect(self.save_preferences)
+        form.addRow(self.save_pref_button)
         body.addLayout(form)
 
         self.chat_log = QPlainTextEdit()
@@ -150,6 +170,50 @@ class PetAssistantDialog(QDialog):
                  else self.persona.findData("companion"))
         self.persona.setCurrentIndex(max(index, 0))
         self.chat_log.appendPlainText("已切换当前桌宠：" + name)
+        saved = self._prefs["personas"].get(name)
+        if saved in PERSONAS:
+            self.persona.setCurrentIndex(self.persona.findData(saved))
+        self._last_reply = ""
+        self._ppl_snapshot = ""  # Persona snapshots belong to the previous character
+
+    def _apply_preferences(self):
+        prefs = self._prefs
+        self.llm_endpoint.setText(prefs["llm_url"])
+        self.llm_model.setText(prefs["llm_model"])
+        self.ppl_endpoint.setText(prefs["ppl_url"])
+        self.voice_model.setText(prefs["voice_model"])
+        self.ppl_enabled.setChecked(prefs["ppl_enabled"])
+        self.bubble_enabled.setChecked(prefs["bubble_enabled"])
+        self.auto_speak.setChecked(prefs["auto_speak"])
+        saved = prefs["personas"].get(self.character_name)
+        if saved in PERSONAS:
+            self.persona.setCurrentIndex(self.persona.findData(saved))
+
+    def save_preferences(self):
+        prefs = dict(self._prefs)
+        prefs.update({
+            "llm_url": self.llm_endpoint.text().strip(),
+            "llm_model": self.llm_model.text().strip(),
+            "ppl_url": self.ppl_endpoint.text().strip(),
+            "voice_model": self.voice_model.text().strip(),
+            "ppl_enabled": self.ppl_enabled.isChecked(),
+            "bubble_enabled": self.bubble_enabled.isChecked(),
+            "auto_speak": self.auto_speak.isChecked(),
+        })
+        prefs["personas"] = dict(prefs["personas"])
+        prefs["personas"][self.character_name] = self.persona.currentData()
+        try:
+            save_preferences(prefs)
+            self._prefs = prefs
+            self.status.setText("配置已保存；聊天记录和 PPL 文本快照不会落盘。")
+        except (OSError, ValueError) as exc:
+            self._job_error("配置保存失败：" + str(exc))
+
+    def _notice(self, text: str):
+        # Tell PetWidget to use the *existing* notification bubble pipeline.
+        # This signal has no filesystem write capability.
+        if self.bubble_enabled.isChecked():
+            self.action_notice.emit(text[:120])
 
     def _submit(self, task, on_success, *args, **kwargs):
         if self._job is not None:
@@ -253,7 +317,15 @@ class PetAssistantDialog(QDialog):
     def _message_reply(self, reply):
         self._last_reply = reply
         self.chat_log.appendPlainText(self.character_name + "：" + reply)
+        if self.bubble_enabled.isChecked():
+            self.reply_ready.emit(reply[:120])
         self.status.setText("回复已生成；点击朗读按钮可使用离线语音播报。")
+        if self.auto_speak.isChecked() and self.isVisible():
+            QTimer.singleShot(100, self._auto_read_reply)
+
+    def _auto_read_reply(self):
+        if self._job is None and self.auto_speak.isChecked() and self.isVisible():
+            self.read_reply()
 
     def listen_once(self):
         model = self.voice_model.text().strip()
@@ -305,6 +377,7 @@ class PetAssistantDialog(QDialog):
         try:
             path = self.workspace.create(name, content)
             self.status.setText("已创建：" + str(path))
+            self._notice("文件已创建：" + path.name)
         except (WorkspaceError, OSError) as exc:
             self._job_error(str(exc))
 
@@ -327,6 +400,7 @@ class PetAssistantDialog(QDialog):
         try:
             key = self.workspace.soft_delete(name)
             self.status.setText("文件已移入可恢复区：" + key)
+            self._notice("已移入可恢复区：" + name)
         except (WorkspaceError, OSError) as exc:
             self._job_error(str(exc))
 
@@ -342,5 +416,6 @@ class PetAssistantDialog(QDialog):
         try:
             target = self.workspace.restore(key)
             self.status.setText("已恢复：" + str(target))
+            self._notice("文件已恢复：" + target.name)
         except (WorkspaceError, OSError) as exc:
             self._job_error(str(exc))
