@@ -18,6 +18,14 @@ from DyberPet.assistant.character_fidelity import (
 
 
 def main(argv=None):
+    # Windows GitHub runners may default to cp1252, which cannot print Chinese
+    # character names in argparse --help. Configure before parsing flags.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--character", required=True,
                         help="Installed character name, e.g. Doro, 派蒙, 阿丽莎")
