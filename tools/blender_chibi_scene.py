@@ -91,7 +91,11 @@ def import_model(filepath):
         bpy.ops.import_scene.gltf(filepath=str(filepath))
     else:
         bpy.ops.import_scene.fbx(filepath=str(filepath))
-    models = [ob for ob in bpy.context.scene.objects if ob.type in {"MESH", "ARMATURE"}]
+    # GLTF/FBX imports can place every mesh under an EMPTY node. Include
+    # those transform parents or the model normalization controller would not
+    # affect anything (the meshes have no parent-free roots of their own).
+    models = [ob for ob in bpy.context.scene.objects
+              if ob.type in {"MESH", "ARMATURE", "EMPTY"}]
     if not any(o.type == "MESH" for o in models):
         raise ValueError("Imported model has no mesh")
     return models
