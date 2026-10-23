@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "tools/import_codex_pet.py"
+      - "docs/chibi_character_pipeline.md"
       - "tools/chibi_layout.py"
       - "tools/chibi_profiles.py"
       - "tests/test_chibi_profiles.py"
@@ -16,6 +17,7 @@ on:
     branches: [main]
     paths:
       - "tools/import_codex_pet.py"
+      - "docs/chibi_character_pipeline.md"
       - "tools/chibi_layout.py"
       - "tools/chibi_profiles.py"
       - "tests/test_chibi_profiles.py"
@@ -30,9 +32,11 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.9", "3.11"]
     steps:
       - uses: actions/checkout@v4
