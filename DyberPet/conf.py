@@ -412,6 +412,11 @@ def CheckCharFiles(folder):
                 [pattern.match(os.path.basename(file)).group(1) for file in list_images if pattern.match(os.path.basename(file))],
                 key=lambda x: int(x)
             )
+            # A missing action prefix must return a validation error, rather
+            # than crashing the "Add Characters" UI with IndexError.
+            if not matching_idx:
+                missing_imgs.append(f'{img_dir}_*.png')
+                continue
             padding_width = len(matching_idx[0])
             m = int(matching_idx[0])
             n = int(matching_idx[-1])
