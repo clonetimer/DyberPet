@@ -146,10 +146,13 @@ def camera_and_lighting():
     scene.render.image_settings.color_mode = "RGBA"
     scene.render.image_settings.color_depth = "8"
     scene.render.image_settings.compression = 15
-    if bpy.app.version >= (4, 2, 0):
-        scene.render.engine = "BLENDER_EEVEE_NEXT"
-    else:
-        scene.render.engine = "BLENDER_EEVEE"
+    # CPU Cycles avoids requiring a GUI/Eevee GPU context on Linux CI and
+    # works in Blender 4.0 as well as later releases.
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 8
+    scene.render.threads_mode = "FIXED"
+    scene.render.threads = 2
     scene.camera.data.lens = 45
     scene.render.film_transparent = True
     return scene
