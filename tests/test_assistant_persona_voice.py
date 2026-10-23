@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from DyberPet.assistant.persona import (
     AssistantServiceError, PPLCharacterClient, PERSONAS,
-    _local_base, chat_local, make_system_prompt, session_id,
+    _local_base, chat_local, list_local_models, make_system_prompt, session_id,
 )
 from DyberPet.assistant.voice import VoiceUnavailable, recognize_once, speak_once
 
@@ -72,10 +72,24 @@ class PersonaContractTests(unittest.TestCase):
         self.assertIn("0.87", body["messages"][0]["content"])
         self.assertEqual(body["messages"][1]["content"], "你好")
 
+    def test_local_model_discovery_deduplicates(self):
+        with patch("DyberPet.assistant.persona._json_request",
+                   return_value={"data": [{"id": "qwen3.5"}, {"id": "qwen3.5"},
+                                          {"id": "gemma"}, {}]}):
+            self.assertEqual(list_local_models(), ["qwen3.5", "gemma"])
+        with patch("DyberPet.assistant.persona._json_request",
+                   return_value={"data": []}):
+            with self.assertRaisesRegex(AssistantServiceError, "No local model"):
+                list_local_models()
+
+    def test_ppl_render_snapshot_safety_boundary(self):
+        system = make_system_prompt("doro", ppl_prompt="[ROLE] original local persona")
+        self.assertIn("original local persona", system)
+        self.assertIn("实际文件修改须由用户在界面确认", system)
+
     def test_no_model_no_chat_and_no_fake_response(self):
         with self.assertRaises(AssistantServiceError):
             chat_local("你好")
-        self.assertIn("不能", make_system_prompt("doro")) if False else None
         self.assertIn("文件", make_system_prompt("doro"))
 
     def test_voice_not_triggered_without_local_model(self):
