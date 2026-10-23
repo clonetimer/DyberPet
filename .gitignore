@@ -33,3 +33,8 @@ res/items/Pikesou
 res/role/像素猫meme
 res/role/咕咕
 res/role/守岸人
+# Optional Rust experiment artifacts (never commit compiled binary wheels)
+rust/pet_core/target/
+wheelhouse/
+*.pyd
+*.so
