@@ -310,11 +310,20 @@ class PetAssistantDialog(QDialog):
         self.status.setText("正在请求本地模型…")
         def task():
             state = PPLCharacterClient(ppl).state(character) if ppl else None
-            return chat_local(text, persona_key=persona, state=state,
-                              ppl_prompt=snapshot, base_url=endpoint, model=model)
+            answer = chat_local(text, persona_key=persona, state=state,
+                                ppl_prompt=snapshot, base_url=endpoint, model=model)
+            return character, answer
         self._submit(task, self._message_reply)
 
-    def _message_reply(self, reply):
+    def _message_reply(self, result):
+        if isinstance(result, tuple):
+            character, reply = result
+            if character != self.character_name:
+                self.chat_log.appendPlainText(
+                    "[旧角色回复已丢弃] 切换角色后不展示之前的人设内容")
+                return
+        else:
+            reply = result
         self._last_reply = reply
         self.chat_log.appendPlainText(self.character_name + "：" + reply)
         if self.bubble_enabled.isChecked():
