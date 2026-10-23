@@ -80,6 +80,40 @@ powershell -ExecutionPolicy Bypass -File tools/build_windows_portable.ps1 -Inclu
 
 这会让 PyInstaller 显式包含 `dyberpet_native.pyd`，另行输出 `DyberPet-Windows-Rust-Experimental.zip`。新建的 `Windows Rust Portable (Experimental)` GitHub Actions 从零编译 wheel 并实际运行打包好的 EXE，要求 `native_backend.active == rust`，否则判失败，不能用 Python 静默回退冒充 Rust 构建。Python 默认便携包仍为 `DyberPet-Windows-Portable-PR2.zip`，不会因此带入原生扩展。安装包尚未签名，不能当作正式 Release。
 
+## R4：隔离进程基线与回退可靠性（新增）
+
+之前的微基准重复使用同一 Python 解释器，因此无法反映 Rust 扩展的首次加载、内存代价与从文件目录启动的成本。新的 `tools/profile_role_backends.py` 为 Python 和 Rust **分别创建干净的子进程**，重复检测本地角色并比较完整审计 JSON 的 SHA-256；结果不一致直接报错，不能把不等价的提速算作成果。
+
+本机用具有合法使用权的角色资源运行：
+
+```powershell
+python -m pip install psutil==6.1.1
+python tools/profile_role_backends.py --role "res/role/Guga" --character Guga --rounds 5 --warmup 1 --require-rust
+```
+
+若未安装 Rust 扩展或只是检查 Python 基线，可去掉 `--require-rust`；报告会将 Rust 标记为不可用，而不是假称完成对比。用于 GitHub CI 的纯合成数据：
+
+```powershell
+python tools/profile_role_backends.py --synthetic-frames 100 --rounds 5 --require-rust
+```
+
+报告字段定义：
+
+| 指标 | 含义与边界 |
+|---|---|
+| `process_elapsed_ms` | 宿主测量的子进程创建、Python 初始化、工作和退出总耗时；**不是 GUI 完整启动时间** |
+| `import_elapsed_ms` | 子进程中导入桌宠审计模块的耗时；区别于操作系统进程创建 |
+| `audit_median_ms` / `audit_min_ms` / `audit_max_ms` | 预热后完整角色审计延迟，不等于角色动画帧间隔 |
+| `rss_before_bytes` / `rss_after_bytes` | 若安装了 `psutil`，读取审计前后进程 RSS 快照，**不是持续采样峰值** |
+| `python_alloc_peak_bytes` | 用 `tracemalloc` 单独执行一次审计时记录的 Python 堆分配峰值，**不计 Rust 堆内存**，因此不能直接作为总内存占用结论 |
+| `report_sha256` / `report_parity` | 完整审计结果的摘要哈希及双实现一致性；结果差异直接阻断性能对比 |
+
+**用户资料边界**：不修改、不复制、不上传角色图像和音效；报告不显示真实路径、图片名、具体审计内容，也不输出角色原版声线或图片。仅记录角色类别、平台、运行配置与统计信息。性能报告生成于用户本机；官方 CI 只用临时合成的 33 字节 PNG 头，不能作为真实美术负载的性能成绩。若本机目录包含符号链接主目录或无法读取，拒绝运行。
+
+**回退准入新增**：`DYBERPET_NATIVE_BACKEND=rust` 下只有真的**未安装** `dyberpet_native` 才允许回退 Python。若 wheel/PYD 已存在但 DLL 装载失败，或内部依赖缺失，必须明确报错，避免一个损坏的 Rust 部署被静默隐藏。已经有专项回归测试验证缺失与损坏的两种不同场景。默认 `DYBERPET_NATIVE_BACKEND=python` 仍完全不需要 Rust。
+
+本阶段尚未在 Windows 用户真实桌面上测量 FPS、气泡响应延迟、麦克风及长时间多宠物运行 RSS 曲线；下一步应结合获得合法使用的角色包做 **Windows 实机分档负载**，再决定是否引入 Rust 缓存或更深入的 UI 重构。
+
 ## 后续里程碑
 
 R0：纯读取校验与 SHA256 + PyO3，Python 默认为稳定实现；R1：建立真实性能基线与资源索引基准；R2：仅当有可重复收益时研究批量素材索引、缓存或音频数据处理；R3：Windows 便携 EXE 原生扩展可选打包；R4：长期运行、崩溃恢复、安全回归门禁。任何阶段都不强制切换到 Rust，不实施大爆炸式 Tauri/Go UI 改写。
