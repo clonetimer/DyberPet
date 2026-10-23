@@ -138,6 +138,30 @@ class ExistingCodeValidationTest(unittest.TestCase):
             self.assertEqual(status, 4)
             self.assertTrue(any("wave" in item for item in files))
 
+    def test_real_validator_rejects_broken_action_payload_and_missing_focus(self):
+        source = Path(__file__).resolve().parents[1] / "DyberPet" / "conf.py"
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        node = next(n for n in tree.body if isinstance(n, ast.FunctionDef)
+                    and n.name == "CheckCharFiles")
+        scope = {"os": os, "glob": glob, "re": re, "json": json}
+        exec(compile(ast.Module(body=[node], type_ignores=[]),
+                     filename=str(source), mode="exec"), scope)
+        with tempfile.TemporaryDirectory() as tmp:
+            role = Path(tmp)
+            make_native_role(role)
+            actions = json.loads((role / "act_conf.json").read_text("utf-8"))
+            actions["unsafe"] = {"images": "../../private"}
+            (role / "act_conf.json").write_text(json.dumps(actions), encoding="utf-8")
+            self.assertEqual(scope["CheckCharFiles"](str(role))[0], 3)
+            actions.pop("unsafe")
+            (role / "act_conf.json").write_text(json.dumps(actions), encoding="utf-8")
+            conf = json.loads((role / "pet_conf.json").read_text("utf-8"))
+            conf["focus"] = "unknown_focus"
+            (role / "pet_conf.json").write_text(json.dumps(conf), encoding="utf-8")
+            status, missing = scope["CheckCharFiles"](str(role))
+            self.assertEqual(status, 6)
+            self.assertIn("unknown_focus", missing)
+
 
 if __name__ == "__main__":
     unittest.main()
