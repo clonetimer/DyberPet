@@ -18,6 +18,13 @@ try:
 except ImportError:
     Image = None  # Pillow is optional until a local Codex atlas is imported.
 
+if __package__:
+    from .chibi_layout import normalize_grounded_frames, suggested_scale, quality_metrics
+    from .chibi_profiles import CHIBI_PROFILES, get_profile, make_bubble_config
+else:
+    from chibi_layout import normalize_grounded_frames, suggested_scale, quality_metrics
+    from chibi_profiles import CHIBI_PROFILES, get_profile, make_bubble_config
+
 CELL = (192, 208)
 COLUMNS = 8
 # name, row, maximum frame count, refresh seconds
@@ -180,12 +187,18 @@ def make_personality_bubbles(preset: str | None) -> dict:
             for key, message in lines.items()}
 
 
-def make_info_images(idle: "Image.Image", info_directory: Path) -> None:
+def make_info_images(idle: "Image.Image", info_directory: Path,
+                     *, style: str = "classic") -> None:
     """Generate a real avatar and cover without modifying the source animation."""
     bbox = idle.getchannel("A").getbbox()
     if bbox is None:
         raise ValueError("Idle frame is transparent")
     portrait = idle.crop(bbox)
+    # Q-style character head is typically prominent; give avatar extra room
+    # for the face without ever altering the full-body animation sprites.
+    if style == "chibi" and portrait.height >= 80:
+        portrait = portrait.crop((0, 0, portrait.width,
+                                  round(portrait.height * 0.87)))
     portrait.thumbnail((128, 128), Image.Resampling.LANCZOS)
     avatar = Image.new("RGBA", (160, 160), (0, 0, 0, 0))
     avatar.alpha_composite(portrait, ((160 - portrait.width) // 2,
@@ -201,7 +214,13 @@ def make_info_images(idle: "Image.Image", info_directory: Path) -> None:
 def convert(source: Path, dest_root: Path, *, preset: str | None = None,
             folder: str | None = None, name: str | None = None,
             author: str | None = None, license_name: str | None = None,
-            source_url: str | None = None) -> Path:
+            source_url: str | None = None, style: str = "classic",
+            profile: str | None = None) -> Path:
+    if style not in ("classic", "chibi"):
+        raise ValueError("Unknown style: " + str(style))
+    profile_info = get_profile(profile)
+    if profile_info is not None:
+        style = "chibi"
     atlas_path, manifest = resolve_source(source)
     preset_data = PRESETS.get(preset or "", {})
     folder = folder or preset_data.get("folder") or re.sub(
@@ -209,9 +228,13 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
     )
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,39}", folder):
         raise ValueError("Output folder: ASCII letters/digits/_/-, begins with a letter, max 40")
-    name = name or preset_data.get("name") or manifest.get("displayName") or folder
-    author = author or preset_data.get("author") or "Unspecified"
-    license_name = license_name or preset_data.get("license") or "Unverified; do not redistribute"
+    name = name or (profile_info or {}).get("name") or preset_data.get("name") or manifest.get("displayName") or folder
+    # Character identities do not establish art attribution. Restrict the legacy
+    # artist defaults to the precise source IDs they were originally based on.
+    credit_ids = {"guga": "guga--circus", "doro": "doro--lingxiaotian"}
+    source_matches = preset in credit_ids and manifest.get("id") == credit_ids[preset]
+    author = author or (preset_data.get("author") if source_matches else None) or "Unspecified"
+    license_name = license_name or (preset_data.get("license") if source_matches else None) or "Unverified; do not redistribute"
     dest_root = dest_root.expanduser().resolve()
     output = dest_root / folder
     if output.exists():
@@ -223,6 +246,10 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
         frames["lookaround"] = extract_frames(atlas, 9, 16)
     available = {state for state, items in frames.items() if items}
     warnings = []
+    shifts = {}
+    if style == "chibi" and "idle" in available:
+        frames, shifts, issues = normalize_grounded_frames(frames)
+        warnings.extend(issues)
     for state, row, maximum, _ in STATES:
         populated = [i for i in range(maximum)
                      if atlas.crop((i * CELL[0], row * CELL[1],
@@ -233,6 +260,19 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
     if version == 2 and len(frames["lookaround"]) < 16:
         warnings.append("V2: some of the sixteen look-direction frames are empty")
     act_conf, pet_conf, info = build_configs(available, version, str(name), str(author))
+    if style == "chibi":
+        target_height = (profile_info or {}).get("target_height", 116)
+        actual_scale, scale_clamped = suggested_scale(frames["idle"], target_height)
+        pet_conf["scale"] = actual_scale
+        if scale_clamped:
+            warnings.append("Chibi display scale clamped; check actual size in desktop GUI")
+        info["tages"]["Q版"] = "#F5C2D1"
+    if profile_info is not None:
+        info["tages"][profile_info["franchise"]] = "#C7E3D1"
+        info["intro"] = (
+            f"{profile_info['name']}的Q版桌宠配置模板；图像由用户自行提供，"
+            "不代表该作品官方授权。"
+        )
 
     dest_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".dyberpet-import-", dir=dest_root) as tmp:
@@ -245,22 +285,29 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
         (working / "pet_conf.json").write_text(json_text(pet_conf), encoding="utf-8")
         (working / "act_conf.json").write_text(json_text(act_conf), encoding="utf-8")
         (working / "info").mkdir()
-        make_info_images(frames["idle"][0], working / "info")
+        make_info_images(frames["idle"][0], working / "info", style=style)
         (working / "info" / "info.json").write_text(json_text(info), encoding="utf-8")
-        bubble_config = make_personality_bubbles(preset)
+        bubble_config = make_bubble_config(profile) if profile_info is not None else make_personality_bubbles(preset)
         if bubble_config:
             (working / "note").mkdir()
             (working / "note" / "bubble_conf.json").write_text(
                 json_text(bubble_config), encoding="utf-8")
         (working / "IMPORT_REPORT.json").write_text(
-            json_text({"format": f"Codex Pets V{version}", "warnings": warnings,
+            json_text({"format": f"Codex Pets V{version}", "style": style,
+                       "profile": profile,
+                       "recommended_scale": pet_conf["scale"],
+                       "warnings": warnings,
+                       "aligned_frames_per_action": shifts,
+                       "geometry": quality_metrics(frames),
                        "frame_counts": {k: len(v) for k, v in frames.items()},
                        "actions": sorted(act_conf)}), encoding="utf-8")
         provenance = (
             f"Character: {name}\nAuthor/credit: {author}\n"
             f"Artwork license (user/preset): {license_name}\n"
             f"Original URL: {source_url or 'Not supplied'}\n"
-            f"Input: {atlas_path.name}\nFormat: Codex Pets V{version}\n\n"
+            f"Input: {atlas_path.name}\nFormat: Codex Pets V{version}\n"
+            f"Chibi configuration: {profile or 'none'}\n"
+            f"Source manifest ID: {manifest.get('id', 'not supplied')}\n\n"
             "Conversion does not confer rights to original characters, drawings,"
             " voices or trademarks. Verify permission before publishing.\n"
         )
@@ -280,12 +327,17 @@ def main() -> int:
     parser.add_argument("--author", help="Original asset author")
     parser.add_argument("--license", dest="license_name", help="Verified asset license")
     parser.add_argument("--source-url", help="Original asset URL for attribution")
+    parser.add_argument("--style", choices=("classic", "chibi"), default="classic",
+                        help="Chibi style enables conservative foot alignment and auto scaling")
+    parser.add_argument("--profile", choices=sorted(CHIBI_PROFILES),
+                        help="Optional Q-style character template (does not include artwork)")
     args = parser.parse_args()
     try:
         output = convert(
             args.source, args.output_root, preset=args.preset,
             folder=args.folder, name=args.name, author=args.author,
-            license_name=args.license_name, source_url=args.source_url
+            license_name=args.license_name, source_url=args.source_url,
+            style=args.style, profile=args.profile
         )
     except (ValueError, FileNotFoundError, FileExistsError, OSError, ImportError, json.JSONDecodeError) as exc:
         parser.exit(1, f"Import failed: {exc}\n")
