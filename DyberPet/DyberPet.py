@@ -26,6 +26,7 @@ from DyberPet.modules import *
 from DyberPet.Accessory import MouseMoveManager
 from DyberPet.custom_widgets import RoundBarBase, LevelBadge
 from DyberPet.bubbleManager import BubbleManager
+from DyberPet.assistant.character_motion import style_for
 
 # initialize settings
 import DyberPet.settings as settings
@@ -431,6 +432,12 @@ class PetWidget(QWidget):
         self.show()
 
         self._setup_ui()
+        self._motion_timer = QTimer(self)
+        self._motion_timer.setInterval(80)
+        self._motion_timer.timeout.connect(self._hover_motion_tick)
+        self._motion_elapsed = QElapsedTimer()
+        self._hover_offset = 0
+        self._configure_character_motion()
 
         # 开始动画模块和交互模块
         self.threads = {}
@@ -1191,6 +1198,7 @@ class PetWidget(QWidget):
         self.change_note.emit()
         self.repaint()
         self._setup_ui()
+        self._configure_character_motion()
 
         self.runAnimation()
         self.runInteraction()
@@ -1956,11 +1964,54 @@ class PetWidget(QWidget):
 
 
 
+    def _configure_character_motion(self):
+        """Reset character-specific motion without replacing animation workers."""
+        self._motion_timer.stop()
+        self._hover_offset = 0
+        self._motion_style = style_for(self.curr_pet_name)
+        if self._motion_style.kind == "hover":
+            # Only positioning changes. Real hover sprites/gesture clips must
+            # be supplied separately by a licensed character role.
+            lift = self._motion_style.ground_lift(settings.tunable_scale)
+            floor = self.floor_pos + settings.current_anchor[1]
+            target = min(self.pos().y(), floor - lift)
+            target = max(self.current_screen.topLeft().y() - self.height() // 2,
+                         target)
+            self.move(self.pos().x(), int(target))
+            self._motion_elapsed.start()
+            self._motion_timer.start()
+
+    def _hover_motion_tick(self):
+        if (self._motion_style.kind != "hover" or self.is_follow_mouse
+                or settings.draging or settings.onfloor == 0
+                or not self.isVisible()):
+            return
+        next_offset = self._motion_style.bob_at(
+            self._motion_elapsed.elapsed() / 1000.0)
+        delta = next_offset - self._hover_offset
+        if not delta:
+            return
+        pos = self.pos()
+        target_y = pos.y() + delta
+        target_y = min(target_y, self.floor_pos +
+                       settings.current_anchor[1] -
+                       self._motion_style.ground_lift(settings.tunable_scale))
+        x, y = self.limit_in_screen(pos.x(), target_y, on_action=True)
+        actual_delta = int(y - pos.y())
+        self._hover_offset += actual_delta
+        if actual_delta:
+            self.move(int(x), int(y))
+
     def _move_customized(self, plus_x, plus_y):
 
         #print(act_list)
         #direction, frame_move = str(act_list[0]), float(act_list[1])
         pos = self.pos()
+        # Doro receives a ground-motion pace adjustment, but this does not
+        # generate four-legged sprite frames where none exist.
+        plus_x = self._motion_style.dx(
+            plus_x, on_floor=settings.onfloor != 0,
+            dragging=self.is_follow_mouse or bool(settings.draging))
         new_x = pos.x() + plus_x
         new_y = pos.y() + plus_y
 
@@ -1997,7 +2048,11 @@ class PetWidget(QWidget):
         else:
             new_x, new_y = self.limit_in_screen(new_x, new_y, on_action=True)
 
-        self.move(new_x, new_y)
+        if self._motion_style.kind == "hover" and settings.onfloor != 0:
+            hover_floor = (self.floor_pos + settings.current_anchor[1] -
+                           self._motion_style.ground_lift(settings.tunable_scale))
+            new_y = min(new_y, hover_floor)
+        self.move(int(new_x), int(new_y))
 
 
     def switch_screen(self, screen):
