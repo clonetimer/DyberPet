@@ -31,6 +31,8 @@
 | 4 | [哔哩哔哩](https://www.bilibili.com) | 作者配布视频、GIF/PNG、模型、教程 | 视频公开 ≠ 素材包可随意重发 |
 | 5 | [VRoid Hub](https://hub.vroid.com) | VRM模型 | 核查逐项个人/改编/再分发条款 |
 
+来源库还收录了 DyberPet 原角色合集可追溯的 B站创作者主页：[栎咕咕](https://space.bilibili.com/14004864)（纳西妲、派蒙迷你宠物等）、[吾道咕咕](https://space.bilibili.com/393688614)（流萤、守岸人等）、[代号皮克嗖儿](https://space.bilibili.com/9959876)（像素猫等）。这些是**作者定位索引**，不是对其所有作品的永久使用授权。
+
 结构化登记位于 tools/character_sources.json。初始候选：纳西妲原生主角色、派蒙Codex图集、阿丽莎3D/动作待寻。它们均标记为“授权未核实”，不能由发现条目直接进入发布。
 
 ## Windows 命令示例
