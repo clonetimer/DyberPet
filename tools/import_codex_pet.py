@@ -15,8 +15,8 @@ from pathlib import Path
 
 try:
     from PIL import Image
-except ImportError as exc:
-    raise SystemExit("Missing Pillow: python -m pip install Pillow") from exc
+except ImportError:
+    Image = None  # Pillow is optional until a local Codex atlas is imported.
 
 CELL = (192, 208)
 COLUMNS = 8
@@ -67,6 +67,8 @@ def resolve_source(path: Path) -> tuple[Path, dict]:
 
 
 def read_atlas(atlas: Path, manifest: dict) -> tuple[Image.Image, int]:
+    if Image is None:
+        raise ImportError("This feature requires Pillow. Install with: py -m pip install Pillow")
     with Image.open(atlas) as original:
         size = original.size
         if size == (1536, 1872):
@@ -113,16 +115,20 @@ def build_configs(available: set[str], version: int, name: str,
     if "lookaround" in available:
         act_conf["lookaround"] = {"images": "lookaround", "act_num": 1, "frame_refresh": 0.13}
 
-    groups = [
-        ("站立", ["idle"], 1.0, [2, 0]),
-        ("左右散步", [use("left_walk"), use("right_walk")], 0.24, [3, 0]),
-        ("打招呼", [use("wave")], 0.18, [2, 0]),
-        ("蹦一蹦", [use("jump")], 0.10, [3, 0]),
-        ("休息", [use("wait")], 0.12, [1, 0]),
-        ("认真观察", [use("review")], 0.07, [2, 0]),
-    ]
-    if "lookaround" in available:
-        groups.append(("左顾右盼", ["lookaround"], 0.08, [2, 0]))
+    groups = [("站立", ["idle"], 1.0, [2, 0])]
+    if "left_walk" in available or "right_walk" in available:
+        walking = [a for a in ("left_walk", "right_walk") if a in available]
+        groups.append(("左右散步" if len(walking) == 2 else "散步",
+                       walking, 0.24, [3, 0]))
+    for title, act, weight, state in (
+        ("打招呼", "wave", 0.18, [2, 0]),
+        ("蹦一蹦", "jump", 0.10, [3, 0]),
+        ("休息", "wait", 0.12, [1, 0]),
+        ("认真观察", "review", 0.07, [2, 0]),
+        ("左顾右盼", "lookaround", 0.08, [2, 0]),
+    ):
+        if act in available:
+            groups.append((title, [act], weight, state))
     random_act = [
         {"name": title, "act_list": refs, "act_prob": weight, "act_type": state}
         for title, refs, weight, state in groups
@@ -141,12 +147,30 @@ def build_configs(available: set[str], version: int, name: str,
         "random_act": random_act,
     }
     info = {
-        "coverImages": [], "petName": name,
+        "coverImages": ["cover.png"], "pfp": "pfp.png", "petName": name,
         "tages": {"Codex图集转换": "#B9D7EA", "V" + str(version): "#D6D6F0"},
         "intro": f"由用户提供的 Codex Pets V{version} 图集转换，请遵守素材许可。",
         "author": {"name": author, "infos": "来源标注不构成再分发授权。"},
     }
     return act_conf, pet_conf, info
+
+
+def make_info_images(idle: "Image.Image", info_directory: Path) -> None:
+    """Generate a real avatar and cover without modifying the source animation."""
+    bbox = idle.getchannel("A").getbbox()
+    if bbox is None:
+        raise ValueError("Idle frame is transparent")
+    portrait = idle.crop(bbox)
+    portrait.thumbnail((128, 128), Image.Resampling.LANCZOS)
+    avatar = Image.new("RGBA", (160, 160), (0, 0, 0, 0))
+    avatar.alpha_composite(portrait, ((160 - portrait.width) // 2,
+                                      (160 - portrait.height) // 2))
+    avatar.save(info_directory / "pfp.png")
+
+    cover = Image.new("RGBA", (300, 169), (242, 244, 249, 255))
+    cover.alpha_composite(portrait, ((300 - portrait.width) // 2,
+                                     (169 - portrait.height) // 2))
+    cover.convert("RGB").save(info_directory / "cover.png")
 
 
 def convert(source: Path, dest_root: Path, *, preset: str | None = None,
@@ -173,6 +197,16 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
     if version == 2:
         frames["lookaround"] = extract_frames(atlas, 9, 16)
     available = {state for state, items in frames.items() if items}
+    warnings = []
+    for state, row, maximum, _ in STATES:
+        populated = [i for i in range(maximum)
+                     if atlas.crop((i * CELL[0], row * CELL[1],
+                                    (i + 1) * CELL[0], (row + 1) * CELL[1]))
+                     .getchannel("A").getbbox() is not None]
+        if populated and populated != list(range(len(populated))):
+            warnings.append(f"{state}: transparent gaps between animation frames")
+    if version == 2 and len(frames["lookaround"]) < 16:
+        warnings.append("V2: some of the sixteen look-direction frames are empty")
     act_conf, pet_conf, info = build_configs(available, version, str(name), str(author))
 
     dest_root.mkdir(parents=True, exist_ok=True)
@@ -186,7 +220,12 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
         (working / "pet_conf.json").write_text(json_text(pet_conf), encoding="utf-8")
         (working / "act_conf.json").write_text(json_text(act_conf), encoding="utf-8")
         (working / "info").mkdir()
+        make_info_images(frames["idle"][0], working / "info")
         (working / "info" / "info.json").write_text(json_text(info), encoding="utf-8")
+        (working / "IMPORT_REPORT.json").write_text(
+            json_text({"format": f"Codex Pets V{version}", "warnings": warnings,
+                       "frame_counts": {k: len(v) for k, v in frames.items()},
+                       "actions": sorted(act_conf)}), encoding="utf-8")
         provenance = (
             f"Character: {name}\nAuthor/credit: {author}\n"
             f"Artwork license (user/preset): {license_name}\n"
@@ -218,7 +257,7 @@ def main() -> int:
             folder=args.folder, name=args.name, author=args.author,
             license_name=args.license_name, source_url=args.source_url
         )
-    except (ValueError, FileNotFoundError, FileExistsError, OSError, json.JSONDecodeError) as exc:
+    except (ValueError, FileNotFoundError, FileExistsError, OSError, ImportError, json.JSONDecodeError) as exc:
         parser.exit(1, f"Import failed: {exc}\n")
     print(f"Imported DyberPet role: {output}")
     print("Restart DyberPet, then choose the character in 系统 → 角色管理.")
