@@ -264,7 +264,7 @@ def create_render_plan(case_file):
 def render_3d_case(case_file, *, blender="blender", frames=6,
                    actions=("idle", "left_walk", "right_walk", "wave",
                             "jump", "wait", "review"), timeout=600,
-                   frames_case_id=None):
+                   frames_case_id=None, require_clips=False, clip_map=None):
     """Render an approved local GLB/FBX into a *new* unapproved frames case.
 
     This is deliberately not equivalent to a successful role build or rights
@@ -299,10 +299,13 @@ def render_3d_case(case_file, *, blender="blender", frames=6,
     else:
         from render_chibi_blender import render_blender
     try:
-        rendered = render_blender(
-            blender, output_root, source=source,
-            frames=frames, actions=tuple(actions), timeout=timeout
-        )
+        render_options = dict(source=source, frames=frames,
+                              actions=tuple(actions), timeout=timeout)
+        if require_clips:
+            render_options["require_clips"] = True
+        if clip_map is not None:
+            render_options["clip_map"] = clip_map
+        rendered = render_blender(blender, output_root, **render_options)
         if fingerprint(source) != data["source"]["sha256"]:
             raise PipelineError("3D source changed during Blender render")
         child = init_case(
@@ -512,6 +515,8 @@ def main(argv=None):
             a.add_argument("--frames", type=int, default=6)
             a.add_argument("--actions", default="idle,left_walk,right_walk,wave,jump,wait,review")
             a.add_argument("--timeout", type=int, default=600)
+            a.add_argument("--require-clips", action="store_true")
+            a.add_argument("--clip-map", type=Path)
             a.add_argument("--frames-case-id")
         if command == "qa":
             a.add_argument("--reviewer", required=True)
@@ -541,7 +546,8 @@ def main(argv=None):
                 output = str(render_3d_case(
                     case, blender=args.blender, frames=args.frames,
                     actions=tuple(a.strip() for a in args.actions.split(",")),
-                    timeout=args.timeout, frames_case_id=args.frames_case_id
+                    timeout=args.timeout, frames_case_id=args.frames_case_id,
+                    require_clips=args.require_clips, clip_map=args.clip_map
                 ))
             elif args.command == "build":
                 output = str(build_case(case))
