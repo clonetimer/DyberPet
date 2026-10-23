@@ -15,7 +15,10 @@ import os
 import statistics
 import tempfile
 import time
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from DyberPet.assistant.character_fidelity import png_metadata
 from DyberPet.assistant.native_bridge import backend_status, sha256_file
