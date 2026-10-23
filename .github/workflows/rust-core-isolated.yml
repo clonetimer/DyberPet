@@ -12,8 +12,10 @@ on:
       - "DyberPet/assistant/guga_audio.py"
       - "tests/test_rust_bridge.py"
       - "tests/test_rust_frame_index.py"
+      - "tests/test_rust_runtime_profile.py"
       - "tools/benchmark_rust_core.py"
       - "tools/benchmark_frame_index.py"
+      - "tools/profile_role_backends.py"
       - ".github/workflows/rust-core-isolated.yml"
   pull_request:
     paths:
@@ -24,8 +26,10 @@ on:
       - "DyberPet/assistant/guga_audio.py"
       - "tests/test_rust_bridge.py"
       - "tests/test_rust_frame_index.py"
+      - "tests/test_rust_runtime_profile.py"
       - "tools/benchmark_rust_core.py"
       - "tools/benchmark_frame_index.py"
+      - "tools/profile_role_backends.py"
       - ".github/workflows/rust-core-isolated.yml"
   workflow_dispatch:
 
@@ -75,3 +79,7 @@ jobs:
         run: python tools/benchmark_rust_core.py --frames 300 --rounds 3 --hash-mb 1
       - name: Compare real role-asset indexing throughput
         run: python tools/benchmark_frame_index.py --frames 100 --rounds 5
+      - name: Install optional RSS sampler (profiling only)
+        run: python -m pip install psutil==6.1.1
+      - name: Profile cold process cost and memory without exporting user assets
+        run: python tools/profile_role_backends.py --synthetic-frames 100 --rounds 5 --require-rust
