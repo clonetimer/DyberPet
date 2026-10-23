@@ -103,5 +103,51 @@
       "rights_status": "unknown",
       "status": "research_needed"
     }
+  ],
+  "creators": [
+    {
+      "id": "bilibili_ligugu",
+      "name": "栎咕咕",
+      "channel": "bilibili",
+      "url": "https://space.bilibili.com/14004864",
+      "discovered_via": "DyberPet 原始角色合集",
+      "listed_roles": [
+        "小呆",
+        "纳西妲",
+        "魈",
+        "流浪者",
+        "派蒙（迷你宠物）"
+      ],
+      "rights_status": "unknown",
+      "permission_note": "必须逐个查看作者配布条款，角色合集链接不是再分发授权"
+    },
+    {
+      "id": "bilibili_wudaogugu",
+      "name": "吾道咕咕",
+      "channel": "bilibili",
+      "url": "https://space.bilibili.com/393688614",
+      "discovered_via": "DyberPet 原始角色合集",
+      "listed_roles": [
+        "露西亚·深红囚影",
+        "流萤",
+        "守岸人",
+        "椿"
+      ],
+      "rights_status": "unknown",
+      "permission_note": "具体作品可能有不同美术及声音权利"
+    },
+    {
+      "id": "bilibili_pixel",
+      "name": "代号皮克嗖儿",
+      "channel": "bilibili",
+      "url": "https://space.bilibili.com/9959876",
+      "discovered_via": "DyberPet 原始角色合集",
+      "listed_roles": [
+        "像素猫meme",
+        "像素四妹"
+      ],
+      "rights_status": "unknown",
+      "permission_note": "角色目录只能指向作者，不能替代作品许可"
+    }
   ]
 }
