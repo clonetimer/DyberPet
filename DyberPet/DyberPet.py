@@ -1904,6 +1904,7 @@ class PetWidget(QWidget):
         self.threads['Animation'].started.connect(self.workers['Animation'].run)
         self.workers['Animation'].sig_setimg_anim.connect(self.set_img)
         self.workers['Animation'].sig_move_anim.connect(self._move_customized)
+        self.workers['Animation'].sig_move_native_gait.connect(self._move_native_gait)
         self.workers['Animation'].sig_repaint_anim.connect(self.repaint)
         self.workers['Animation'].acc_regist.connect(self.register_accessory)
 
@@ -2023,16 +2024,19 @@ class PetWidget(QWidget):
         if actual_delta:
             self.move(int(x), int(y))
 
+    def _move_native_gait(self, plus_x, plus_y):
+        """Only the scheduler-confirmed left/right native gait gets pace boost."""
+        if getattr(self, "_motion_style", GROUND).kind == "quadruped":
+            plus_x = self._motion_style.dx(
+                plus_x, on_floor=settings.onfloor != 0,
+                dragging=self.is_follow_mouse or bool(settings.draging))
+        self._move_customized(plus_x, plus_y)
+
     def _move_customized(self, plus_x, plus_y):
 
         #print(act_list)
         #direction, frame_move = str(act_list[0]), float(act_list[1])
         pos = self.pos()
-        # Doro receives a ground-motion pace adjustment, but this does not
-        # generate four-legged sprite frames where none exist.
-        plus_x = self._motion_style.dx(
-            plus_x, on_floor=settings.onfloor != 0,
-            dragging=self.is_follow_mouse or bool(settings.draging))
         new_x = pos.x() + plus_x
         new_y = pos.y() + plus_y
 
