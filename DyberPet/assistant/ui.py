@@ -84,11 +84,9 @@ class PetAssistantDialog(QDialog):
         self.persona = QComboBox()
         for key, item in PERSONAS.items():
             self.persona.addItem(item.name, key)
-        lower = self.character_name.lower()
-        if "doro" in lower:
-            self.persona.setCurrentIndex(self.persona.findData("doro"))
-        elif "咕嘎" in lower or "guga" in lower:
-            self.persona.setCurrentIndex(self.persona.findData("guga"))
+        initial = resolve_profile(self.character_name)
+        if initial and initial.key in PERSONAS:
+            self.persona.setCurrentIndex(self.persona.findData(initial.key))
         form.addRow("当前人设", self.persona)
 
         self.ppl_enabled = QCheckBox("读取 PPL 关系状态（需单独启动 PPL）")
@@ -166,12 +164,15 @@ class PetAssistantDialog(QDialog):
         self.guga_preview = QPushButton("试听咕嘎音效")
         self.guga_preview.clicked.connect(self.preview_character_sample)
         sample_row.addWidget(self.guga_sample_label)
-        sample_row.addWidget(self.guga_select)
-        sample_row.addWidget(self.guga_preview)
+        sample_row.addStretch(1)
+        body.addLayout(sample_row)
+        sample_actions = QHBoxLayout()
+        sample_actions.addWidget(self.guga_select)
+        sample_actions.addWidget(self.guga_preview)
         self.guga_audit = QPushButton("核查当前咕嘎形象")
         self.guga_audit.clicked.connect(self.audit_character)
-        sample_row.addWidget(self.guga_audit)
-        body.addLayout(sample_row)
+        sample_actions.addWidget(self.guga_audit)
+        body.addLayout(sample_actions)
 
         self.folder_label = QLabel("当前文件操作目录：" + str(self.workspace.root))
         self.folder_label.setWordWrap(True)
@@ -204,11 +205,9 @@ class PetAssistantDialog(QDialog):
         self.character_name = name
         self.setWindowTitle("桌宠助手 · " + name)
         self._sync_guga_controls()
-        index = (self.persona.findData("doro") if "doro" in name.lower()
-                 else self.persona.findData("guga")
-                 if "咕嘎" in name or "guga" in name.lower()
-                 else self.persona.findData("companion"))
-        self.persona.setCurrentIndex(max(index, 0))
+        profile = resolve_profile(name)
+        persona = profile.key if profile and profile.key in PERSONAS else "companion"
+        self.persona.setCurrentIndex(max(0, self.persona.findData(persona)))
         self.chat_log.appendPlainText("已切换当前桌宠：" + name)
         saved = self._prefs["personas"].get(name)
         if saved in PERSONAS:
