@@ -106,17 +106,17 @@ class PetConfig:
             o.act_dict = act_dict
             # 载入默认动作
             o.default = act_dict[conf_params['default']]
-            o.up = act_dict[conf_params.get('up', 'default')]
-            o.down = act_dict[conf_params.get('down', 'default')]
-            o.left = act_dict[conf_params.get('left', 'default')]
-            o.right = act_dict[conf_params.get('right', 'default')]
+            o.up = act_dict[conf_params.get('up', conf_params['default'])]
+            o.down = act_dict[conf_params.get('down', conf_params['default'])]
+            o.left = act_dict[conf_params.get('left', conf_params['default'])]
+            o.right = act_dict[conf_params.get('right', conf_params['default'])]
             o.drag = act_dict[conf_params['drag']]
             o.fall = act_dict[conf_params['fall']]
-            o.prefall = act_dict[conf_params.get('prefall','fall')]
-            o.on_floor = act_dict[conf_params.get('on_floor', 'default')]
+            o.prefall = act_dict[conf_params.get('prefall', conf_params['fall'])]
+            o.on_floor = act_dict[conf_params.get('on_floor', conf_params['default'])]
             o.focus = act_dict[conf_params['focus']] if 'focus' in conf_params.keys() else None
 
-            pat_conf = conf_params.get('patpat', 'default')
+            pat_conf = conf_params.get('patpat', conf_params['default'])
             if isinstance(pat_conf, str):
                 # only a single action defined for pat
                 pat_conf = dict([(i,pat_conf) for i in range(num_hp_states)])
@@ -125,7 +125,7 @@ class PetConfig:
                 pat_conf = fill_missing_hptier(pat_conf)
             else:
                 # in case anything unexpected happens
-                pat_conf = dict([(i, 'default') for i in range(num_hp_states)])
+                pat_conf = dict([(i, conf_params['default']) for i in range(num_hp_states)])
 
             o.patpat = dict([(i, act_dict[pat_conf[i]]) for i in range(num_hp_states)])
 
@@ -291,17 +291,17 @@ class PetConfig:
 
             # 载入默认动作
             o.default = act_dict[conf_params['default']]
-            o.up = act_dict[conf_params.get('up', 'default')]
-            o.down = act_dict[conf_params.get('down', 'default')]
-            o.left = act_dict[conf_params.get('left', 'default')]
-            o.right = act_dict[conf_params.get('right', 'default')]
-            o.drag = act_dict[conf_params.get('drag', 'default')]
-            o.fall = act_dict[conf_params.get('fall', 'default')]
-            prefall = conf_params.get('prefall', 'fall')
-            o.prefall = act_dict.get(prefall, conf_params['default'])
-            o.on_floor = act_dict[conf_params.get('on_floor', 'default')]
+            o.up = act_dict[conf_params.get('up', conf_params['default'])]
+            o.down = act_dict[conf_params.get('down', conf_params['default'])]
+            o.left = act_dict[conf_params.get('left', conf_params['default'])]
+            o.right = act_dict[conf_params.get('right', conf_params['default'])]
+            o.drag = act_dict[conf_params.get('drag', conf_params['default'])]
+            o.fall = act_dict[conf_params.get('fall', conf_params['default'])]
+            prefall = conf_params.get('prefall', conf_params.get('fall', conf_params['default']))
+            o.prefall = act_dict[prefall]
+            o.on_floor = act_dict[conf_params.get('on_floor', conf_params['default'])]
 
-            pat_conf = conf_params.get('patpat', 'default')
+            pat_conf = conf_params.get('patpat', conf_params['default'])
             if isinstance(pat_conf, str):
                 # only a single action defined for pat
                 pat_conf = dict([(i,pat_conf) for i in range(num_hp_states)])
@@ -310,7 +310,7 @@ class PetConfig:
                 pat_conf = fill_missing_hptier(pat_conf)
             else:
                 # in case anything unexpected happens
-                pat_conf = dict([(i, 'default') for i in range(num_hp_states)])
+                pat_conf = dict([(i, conf_params['default']) for i in range(num_hp_states)])
 
             o.patpat = dict([(i, act_dict[pat_conf[i]]) for i in range(num_hp_states)])
             #o.patpat = act_dict[conf_params.get('patpat', 'default')]
