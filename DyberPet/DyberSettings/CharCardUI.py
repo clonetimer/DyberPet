@@ -344,6 +344,7 @@ class CharInterface(ScrollArea):
         """Convert user artwork on a worker; keep the Qt main thread responsive."""
         if self.chibiThread is not None:
             return
+        from tools.chibi_profiles import available_role_folder
         accepted, profile = self._chooseChibiProfile()
         if not accepted:
             return
@@ -361,6 +362,13 @@ class CharInterface(ScrollArea):
                 self.__showSystemNote("Invalid Codex pet.json: " + str(exc), 2)
                 return
 
+        # The exact source name may be Chinese or collide with an installed
+        # role; allocate a new safe folder instead of overwriting existing art.
+        if folder_name is None:
+            folder_name = (preset.title() if preset else Path(sourceFolder).name)
+        folder_name = available_role_folder(
+            Path(basedir) / "res" / "role", folder_name
+        )
         self.addButton.setEnabled(False)
         self.chibiThread = ChibiImportThread(
             sourceFolder, os.path.join(basedir, "res", "role"),
@@ -369,7 +377,7 @@ class CharInterface(ScrollArea):
         self.chibiThread.done.connect(self._onChibiImportComplete)
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
-        self.__showSystemNote(self.tr("正在转换Q版角色，请稍候完成导入。"), 0)
+        self.__showSystemNote(self.tr("正在转换Q版角色，导入期间可继续查看其他页面。"), 1)
 
     def _onChibiImportComplete(self, role_name, error):
         if error:
@@ -624,7 +632,8 @@ class ChibiImportThread(QThread):
                 )
             self.done.emit(new_folder.name, "")
         except Exception as exc:
-            # If validation unexpectedly fails after writing, do not leave a
-            # partially installed role. Importers write to staging folders
-            # and refuse to overwrite any role that already exists.
+            # Clean up only the role directory created in this execution.
+            # Existing roles cannot be overwritten by either importer.
+            if new_folder is not None and new_folder.exists():
+                rmtree(new_folder, ignore_errors=True)
             self.done.emit("", str(exc))
