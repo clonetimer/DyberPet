@@ -15,6 +15,7 @@ from pathlib import Path
 
 import bpy
 from mathutils import Vector
+from chibi_clip_map import choose_clips
 
 SUPPORTED = {"idle", "left_walk", "right_walk", "wave", "jump", "wait", "sleep", "review"}
 SUFFIXES = {".glb", ".gltf", ".fbx"}
@@ -29,6 +30,10 @@ def args_from_blender():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--frames", type=int, default=6)
     p.add_argument("--actions", type=str, default="idle,left_walk,right_walk,wave,jump,wait,review")
+    p.add_argument("--require-clips", action="store_true",
+                   help="Reject missing NLA clips instead of procedural fallbacks")
+    p.add_argument("--clip-map", type=Path,
+                   help="Optional action-to-imported-NLA-name JSON mapping")
     args = p.parse_args(argv)
     if not 1 <= args.frames <= 24:
         p.error("frames must be between 1 and 24 per action")
@@ -99,6 +104,38 @@ def import_model(filepath):
     if not any(o.type == "MESH" for o in models):
         raise ValueError("Imported model has no mesh")
     return models
+
+
+def animation_tracks(objects):
+    """Discover NLA tracks from all objects and their shape-key data."""
+    tracks = []
+    for obj in objects:
+        targets = [obj]
+        shape_keys = getattr(getattr(obj, "data", None), "shape_keys", None)
+        if shape_keys is not None:
+            targets.append(shape_keys)
+        for target in targets:
+            anim = getattr(target, "animation_data", None)
+            if anim is not None:
+                tracks.extend((anim, track) for track in anim.nla_tracks)
+    return tracks
+
+
+def select_animation(tracks, clip_name):
+    """Play all pieces of a named glTF clip; mute every other imported track."""
+    matching = []
+    for anim, track in tracks:
+        if anim.action is not None:
+            anim.action = None
+        anim.use_nla = True
+        track.mute = track.name != clip_name
+        if not track.mute:
+            matching.extend(track.strips)
+    if not matching:
+        return None
+    start = min(strip.frame_start for strip in matching)
+    end = max(strip.frame_end for strip in matching)
+    return float(start), float(end)
 
 
 def position_objects(objects):
@@ -202,15 +239,41 @@ def main():
     else:
         objs, arm = import_model(args.input), None
         source_label = args.input.name
+    tracks = animation_tracks(objs)
+    available_tracks = [track.name for _, track in tracks]
+    overrides = {}
+    if args.clip_map:
+        overrides = json.loads(args.clip_map.read_text(encoding="utf-8"))
+        if not isinstance(overrides, dict) or any(
+                not isinstance(k, str) or not isinstance(v, str)
+                for k, v in overrides.items()):
+            raise ValueError("Clip map must be a JSON object of action to NLA name")
+    selected = choose_clips(args.actions, available_tracks, overrides)
+    missing = [action for action in args.actions if action not in selected]
+    if args.require_clips and missing:
+        raise ValueError("Missing required NLA animation clips: " + ", ".join(missing))
+
     ctrl = position_objects(objs)
     scene = camera_and_lighting()
     args.output.mkdir(parents=True, exist_ok=True)
     original = tuple(ctrl.location)
+    modes = {}
     for name in args.actions:
+        clip_name = selected.get(name)
+        window = select_animation(tracks, clip_name) if clip_name else None
+        modes[name] = ("clip" if window is not None else "procedural_fallback")
         for index in range(args.frames):
             t = index / args.frames
-            pose(ctrl, arm, original, name, t)
-            scene.frame_set(index + 1)
+            if window is not None:
+                start, end = window
+                ctrl.location = original
+                ctrl.rotation_euler[1] = 0
+                # Imported NLA strips drive rigged bones or animated nodes.
+                # The final repeated sample is avoided for a seamless loop.
+                scene.frame_set(round(start + t * max(0, end - start - 1)))
+            else:
+                pose(ctrl, arm, original, name, t)
+                scene.frame_set(index + 1)
             scene.render.filepath = str(args.output / f"{name}_{index}.png")
             bpy.ops.render.render(write_still=True)
     report = {
@@ -220,8 +283,17 @@ def main():
         "actions": {a: args.frames for a in args.actions},
         "animation_quality": (
             "procedural original fixture" if args.demo
-            else "root-motion-only; rigged limb/motion animation NOT retargeted"
+            else "uses named imported NLA clips when available; "
+                 "remaining actions have root-motion-only fallback"
         ),
+        "animation_sources": modes,
+        "used_clip_names": selected,
+        "available_clip_names": sorted(set(available_tracks)),
+        "requires_all_clips": bool(args.require_clips),
+        "warnings": [
+            a + ": no mapped clip; generated procedural fallback only"
+            for a in missing
+        ],
         "limitations": [
             "No native PMX or VRM importer; export using permitted Blender addons",
             "No motion retargeting from MMD VMD/VRM animation datasets",
