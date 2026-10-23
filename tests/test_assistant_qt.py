@@ -77,6 +77,31 @@ class AssistantQtTests(unittest.TestCase):
             self.assertNotEqual(self.dialog.workspace.root, specific.resolve())
             self.assertEqual((specific / "pet.txt").read_text(), "local")
 
+    def test_unlocked_animation_signal_and_dialog_close_revokes_grant(self):
+        chosen = []
+        self.dialog.action_requested.connect(chosen.append)
+        self.dialog.set_actions(["游戏互动", "挥手", "挥手"])
+        self.assertEqual(self.dialog.action_menu.count(), 3)
+        self.dialog.action_menu.setCurrentIndex(
+            self.dialog.action_menu.findData("挥手"))
+        self.dialog._notice("已恢复文件")
+        self.assertEqual(chosen, ["挥手"])
+        self.dialog._ppl_snapshot = "private PPL snapshot"
+        self.dialog._last_reply = "private reply"
+        with tempfile.TemporaryDirectory(dir=Path.home()) as home_temp:
+            specific = Path(home_temp) / "Files"
+            specific.mkdir()
+            with patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory",
+                       return_value=str(specific)), patch(
+                       "PySide6.QtWidgets.QMessageBox.warning",
+                       return_value=QMessageBox.StandardButton.Yes):
+                self.dialog.grant_session_folder()
+            self.assertEqual(self.dialog.workspace.root, specific.resolve())
+            self.dialog.close()
+            self.assertNotEqual(self.dialog.workspace.root, specific.resolve())
+            self.assertEqual(self.dialog._last_reply, "")
+            self.assertEqual(self.dialog._ppl_snapshot, "")
+
     def test_create_requires_confirmation(self):
         with patch("PySide6.QtWidgets.QInputDialog.getText",
                    return_value=("note.txt", True)), patch(
