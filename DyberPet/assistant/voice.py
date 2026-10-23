@@ -48,7 +48,7 @@ def recognize_once(model_dir: str | Path, *, seconds: float = 4.0,
     return text[:2000]
 
 
-def speak_once(text: str, *, rate: int = 170) -> None:
+def speak_once(text: str, *, rate: int = 170, on_ready=None) -> None:
     if not text.strip():
         return
     if not 100 <= rate <= 230:
@@ -61,6 +61,10 @@ def speak_once(text: str, *, rate: int = 170) -> None:
         engine = pyttsx3.init()
         engine.setProperty("rate", rate)
         engine.say(text[:500])
+        # Called from the worker only after the local speech engine has been
+        # initialized and an utterance has been queued. Still not phoneme sync.
+        if on_ready is not None:
+            on_ready()
         engine.runAndWait()
         engine.stop()
     except Exception as exc:
