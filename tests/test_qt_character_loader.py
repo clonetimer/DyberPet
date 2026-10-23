@@ -22,7 +22,10 @@ from tools.import_chibi_animations import convert_animation_folder
 class QtCharacterLoaderTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from PySide6.QtWidgets import QApplication
+        try:
+            from PySide6.QtWidgets import QApplication
+        except ImportError as exc:
+            raise unittest.SkipTest("PySide6 is only installed in the GUI loader smoke job") from exc
         cls.app = QApplication.instance() or QApplication([])
 
     def test_role_conversion_and_actual_qt_animation_loader(self):
