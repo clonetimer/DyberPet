@@ -71,5 +71,48 @@ class QtCharacterLoaderTest(unittest.TestCase):
                 shutil.rmtree(role_dir)
 
 
+    def test_native_zip_install_and_actual_qt_loader(self):
+        import json
+        import zipfile
+        from PySide6.QtGui import QPixmap
+        from DyberPet.conf import PetConfig, CheckCharFiles
+        from tools.install_native_role import install_native_role
+
+        role_root = Path(__file__).resolve().parents[1] / "res" / "role"
+        name = "SyntheticNativeZipQtSmoke"
+        target = role_root / name
+        self.assertFalse(target.exists())
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                source = Path(tmp) / "Native"
+                (source / "action").mkdir(parents=True)
+                Image.new("RGBA", (192, 208), (90, 120, 180, 220)).save(
+                    source / "action" / "idle_0.png")
+                (source / "pet_conf.json").write_text(json.dumps({
+                    "default": "idle", "drag": "idle", "fall": "idle",
+                    "focus": "idle", "patpat": "idle",
+                    "random_act": [{"name": "站立", "act_list": ["idle"]}]
+                }), encoding="utf-8")
+                (source / "act_conf.json").write_text(json.dumps({
+                    "idle": {"images": "idle", "frame_refresh": 0.18}
+                }), encoding="utf-8")
+                archive = Path(tmp) / "native.zip"
+                with zipfile.ZipFile(archive, "w") as writer:
+                    for file in source.rglob("*"):
+                        if file.is_file():
+                            writer.write(file, "Role/" + file.relative_to(source).as_posix())
+                installed = install_native_role(archive, role_root, role_folder=name)
+                self.assertEqual(installed, target)
+                self.assertEqual(CheckCharFiles(str(target))[0], 0)
+                pics = {"idle_0": QPixmap(str(target / "action" / "idle_0.png"))}
+                self.assertFalse(pics["idle_0"].isNull())
+                pet = PetConfig.init_config(name, pics)
+                self.assertEqual(len(pet.act_dict["idle"].images), 1)
+                self.assertIsNotNone(pet.focus)
+        finally:
+            if target.exists():
+                shutil.rmtree(target)
+
+
 if __name__ == "__main__":
     unittest.main()
