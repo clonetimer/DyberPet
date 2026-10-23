@@ -10,6 +10,7 @@ on:
       - "docs/guga_authenticity.md"
       - "DyberPet/DyberPet.py"
       - "DyberPet/Accessory.py"
+      - "DyberPet/modules.py"
       - "DyberPet/conf.py"
       - "tests/test_assistant_*.py"
       - "docs/pet_assistant.md"
@@ -21,6 +22,7 @@ on:
       - "DyberPet/assistant/**"
       - "DyberPet/DyberPet.py"
       - "DyberPet/Accessory.py"
+      - "DyberPet/modules.py"
       - "DyberPet/conf.py"
       - "tests/test_assistant_*.py"
       - ".github/workflows/pet-assistant.yml"
@@ -42,7 +44,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Compile assistant and main entry
-        run: python -m compileall -q DyberPet/assistant DyberPet/DyberPet.py DyberPet/Accessory.py DyberPet/conf.py
+        run: python -m compileall -q DyberPet/assistant DyberPet/DyberPet.py DyberPet/Accessory.py DyberPet/modules.py DyberPet/conf.py
       - name: Check Guga local fidelity CLI
         run: python tools/audit_guga.py --help
       - name: Check all-character fidelity CLI
