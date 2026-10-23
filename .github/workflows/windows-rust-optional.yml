@@ -1,0 +1,75 @@
+name: Windows Rust Portable (Experimental)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "refactor/rust-core-isolated-20261023"
+    paths:
+      - "rust/pet_core/**"
+      - "DyberPet/assistant/native_bridge.py"
+      - "DyberPet/assistant/character_fidelity.py"
+      - "tools/build_windows_portable.ps1"
+      - "run_DyberPet.py"
+      - ".github/workflows/windows-rust-optional.yml"
+  pull_request:
+    paths:
+      - "rust/pet_core/**"
+      - "DyberPet/assistant/native_bridge.py"
+      - "DyberPet/assistant/character_fidelity.py"
+      - "tools/build_windows_portable.ps1"
+      - "run_DyberPet.py"
+      - ".github/workflows/windows-rust-optional.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package-native-opt-in:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned Python desktop and optional native build tools
+        run: |
+          python -m pip install -r requirements-windows-portable.txt
+          python -m pip install "maturin>=1.7,<2"
+      - name: Build and install Rust wheel into build interpreter
+        run: |
+          maturin build --release --manifest-path rust/pet_core/Cargo.toml --interpreter python --out wheelhouse
+          python -m pip install --no-index --find-links wheelhouse dyberpet-native-core
+          python -c "import dyberpet_native; assert dyberpet_native.engine_version() == '0.1.0'"
+      - name: Build isolated Windows Rust opt-in archive
+        shell: pwsh
+        run: ./tools/build_windows_portable.ps1 -IncludeRust
+      - name: Launch packaged EXE from another working directory in Rust mode
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+          DYBERPET_NATIVE_BACKEND: rust
+          DYBERPET_REQUIRE_RUST: "1"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = (Resolve-Path "dist/DyberPet/DyberPet.exe").Path
+          $report = Join-Path $env:RUNNER_TEMP "native-packaged-smoke.json"
+          $env:DYBERPET_SMOKE_REPORT = $report
+          $proc = Start-Process -FilePath $exe -ArgumentList "--assistant-smoke" -WorkingDirectory $env:RUNNER_TEMP -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "EXE native smoke failed, exit code $($proc.ExitCode)" }
+          if (-not (Test-Path -LiteralPath $report)) { throw "Native EXE smoke report missing" }
+          $state = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+          if (-not $state.assets.ok -or -not $state.assistant_dialog) { throw "Qt assistant/assets smoke failed" }
+          if ($state.native_backend.active -ne "rust" -or $state.native_backend.fallback) { throw "Packaged EXE silently fell back from Rust" }
+          foreach ($name in @("pyttsx3","vosk","sounddevice")) {
+            if ($state.optional_voice_imports.$name -ne $true) { throw "Missing voice package: $name" }
+          }
+          Get-Content -LiteralPath $report
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DyberPet-Windows-Rust-Experimental
+          path: DyberPet-Windows-Rust-Experimental.zip
+          if-no-files-found: error
+          retention-days: 14
