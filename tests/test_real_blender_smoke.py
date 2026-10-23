@@ -81,7 +81,10 @@ class RealBlenderDemoTest(unittest.TestCase):
             report = json.loads(
                 (frames / "BLENDER_RENDER_REPORT.json").read_text("utf-8"))
             self.assertFalse(report["demo"])
-            self.assertIn("root-motion-only", report["animation_quality"])
+            self.assertEqual(report["animation_sources"]["wave"], "clip")
+            self.assertEqual(report["animation_sources"]["idle"], "procedural_fallback")
+            self.assertEqual(report["used_clip_names"]["wave"].lower(), "wave")
+            self.assertTrue(any("idle:" in w for w in report["warnings"]))
             role = convert_animation_folder(
                 frames, root / "roles", folder="ImportedOriginalGLB",
                 profile="chibi", author="DyberPet original synthetic geometry"
