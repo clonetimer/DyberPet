@@ -27,9 +27,10 @@ class WorkspaceError(ValueError):
 
 class PetWorkspace:
     def __init__(self, root: Path):
-        self.root = Path(root).expanduser().resolve()
-        if self.root.exists() and self.root.is_symlink():
+        requested_root = Path(root).expanduser()
+        if requested_root.is_symlink():
             raise WorkspaceError("Workspace root must not be a symlink")
+        self.root = requested_root.resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.trash = self.root / ".pet_trash"
         if self.trash.is_symlink():
