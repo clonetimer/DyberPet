@@ -14,6 +14,7 @@ from pathlib import Path
 from .character_profiles import resolve_profile, PROFILES, CharacterProfile
 from .character_motion import style_for
 from .mini_motion import MiniHover
+from .native_bridge import native_png_metadata
 
 REFERENCE_PAGES = {
     "character_background": "https://knowyourmeme.com/memes/gugu-gaga-penguin",
@@ -37,6 +38,13 @@ class FidelityError(ValueError):
 
 def png_metadata(path: Path):
     """Read actual PNG IHDR only: full transparency requires manual preview."""
+    try:
+        accelerated = native_png_metadata(path)
+    except ValueError as exc:
+        # Keep the established public exception class with the native engine.
+        raise FidelityError(str(exc)) from exc
+    if accelerated is not None:
+        return accelerated
     with path.open("rb") as stream:
         header = stream.read(33)
     if len(header) != 33 or header[:8] != PNG_SIGNATURE:
