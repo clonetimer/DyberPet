@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -45,6 +46,37 @@ class RealBlenderDemoTest(unittest.TestCase):
             self.assertGreaterEqual(preflight["actions"], 3)
             self.assertTrue((role / "ANIMATION_PREVIEW.png").is_file())
             self.assertTrue((role / "info" / "pfp.png").is_file())
+
+
+    def test_exported_original_glb_import_pipeline(self):
+        blender = os.environ.get("BLENDER_BIN", "blender")
+        scene_script = (Path(__file__).resolve().parents[1] /
+                        "tools" / "blender_demo_export.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            model = root / "OriginalSyntheticChibi.glb"
+            run = subprocess.run(
+                [blender, "--background", "--factory-startup", "--disable-autoexec",
+                 "--python-exit-code", "23", "--python", str(scene_script),
+                 "--", str(model)],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, timeout=180, check=False
+            )
+            self.assertEqual(run.returncode, 0, run.stdout[-2500:])
+            self.assertTrue(model.exists())
+            frames = render_blender(
+                blender, root / "imported_frames", source=model,
+                frames=2, actions=("idle", "wave"), timeout=600
+            )
+            report = json.loads(
+                (frames / "BLENDER_RENDER_REPORT.json").read_text("utf-8"))
+            self.assertFalse(report["demo"])
+            self.assertIn("root-motion-only", report["animation_quality"])
+            role = convert_animation_folder(
+                frames, root / "roles", folder="ImportedOriginalGLB",
+                profile="chibi", author="DyberPet original synthetic geometry"
+            )
+            self.assertGreater(validate_native_role(role)["images"], 1)
 
 
 if __name__ == "__main__":
