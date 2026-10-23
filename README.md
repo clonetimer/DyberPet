@@ -42,6 +42,10 @@
   <img src="https://raw.githubusercontent.com/ChaozhongLiu/DyberPet/main/docs/DyberPet.gif" alt="DyberPet interface demo" width="92%">
 </p>
 
+## 多角色贴近原设验收（开发分支）
+
+新增 [Doro、派蒙、纳西妲、可莉、芙宁娜、阿丽莎及咕嘎的专属档案](docs/character_fidelity.md)：分别核查角色辨识特征、动画、对白人设与短音效来源。桌宠助手新增当前人物的原设核查/独立 WAV 登记与试听；**此处仅为技术验收框架，未自动安装任何受版权保护的模型或原声**。
+
 ## 咕嘎形象/音效还原验收（开发分支）
 
 新增[咕嘎真实性核查与有授权的本地 WAV 试听](docs/guga_authenticity.md)：支持检查已有角色的原生动画覆盖范围、PNG 尺寸及本地短音效格式/哈希，并通过桌宠助手登记音效来源。**这不等于已包含咕嘎的真实美术或原声，也不代表已获得可再分发授权。** 普通系统 TTS 明确区别于角色标志音效。
