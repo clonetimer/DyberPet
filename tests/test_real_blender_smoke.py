@@ -7,6 +7,7 @@ This is a separate CI job to avoid installing a large 3D dependency for every
 from __future__ import annotations
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +18,11 @@ from tools.install_native_role import validate_native_role
 
 
 class RealBlenderDemoTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (os.environ.get("BLENDER_BIN") or shutil.which("blender")):
+            raise unittest.SkipTest("Real Blender smoke runs only when Blender is installed")
+
     def test_synthetic_blender_to_dyberpet_role(self):
         blender = os.environ.get("BLENDER_BIN", "blender")
         with tempfile.TemporaryDirectory() as tmp:
