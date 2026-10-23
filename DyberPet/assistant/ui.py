@@ -326,6 +326,8 @@ class PetAssistantDialog(QDialog):
                     for name, val in coverage.items()),
                 "视觉对照：" + "；".join(profile.visual_checks),
                 "动作对照：" + "；".join(profile.motion_checks),
+                "实际移动策略：" + result["runtime_motion_policy"]["kind"]
+                + "（仅运行时轻量补偿，不代表原作动作图已齐备）",
                 "声音注意：" + "；".join(profile.audio_checks),
                 "问题：" + ("；".join(result["issues"]) if result["issues"] else "无静态问题"),
                 "结论：未核实原作形象、声音及素材使用权；必须人工比对具体版本。",
