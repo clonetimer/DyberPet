@@ -42,6 +42,10 @@
   <img src="https://raw.githubusercontent.com/ChaozhongLiu/DyberPet/main/docs/DyberPet.gif" alt="DyberPet interface demo" width="92%">
 </p>
 
+## 咕嘎形象/音效还原验收（开发分支）
+
+新增[咕嘎真实性核查与有授权的本地 WAV 试听](docs/guga_authenticity.md)：支持检查已有角色的原生动画覆盖范围、PNG 尺寸及本地短音效格式/哈希，并通过桌宠助手登记音效来源。**这不等于已包含咕嘎的真实美术或原声，也不代表已获得可再分发授权。** 普通系统 TTS 明确区别于角色标志音效。
+
 ## 新增：受控文件操作、离线语音与 PPL 人设（开发分支）
 
 桌宠右键菜单中新增 **Desktop Pet Assistant (Files / Voice / Persona)**：经确认的文件创建/可恢复删除/恢复、可选 Vosk 按键录音识别和 pyttsx3 离线朗读、LM Studio 本地文字对话，以及 PPL Character Governance 关系状态与 Persona DSL 渲染快照。
