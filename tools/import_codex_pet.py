@@ -225,9 +225,12 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
         style = "chibi"
     atlas_path, manifest = resolve_source(source)
     preset_data = PRESETS.get(preset or "", {})
+    requested_folder = folder
     folder = folder or preset_data.get("folder") or re.sub(
         r"[^A-Za-z0-9_-]+", "_", str(manifest.get("id", "CodexPet"))
     )
+    if requested_folder is None and not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,39}", folder):
+        folder = "ChibiPet"
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,39}", folder):
         raise ValueError("Output folder: ASCII letters/digits/_/-, begins with a letter, max 40")
     name = name or (profile_info or {}).get("name") or preset_data.get("name") or manifest.get("displayName") or folder
