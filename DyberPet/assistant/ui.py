@@ -53,6 +53,8 @@ class PetAssistantDialog(QDialog):
     action_notice = Signal(str)
     action_requested = Signal(str)
     motion_toggled = Signal(bool)
+    speech_started = Signal(str, str)
+    speech_finished = Signal(str)
 
     def __init__(self, character_name: str, workspace: Path, parent=None,
                  role_root: Path | None = None):
@@ -63,6 +65,7 @@ class PetAssistantDialog(QDialog):
         self.workspace = PetWorkspace(self._default_workspace)
         self._job = None
         self._last_reply = ""
+        self._speaking_session = None
         self._ppl_snapshot = ""
         self._session_generation = 0
         try:
@@ -212,6 +215,7 @@ class PetAssistantDialog(QDialog):
     def set_character(self, name: str):
         if self.character_name == name:
             return
+        self._finish_speech_visuals()
         self.character_name = name
         self.setWindowTitle("桌宠助手 · " + name)
         self._sync_guga_controls()
@@ -519,6 +523,7 @@ class PetAssistantDialog(QDialog):
         job.start()
 
     def _job_finished(self):
+        self._finish_speech_visuals()
         job = self._job
         self._job = None
         for button in (self.send_button, self.listen_button,
@@ -527,7 +532,14 @@ class PetAssistantDialog(QDialog):
         if job is not None:
             job.deleteLater()
 
+    def _finish_speech_visuals(self):
+        session = self._speaking_session
+        self._speaking_session = None
+        if session is not None:
+            self.speech_finished.emit(session[0])
+
     def _job_error(self, detail: str):
+        self._finish_speech_visuals()
         self.status.setText("操作失败：" + detail)
         self.chat_log.appendPlainText("[错误] " + detail)
 
@@ -620,9 +632,13 @@ class PetAssistantDialog(QDialog):
             reply = result
         self._last_reply = reply
         self.chat_log.appendPlainText(self.character_name + "：" + reply)
-        if self.bubble_enabled.isChecked():
+        # When auto-read is enabled, the native bubble appears when TTS
+        # starts, not seconds earlier during model response handling.
+        will_speak = self.auto_speak.isChecked() and self.isVisible()
+        if self.bubble_enabled.isChecked() and not will_speak:
             self.reply_ready.emit(reply[:120])
-        self._emit_selected_animation()
+        if not will_speak:
+            self._emit_selected_animation()
         self.status.setText("回复已生成；点击朗读按钮可使用离线语音播报。")
         if self.auto_speak.isChecked() and self.isVisible():
             QTimer.singleShot(100, self._auto_read_reply)
@@ -647,9 +663,15 @@ class PetAssistantDialog(QDialog):
         if not self._last_reply:
             self._job_error("还没有可朗读的回复")
             return
+        if self._job is not None:
+            self.status.setText("上一项语音/对话任务仍在执行")
+            return
+        character = self.character_name
+        text = self._last_reply
         self.status.setText("正在使用本机语音合成…")
-        self._submit(speak_once, lambda _: self.status.setText("朗读结束"),
-                     self._last_reply)
+        self._speaking_session = (character, self._session_generation)
+        self._submit(speak_once, lambda _: self.status.setText("朗读结束"), text)
+        self.speech_started.emit(character, text[:120])
 
     def comfort(self):
         if not self.ppl_enabled.isChecked():
@@ -693,6 +715,7 @@ class PetAssistantDialog(QDialog):
             self._job_error(str(exc))
 
     def closeEvent(self, event):
+        self._finish_speech_visuals()
         # QDialog.close() does not necessarily destroy the dialog; release
         # any user-granted folder even when the widget is reopened later.
         self._session_generation += 1
