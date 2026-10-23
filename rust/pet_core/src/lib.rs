@@ -77,6 +77,31 @@ fn file_sha256(path: &str) -> std::io::Result<String> {
     Ok(digest.iter().map(|b| format!("{b:02x}")).collect())
 }
 
+/// Parse many existing PNG headers in a single Python/Rust boundary crossing.
+///
+/// The Python role audit has already filtered symlinks and unsafe action
+/// prefixes. Each malformed PNG yields None, matching its audit's "invalid"
+/// bucket; filesystem I/O errors still propagate, so the caller cannot
+/// accidentally treat unreadable assets as valid. No caching or file writes.
+#[pyfunction]
+fn batch_png_headers(paths: Vec<String>) -> PyResult<Vec<Option<(u32, u32, u8, u8)>>> {
+    if paths.len() > 10_000 {
+        return Err(PyValueError::new_err("Batch exceeds 10000 PNG paths"));
+    }
+    let mut output = Vec::with_capacity(paths.len());
+    for path in paths {
+        let mut stream = File::open(&path)
+            .map_err(|err| PyIOError::new_err(err.to_string()))?;
+        let mut header = [0u8; 33];
+        let count = stream.read(&mut header)
+            .map_err(|err| PyIOError::new_err(err.to_string()))?;
+        let record = parse_png_header(&header[..count]).ok()
+            .map(|h| (h.width, h.height, h.bit_depth, h.color_type));
+        output.push(record);
+    }
+    Ok(output)
+}
+
 #[pyfunction]
 fn sha256_file(path: &str) -> PyResult<String> {
     file_sha256(path).map_err(|err| PyIOError::new_err(err.to_string()))
@@ -90,6 +115,7 @@ fn engine_version() -> &'static str {
 #[pymodule]
 fn dyberpet_native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(png_metadata, module)?)?;
+    module.add_function(wrap_pyfunction!(batch_png_headers, module)?)?;
     module.add_function(wrap_pyfunction!(sha256_file, module)?)?;
     module.add_function(wrap_pyfunction!(engine_version, module)?)?;
     Ok(())
@@ -121,6 +147,15 @@ mod tests {
         assert!(parse_png_header(&dummy_png(0, 100)).is_err());
         assert!(parse_png_header(&dummy_png(8193, 10)).is_err());
         assert!(parse_png_header(&dummy_png(12, 1)[..25]).is_err());
+    }
+
+    #[test]
+    fn indexed_png_header_has_same_fields_as_single_parser() {
+        let data = dummy_png(24, 48);
+        let parsed = parse_png_header(&data).expect("synthetic PNG");
+        let row = (parsed.width, parsed.height, parsed.bit_depth, parsed.color_type);
+        assert_eq!(row, (24, 48, 8, 6));
+        assert!(parse_png_header(b"not a valid image").is_err());
     }
 
     #[test]
