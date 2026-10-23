@@ -56,6 +56,11 @@ class NativeRoleZipTests(unittest.TestCase):
         self.assertTrue((installed / "INSTALL_REPORT.json").exists())
         self.assertTrue((installed / "action" / "idle_0.png").exists())
 
+    def test_native_minipet_rejected_from_character_manager(self):
+        zip_role(self.source, self.archive, "res/pet/派蒙")
+        with self.assertRaisesRegex(ValueError, "mini-pet companion"):
+            install_native_role(self.archive, self.out)
+
     def test_install_single_level_and_do_not_overwrite(self):
         zip_role(self.source, self.archive, "Paimon")
         installed = install_native_role(self.archive, self.out)
