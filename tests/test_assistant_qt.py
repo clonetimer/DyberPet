@@ -33,6 +33,50 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog.set_character("Doro")
         self.assertEqual(self.dialog.persona.currentData(), "doro")
 
+    def test_bubble_signals_and_stale_character_responses(self):
+        replies, notices = [], []
+        self.dialog.reply_ready.connect(replies.append)
+        self.dialog.action_notice.connect(notices.append)
+        self.dialog._message_reply(("咕嘎", "好耶，文件准备好了！"))
+        self.assertEqual(replies, ["好耶，文件准备好了！"])
+        self.dialog._notice("已创建文件")
+        self.assertEqual(notices, ["已创建文件"])
+        self.dialog.set_character("Doro")
+        self.dialog._message_reply(("咕嘎", "old persona text"))
+        self.assertEqual(len(replies), 1)
+        self.assertNotIn("old persona text", self.dialog.chat_log.toPlainText())
+
+    def test_save_preferences_without_transcript(self):
+        self.dialog.message.setText("private chat")
+        self.dialog.llm_model.setText("local-model")
+        with patch("DyberPet.assistant.ui.save_preferences") as saved:
+            self.dialog.save_preferences()
+        sent = saved.call_args.args[0]
+        self.assertEqual(sent["llm_model"], "local-model")
+        self.assertEqual(sent["personas"]["咕嘎"], "guga")
+        self.assertNotIn("private chat", str(sent))
+
+    def test_user_authorized_folder_session_only_and_reset(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as staging:
+            specific = Path(staging) / "MyPetNotes"
+            specific.mkdir()
+            with patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory",
+                       return_value=str(specific)), patch(
+                       "PySide6.QtWidgets.QMessageBox.warning",
+                       return_value=QMessageBox.StandardButton.No):
+                self.dialog.grant_session_folder()
+            self.assertNotEqual(self.dialog.workspace.root, specific)
+            with patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory",
+                       return_value=str(specific)), patch(
+                       "PySide6.QtWidgets.QMessageBox.warning",
+                       return_value=QMessageBox.StandardButton.Yes):
+                self.dialog.grant_session_folder()
+            self.assertEqual(self.dialog.workspace.root, specific.resolve())
+            self.dialog.workspace.create("pet.txt", "local")
+            self.dialog.reset_workspace()
+            self.assertNotEqual(self.dialog.workspace.root, specific.resolve())
+            self.assertEqual((specific / "pet.txt").read_text(), "local")
+
     def test_create_requires_confirmation(self):
         with patch("PySide6.QtWidgets.QInputDialog.getText",
                    return_value=("note.txt", True)), patch(
