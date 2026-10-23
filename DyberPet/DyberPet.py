@@ -1040,11 +1040,22 @@ class PetWidget(QWidget):
             workspace = Path.home() / "Documents" / "DyberPetAssistant"
             self._pet_assistant = PetAssistantDialog(
                 self.curr_pet_name, workspace, self)
+            self._pet_assistant.reply_ready.connect(self._assistant_reply_bubble)
+            self._pet_assistant.action_notice.connect(self._assistant_notice_bubble)
         else:
             self._pet_assistant.set_character(self.curr_pet_name)
         self._pet_assistant.show()
         self._pet_assistant.raise_()
         self._pet_assistant.activateWindow()
+
+    def _assistant_reply_bubble(self, message):
+        """Use the existing DPNote bubble path; do not create a new overlay."""
+        if settings.bubble_on and message:
+            self.register_bubbleText({"message": str(message)[:120], "timeout": 6})
+
+    def _assistant_notice_bubble(self, message):
+        if settings.bubble_on and message:
+            self.register_bubbleText({"message": str(message)[:120], "timeout": 4})
 
     def _show_Staus_menu(self):
         """
@@ -1141,6 +1152,8 @@ class PetWidget(QWidget):
 
         # reload new pet
         self.init_conf(pet_name)
+        if getattr(self, "_pet_assistant", None) is not None:
+            self._pet_assistant.set_character(pet_name)
 
         # Change status
         self.pet_hp.init_HP(settings.pet_data.hp, sys_hp_interval) #2)
