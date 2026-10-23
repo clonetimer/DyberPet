@@ -11,6 +11,7 @@ on:
       - "DyberPet/assistant/character_audio.py"
       - "DyberPet/assistant/guga_audio.py"
       - "tests/test_rust_bridge.py"
+      - "tools/benchmark_rust_core.py"
       - ".github/workflows/rust-core-isolated.yml"
   pull_request:
     paths:
@@ -20,6 +21,7 @@ on:
       - "DyberPet/assistant/character_audio.py"
       - "DyberPet/assistant/guga_audio.py"
       - "tests/test_rust_bridge.py"
+      - "tools/benchmark_rust_core.py"
       - ".github/workflows/rust-core-isolated.yml"
   workflow_dispatch:
 
@@ -65,3 +67,5 @@ jobs:
           DYBERPET_NATIVE_BACKEND: rust
           DYBERPET_REQUIRE_RUST: "1"
         run: python -m unittest discover -s tests -p "test_assistant_*.py" -v
+      - name: Report synthetic microbenchmark without enforcing speed claims
+        run: python tools/benchmark_rust_core.py --frames 300 --rounds 3 --hash-mb 1
