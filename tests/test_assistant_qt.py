@@ -47,6 +47,36 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(len(replies), 1)
         self.assertNotIn("old persona text", self.dialog.chat_log.toPlainText())
 
+    def test_speech_lifecycle_only_reports_selected_character(self):
+        started, stopped = [], []
+        self.dialog.speech_started.connect(
+            lambda name, message: started.append((name, message)))
+        self.dialog.speech_finished.connect(stopped.append)
+        self.dialog._last_reply = "这个是测试回复"
+        with patch.object(self.dialog, "_submit"):
+            self.dialog.read_reply()
+        self.assertEqual(started, [("咕嘎", "这个是测试回复")])
+        self.assertEqual(self.dialog._speaking_session[0], "咕嘎")
+        self.dialog._job_finished()
+        self.assertEqual(stopped, ["咕嘎"])
+        self.assertIsNone(self.dialog._speaking_session)
+        self.dialog._last_reply = "旧角色语音"
+        with patch.object(self.dialog, "_submit"):
+            self.dialog.read_reply()
+            self.dialog.set_character("Doro")
+        self.assertEqual(stopped, ["咕嘎", "咕嘎"])
+        self.assertIsNone(self.dialog._speaking_session)
+
+    def test_speech_failure_removes_visual_speaking_state(self):
+        end_events = []
+        self.dialog.speech_finished.connect(end_events.append)
+        self.dialog._last_reply = "test"
+        with patch.object(self.dialog, "_submit"):
+            self.dialog.read_reply()
+        self.dialog._job_error("local TTS unavailable")
+        self.assertEqual(end_events, ["咕嘎"])
+        self.assertIn("local TTS unavailable", self.dialog.status.text())
+
     def test_motion_toggle_is_user_controlled(self):
         updates = []
         self.dialog.motion_toggled.connect(updates.append)
