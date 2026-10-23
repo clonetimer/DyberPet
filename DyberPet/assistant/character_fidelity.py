@@ -14,7 +14,7 @@ from pathlib import Path
 from .character_profiles import resolve_profile, PROFILES, CharacterProfile
 from .character_motion import style_for
 from .mini_motion import MiniHover
-from .native_bridge import native_png_metadata
+from .native_bridge import native_png_metadata, native_batch_png_headers
 
 REFERENCE_PAGES = {
     "character_background": "https://knowyourmeme.com/memes/gugu-gaga-penguin",
@@ -108,24 +108,45 @@ def inspect_character_role(role_dir: str | Path, character_name: str,
     action_files = role / "action"
     coverage = {}
     wrong_size, invalid_images, frame_counts = [], [], {}
+    # An action pack can refer to the same image prefix from several actions.
+    # Cache is scoped to this ONE audit call, never persisted across edits.
+    prefix_cache = {}
     for name, spec in actions.items():
         if not isinstance(spec, dict) or not isinstance(spec.get("images"), str):
             continue
         prefix = spec["images"]
         if not re.fullmatch(r"[\w-]{1,100}", prefix):
             continue
-        frames = sorted(action_files.glob(prefix + "_*.png")) if action_files.is_dir() else []
-        frames = [frame for frame in frames if frame.is_file() and not frame.is_symlink()
-                  and re.fullmatch(re.escape(prefix) + r"_\d+\.png", frame.name)]
-        frame_counts[name] = len(frames)
-        for frame in frames[:100]:
-            try:
-                metadata = png_metadata(frame)
-                if (metadata["width"], metadata["height"]) != (
-                        pet.get("width"), pet.get("height")):
-                    wrong_size.append(frame.name)
-            except FidelityError:
-                invalid_images.append(frame.name)
+        if prefix not in prefix_cache:
+            frames = sorted(action_files.glob(prefix + "_*.png")) if action_files.is_dir() else []
+            frames = [frame for frame in frames if frame.is_file() and not frame.is_symlink()
+                      and re.fullmatch(re.escape(prefix) + r"_\d+\.png", frame.name)]
+            checked = frames[:100]  # Preserve original per-action audit bound.
+            native_headers = native_batch_png_headers(checked)
+            prefix_cache[prefix] = (len(frames), [], [])
+            count, wrong, invalid = prefix_cache[prefix]
+            if native_headers is not None:
+                if len(native_headers) != len(checked):
+                    raise FidelityError("Native PNG header batch length mismatch")
+                for frame, record in zip(checked, native_headers):
+                    if record is None:
+                        invalid.append(frame.name)
+                    elif tuple(record[:2]) != (pet.get("width"), pet.get("height")):
+                        wrong.append(frame.name)
+            else:
+                for frame in checked:
+                    try:
+                        metadata = png_metadata(frame)
+                        if (metadata["width"], metadata["height"]) != (
+                                pet.get("width"), pet.get("height")):
+                            wrong.append(frame.name)
+                    except FidelityError:
+                        invalid.append(frame.name)
+        count, wrong, invalid = prefix_cache[prefix]
+        frame_counts[name] = count
+        # Preserve existing report semantics if several actions share frames.
+        wrong_size.extend(wrong)
+        invalid_images.extend(invalid)
     for group, aliases in EXPECTED_ACTION_GROUPS.items():
         found = [name for name in aliases if frame_counts.get(name, 0) > 0]
         coverage[group] = {"available": bool(found), "matched_actions": found}
