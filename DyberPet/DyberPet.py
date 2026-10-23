@@ -27,6 +27,7 @@ from DyberPet.Accessory import MouseMoveManager
 from DyberPet.custom_widgets import RoundBarBase, LevelBadge
 from DyberPet.bubbleManager import BubbleManager
 from DyberPet.assistant.character_motion import style_for, GROUND
+from DyberPet.assistant.speech_sync import available_talk_action
 from DyberPet.assistant.preferences import load as load_assistant_preferences
 
 # initialize settings
@@ -1057,6 +1058,8 @@ class PetWidget(QWidget):
             self._pet_assistant.action_notice.connect(self._assistant_notice_bubble)
             self._pet_assistant.action_requested.connect(self._assistant_play_action)
             self._pet_assistant.motion_toggled.connect(self._set_character_motion_enabled)
+            self._pet_assistant.speech_started.connect(self._assistant_speech_started)
+            self._pet_assistant.speech_finished.connect(self._assistant_speech_finished)
         else:
             self._pet_assistant.set_character(self.curr_pet_name)
         self._sync_assistant_actions()
@@ -1081,6 +1084,23 @@ class PetWidget(QWidget):
         if (name in available and isinstance(available[name], dict)
                 and available[name].get("unlocked")):
             self._show_act(name)
+
+    def _assistant_speech_started(self, character, message):
+        """React to local TTS playback, never to arbitrary model tool calls."""
+        if character != self.curr_pet_name:
+            return
+        self._assistant_voice_active = True
+        self._assistant_reply_bubble(message)
+        options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+        talk = available_talk_action(options)
+        if talk is not None:
+            self._assistant_play_action(talk)
+
+    def _assistant_speech_finished(self, character):
+        if character == self.curr_pet_name:
+            # Native actions finish normally through Interaction_worker.
+            # Do not interrupt another user-selected animation here.
+            self._assistant_voice_active = False
 
     def _assistant_reply_bubble(self, message):
         """Use the existing DPNote bubble path; do not create a new overlay."""
