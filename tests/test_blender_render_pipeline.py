@@ -56,6 +56,17 @@ class RenderLaunchTests(unittest.TestCase):
                 render_blender(str(self.exe), self.output, source=sample)
         self.assertFalse(self.output.exists())
 
+    def test_reject_gltf_with_untracked_external_textures(self):
+        model = self.root / "scene.gltf"
+        model.write_text(json.dumps({
+            "asset": {"version": "2.0"},
+            "buffers": [{"uri": "scene.bin"}],
+            "images": [{"uri": "../private_texture.png"}]
+        }), encoding="utf-8")
+        with self.assertRaisesRegex(RenderError, "self-contained GLB"):
+            render_blender(str(self.exe), self.output, source=model)
+        self.assertFalse(self.output.exists())
+
     def test_no_override_existing_render(self):
         self.output.mkdir()
         with self.assertRaises(FileExistsError):
