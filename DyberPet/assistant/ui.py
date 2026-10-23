@@ -21,7 +21,12 @@ from .persona import (
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
 from .guga_audio import record_local_clip, play_local_clip, load_local_clip
-from .character_fidelity import inspect_guga_role, FidelityError
+from .character_fidelity import inspect_guga_role, inspect_character_role, FidelityError
+from .character_profiles import resolve_profile
+from .character_audio import (
+    register as register_character_audio, read as read_character_audio,
+    play as play_character_audio,
+)
 from .preferences import load as load_preferences, save as save_preferences, defaults as default_preferences
 
 
@@ -157,14 +162,14 @@ class PetAssistantDialog(QDialog):
         sample_row = QHBoxLayout()
         self.guga_sample_label = QLabel("咕嘎标志音效（非系统 TTS）")
         self.guga_select = QPushButton("登记本地授权 WAV")
-        self.guga_select.clicked.connect(self.select_guga_sample)
+        self.guga_select.clicked.connect(self.select_character_sample)
         self.guga_preview = QPushButton("试听咕嘎音效")
-        self.guga_preview.clicked.connect(self.preview_guga_sample)
+        self.guga_preview.clicked.connect(self.preview_character_sample)
         sample_row.addWidget(self.guga_sample_label)
         sample_row.addWidget(self.guga_select)
         sample_row.addWidget(self.guga_preview)
         self.guga_audit = QPushButton("核查当前咕嘎形象")
-        self.guga_audit.clicked.connect(self.audit_guga)
+        self.guga_audit.clicked.connect(self.audit_character)
         sample_row.addWidget(self.guga_audit)
         body.addLayout(sample_row)
 
@@ -231,10 +236,104 @@ class PetAssistantDialog(QDialog):
         return any(label in text for label in ("咕嘎", "咕咕嘎嘎", "guga", "gugugaga"))
 
     def _sync_guga_controls(self):
-        show = self._is_guga()
+        profile = resolve_profile(self.character_name)
+        show = profile is not None
+        if profile:
+            self.guga_sample_label.setText(profile.title + "：角色短音效（不是 TTS）")
+            self.guga_preview.setText("试听已登记音效")
+            self.guga_audit.setText("核查当前角色")
         for widget in (self.guga_sample_label, self.guga_select,
                        self.guga_preview, self.guga_audit):
             widget.setVisible(show)
+
+    def _role_path(self):
+        root = self.role_root.expanduser().resolve()
+        name = self.character_name
+        if (not name or name in (".", "..") or
+                any(x in name for x in ("/", "\\", "\x00"))):
+            raise FidelityError("Invalid installed character folder name")
+        path = root / name
+        if path.parent.resolve() != root:
+            raise FidelityError("Character folder escapes the role directory")
+        return path
+
+    def select_character_sample(self):
+        profile = resolve_profile(self.character_name)
+        if profile is None:
+            self._job_error("当前角色没有已登记的原设档案")
+            return
+        if profile.key == "guga":
+            self.select_guga_sample()
+            return
+        wav, _ = QFileDialog.getOpenFileName(
+            self, "选择该角色许可允许的本地短音效", str(Path.home()), "WAV (*.wav)")
+        if not wav:
+            return
+        creator, ok = QInputDialog.getText(
+            self, "作者署名", "实际声音/音效作者或发布者：")
+        if not ok or not creator.strip():
+            return
+        link, ok = QInputDialog.getText(
+            self, "作品来源", "具体作品 HTTPS 来源链接：")
+        if not ok or not link.strip():
+            return
+        if QMessageBox.warning(
+                self, "确认本地音效权限",
+                "仅登记本地试听用途，不能据此宣称为官方原声。\n"
+                "确认你已核实该具体素材允许个人桌宠使用？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            record = register_character_audio(
+                self.character_name, wav, creator, link,
+                acknowledged_local_rights=True)
+            self.status.setText("已登记 " + profile.title +
+                                " 本地音效；尚未认证原声：" + record["creator"])
+        except (OSError, ValueError) as exc:
+            self._job_error(str(exc))
+
+    def preview_character_sample(self):
+        profile = resolve_profile(self.character_name)
+        if profile is None:
+            self._job_error("当前角色没有已登记的原设档案")
+            return
+        if profile.key == "guga":
+            self.preview_guga_sample()
+            return
+        key = self.character_name
+        self.status.setText("本地试听中；不是角色对话 TTS。")
+        self._submit(play_character_audio, self._guga_sample_finished, key)
+
+    def audit_character(self):
+        profile = resolve_profile(self.character_name)
+        if profile is None:
+            self._job_error("当前角色没有已登记的原设档案")
+            return
+        if profile.key == "guga":
+            self.audit_guga()
+            return
+        try:
+            folder = self._role_path()
+            clip = read_character_audio(self.character_name)
+            result = inspect_character_role(folder, self.character_name,
+                                            clip["clip"] if clip else None)
+            coverage = result["action_coverage"]
+            lines = [
+                "当前角色：" + profile.title,
+                "安装目录：" + str(folder),
+                "已有动作：" + "、".join(
+                    name + ("✓" if val["available"] else "×")
+                    for name, val in coverage.items()),
+                "视觉对照：" + "；".join(profile.visual_checks),
+                "动作对照：" + "；".join(profile.motion_checks),
+                "声音注意：" + "；".join(profile.audio_checks),
+                "问题：" + ("；".join(result["issues"]) if result["issues"] else "无静态问题"),
+                "结论：未核实原作形象、声音及素材使用权；必须人工比对具体版本。",
+            ]
+            QMessageBox.information(self, "角色原设核查", "\n".join(lines))
+        except (FidelityError, OSError, ValueError) as exc:
+            self._job_error("角色检查失败：" + str(exc))
 
     def select_guga_sample(self):
         if not self._is_guga():
@@ -274,7 +373,7 @@ class PetAssistantDialog(QDialog):
             self._job_error("只能检查当前选择的咕嘎角色")
             return
         # Use the actual current role folder, not a reference screenshot.
-        folder = self.role_root / self.character_name
+        folder = self._role_path()
         try:
             wav = None
             try:
