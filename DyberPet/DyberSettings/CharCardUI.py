@@ -256,10 +256,29 @@ class CharInterface(ScrollArea):
         if not self.__showMessageBox(title, content):
             return
 
-        # FileDialogue to select folder
+        # Keep existing role management layout: one compact choice determines
+        # whether user selects an unpacked role folder or a native MOD ZIP.
+        options = ["选择角色文件夹（含原生、Codex、Q版动作素材）", "选择原生角色 ZIP 压缩包"]
+        choice, accepted = QInputDialog.getItem(
+            self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
+            options, 0, False
+        )
+        if not accepted:
+            return
+        docs = QStandardPaths.locate(
+            QStandardPaths.DocumentsLocation, '',
+            QStandardPaths.LocateDirectory
+        )
+        if choice == options[1]:
+            archive, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择 DyberPet 原生角色 ZIP"), docs,
+                "ZIP Archive (*.zip)"
+            )
+            if archive:
+                self._importNativeZip(archive)
+            return
         folder = QFileDialog.getExistingDirectory(
-            self, self.tr("Please select the character folder"), 
-            QStandardPaths.locate(QStandardPaths.DocumentsLocation, '', QStandardPaths.LocateDirectory))
+            self, self.tr("Please select the character folder"), docs)
 
         # If no file selected
         if not folder:
@@ -336,6 +355,20 @@ class CharInterface(ScrollArea):
             return False, None
         profile = None if selected == default_choice else selected.rsplit("[", 1)[1][:-1]
         return True, profile
+
+    def _importNativeZip(self, archivePath):
+        """Install existing native role ZIP without changing existing roles."""
+        if self.chibiThread is not None:
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            archivePath, os.path.join(basedir, "res", "role"),
+            mode="native_zip", profile=None, preset=None, folder=None
+        )
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(self.tr("正在验证并安装原生角色 ZIP。"), 1)
 
     def _importCodexCharacter(self, sourceFolder):
         self._importLocalChibi(sourceFolder, mode="codex")
@@ -610,7 +643,10 @@ class ChibiImportThread(QThread):
     def run(self):
         new_folder = None
         try:
-            if self.mode == "codex":
+            if self.mode == "native_zip":
+                from tools.install_native_role import install_native_role
+                new_folder = install_native_role(self.source, self.output_root)
+            elif self.mode == "codex":
                 from tools.import_codex_pet import convert
                 new_folder = convert(
                     self.source, self.output_root, preset=self.preset,
