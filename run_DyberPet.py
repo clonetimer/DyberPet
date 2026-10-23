@@ -194,9 +194,13 @@ def _assistant_package_smoke():
     from DyberPet.assistant.portable import inspect_assets
     from DyberPet.assistant.ui import PetAssistantDialog
     from DyberPet.assistant.persona import PERSONAS
+    from DyberPet.assistant.native_bridge import backend_status
+    native = backend_status()
     report = {"resource_root": os.getcwd(), "assets": inspect_assets(os.getcwd()),
               "persona_count": len(PERSONAS), "assistant_dialog": False,
-              "optional_voice_imports": {}}
+              "optional_voice_imports": {}, "native_backend": native}
+    if os.environ.get("DYBERPET_REQUIRE_RUST") == "1" and native["active"] != "rust":
+        raise RuntimeError("Rust backend was requested but packaged extension is missing")
     if not report["assets"]["ok"]:
         raise RuntimeError("Missing portable resources: " + repr(report["assets"]["missing"]))
     app = QApplication.instance() or QApplication([])
