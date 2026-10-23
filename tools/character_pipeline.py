@@ -405,6 +405,14 @@ def inspect_case(case_file):
 
 
 def main(argv=None):
+    # On Windows CI / redirected PowerShell, stdout may default to cp1252.
+    # Displaying Chinese registry names must not abort a read-only audit.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workspace", type=Path, default=DEFAULT_WORKSPACE,
                    help="Local workspace; default is gitignored data/character_pipeline")
