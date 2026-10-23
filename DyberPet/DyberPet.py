@@ -1039,7 +1039,8 @@ class PetWidget(QWidget):
         if not hasattr(self, "_pet_assistant") or self._pet_assistant is None:
             workspace = Path.home() / "Documents" / "DyberPetAssistant"
             self._pet_assistant = PetAssistantDialog(
-                self.curr_pet_name, workspace, self)
+                self.curr_pet_name, workspace, self,
+                role_root=Path(basedir) / "res" / "role")
             self._pet_assistant.reply_ready.connect(self._assistant_reply_bubble)
             self._pet_assistant.action_notice.connect(self._assistant_notice_bubble)
             self._pet_assistant.action_requested.connect(self._assistant_play_action)
