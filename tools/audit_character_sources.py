@@ -35,6 +35,18 @@ def check_catalog(catalog=None, *, today=None, max_age_days=90):
             errors.append("Channel must require individual rights review: " + str(key))
         if not item.get("formats"):
             errors.append("Channel missing declared formats: " + str(key))
+    creators = set()
+    for artist in data.get("creators", []):
+        if artist.get("id") in creators:
+            errors.append("Duplicate creator ID")
+        creators.add(artist.get("id"))
+        if artist.get("channel") not in seen:
+            errors.append("Creator has unknown channel")
+        artist_url = urlparse(artist.get("url", ""))
+        if artist_url.scheme != "https" or not artist_url.netloc:
+            errors.append("Creator missing HTTPS source URL")
+        if artist.get("rights_status") != "unknown":
+            warnings.append("Artist index cannot assert rights without work-specific review")
     candidates = set()
     for row in data.get("candidates", []):
         if row.get("id") in candidates:
@@ -58,7 +70,7 @@ def check_catalog(catalog=None, *, today=None, max_age_days=90):
     except ValueError:
         age = None
         errors.append("Missing valid verified_on date")
-    return {"channels": len(seen), "candidates": len(candidates),
+    return {"channels": len(seen), "creators": len(creators), "candidates": len(candidates),
             "last_manually_checked": data.get("verified_on"),
             "age_days": age, "warnings": warnings, "errors": errors,
             "no_remote_requests": True}
