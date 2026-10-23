@@ -418,6 +418,11 @@ class CharInterface(ScrollArea):
             return
         self.newPetFolder = role_name
         self.__onAddClickedContinue()
+        preview = Path(basedir) / "res" / "role" / role_name / "ANIMATION_PREVIEW.png"
+        if preview.is_file() and self.__showMessageBox(
+                self.tr("Q版角色动作预览"),
+                self.tr("角色已导入。是否打开生成的动作帧预览图，检查动画素材？")):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
 
     def _onChibiThreadFinished(self):
         self.addButton.setEnabled(True)
