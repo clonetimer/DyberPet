@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "DyberPet/assistant/**"
+      - "tools/audit_guga.py"
+      - "docs/guga_authenticity.md"
       - "DyberPet/DyberPet.py"
       - "tests/test_assistant_*.py"
       - "docs/pet_assistant.md"
@@ -35,6 +37,8 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Compile assistant and main entry
         run: python -m compileall -q DyberPet/assistant DyberPet/DyberPet.py
+      - name: Check Guga local fidelity CLI
+        run: python tools/audit_guga.py --help
       - name: Test workspace, PPL and voice guards
         run: python -m unittest discover -s tests -p "test_assistant_*.py" -v
 
