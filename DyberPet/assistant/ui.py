@@ -20,6 +20,7 @@ from .persona import (
     chat_local, list_local_models, AssistantServiceError,
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
+from .guga_audio import record_local_clip, play_local_clip
 from .preferences import load as load_preferences, save as save_preferences, defaults as default_preferences
 
 
@@ -60,6 +61,7 @@ class PetAssistantDialog(QDialog):
             self._prefs_error = str(exc)
         self._build_ui()
         self._apply_preferences()
+        self._sync_guga_controls()
         if self._prefs_error:
             self.status.setText("旧配置未加载（未覆盖原文件）：" + self._prefs_error)
 
@@ -148,6 +150,18 @@ class PetAssistantDialog(QDialog):
         voice_row.addWidget(self.ppl_button)
         body.addLayout(voice_row)
 
+        # The signature sample is independent from speech synthesis / TTS.
+        sample_row = QHBoxLayout()
+        self.guga_sample_label = QLabel("咕嘎标志音效（非系统 TTS）")
+        self.guga_select = QPushButton("登记本地授权 WAV")
+        self.guga_select.clicked.connect(self.select_guga_sample)
+        self.guga_preview = QPushButton("试听咕嘎音效")
+        self.guga_preview.clicked.connect(self.preview_guga_sample)
+        sample_row.addWidget(self.guga_sample_label)
+        sample_row.addWidget(self.guga_select)
+        sample_row.addWidget(self.guga_preview)
+        body.addLayout(sample_row)
+
         self.folder_label = QLabel("当前文件操作目录：" + str(self.workspace.root))
         self.folder_label.setWordWrap(True)
         body.addWidget(self.folder_label)
@@ -178,6 +192,7 @@ class PetAssistantDialog(QDialog):
             return
         self.character_name = name
         self.setWindowTitle("桌宠助手 · " + name)
+        self._sync_guga_controls()
         index = (self.persona.findData("doro") if "doro" in name.lower()
                  else self.persona.findData("guga")
                  if "咕嘎" in name or "guga" in name.lower()
@@ -204,6 +219,58 @@ class PetAssistantDialog(QDialog):
         action = self.action_menu.currentData()
         if action:
             self.action_requested.emit(action)
+
+    def _is_guga(self):
+        text = self.character_name.casefold()
+        return any(label in text for label in ("咕嘎", "咕咕嘎嘎", "guga", "gugugaga"))
+
+    def _sync_guga_controls(self):
+        show = self._is_guga()
+        for widget in (self.guga_sample_label, self.guga_select, self.guga_preview):
+            widget.setVisible(show)
+
+    def select_guga_sample(self):
+        if not self._is_guga():
+            self._job_error("当前角色不是咕嘎")
+            return
+        wav, _ = QFileDialog.getOpenFileName(
+            self, "选择有权在本地使用的咕嘎音效", str(Path.home()), "WAV (*.wav)")
+        if not wav:
+            return
+        author, ok = QInputDialog.getText(
+            self, "音效来源署名", "实际音频作者或发布者：")
+        if not ok or not author.strip():
+            return
+        source, ok = QInputDialog.getText(
+            self, "具体作品来源", "原音效的 HTTPS 作品链接：")
+        if not ok or not source.strip():
+            return
+        if QMessageBox.warning(
+                self, "确认音效本地使用权限",
+                "请确认已核查此音频的具体使用规则，允许在个人桌宠本地使用。\n"
+                "音效不会提交到仓库，也不会被用于声线克隆或模型训练。\n"
+                "此操作只记录用户声明，不代表作品身份及授权已被独立核实。",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+                ) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            result = record_local_clip(
+                wav, author, source, acknowledged_local_rights=True)
+            self.status.setText(
+                "已登记本地音效（不代表已认证原声）：" + result["creator"])
+        except (OSError, ValueError) as exc:
+            self._job_error(str(exc))
+
+    def preview_guga_sample(self):
+        if not self._is_guga():
+            self._job_error("当前角色不是咕嘎")
+            return
+        self.status.setText("正在试听用户选定的本地音效（不是 TTS）。")
+        self._submit(play_local_clip, self._guga_sample_finished)
+
+    def _guga_sample_finished(self, creator):
+        self.status.setText("试听完成，登记来源：" + creator + "；尚未认证为原声。")
 
     def _apply_preferences(self):
         prefs = self._prefs
