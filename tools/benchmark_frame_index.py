@@ -32,8 +32,6 @@ def _frame(path: Path):
 
 
 def benchmark(frames: int = 100, rounds: int = 5) -> dict:
-    if not (1 <= frames <= 500 or not (1 <= rounds <= 20)):
-        raise ValueError("Invalid frame benchmark settings")
     if not (1 <= frames <= 500 and 1 <= rounds <= 20):
         raise ValueError("Frame counts must be 1..500 and rounds 1..20")
     with tempfile.TemporaryDirectory() as temp:
