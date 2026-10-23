@@ -11,6 +11,7 @@ import re
 import struct
 import wave
 from pathlib import Path
+from .character_profiles import resolve_profile, PROFILES, CharacterProfile
 
 REFERENCE_PAGES = {
     "character_background": "https://knowyourmeme.com/memes/gugu-gaga-penguin",
@@ -74,7 +75,12 @@ def inspect_wav(path: str | Path):
             "encoding": "PCM16"}
 
 
-def inspect_guga_role(role_dir: str | Path, voice_path=None) -> dict:
+def inspect_character_role(role_dir: str | Path, character_name: str,
+                           voice_path=None) -> dict:
+    """Check technical completeness; never claim likeness or original voice."""
+    profile = resolve_profile(character_name)
+    if profile is None:
+        raise FidelityError("No registered character fidelity profile: " + str(character_name))
     role = Path(role_dir).expanduser()
     if not role.is_dir() or role.is_symlink():
         raise FidelityError("Role folder is missing or is a symbolic link")
@@ -128,27 +134,44 @@ def inspect_guga_role(role_dir: str | Path, voice_path=None) -> dict:
     if invalid_images:
         problems.append("Some PNG frames are invalid")
     if voice is None:
-        problems.append("No licensed local Guga sample supplied")
+        problems.append("No licensed local character sample supplied")
     return {
         "schema_version": 1,
-        "target": "guga_penguin_fan_derivative",
+        "target": ("guga_penguin_fan_derivative" if profile.key == "guga"
+                   else profile.key + "_character"),
+        "profile_key": profile.key,
+        "profile_title": profile.title,
         "role_name": role.name,
-        "reference_pages": REFERENCE_PAGES,
+        "reference_pages": (
+            REFERENCE_PAGES if profile.key == "guga"
+            else {"primary_" + str(i+1): ref for i, ref in enumerate(profile.references)}),
+        "expected_visual_checks": list(profile.visual_checks),
+        "expected_motion_checks": list(profile.motion_checks),
+        "expected_tone_checks": list(profile.tone_checks),
+        "expected_audio_checks": list(profile.audio_checks),
+        "origin": profile.origin,
+        "variant_note": profile.variant_note,
+        "floating": profile.floating,
         "action_coverage": coverage,
         "frame_count_by_action": frame_counts,
         "image_size_mismatches": sorted(set(wrong_size)),
         "invalid_images": sorted(set(invalid_images)),
         "sample_audio": voice,
         "manual_review_required": {
-            "shape": "Compare to specific creator/version; penguin hood, silhouette, "
-                     "eyes, expression and proportion, do not infer from file names",
-            "motion": "Review standing, waddling, reacting, sleep and mouth animation",
-            "signature_audio": "Compare authorized recording by ear; inspect attribution",
-            "chat_voice": "A separate TTS/synth voice review is needed; pyttsx3 is generic",
-            "rights": "Confirm use and redistribution rights per actual work and audio",
+            "shape": "Compare creator/version and: " + "; ".join(profile.visual_checks),
+            "motion": "Review: " + "; ".join(profile.motion_checks),
+            "signature_audio": "; ".join(profile.audio_checks),
+            "chat_voice": "Generic pyttsx3 voice is NOT the character's original voice",
+            "tone": "; ".join(profile.tone_checks),
+            "rights": "Confirm rights separately for image, motion, audio, derivative and release",
         },
         "issues": problems,
         "authenticity_status": "not_verified",
         "not_verified_reason":
             "Metadata and frame counts cannot prove resemblance or permissions",
     }
+
+
+def inspect_guga_role(role_dir: str | Path, voice_path=None) -> dict:
+    """Backward-compatible Guga-specific entry for existing UI and tests."""
+    return inspect_character_role(role_dir, "guga", voice_path)
