@@ -155,6 +155,31 @@ def build_configs(available: set[str], version: int, name: str,
     return act_conf, pet_conf, info
 
 
+def make_personality_bubbles(preset: str | None) -> dict:
+    """Original, text-only pet reactions. No third-party voice or dialogue assets."""
+    lines = {
+        "guga": {
+            "pat_random_1": "咕嘎！听见你啦！",
+            "pat_random_2": "今天也一起开心玩耍吧！",
+            "pat_random_3": "咕嘎咕嘎~",
+            "pat_frequent": "哎呀，戳得太快啦！",
+            "feed_done": "好耶，收到了！",
+            "pat_focus": "现在是专心时间，咕嘎会安静陪着你。",
+        },
+        "doro": {
+            "pat_random_1": "Doro！",
+            "pat_random_2": "Doro正在观察你的桌面。",
+            "pat_random_3": "发现一颗小心心。",
+            "pat_frequent": "Doro被戳晕了！",
+            "feed_done": "Doro很满意！",
+            "pat_focus": "Doro正在安静陪你工作。",
+        },
+    }.get(preset or "", {})
+    return {key: {"icon": None, "message": message,
+                  "start_audio": None, "end_audio": None}
+            for key, message in lines.items()}
+
+
 def make_info_images(idle: "Image.Image", info_directory: Path) -> None:
     """Generate a real avatar and cover without modifying the source animation."""
     bbox = idle.getchannel("A").getbbox()
@@ -222,6 +247,11 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
         (working / "info").mkdir()
         make_info_images(frames["idle"][0], working / "info")
         (working / "info" / "info.json").write_text(json_text(info), encoding="utf-8")
+        bubble_config = make_personality_bubbles(preset)
+        if bubble_config:
+            (working / "note").mkdir()
+            (working / "note" / "bubble_conf.json").write_text(
+                json_text(bubble_config), encoding="utf-8")
         (working / "IMPORT_REPORT.json").write_text(
             json_text({"format": f"Codex Pets V{version}", "warnings": warnings,
                        "frame_counts": {k: len(v) for k, v in frames.items()},
