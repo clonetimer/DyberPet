@@ -167,6 +167,22 @@ def make_system_prompt(persona_key: str, relationship: dict | None = None,
     return prompt
 
 
+def list_local_models(base_url: str = DEFAULT_CHAT_URL) -> list[str]:
+    """Discover model IDs from a local LM Studio OpenAI-compatible service."""
+    result = _json_request(_local_base(base_url) + "/v1/models", timeout=5)
+    if not isinstance(result, dict) or not isinstance(result.get("data"), list):
+        raise AssistantServiceError("Local model list has an invalid response")
+    names = []
+    for item in result["data"][:100]:
+        if isinstance(item, dict) and isinstance(item.get("id"), str):
+            name = item["id"].strip()
+            if name and len(name) <= 120 and name not in names:
+                names.append(name)
+    if not names:
+        raise AssistantServiceError("No local model IDs returned; load a model first")
+    return names
+
+
 def chat_local(text: str, *, persona_key="companion", state=None, ppl_prompt="",
                base_url=DEFAULT_CHAT_URL, model="", timeout=25) -> str:
     if not text or len(text) > 2000:
