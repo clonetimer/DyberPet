@@ -1,0 +1,286 @@
+"""Q版桌宠 assistant dialog: explicit file tools, local voice and PPL persona.
+
+Each operation is started by a direct user click. AI text never grants file
+permissions or triggers filesystem actions. No network calls on the Qt thread.
+"""
+from __future__ import annotations
+
+import uuid
+from pathlib import Path
+
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtWidgets import (
+    QCheckBox, QComboBox, QDialog, QFormLayout, QHBoxLayout, QInputDialog,
+    QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout,
+)
+
+from .files import PetWorkspace, WorkspaceError
+from .persona import (
+    DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, PPLCharacterClient,
+    chat_local, AssistantServiceError,
+)
+from .voice import recognize_once, speak_once, VoiceUnavailable
+
+
+class _AssistantJob(QThread):
+    success = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, task, *args, **kwargs):
+        super().__init__()
+        self._task, self._args, self._kwargs = task, args, kwargs
+
+    def run(self):
+        try:
+            self.success.emit(self._task(*self._args, **self._kwargs))
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class PetAssistantDialog(QDialog):
+    def __init__(self, character_name: str, workspace: Path, parent=None):
+        super().__init__(parent)
+        self.character_name = character_name
+        self.workspace = PetWorkspace(workspace)
+        self._job = None
+        self._last_reply = ""
+        self._build_ui()
+
+    def _build_ui(self):
+        self.setWindowTitle("桌宠助手 · " + self.character_name)
+        self.resize(560, 580)
+        body = QVBoxLayout(self)
+        title = QLabel("人设、语音与受控文件操作（本地优先）")
+        body.addWidget(title)
+
+        form = QFormLayout()
+        self.persona = QComboBox()
+        for key, item in PERSONAS.items():
+            self.persona.addItem(item.name, key)
+        lower = self.character_name.lower()
+        if "doro" in lower:
+            self.persona.setCurrentIndex(self.persona.findData("doro"))
+        elif "咕嘎" in lower or "guga" in lower:
+            self.persona.setCurrentIndex(self.persona.findData("guga"))
+        form.addRow("当前人设", self.persona)
+
+        self.ppl_enabled = QCheckBox("读取 PPL 关系状态（需单独启动 PPL）")
+        self.ppl_endpoint = QLineEdit(DEFAULT_PPL_URL)
+        form.addRow(self.ppl_enabled)
+        form.addRow("PPL 地址", self.ppl_endpoint)
+
+        self.llm_endpoint = QLineEdit(DEFAULT_CHAT_URL)
+        self.llm_model = QLineEdit()
+        self.llm_model.setPlaceholderText("例如：本地 LM Studio 已加载模型的 ID")
+        form.addRow("本地模型地址", self.llm_endpoint)
+        form.addRow("模型 ID", self.llm_model)
+        self.voice_model = QLineEdit()
+        self.voice_model.setPlaceholderText("Vosk 已下载的本地模型文件夹路径")
+        form.addRow("离线识别模型", self.voice_model)
+        body.addLayout(form)
+
+        self.chat_log = QPlainTextEdit()
+        self.chat_log.setReadOnly(True)
+        self.chat_log.appendPlainText(
+            "桌宠助手已打开。聊天需要本地模型服务和正确的模型 ID；"
+            "PPL 只管理关系状态，不直接生成回复。")
+        body.addWidget(self.chat_log, 1)
+
+        message_row = QHBoxLayout()
+        self.message = QLineEdit()
+        self.message.setPlaceholderText("输入文字，或点击“按住式录音”获取一句语音文字")
+        self.message.returnPressed.connect(self.send_message)
+        self.send_button = QPushButton("发送")
+        self.send_button.clicked.connect(self.send_message)
+        message_row.addWidget(self.message, 1)
+        message_row.addWidget(self.send_button)
+        body.addLayout(message_row)
+
+        voice_row = QHBoxLayout()
+        self.listen_button = QPushButton("录音识别（4秒）")
+        self.listen_button.clicked.connect(self.listen_once)
+        self.speak_button = QPushButton("朗读上一条回复")
+        self.speak_button.clicked.connect(self.read_reply)
+        self.ppl_button = QPushButton("向 PPL 发送安慰事件")
+        self.ppl_button.clicked.connect(self.comfort)
+        voice_row.addWidget(self.listen_button)
+        voice_row.addWidget(self.speak_button)
+        voice_row.addWidget(self.ppl_button)
+        body.addLayout(voice_row)
+
+        label = QLabel("文件操作只限专属工作区：" + str(self.workspace.root))
+        label.setWordWrap(True)
+        body.addWidget(label)
+        file_row = QHBoxLayout()
+        create_button = QPushButton("创建文件")
+        delete_button = QPushButton("删除到可恢复区")
+        restore_button = QPushButton("恢复文件")
+        create_button.clicked.connect(self.create_file)
+        delete_button.clicked.connect(self.delete_file)
+        restore_button.clicked.connect(self.restore_file)
+        for widget in (create_button, delete_button, restore_button):
+            file_row.addWidget(widget)
+        body.addLayout(file_row)
+        self.status = QLabel("麦克风默认关闭；所有文件动作均须用户亲自选择。")
+        self.status.setWordWrap(True)
+        body.addWidget(self.status)
+
+    def set_character(self, name: str):
+        if self.character_name == name:
+            return
+        self.character_name = name
+        self.setWindowTitle("桌宠助手 · " + name)
+        index = (self.persona.findData("doro") if "doro" in name.lower()
+                 else self.persona.findData("guga")
+                 if "咕嘎" in name or "guga" in name.lower()
+                 else self.persona.findData("companion"))
+        self.persona.setCurrentIndex(max(index, 0))
+        self.chat_log.appendPlainText("已切换当前桌宠：" + name)
+
+    def _submit(self, task, on_success, *args, **kwargs):
+        if self._job is not None:
+            self.status.setText("上一项语音/对话任务仍在执行")
+            return
+        self.send_button.setEnabled(False)
+        self.listen_button.setEnabled(False)
+        self.ppl_button.setEnabled(False)
+        self.speak_button.setEnabled(False)
+        job = _AssistantJob(task, *args, **kwargs)
+        self._job = job
+        job.success.connect(on_success)
+        job.failed.connect(self._job_error)
+        job.finished.connect(self._job_finished)
+        job.start()
+
+    def _job_finished(self):
+        job = self._job
+        self._job = None
+        for button in (self.send_button, self.listen_button,
+                       self.ppl_button, self.speak_button):
+            button.setEnabled(True)
+        if job is not None:
+            job.deleteLater()
+
+    def _job_error(self, detail: str):
+        self.status.setText("操作失败：" + detail)
+        self.chat_log.appendPlainText("[错误] " + detail)
+
+    def _relationship_state(self):
+        if not self.ppl_enabled.isChecked():
+            return None
+        return PPLCharacterClient(self.ppl_endpoint.text()).state(
+            self.character_name)
+
+    def send_message(self):
+        text = self.message.text().strip()
+        if not text:
+            return
+        # The assistant only replies as text; the output is never passed to
+        # PetWorkspace and cannot mutate user files.
+        endpoint, model = self.llm_endpoint.text(), self.llm_model.text()
+        character, persona = self.character_name, self.persona.currentData()
+        ppl = (self.ppl_endpoint.text() if self.ppl_enabled.isChecked()
+               else None)
+        self.message.clear()
+        self.chat_log.appendPlainText("你：" + text)
+        self.status.setText("正在请求本地模型…")
+        def task():
+            state = PPLCharacterClient(ppl).state(character) if ppl else None
+            return chat_local(text, persona_key=persona, state=state,
+                              base_url=endpoint, model=model)
+        self._submit(task, self._message_reply)
+
+    def _message_reply(self, reply):
+        self._last_reply = reply
+        self.chat_log.appendPlainText(self.character_name + "：" + reply)
+        self.status.setText("回复已生成；点击朗读按钮可使用离线语音播报。")
+
+    def listen_once(self):
+        model = self.voice_model.text().strip()
+        if not model:
+            self._job_error("请先设置已安装的 Vosk 离线识别模型目录")
+            return
+        self.status.setText("正在录音 4 秒；只在这次点击后开启麦克风…")
+        self._submit(recognize_once, self._heard, model, seconds=4)
+
+    def _heard(self, text):
+        self.message.setText(text)
+        self.status.setText("语音已转为文字；请检查后点击“发送”。")
+
+    def read_reply(self):
+        if not self._last_reply:
+            self._job_error("还没有可朗读的回复")
+            return
+        self.status.setText("正在使用本机语音合成…")
+        self._submit(speak_once, lambda _: self.status.setText("朗读结束"),
+                     self._last_reply)
+
+    def comfort(self):
+        if not self.ppl_enabled.isChecked():
+            self._job_error("请先勾选 PPL 连接，并启动独立的 Character Governance 服务")
+            return
+        character, endpoint = self.character_name, self.ppl_endpoint.text()
+        event_id = str(uuid.uuid4())
+        self.status.setText("正在通知本地 PPL Character Governance…")
+        self._submit(
+            lambda: PPLCharacterClient(endpoint).event(
+                character, "COMFORT", event_id),
+            lambda state: self.chat_log.appendPlainText(
+                "[PPL] 关系状态：" + str(state)))
+
+    def create_file(self):
+        name, ok = QInputDialog.getText(
+            self, "创建文本文件", "新文件名（支持 .txt/.md/.json/.csv）：")
+        if not ok:
+            return
+        content, ok = QInputDialog.getMultiLineText(
+            self, "文件内容", "输入 UTF-8 文本：")
+        if not ok:
+            return
+        if QMessageBox.question(
+                self, "确认创建文件",
+                f"仅在桌宠专属目录内创建：{name}\n不覆盖任何已有文件。"
+                ) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            path = self.workspace.create(name, content)
+            self.status.setText("已创建：" + str(path))
+        except (WorkspaceError, OSError) as exc:
+            self._job_error(str(exc))
+
+    def delete_file(self):
+        entries = self.workspace.list_files()
+        if not entries:
+            self._job_error("工作区没有可删除的文件")
+            return
+        name, ok = QInputDialog.getItem(
+            self, "选择文件", "删除到桌宠可恢复区：", entries, 0, False)
+        if not ok:
+            return
+        if QMessageBox.warning(
+                self, "确认移入可恢复区",
+                "仅移动本应用工作区文件，不会永久删除。\n确认移动：" + name,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+                ) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            key = self.workspace.soft_delete(name)
+            self.status.setText("文件已移入可恢复区：" + key)
+        except (WorkspaceError, OSError) as exc:
+            self._job_error(str(exc))
+
+    def restore_file(self):
+        entries = self.workspace.deleted_files()
+        if not entries:
+            self._job_error("没有可恢复的文件")
+            return
+        key, ok = QInputDialog.getItem(
+            self, "恢复文件", "选择需要恢复的记录：", entries, 0, False)
+        if not ok:
+            return
+        try:
+            target = self.workspace.restore(key)
+            self.status.setText("已恢复：" + str(target))
+        except (WorkspaceError, OSError) as exc:
+            self._job_error(str(exc))
