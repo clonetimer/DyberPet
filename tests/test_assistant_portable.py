@@ -17,13 +17,14 @@ class PortableStartupTests(unittest.TestCase):
 
     def test_frozen_executable_changes_to_exe_directory(self):
         original = Path.cwd()
-        try:
-            with tempfile.TemporaryDirectory() as folder:
+        with tempfile.TemporaryDirectory() as folder:
+            try:
                 binary = Path(folder) / "DyberPet.exe"
                 self.assertEqual(initialize_portable_directory(True, binary), Path(folder).resolve())
                 self.assertEqual(Path.cwd(), Path(folder).resolve())
-        finally:
-            os.chdir(original)
+            finally:
+                # On Windows an active process cannot remove its own CWD.
+                os.chdir(original)
 
     def test_explicit_missing_assets_prevent_false_smoke_pass(self):
         with tempfile.TemporaryDirectory() as folder:
