@@ -115,12 +115,14 @@ def resolve_profile(character_name: str) -> Optional[CharacterProfile]:
         for alias in profile.aliases:
             if norm == _canonical(alias):
                 return profile
-    # A role folder may end with "_2", "-q版" or " (v2)".
+    # Normalize only recognized variant endings; never substring-match a name.
     for profile in PROFILES.values():
         for alias in sorted(profile.aliases, key=len, reverse=True):
-            if re.match(r"^" + re.escape(alias.casefold()) +
-                        r"(?:[_\-\s(（\[](?:q版|q|v\d+|\d+|chibi).*)$", name):
-                return profile
+            canonical_alias = _canonical(alias)
+            if norm.startswith(canonical_alias):
+                suffix = norm[len(canonical_alias):]
+                if re.fullmatch(r"(?:v[0-9]+|[0-9]+|q版[0-9]*|q|chibi(?:v?[0-9]+)?)", suffix):
+                    return profile
     return None
 
 
