@@ -14,6 +14,15 @@ class SourceCatalogAuditTest(unittest.TestCase):
         self.assertGreaterEqual(report["channels"], 4)
         self.assertTrue(report["no_remote_requests"])
 
+    def test_known_creators_have_stable_profiles_not_false_permissions(self):
+        catalog = registry()
+        people = {c["id"]: c for c in catalog["creators"]}
+        self.assertIn("bilibili_ligugu", people)
+        self.assertIn("bilibili_wudaogugu", people)
+        self.assertTrue(all(c["rights_status"] == "unknown"
+                            for c in people.values()))
+        self.assertEqual(check_catalog(today=dt.date(2026, 10, 23))["creators"], 3)
+
     def test_stale_catalog_surfaces_review_warning(self):
         report = check_catalog(today=dt.date(2027, 3, 1), max_age_days=90)
         self.assertTrue(any("last manually checked" in w for w in report["warnings"]))
