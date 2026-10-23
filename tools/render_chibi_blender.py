@@ -76,6 +76,23 @@ def render_blender(blender: str, output: Path, *, source: Path | None = None,
                 "Only GLB/GLTF/FBX supported. PMX/VRM/BLEND must be "
                 "converted to GLB with authorized plugins and model permissions."
             )
+        if source.suffix.lower() == ".gltf":
+            # Detached GLTF textures and binary buffers do not share the
+            # single-file intake fingerprint. Require an embedded GLTF or GLB
+            # so changes cannot bypass the reviewed source SHA-256.
+            try:
+                description = json.loads(source.read_text(encoding="utf-8"))
+                references = [
+                    obj.get("uri", "") for key in ("buffers", "images")
+                    for obj in description.get(key, [])
+                ]
+            except (OSError, UnicodeDecodeError, ValueError, TypeError) as exc:
+                raise RenderError("Invalid GLTF JSON") from exc
+            if any(uri and not uri.startswith("data:") for uri in references):
+                raise RenderError(
+                    "External GLTF textures or buffers are not hashed by this "
+                    "single-file pipeline. Export self-contained GLB first."
+                )
     output = Path(output).expanduser().resolve()
     if output.exists():
         raise FileExistsError("Output directory already exists; never overwrite: " + str(output))
