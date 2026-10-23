@@ -21,7 +21,10 @@ from .persona import (
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
 from .guga_audio import record_local_clip, play_local_clip, load_local_clip
-from .character_fidelity import inspect_guga_role, inspect_character_role, FidelityError
+from .character_fidelity import (
+    inspect_guga_role, inspect_character_role, inspect_mini_character_role,
+    FidelityError,
+)
 from .character_profiles import resolve_profile
 from .character_audio import (
     register as register_character_audio, read as read_character_audio,
@@ -177,6 +180,9 @@ class PetAssistantDialog(QDialog):
         self.guga_audit.clicked.connect(self.audit_character)
         sample_actions.addWidget(self.guga_audit)
         body.addLayout(sample_actions)
+        self.mini_audit = QPushButton("检查派蒙迷你宠物（res/pet）")
+        self.mini_audit.clicked.connect(self.audit_mini_paimon)
+        body.addWidget(self.mini_audit)
 
         self.folder_label = QLabel("当前文件操作目录：" + str(self.workspace.root))
         self.folder_label.setWordWrap(True)
@@ -307,6 +313,48 @@ class PetAssistantDialog(QDialog):
         key = self.character_name
         self.status.setText("本地试听中；不是角色对话 TTS。")
         self._submit(play_character_audio, self._guga_sample_finished, key)
+
+    def audit_mini_paimon(self):
+        """Inspect independently installed SubPet roles, not main PetWidget."""
+        root = self.role_root.expanduser().resolve().parent / "pet"
+        try:
+            matches = (sorted(
+                p for p in root.iterdir()
+                if p.is_dir() and not p.is_symlink()
+                and resolve_profile(p.name) is not None
+                and resolve_profile(p.name).key == "paimon")
+                if root.is_dir() else [])
+            if not matches:
+                raise FidelityError(
+                    "没有检测到派蒙迷你宠物。请检查安装目录 res/pet/Paimon "
+                    "或 res/pet/派蒙；主角色包不等于迷你宠物包。")
+            selected = matches[0]
+            if len(matches) > 1:
+                choice, ok = QInputDialog.getItem(
+                    self, "选择已安装的派蒙迷你宠物",
+                    "选择一个 res/pet 子目录：",
+                    [p.name for p in matches], 0, False)
+                if not ok:
+                    return
+                selected = next(p for p in matches if p.name == choice)
+            report = inspect_mini_character_role(selected, selected.name)
+            flags = report["mini_follow"]
+            lines = [
+                "本机迷你宠物：" + str(selected),
+                "跟随主宠物 X：" + ("是" if flags["follow_main_x"] else "否"),
+                "跟随主宠物 Y：" + ("是" if flags["follow_main_y"] else "否"),
+                "可选附加悬浮：" + (
+                    "可用（受全局设置与迷你宠物菜单开关控制）"
+                    if flags["optional_hover_supported"] else "不启用"),
+                "工程原因：" + flags["reason"],
+                "静态缺口：" + (
+                    "；".join(report["issues"]) if report["issues"] else "无"),
+                "形象及声音：尚未与具体作品人工验证。"
+            ]
+            QMessageBox.information(
+                self, "派蒙迷你宠物独立检查", "\n".join(lines))
+        except (FidelityError, OSError, ValueError) as exc:
+            self._job_error("迷你宠物检查失败：" + str(exc))
 
     def audit_character(self):
         profile = resolve_profile(self.character_name)
