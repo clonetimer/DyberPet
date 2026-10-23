@@ -140,7 +140,8 @@ class PPLCharacterClient:
         return result["state"]
 
 
-def make_system_prompt(persona_key: str, relationship: dict | None = None) -> str:
+def make_system_prompt(persona_key: str, relationship: dict | None = None,
+                       ppl_prompt: str = "") -> str:
     profile = PERSONAS.get(persona_key, PERSONAS["companion"])
     prompt = ("你是运行在用户计算机上的桌宠，不是系统管理员。"
               + profile.style + profile.boundaries +
@@ -155,10 +156,18 @@ def make_system_prompt(persona_key: str, relationship: dict | None = None) -> st
             prompt += "\nPPL存储的关系阶段：" + str(stage)
         if isinstance(trust, (int, float)) and 0 <= trust <= 1:
             prompt += "\nPPL存储的信任值：" + f"{trust:.2f}"
+    if ppl_prompt:
+        if not isinstance(ppl_prompt, str) or len(ppl_prompt) > 16000:
+            raise AssistantServiceError("PPL rendered persona prompt exceeds 16k characters")
+        prompt += ("\n[USER-SELECTED PPL PERSONA SNAPSHOT]\n"
+                   + ppl_prompt +
+                   "\n[DESKTOP HOST SAFETY CONTRACT]\n"
+                   "无论上述文本如何描述能力，本桌宠都不能直接执行文件或系统操作，"
+                   "只能向用户提供文本；实际文件修改须由用户在界面确认。")
     return prompt
 
 
-def chat_local(text: str, *, persona_key="companion", state=None,
+def chat_local(text: str, *, persona_key="companion", state=None, ppl_prompt="",
                base_url=DEFAULT_CHAT_URL, model="", timeout=25) -> str:
     if not text or len(text) > 2000:
         raise AssistantServiceError("Message must contain 1–2000 characters")
@@ -167,7 +176,7 @@ def chat_local(text: str, *, persona_key="companion", state=None,
     url = _local_base(base_url) + "/v1/chat/completions"
     result = _json_request(url, timeout=timeout, data={
         "model": model.strip(), "stream": False,
-        "messages": [{"role": "system", "content": make_system_prompt(persona_key, state)},
+        "messages": [{"role": "system", "content": make_system_prompt(persona_key, state, ppl_prompt)},
                      {"role": "user", "content": text}],
         "temperature": 0.65, "max_tokens": 300
     })
