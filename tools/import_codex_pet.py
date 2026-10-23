@@ -248,8 +248,11 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
     warnings = []
     shifts = {}
     if style == "chibi" and "idle" in available:
-        frames, shifts, issues = normalize_grounded_frames(frames)
-        warnings.extend(issues)
+        if (profile_info or {}).get("ground_mode") == "floating":
+            warnings.append("Floating profile: grounded baseline correction intentionally skipped")
+        else:
+            frames, shifts, issues = normalize_grounded_frames(frames)
+            warnings.extend(issues)
     for state, row, maximum, _ in STATES:
         populated = [i for i in range(maximum)
                      if atlas.crop((i * CELL[0], row * CELL[1],
