@@ -20,7 +20,8 @@ from .persona import (
     chat_local, list_local_models, AssistantServiceError,
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
-from .guga_audio import record_local_clip, play_local_clip
+from .guga_audio import record_local_clip, play_local_clip, load_local_clip
+from .character_fidelity import inspect_guga_role, FidelityError
 from .preferences import load as load_preferences, save as save_preferences, defaults as default_preferences
 
 
@@ -44,9 +45,11 @@ class PetAssistantDialog(QDialog):
     action_notice = Signal(str)
     action_requested = Signal(str)
 
-    def __init__(self, character_name: str, workspace: Path, parent=None):
+    def __init__(self, character_name: str, workspace: Path, parent=None,
+                 role_root: Path | None = None):
         super().__init__(parent)
         self.character_name = character_name
+        self.role_root = Path(role_root) if role_root is not None else Path.cwd() / "res" / "role"
         self._default_workspace = Path(workspace)
         self.workspace = PetWorkspace(self._default_workspace)
         self._job = None
@@ -160,6 +163,9 @@ class PetAssistantDialog(QDialog):
         sample_row.addWidget(self.guga_sample_label)
         sample_row.addWidget(self.guga_select)
         sample_row.addWidget(self.guga_preview)
+        self.guga_audit = QPushButton("核查当前咕嘎形象")
+        self.guga_audit.clicked.connect(self.audit_guga)
+        sample_row.addWidget(self.guga_audit)
         body.addLayout(sample_row)
 
         self.folder_label = QLabel("当前文件操作目录：" + str(self.workspace.root))
@@ -226,7 +232,8 @@ class PetAssistantDialog(QDialog):
 
     def _sync_guga_controls(self):
         show = self._is_guga()
-        for widget in (self.guga_sample_label, self.guga_select, self.guga_preview):
+        for widget in (self.guga_sample_label, self.guga_select,
+                       self.guga_preview, self.guga_audit):
             widget.setVisible(show)
 
     def select_guga_sample(self):
@@ -261,6 +268,36 @@ class PetAssistantDialog(QDialog):
                 "已登记本地音效（尚未认证原声）：" + result["creator"])
         except (OSError, ValueError) as exc:
             self._job_error(str(exc))
+
+    def audit_guga(self):
+        if not self._is_guga():
+            self._job_error("只能检查当前选择的咕嘎角色")
+            return
+        # Use the actual current role folder, not a reference screenshot.
+        folder = self.role_root / self.character_name
+        try:
+            wav = None
+            try:
+                clip = load_local_clip()
+                if clip:
+                    wav = clip["clip"]
+            except FidelityError as exc:
+                self.status.setText("音效校验异常：" + str(exc))
+            result = inspect_guga_role(folder, wav)
+            coverage = result["action_coverage"]
+            lines = [
+                "本机角色目录：" + str(folder),
+                "动作覆盖：" + "、".join(
+                    name + ("：有" if value["available"] else "：缺")
+                    for name, value in coverage.items()
+                ),
+                "问题：" + ("；".join(result["issues"]) if result["issues"] else "未检测到静态问题"),
+                "真实性：尚未核实（必须与具体作者作品的图像和音频人工对比）。"
+            ]
+            QMessageBox.information(
+                self, "咕嘎本地角色工程验收", "\n".join(lines))
+        except (FidelityError, OSError, ValueError) as exc:
+            self._job_error("角色检查失败：" + str(exc))
 
     def preview_guga_sample(self):
         if not self._is_guga():
