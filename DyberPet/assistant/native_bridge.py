@@ -45,6 +45,22 @@ def native_png_metadata(path: str | Path) -> dict[str, Any] | None:
     return engine.png_metadata(str(Path(path)))
 
 
+def native_batch_png_headers(paths) -> list | None:
+    """Read a bounded group of PNG IHDRs in one native call.
+
+    Returns tuples (width, height, depth, color_type), or None entries for
+    invalid PNGs. A returned None *for the whole call* means use the original
+    Python validation implementation. Native I/O exceptions are propagated.
+    """
+    engine = _rust_module()
+    if engine is None:
+        return None
+    paths = [str(Path(path)) for path in paths]
+    if len(paths) > 10_000:
+        raise ValueError("Batch exceeds 10000 PNG paths")
+    return engine.batch_png_headers(paths)
+
+
 def sha256_file(path: str | Path) -> str:
     """Hash a file; exact Python output and errors by default."""
     engine = _rust_module()
