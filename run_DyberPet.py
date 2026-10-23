@@ -1,8 +1,17 @@
 import sys
 from sys import platform
 import ctypes
-from tendo import singleton
 import os
+
+# Bootstrap *before* any legacy module loads resources or writes save data.
+# On Windows, DyberPet's base dir is the current working directory. This
+# guarantees the EXE can be started from any user folder / desktop shortcut.
+from DyberPet.assistant.portable import initialize_portable_directory
+initialize_portable_directory()
+if "--assistant-smoke" in sys.argv:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from tendo import singleton
 from DyberPet.utils import read_json
 from DyberPet.DyberPet import PetWidget
 from DyberPet.Notification import DPNote
@@ -177,7 +186,46 @@ if platform == 'win32':
 else:
     basedir = os.path.dirname(__file__)
 
+def _assistant_package_smoke():
+    """Dry-run genuine frozen imports/Qt dialog without hardware or network."""
+    import json
+    import tempfile
+    from pathlib import Path
+    from DyberPet.assistant.portable import inspect_assets
+    from DyberPet.assistant.ui import PetAssistantDialog
+    from DyberPet.assistant.persona import PERSONAS
+    report = {"resource_root": os.getcwd(), "assets": inspect_assets(os.getcwd()),
+              "persona_count": len(PERSONAS), "assistant_dialog": False,
+              "optional_voice_imports": {}}
+    if not report["assets"]["ok"]:
+        raise RuntimeError("Missing portable resources: " + repr(report["assets"]["missing"]))
+    app = QApplication.instance() or QApplication([])
+    with tempfile.TemporaryDirectory() as temp:
+        dialog = PetAssistantDialog(
+            "Kitty", Path(temp) / "sandbox",
+            role_root=Path(os.getcwd()) / "res" / "role")
+        report["assistant_dialog"] = bool(
+            dialog.workspace.root.is_dir() and dialog.persona.count() >= 7)
+        dialog.close()
+    for module in ("pyttsx3", "vosk", "sounddevice"):
+        try:
+            __import__(module)
+            report["optional_voice_imports"][module] = True
+        except Exception as exc:
+            report["optional_voice_imports"][module] = str(exc)
+    if not report["assistant_dialog"]:
+        raise RuntimeError("Portable assistant dialog did not initialize")
+    path = os.environ.get("DYBERPET_SMOKE_REPORT")
+    if path:
+        Path(path).write_text(json.dumps(report, ensure_ascii=False, indent=2),
+                              encoding="utf-8")
+    print("DYBERPET_ASSISTANT_SMOKE_OK", flush=True)
+
+
 if __name__ == '__main__':
+    if "--assistant-smoke" in sys.argv:
+        _assistant_package_smoke()
+        sys.exit(0)
 
     # Avoid multiple process
     try:
