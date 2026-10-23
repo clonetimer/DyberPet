@@ -138,6 +138,7 @@ class AssistantQtTests(unittest.TestCase):
                     "action_coverage": {"idle": {"available": True},
                                         "speak": {"available": False}},
                     "issues": ["Missing speaking animation"],
+                    "runtime_motion_policy": {"kind": "hover"},
                 }) as inspector, patch(
                 "PySide6.QtWidgets.QMessageBox.information") as dialog:
             self.dialog.audit_character()
