@@ -15,7 +15,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QStandardPaths, QSize
 from PySide6.QtGui import QDesktopServices, QIcon, QFont
-from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QSizePolicy, QHBoxLayout, QSpacerItem
+from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QSizePolicy, QHBoxLayout, QSpacerItem
 
 from .custom_utils import CharCard, CharCardGroup, CharLine
 from DyberPet.conf import CheckCharFiles
@@ -308,6 +308,7 @@ class CharInterface(ScrollArea):
         try:
             # Lazily import to keep regular DyberPet characters working without Pillow.
             from tools.import_codex_pet import convert
+            from tools.chibi_profiles import CHIBI_PROFILES
             manifest = json.loads(
                 (Path(sourceFolder) / "pet.json").read_text(encoding="utf-8"))
             source_id = manifest.get("id", "")
@@ -315,9 +316,26 @@ class CharInterface(ScrollArea):
             known = {"guga--circus": "guga",
                      "doro--lingxiaotian": "doro"}
             preset = known.get(source_id)
+            default_choice = "使用素材名称（Q版自动适配）"
+            choices = [default_choice] + [
+                f"{profile['franchise']} · {profile['name']}  [{key}]"
+                for key, profile in CHIBI_PROFILES.items()
+            ]
+            selected, accepted = QInputDialog.getItem(
+                self, self.tr("Q版角色模板"),
+                self.tr("选择文字气泡和显示模板（不包含角色图片）："),
+                choices, 0, False)
+            if not accepted:
+                return
+            profile = None if selected == default_choice else selected.rsplit("[", 1)[1][:-1]
+            folder_name = None
+            if profile is not None:
+                folder_name = "".join(part.capitalize() for part in profile.split("_"))
             new_folder = convert(Path(sourceFolder),
                                  Path(basedir) / "res" / "role",
-                                 preset=preset)
+                                 preset=preset if profile is None else None,
+                                 style="chibi", profile=profile,
+                                 folder=folder_name)
             statCode, errorList = CheckCharFiles(str(new_folder))
             if statCode != 0:
                 rmtree(new_folder)
@@ -330,7 +348,7 @@ class CharInterface(ScrollArea):
                 ImportError, json.JSONDecodeError) as exc:
             self.__showMessageBox(self.tr("Adding Failed"),
                 self.tr("Could not import Codex character: ") + str(exc) +
-                "\\n" + self.tr("The input must contain pet.json and a V1/V2 spritesheet. "
+                "\n" + self.tr("The input must contain pet.json and a V1/V2 spritesheet. "
                                   "Pillow is required for this feature."))
         finally:
             self.addButton.setEnabled(True)
