@@ -25,7 +25,8 @@ def offset_frame(frame, dx: int, dy: int):
         raise ValueError("horizontal shift would clip sprite")
     if region[1] + dy < 0 or region[3] + dy > frame.height:
         raise ValueError("vertical shift would clip sprite")
-    shifted = type(frame).new("RGBA", frame.size, (0, 0, 0, 0))
+    from PIL import Image
+    shifted = Image.new("RGBA", frame.size, (0, 0, 0, 0))
     shifted.alpha_composite(frame, (dx, dy))
     return shifted
 
