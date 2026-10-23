@@ -258,7 +258,7 @@ class PetAssistantDialog(QDialog):
             result = record_local_clip(
                 wav, author, source, acknowledged_local_rights=True)
             self.status.setText(
-                "已登记本地音效（不代表已认证原声）：" + result["creator"])
+                "已登记本地音效（尚未认证原声）：" + result["creator"])
         except (OSError, ValueError) as exc:
             self._job_error(str(exc))
 
