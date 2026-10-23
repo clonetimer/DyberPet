@@ -12,6 +12,7 @@ import struct
 import wave
 from pathlib import Path
 from .character_profiles import resolve_profile, PROFILES, CharacterProfile
+from .character_motion import style_for
 
 REFERENCE_PAGES = {
     "character_background": "https://knowyourmeme.com/memes/gugu-gaga-penguin",
@@ -135,6 +136,25 @@ def inspect_character_role(role_dir: str | Path, character_name: str,
         problems.append("Some PNG frames are invalid")
     if voice is None:
         problems.append("No licensed local character sample supplied")
+    if profile.key == "doro":
+        # An action label alone is not a real 4-legged gait.
+        for group in ("left_walk", "right_walk"):
+            aliases = EXPECTED_ACTION_GROUPS[group]
+            number = max((frame_counts.get(key, 0) for key in aliases), default=0)
+            if number < 4:
+                problems.append(
+                    "Doro " + group +
+                    " needs at least 4 native sprite frames for a gait preview; "
+                    "frame count still cannot prove 4-legged motion")
+    if profile.key == "paimon":
+        idle_frames = max(
+            (frame_counts.get(key, 0) for key in EXPECTED_ACTION_GROUPS["idle"]),
+            default=0)
+        if idle_frames < 2:
+            problems.append(
+                "Paimon needs at least 2 native idle frames for visual float animation; "
+                "runtime hover alone is not a complete floating character")
+    motion = style_for(character_name)
     return {
         "schema_version": 1,
         "target": ("guga_penguin_fan_derivative" if profile.key == "guga"
@@ -152,6 +172,13 @@ def inspect_character_role(role_dir: str | Path, character_name: str,
         "origin": profile.origin,
         "variant_note": profile.variant_note,
         "floating": profile.floating,
+        "runtime_motion_policy": {
+            "kind": motion.kind,
+            "horizontal_multiplier": motion.horizontal_multiplier,
+            "hover_lift_px_at_scale_1": motion.hover_lift,
+            "bob_amplitude_px_at_scale_1": motion.bob_amplitude,
+            "note": "Native window-motion heuristic only; not original authored animation",
+        },
         "action_coverage": coverage,
         "frame_count_by_action": frame_counts,
         "image_size_mismatches": sorted(set(wrong_size)),
