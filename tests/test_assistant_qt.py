@@ -103,6 +103,24 @@ class AssistantQtTests(unittest.TestCase):
             self.assertEqual(self.dialog._last_reply, "")
             self.assertEqual(self.dialog._ppl_snapshot, "")
 
+    def test_guga_role_audit_reports_missing_or_manual_verification(self):
+        role = self.dialog.role_root / self.dialog.character_name
+        with patch("DyberPet.assistant.ui.inspect_guga_role", return_value={
+            "action_coverage": {"idle": {"available": True},
+                                "speak": {"available": False}},
+            "issues": ["Missing speaking animation"],
+        }) as engine, patch("DyberPet.assistant.ui.load_local_clip",
+                             return_value=None), patch(
+                             "PySide6.QtWidgets.QMessageBox.information") as alert:
+            self.dialog.audit_guga()
+        engine.assert_called_once_with(role, None)
+        self.assertIn("尚未核实", alert.call_args.args[2])
+        self.dialog.set_character("Doro")
+        engine.reset_mock()
+        with patch("DyberPet.assistant.ui.inspect_guga_role") as not_called:
+            self.dialog.audit_guga()
+            not_called.assert_not_called()
+
     def test_guga_sample_ui_does_not_claim_to_be_tts_or_licensed(self):
         with tempfile.TemporaryDirectory() as tmp:
             clip = Path(tmp) / "synthetic.wav"
