@@ -54,6 +54,9 @@ class AnimationImportTest(unittest.TestCase):
             self.assertEqual(image.size, (192, 208))
             self.assertEqual(image.getpixel((0, 0))[3], 0)
         self.assertTrue((target / "info" / "pfp.png").is_file())
+        with Image.open(target / "ANIMATION_PREVIEW.png") as sheet:
+            self.assertEqual(sheet.width, 1024)
+        self.assertEqual(report["preview"]["preview_path"], "ANIMATION_PREVIEW.png")
         self.assertTrue((target / "note" / "bubble_conf.json").is_file())
 
     def test_animated_gif_frames_and_timing(self):
@@ -109,6 +112,13 @@ class AnimationImportTest(unittest.TestCase):
         self.assertGreaterEqual(report_ground["aligned_frames_per_action"]["idle"], 0)
         self.assertEqual(report_float["aligned_frames_per_action"], {})
         self.assertTrue(any("Floating profile" in w for w in report_float["warnings"]))
+
+    def test_ascii_safe_folder_name_allocation(self):
+        from tools.chibi_profiles import available_role_folder
+        self.dest.mkdir()
+        (self.dest / "ChibiPet").mkdir()
+        self.assertEqual(available_role_folder(self.dest, "派蒙"), "ChibiPet_2")
+        self.assertEqual(available_role_folder(self.dest, "genshin_nahida"), "genshin_nahida")
 
     def test_reject_too_many_frames(self):
         from tools.import_chibi_animations import load_sources
