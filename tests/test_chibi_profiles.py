@@ -106,6 +106,22 @@ class TestChibiProfiles(unittest.TestCase):
             self.assertEqual(report["frame_counts"]["idle"], 6)
             self.assertTrue((target / "info" / "cover.png").exists())
 
+    def test_floating_profile_does_not_force_ground_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            atlas = Image.new("RGBA", (1536, 1872), (0, 0, 0, 0))
+            atlas.alpha_composite(make_sprite(bottom=170), (0, 0))
+            # waving has intentionally different flight height
+            atlas.alpha_composite(make_sprite(bottom=120), (0, 3 * 208))
+            source = root / "spritesheet.webp"
+            atlas.save(source, lossless=True)
+            out = convert(source, root / "roles", profile="genshin_paimon")
+            report = json.loads((out / "IMPORT_REPORT.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["aligned_frames_per_action"], {})
+            self.assertTrue(any("Floating profile" in w for w in report["warnings"]))
+            with Image.open(out / "action" / "wave_0.png") as frame:
+                self.assertEqual(bbox(frame.convert("RGBA"))[3], 120)
+
     def test_uncertain_author_not_falsely_assigned(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
