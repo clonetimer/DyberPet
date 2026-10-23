@@ -19,7 +19,9 @@ DEFAULT_CHAT_URL = "http://127.0.0.1:1234"
 
 
 class AssistantServiceError(RuntimeError):
-    pass
+    def __init__(self, message, *, status_code=None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 def _local_base(url: str) -> str:
@@ -39,6 +41,8 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         raise AssistantServiceError("Service redirect blocked")
 
 
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+
 def _json_request(url: str, *, data: dict | None = None, timeout: float = 5):
     raw = None if data is None else json.dumps(
         data, ensure_ascii=False).encode("utf-8")
@@ -49,20 +53,18 @@ def _json_request(url: str, *, data: dict | None = None, timeout: float = 5):
                  "Connection": "close"},
         method="GET" if raw is None else "POST")
     try:
-        with _NoRedirect().parent.open(request, timeout=timeout) as response:
+        with _OPENER.open(request, timeout=timeout) as response:
             if response.status not in (200, 201):
                 raise AssistantServiceError("Unexpected response status")
             payload = response.read(512 * 1024 + 1)
             if len(payload) > 512 * 1024:
                 raise AssistantServiceError("Response exceeds 512 KiB")
             return json.loads(payload.decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise AssistantServiceError(
+            f"Local service HTTP {exc.code}", status_code=exc.code) from exc
     except (urllib.error.URLError, TimeoutError, ValueError) as exc:
         raise AssistantServiceError("Local service request failed: " + str(exc)) from exc
-
-
-# One opener instance with redirects forbidden, even if the local server
-# returns a Location pointing outside localhost.
-_NoRedirect.parent = urllib.request.build_opener(_NoRedirect)
 
 
 @dataclass(frozen=True)
@@ -109,9 +111,11 @@ class PPLCharacterClient:
         path = self.base_url + "/v1/sessions/" + sid
         try:
             session = _json_request(path)
-        except AssistantServiceError:
-            # PPL itself returns an ordinary JSON 404 for absent sessions. Only
-            # after verifying the service health may we create a new session.
+        except AssistantServiceError as exc:
+            # Only create a missing PPL session after explicit HTTP 404;
+            # never overwrite / retry on 500 errors or a broken connection.
+            if exc.status_code != 404:
+                raise
             self.health()
             try:
                 session = _json_request(
