@@ -19,6 +19,7 @@ CHIBI_PROFILES = {
     },
     "genshin_paimon": {
         "name": "派蒙", "franchise": "原神", "target_height": 112,
+        "ground_mode": "floating",
         "dialogue": {
             "pat_random_1": "今天要去哪里冒险？",
             "pat_random_2": "前面好像有什么好玩的！",
