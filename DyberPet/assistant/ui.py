@@ -55,6 +55,7 @@ class PetAssistantDialog(QDialog):
     motion_toggled = Signal(bool)
     speech_started = Signal(str, str)
     speech_finished = Signal(str)
+    voice_engine_ready = Signal(str, str)
 
     def __init__(self, character_name: str, workspace: Path, parent=None,
                  role_root: Path | None = None):
@@ -66,6 +67,8 @@ class PetAssistantDialog(QDialog):
         self._job = None
         self._last_reply = ""
         self._speaking_session = None
+        self._speech_has_started = False
+        self.voice_engine_ready.connect(self._on_voice_engine_ready)
         self._ppl_snapshot = ""
         self._session_generation = 0
         try:
@@ -532,13 +535,27 @@ class PetAssistantDialog(QDialog):
         if job is not None:
             job.deleteLater()
 
+    def _on_voice_engine_ready(self, character, text):
+        if (self._speaking_session is None
+                or self._speaking_session !=
+                (character, self._session_generation)):
+            return
+        self._speech_has_started = True
+        self.speech_started.emit(character, text[:120])
+
     def _finish_speech_visuals(self):
         session = self._speaking_session
         self._speaking_session = None
+        self._speech_has_started = False
         if session is not None:
             self.speech_finished.emit(session[0])
 
     def _job_error(self, detail: str):
+        # A local speech engine may be missing. Preserve the model response
+        # in the bubble even if auto-reading cannot begin.
+        if (self._speaking_session is not None and not self._speech_has_started
+                and self.bubble_enabled.isChecked() and self._last_reply):
+            self.reply_ready.emit(self._last_reply[:120])
         self._finish_speech_visuals()
         self.status.setText("操作失败：" + detail)
         self.chat_log.appendPlainText("[错误] " + detail)
@@ -670,8 +687,10 @@ class PetAssistantDialog(QDialog):
         text = self._last_reply
         self.status.setText("正在使用本机语音合成…")
         self._speaking_session = (character, self._session_generation)
-        self._submit(speak_once, lambda _: self.status.setText("朗读结束"), text)
-        self.speech_started.emit(character, text[:120])
+        self._speech_has_started = False
+        self._submit(speak_once, lambda _: self.status.setText("朗读结束"),
+                     text, on_ready=lambda: self.voice_engine_ready.emit(
+                         character, text[:120]))
 
     def comfort(self):
         if not self.ppl_enabled.isChecked():
