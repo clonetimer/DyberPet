@@ -120,6 +120,14 @@ class AnimationImportTest(unittest.TestCase):
         self.assertEqual(available_role_folder(self.dest, "派蒙"), "ChibiPet_2")
         self.assertEqual(available_role_folder(self.dest, "genshin_nahida"), "genshin_nahida")
 
+    def test_chinese_source_folder_without_explicit_name(self):
+        source = self.root / "阿丽莎"
+        source.mkdir()
+        frame().save(source / "idle.png")
+        target = convert_animation_folder(source, self.dest)
+        self.assertEqual(target.name, "ChibiPet")
+        self.assertTrue((target / "ANIMATION_PREVIEW.png").exists())
+
     def test_reject_too_many_frames(self):
         from tools.import_chibi_animations import load_sources
         with self.assertRaises(ValueError):
