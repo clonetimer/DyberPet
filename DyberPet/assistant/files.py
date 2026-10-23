@@ -25,6 +25,29 @@ class WorkspaceError(ValueError):
     pass
 
 
+def validate_session_folder(folder: Path, home: Path | None = None) -> Path:
+    """Explicitly chosen personal subfolder; never an OS root or broad home."""
+    home = (Path(home) if home is not None else Path.home()).expanduser().resolve()
+    folder = Path(folder).expanduser()
+    if not folder.is_dir():
+        raise WorkspaceError("Selected folder does not exist")
+    resolved = folder.resolve()
+    try:
+        parts = resolved.relative_to(home).parts
+    except ValueError as exc:
+        raise WorkspaceError("Only subfolders inside your user home may be authorized") from exc
+    if len(parts) < 2:
+        raise WorkspaceError("Select a specific subfolder, not Desktop/Documents/home itself")
+    if any(part.startswith(".") or part.lower() in (
+            "appdata", "application data", "system32", "windows") for part in parts):
+        raise WorkspaceError("Private application/system folders are not authorized")
+    for index in range(1, len(parts) + 1):
+        current = home.joinpath(*parts[:index])
+        if current.is_symlink():
+            raise WorkspaceError("Linked folders cannot be authorized")
+    return resolved
+
+
 class PetWorkspace:
     def __init__(self, root: Path):
         requested_root = Path(root).expanduser()
