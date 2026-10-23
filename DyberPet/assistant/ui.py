@@ -10,7 +10,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDialog, QFormLayout, QHBoxLayout, QInputDialog,
+    QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout, QHBoxLayout, QInputDialog,
     QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout,
 )
 
@@ -44,6 +44,7 @@ class PetAssistantDialog(QDialog):
         self.workspace = PetWorkspace(workspace)
         self._job = None
         self._last_reply = ""
+        self._ppl_snapshot = ""
         self._build_ui()
 
     def _build_ui(self):
@@ -68,6 +69,9 @@ class PetAssistantDialog(QDialog):
         self.ppl_endpoint = QLineEdit(DEFAULT_PPL_URL)
         form.addRow(self.ppl_enabled)
         form.addRow("PPL 地址", self.ppl_endpoint)
+        self.ppl_snapshot_button = QPushButton("导入 PPL Persona DSL 渲染快照（文本）")
+        self.ppl_snapshot_button.clicked.connect(self.load_ppl_snapshot)
+        form.addRow(self.ppl_snapshot_button)
 
         self.llm_endpoint = QLineEdit(DEFAULT_CHAT_URL)
         self.llm_model = QLineEdit()
@@ -88,7 +92,7 @@ class PetAssistantDialog(QDialog):
 
         message_row = QHBoxLayout()
         self.message = QLineEdit()
-        self.message.setPlaceholderText("输入文字，或点击“按住式录音”获取一句语音文字")
+        self.message.setPlaceholderText("输入文字，或点击“录音识别”获取一句语音文字")
         self.message.returnPressed.connect(self.send_message)
         self.send_button = QPushButton("发送")
         self.send_button.clicked.connect(self.send_message)
@@ -171,6 +175,32 @@ class PetAssistantDialog(QDialog):
         return PPLCharacterClient(self.ppl_endpoint.text()).state(
             self.character_name)
 
+    def load_ppl_snapshot(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "导入 PPL 命令行渲染快照", str(Path.home()),
+            "Text (*.txt);;All Files (*)")
+        if not path:
+            return
+        try:
+            file = Path(path)
+            if file.stat().st_size > 64000:
+                raise ValueError("人设快照文件过大（上限 64 KB）")
+            content = file.read_text(encoding="utf-8")
+            if not content.strip() or len(content) > 16000:
+                raise ValueError("PPL 人设快照为空或过长（上限 16000 字符）")
+            if QMessageBox.question(
+                    self, "确认导入",
+                    "这份文本将作为本地模型的人设上下文。\n"
+                    "请选择你自己从 PPL CLI 导出的可信文件，确认继续？",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No
+                    ) != QMessageBox.StandardButton.Yes:
+                return
+            self._ppl_snapshot = content
+            self.status.setText("PPL 渲染快照已加载：" + file.name)
+        except (OSError, UnicodeError, ValueError) as exc:
+            self._job_error(str(exc))
+
     def send_message(self):
         text = self.message.text().strip()
         if not text:
@@ -179,6 +209,7 @@ class PetAssistantDialog(QDialog):
         # PetWorkspace and cannot mutate user files.
         endpoint, model = self.llm_endpoint.text(), self.llm_model.text()
         character, persona = self.character_name, self.persona.currentData()
+        snapshot = self._ppl_snapshot
         ppl = (self.ppl_endpoint.text() if self.ppl_enabled.isChecked()
                else None)
         self.message.clear()
@@ -187,7 +218,7 @@ class PetAssistantDialog(QDialog):
         def task():
             state = PPLCharacterClient(ppl).state(character) if ppl else None
             return chat_local(text, persona_key=persona, state=state,
-                              base_url=endpoint, model=model)
+                              ppl_prompt=snapshot, base_url=endpoint, model=model)
         self._submit(task, self._message_reply)
 
     def _message_reply(self, reply):
