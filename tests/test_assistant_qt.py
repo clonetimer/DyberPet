@@ -47,6 +47,16 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(len(replies), 1)
         self.assertNotIn("old persona text", self.dialog.chat_log.toPlainText())
 
+    def test_motion_toggle_is_user_controlled(self):
+        updates = []
+        self.dialog.motion_toggled.connect(updates.append)
+        self.assertTrue(self.dialog.motion_enabled.isChecked())
+        self.dialog.motion_enabled.setChecked(False)
+        self.assertEqual(updates, [False])
+        with patch("DyberPet.assistant.ui.save_preferences") as saved:
+            self.dialog.save_preferences()
+        self.assertIs(saved.call_args.args[0]["motion_enabled"], False)
+
     def test_save_preferences_without_transcript(self):
         self.dialog.message.setText("private chat")
         self.dialog.llm_model.setText("local-model")
