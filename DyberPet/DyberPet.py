@@ -26,7 +26,8 @@ from DyberPet.modules import *
 from DyberPet.Accessory import MouseMoveManager
 from DyberPet.custom_widgets import RoundBarBase, LevelBadge
 from DyberPet.bubbleManager import BubbleManager
-from DyberPet.assistant.character_motion import style_for
+from DyberPet.assistant.character_motion import style_for, GROUND
+from DyberPet.assistant.preferences import load as load_assistant_preferences
 
 # initialize settings
 import DyberPet.settings as settings
@@ -437,6 +438,10 @@ class PetWidget(QWidget):
         self._motion_timer.timeout.connect(self._hover_motion_tick)
         self._motion_elapsed = QElapsedTimer()
         self._hover_offset = 0
+        try:
+            self._motion_enabled = load_assistant_preferences()["motion_enabled"]
+        except (OSError, ValueError, KeyError):
+            self._motion_enabled = True
         self._configure_character_motion()
 
         # 开始动画模块和交互模块
@@ -1051,9 +1056,12 @@ class PetWidget(QWidget):
             self._pet_assistant.reply_ready.connect(self._assistant_reply_bubble)
             self._pet_assistant.action_notice.connect(self._assistant_notice_bubble)
             self._pet_assistant.action_requested.connect(self._assistant_play_action)
+            self._pet_assistant.motion_toggled.connect(self._set_character_motion_enabled)
         else:
             self._pet_assistant.set_character(self.curr_pet_name)
         self._sync_assistant_actions()
+        self._set_character_motion_enabled(
+            self._pet_assistant.motion_enabled.isChecked())
         self._pet_assistant.show()
         self._pet_assistant.raise_()
         self._pet_assistant.activateWindow()
@@ -1964,11 +1972,24 @@ class PetWidget(QWidget):
 
 
 
+    def _set_character_motion_enabled(self, enabled):
+        """User-controlled opt-out for authored role animations that already move."""
+        enabled = bool(enabled)
+        if getattr(self, "_motion_enabled", True) == enabled:
+            return
+        was_hover = getattr(self, "_motion_style", GROUND).kind == "hover"
+        self._motion_enabled = enabled
+        self._configure_character_motion()
+        if was_hover and not enabled and settings.onfloor != 0:
+            self.move(self.pos().x(), int(self.floor_pos +
+                                         settings.current_anchor[1]))
+
     def _configure_character_motion(self):
         """Reset character-specific motion without replacing animation workers."""
         self._motion_timer.stop()
         self._hover_offset = 0
-        self._motion_style = style_for(self.curr_pet_name)
+        self._motion_style = (style_for(self.curr_pet_name)
+                              if getattr(self, "_motion_enabled", True) else GROUND)
         if self._motion_style.kind == "hover":
             # Only positioning changes. Real hover sprites/gesture clips must
             # be supplied separately by a licensed character role.
