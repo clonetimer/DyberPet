@@ -46,6 +46,16 @@ class RealBlenderDemoTest(unittest.TestCase):
             self.assertGreaterEqual(preflight["actions"], 3)
             self.assertTrue((role / "ANIMATION_PREVIEW.png").is_file())
             self.assertTrue((role / "info" / "pfp.png").is_file())
+            artifacts = os.environ.get("BLENDER_CI_ARTIFACT_DIR")
+            if artifacts:
+                directory = Path(artifacts)
+                directory.mkdir(parents=True, exist_ok=True)
+                for name in ("ANIMATION_PREVIEW.png", "IMPORT_REPORT.json"):
+                    shutil.copy2(role / name, directory / name)
+                for name in ("idle_0.png", "wave_0.png"):
+                    shutil.copy2(rendered / name, directory / name)
+                shutil.copy2(rendered / "BLENDER_RENDER_REPORT.json",
+                             directory / "BLENDER_RENDER_REPORT.json")
 
 
     def test_exported_original_glb_import_pipeline(self):
