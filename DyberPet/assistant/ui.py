@@ -41,6 +41,7 @@ class _AssistantJob(QThread):
 class PetAssistantDialog(QDialog):
     reply_ready = Signal(str)
     action_notice = Signal(str)
+    action_requested = Signal(str)
 
     def __init__(self, character_name: str, workspace: Path, parent=None):
         super().__init__(parent)
@@ -107,8 +108,11 @@ class PetAssistantDialog(QDialog):
         form.addRow("离线识别模型", voice_model_row)
         self.bubble_enabled = QCheckBox("对话回复/文件操作时显示桌宠气泡")
         self.auto_speak = QCheckBox("自动朗读模型回复（本机离线 TTS）")
+        self.action_menu = QComboBox()
+        self.action_menu.addItem("无额外动作", "")
         form.addRow(self.bubble_enabled)
         form.addRow(self.auto_speak)
+        form.addRow("交互成功时播放已解锁动作", self.action_menu)
         self.save_pref_button = QPushButton("保存助手设置（不保存聊天记录与人设快照）")
         self.save_pref_button.clicked.connect(self.save_preferences)
         form.addRow(self.save_pref_button)
@@ -185,6 +189,21 @@ class PetAssistantDialog(QDialog):
         self._last_reply = ""
         self._ppl_snapshot = ""  # Persona snapshots belong to the previous character
 
+    def set_actions(self, names):
+        """Only accept actual currently-unlocked animations from PetWidget."""
+        previous = self.action_menu.currentData()
+        self.action_menu.clear()
+        self.action_menu.addItem("无额外动作", "")
+        for name in sorted(set(n for n in names if isinstance(n, str) and n)):
+            self.action_menu.addItem(name, name)
+        matched = self.action_menu.findData(previous)
+        self.action_menu.setCurrentIndex(max(0, matched))
+
+    def _emit_selected_animation(self):
+        action = self.action_menu.currentData()
+        if action:
+            self.action_requested.emit(action)
+
     def _apply_preferences(self):
         prefs = self._prefs
         self.llm_endpoint.setText(prefs["llm_url"])
@@ -223,6 +242,7 @@ class PetAssistantDialog(QDialog):
         # This signal has no filesystem write capability.
         if self.bubble_enabled.isChecked():
             self.action_notice.emit(text[:120])
+        self._emit_selected_animation()
 
     def _submit(self, task, on_success, *args, **kwargs):
         if self._job is not None:
@@ -337,6 +357,7 @@ class PetAssistantDialog(QDialog):
         self.chat_log.appendPlainText(self.character_name + "：" + reply)
         if self.bubble_enabled.isChecked():
             self.reply_ready.emit(reply[:120])
+        self._emit_selected_animation()
         self.status.setText("回复已生成；点击朗读按钮可使用离线语音播报。")
         if self.auto_speak.isChecked() and self.isVisible():
             QTimer.singleShot(100, self._auto_read_reply)
