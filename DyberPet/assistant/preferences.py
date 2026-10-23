@@ -31,6 +31,7 @@ def defaults() -> dict:
             "voice_model": "",
             "bubble_enabled": True,
             "auto_speak": False,
+            "motion_enabled": True,
             "personas": {}}
 
 
@@ -49,7 +50,7 @@ def validate(raw) -> dict:
         _local_base(result["ppl_url"])
     except AssistantServiceError as exc:
         raise ValueError("Assistant endpoints must be local loopback services") from exc
-    for key in ("ppl_enabled", "bubble_enabled", "auto_speak"):
+    for key in ("ppl_enabled", "bubble_enabled", "auto_speak", "motion_enabled"):
         val = raw.get(key, result[key])
         if type(val) is not bool:
             raise ValueError("Invalid boolean assistant preference")
