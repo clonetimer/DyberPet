@@ -75,7 +75,9 @@ def is_authored_gait_frame(act, pet_conf, *, minimum_frames: int = 4) -> bool:
         return False
     if getattr(act, "direction", None) not in ("left", "right"):
         return False
-    if not getattr(act, "need_move", False):
+    # DyberPet's current native Animation_worker moves on direction even when
+    # legacy act_conf omits need_move. Match actual scheduler semantics.
+    if not isinstance(getattr(act, "frame_move", None), (int, float)) or act.frame_move <= 0:
         return False
     ids = []
     for frame in images:
