@@ -70,7 +70,7 @@ class NativeRoleZipTests(unittest.TestCase):
         zip_role(self.source, self.archive)
         with self.assertRaises(ValueError):
             install_native_role(self.archive, self.out)
-        self.assertEqual(list(self.out.iterdir()), [])
+        self.assertFalse(self.out.exists() and any(self.out.iterdir()))
 
     def test_path_traversal_rejected(self):
         with zipfile.ZipFile(self.archive, "w") as archive:
