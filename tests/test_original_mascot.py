@@ -88,9 +88,11 @@ class OriginalMascotTests(unittest.TestCase):
         tree = ast.parse(file.read_text(encoding="utf-8"))
         ui = next(v for v in ast.walk(tree) if isinstance(v, ast.FunctionDef)
                   and v.name == "_importOriginalDemo")
-        worker = next(v for v in ast.walk(tree) if isinstance(v, ast.FunctionDef)
-                      and v.name == "run" and "ChibiImportThread"
-                      in file.read_text(encoding="utf-8"))
+        worker_class = next(v for v in tree.body
+                            if isinstance(v, ast.ClassDef)
+                            and v.name == "ChibiImportThread")
+        worker = next(v for v in worker_class.body
+                      if isinstance(v, ast.FunctionDef) and v.name == "run")
         self.assertIn("original_demo", ast.unparse(ui))
         self.assertIn("ChibiImportThread", ast.unparse(ui))
         self.assertIn("create_original_mascot", ast.unparse(worker))
