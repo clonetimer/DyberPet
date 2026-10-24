@@ -60,6 +60,14 @@ class BuiltinMascotDemosTests(unittest.TestCase):
             self.assertNotEqual(sets["failed"][0], sets["failed"][3])
             self.assertEqual(receipt["animation_actions"]["run"],8)
             self.assertEqual(receipt["animation_actions"]["failed"],6)
+            pet=json.loads((folder/"pet_conf.json").read_text("utf-8"))
+            acts=json.loads((folder/"act_conf.json").read_text("utf-8"))
+            self.assertEqual(pet["fall"],"failed")
+            self.assertEqual(pet["on_floor"],"jump")
+            self.assertTrue(all(action in acts for action in ("run","failed","lookaround")))
+            self.assertTrue(any(entry.get("act_list")==["run"] and
+                                entry.get("act_prob")==0.05
+                                for entry in pet["random_act"]))
             animations[kind]=sets
         self.assertNotEqual(animations["guga"]["idle"][0],
                             animations["doro"]["idle"][0])
