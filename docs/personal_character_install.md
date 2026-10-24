@@ -52,3 +52,11 @@ python tools/personal_role_import.py install --asset "D:/PetAssets/MyOwnSprites"
 | 准备公开分享/发布角色包 | `character_pipeline.py rights/build/qa/package` | 必须记录逐件的可再分发与衍生使用条件，通过真实角色验收 |
 
 `personal-install` 明确写入 `PERSONAL_IMPORT.json`，其中 `source_rights_verified=false`、`visual_identity_verified=false` 和 `redistribution_allowed_by_tool=false`；不会改变已有的 `cases/`、`reviews/` 或授权记录。重复安装自动选择新名称，失败时不会覆盖已有资源。**如果将来需要公开分发角色包，不允许凭本地使用记录直接通过发布审核。**
+
+## 安装包自带的可动演示角色（PR #7）
+
+在 Linux/Windows **便携候选包**中，开发脚本会为 123 个角色模板各生成一份程序原创几何绘制的 Q 版可动演示形象（文件夹 `DemoG_*`、7 类动作共 46 帧）。这些动画已提前放入安装包的 `res/role`；用户**不需要手工逐个导入，就能先切换和试用全部 123 个演示皮肤**。
+
+演示角色的名称带「〔演示〕」字样，信息页与 `BUILTIN_CHIBI_DEMO.json` 均标明：**非原神官方人物美术；不包含角色原画、MOD 下载、原声或版权许可背书**。颜色、发型和装饰由代码原创绘制，只用来让所有模板从第一天起能够执行桌宠动作；不能用它衡量原神人物原设相似度。
+
+若你想用自己获取的更贴近原设的图集或 3D 导出帧，仍可通过「添加角色」导入为另一个本地角色；现有演示皮肤不会覆盖个人文件。程序自动将演示与个人素材区分展示。
