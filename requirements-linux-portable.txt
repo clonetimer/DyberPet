@@ -1,0 +1,15 @@
+# Linux x86_64 acceptance build / PyInstaller candidate (Ubuntu 24.04, Python 3.11).
+# Mirrors the Windows tested application deps, with Linux-compatible X11 backend.
+PySide6==6.5.2
+PySide6-Fluent-Widgets==1.5.4
+apscheduler==3.10.4
+pynput==1.7.7
+tendo==0.3.0
+pyinstaller==6.16.0
+# Needed by PyInstaller's pkg_resources runtime hook on Linux.
+setuptools==80.9.0
+backports.tarfile==1.2.0
+Pillow==12.0.0
+vosk==0.3.45
+sounddevice==0.5.2
+pyttsx3==2.99

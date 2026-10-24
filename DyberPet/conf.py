@@ -12,15 +12,14 @@ from PySide6.QtGui import QImage, QPixmap
 
 from .utils import get_file_time, find_dir_with_subdir, convert_fv_versions
 
+from DyberPet.assistant.portable import resource_root
+
 if platform == 'win32':
     basedir = ''
 else:
-    #from pathlib import Path
-    basedir = os.path.dirname(__file__) #Path(os.path.dirname(__file__))
-    #basedir = basedir.parent
-    basedir = basedir.replace('\\','/')
-    basedir = '/'.join(basedir.split('/')[:-1])
-
+    # Under Linux PyInstaller, __file__ belongs to bundled modules; res/
+    # is copied next to the executable instead.
+    basedir = str(resource_root(__file__))
 
 if platform == 'linux':
     configdir = os.path.dirname(os.environ['HOME']+'/.config/DyberPet/DyberPet')

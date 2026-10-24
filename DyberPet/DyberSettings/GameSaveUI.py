@@ -3,6 +3,7 @@
 #                            ComboBoxSettingCard, ScrollArea, ExpandLayout, FluentTranslator)
 import os
 import json
+from pathlib import Path
 from datetime import datetime
 
 from qfluentwidgets import (ScrollArea, ExpandLayout, SettingCardGroup, InfoBar, FlowLayout,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QSizeP
 
 from .custom_utils import DyberToolBottonCard, QuickSaveCard, SaveCardGroup, LineEditDialog
 from .fileOp_utils import CopySave, DeleteQuickSave
+from DyberPet.assistant.save_snapshot import create_backup, verify_backup, BackupError
 import DyberPet.settings as settings
 basedir = settings.BASEDIR
 module_path = os.path.join(basedir, 'DyberPet/DyberSettings/')
@@ -27,6 +29,7 @@ class SaveInterface(ScrollArea):
     """ Gaem Save interface """
     freeze_pet = Signal(name='freeze_pet')
     refresh_pet = Signal(name='refresh_pet')
+    restore_requested = Signal(name='restore_requested')
 
     def __init__(self, sizeHintDyber, parent=None):
         super().__init__(parent=parent)
@@ -84,6 +87,25 @@ class SaveInterface(ScrollArea):
             parent=self.TransferSaveGroup
         )
         self.ImportSaveCard.ToolButton.setToolTip(self.tr("Select pet, then select folder"))
+
+        self.FullBackupCard = PushSettingCard(
+            self.tr("选择保存位置"),
+            QIcon(os.path.join(basedir, 'res/icons/system/download.svg')),
+            self.tr("备份完整存档与设置（ZIP）"),
+            self.tr("只备份数据文件，不含角色图片、声音或模型"),
+            self.TransferSaveGroup)
+        self.RestoreBackupCard = PushSettingCard(
+            self.tr("启动安全恢复向导"),
+            QIcon(os.path.join(basedir, 'res/icons/system/upload.svg')),
+            self.tr("恢复完整存档（需退出桌宠）"),
+            self.tr("先安全退出，再在独立窗口校验 ZIP、备份原数据并恢复"),
+            self.TransferSaveGroup)
+        self.VerifyBackupCard = PushSettingCard(
+            self.tr("选择 ZIP 校验"),
+            QIcon(os.path.join(basedir, 'res/icons/system/upload.svg')),
+            self.tr("校验完整数据备份"),
+            self.tr("验证 SHA-256，不会修改当前存档"),
+            self.TransferSaveGroup)
 
         SaveDir = '/DyberPet/Saves'
         self.quickSaveDir = os.path.join(docPath + SaveDir)
@@ -161,6 +183,9 @@ class SaveInterface(ScrollArea):
         # add cards to group
         self.TransferSaveGroup.addSettingCard(self.ExportSaveCard)
         self.TransferSaveGroup.addSettingCard(self.ImportSaveCard)
+        self.TransferSaveGroup.addSettingCard(self.FullBackupCard)
+        self.TransferSaveGroup.addSettingCard(self.VerifyBackupCard)
+        self.TransferSaveGroup.addSettingCard(self.RestoreBackupCard)
         
         # add setting card group to layout
         self.expandLayout.setSpacing(28)
@@ -185,6 +210,9 @@ class SaveInterface(ScrollArea):
             self.__onExportSaveCardClicked)
         self.ImportSaveCard.optionSelcted.connect(
             self.__onImportSaveCardClicked)
+        self.FullBackupCard.clicked.connect(self._createFullDataBackup)
+        self.VerifyBackupCard.clicked.connect(self._verifyFullDataBackup)
+        self.RestoreBackupCard.clicked.connect(self._requestOfflineRestore)
 
         for i in range(len(self.saveCardList)):
             self.saveCardList[i].saveClicked.connect(self.__onCardSaveClicked)
@@ -193,6 +221,49 @@ class SaveInterface(ScrollArea):
             self.saveCardList[i].deleteClicked.connect(self.__onCardDeleteClicked)
             self.saveCardList[i].backtraceClicked.connect(self.__onCardBackClicked)
 
+
+    def _requestOfflineRestore(self):
+        if self.__showMessageBox(
+            self.tr("退出桌宠并打开独立恢复向导？"),
+            self.tr("完整 ZIP 恢复必须在退出桌宠后进行。"
+                    "向导先校验文件，恢复前保存现有数据；"
+                    "个人角色素材和模型不会被 ZIP 覆盖。")):
+            self.restore_requested.emit()
+
+    def _createFullDataBackup(self):
+        """Give non-programmers an integrity-checked, non-overwriting copy."""
+        export_dir = Path(self.quickSaveDir).parent / 'Exports'
+        export_dir.mkdir(parents=True, exist_ok=True)
+        filename = 'DyberPet-data-' + datetime.now().strftime('%Y%m%d-%H%M%S') + '.zip'
+        path, _ = QFileDialog.getSaveFileName(
+            self, self.tr('备份完整设置与存档'), str(export_dir / filename), 'ZIP (*.zip)')
+        if not path:
+            return
+        try:
+            settings.save_settings()
+            settings.pet_data.save_data()
+            settings.task_data.save_data()
+            settings.act_data.save_data()
+            report = create_backup(Path(settings.CONFIGDIR) / 'data', path)
+        except (OSError, BackupError, ValueError) as exc:
+            self.__showSystemNote(self.tr('备份失败：') + str(exc), 2)
+            return
+        self.__showSystemNote(
+            self.tr('备份成功并已校验：') + str(len(report['files'])) + self.tr(' 个数据文件'), 0)
+
+    def _verifyFullDataBackup(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, self.tr('选择要校验的备份 ZIP'),
+            str(Path(self.quickSaveDir).parent / 'Exports'), 'ZIP (*.zip)')
+        if not path:
+            return
+        try:
+            report = verify_backup(path)
+        except (OSError, BackupError, ValueError) as exc:
+            self.__showSystemNote(self.tr('备份校验失败：') + str(exc), 2)
+            return
+        self.__showSystemNote(
+            self.tr('备份完整：') + ', '.join(report['files']), 0)
 
     def __onExportSaveCardClicked(self):
         """ export folder card clicked slot """
@@ -209,7 +280,7 @@ class SaveInterface(ScrollArea):
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
         # copy file and check MD5
-        source_folder = os.path.join(basedir, 'data')
+        source_folder = os.path.join(settings.CONFIGDIR, 'data')
         status_code = CopySave(source_folder, save_folder)
         # Notification
         status_mssg = [self.tr('Export Succeed!'),
@@ -327,7 +398,7 @@ class SaveInterface(ScrollArea):
         infoFile.close()
 
         # Transfer Save Files
-        source_folder = os.path.join(basedir, 'data')
+        source_folder = os.path.join(settings.CONFIGDIR, 'data')
         status_code = CopySave(source_folder, finalFolder)
         # Notification
         status_mssg = [self.tr('Save Succeed!'),
@@ -345,7 +416,7 @@ class SaveInterface(ScrollArea):
         
         else:
             try:
-                DeleteQuickSave(finalFolder)
+                DeleteQuickSave(finalFolder, keep=False)
             except:
                 pass
 
@@ -506,6 +577,11 @@ From top to bottom, there are 3 functions:
 ⏺ Export Data
     - You can make a copy of the data to selected path
     - It contains character, settings, and task-related data
+
+⏺ Verified Full Backup
+    - ZIP includes on-disk settings and saves, not character images or voice
+    - Check archive integrity; neither backup nor verification overwrites data
+    - Complete ZIP restore is not performed while the program is running
 
 ⏺ Import Data
     - You can import character data from the selected folder

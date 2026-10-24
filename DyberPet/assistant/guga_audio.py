@@ -16,7 +16,6 @@ from urllib.parse import urlsplit
 
 from .character_fidelity import FidelityError, inspect_wav
 from .preferences import default_preference_path
-from .native_bridge import sha256_file
 
 MAX_MANIFEST = 8192
 
@@ -26,7 +25,12 @@ def default_sound_manifest() -> Path:
 
 
 def _hash_file(path: Path) -> str:
-    return sha256_file(path)
+    digest = hashlib.sha256()
+    with path.open("rb") as inp:
+        for chunk in iter(lambda: inp.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
 
 def record_local_clip(
     clip_path: str | Path, creator: str, source_url: str,

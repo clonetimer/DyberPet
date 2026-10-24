@@ -45,8 +45,3 @@ res/role/守岸人
 /res/role/ArknightsAmiya/
 /res/role/StarrailMarch7/
 /res/role/WutheringRover/
-# Optional Rust experiment artifacts (never commit compiled binary wheels)
-rust/pet_core/target/
-wheelhouse/
-*.pyd
-*.so

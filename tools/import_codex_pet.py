@@ -217,11 +217,19 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
             folder: str | None = None, name: str | None = None,
             author: str | None = None, license_name: str | None = None,
             source_url: str | None = None, style: str = "classic",
-            profile: str | None = None) -> Path:
+            profile: str | None = None,
+            preserve_source_frames: bool = False) -> Path:
+    """Preserve exact artist frame pixels for pinned sources, including layout.
+
+    Ordinary user-selected chibi normalization stays available. Preserving a
+    creator's art must not suppress persona/franchise metadata or dialogue.
+    """
     if style not in ("classic", "chibi"):
         raise ValueError("Unknown style: " + str(style))
     profile_info = get_profile(profile)
-    if profile_info is not None:
+    if preserve_source_frames:
+        style = "classic"
+    elif profile_info is not None:
         style = "chibi"
     atlas_path, manifest = resolve_source(source)
     preset_data = PRESETS.get(preset or "", {})
@@ -278,8 +286,10 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
     if profile_info is not None:
         info["tages"][profile_info["franchise"]] = "#C7E3D1"
         info["intro"] = (
-            f"{profile_info['name']}的Q版桌宠配置模板；图像由用户自行提供，"
-            "不代表该作品官方授权。"
+            (f"{profile_info['name']}的创作者原始桌宠动画；已保留原画帧布局。"
+             if preserve_source_frames else
+             f"{profile_info['name']}的Q版桌宠配置模板；图像由用户自行提供。")
+            + "不代表该作品官方授权。"
         )
 
     dest_root.mkdir(parents=True, exist_ok=True)
@@ -290,6 +300,26 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
         for state in sorted(available):
             for idx, frame in enumerate(frames[state]):
                 frame.save(action / f"{state}_{idx}.png", "PNG")
+        # Verify ALL exported frames against the original decoded atlas cells,
+        # not just the idle thumbnail. This protects artist pose proportions,
+        # per-frame alignment and transparency from implicit transformations.
+        if preserve_source_frames:
+            for state, _, _, _ in STATES:
+                for idx, raw in enumerate(extract_frames(
+                        atlas, next(row for name, row, _, _ in STATES
+                                    if name == state),
+                        next(count for name, _, count, _ in STATES
+                             if name == state))):
+                    with Image.open(action / f"{state}_{idx}.png") as written:
+                        saved = written.convert("RGBA")
+                    if saved.size != raw.size or saved.tobytes() != raw.tobytes():
+                        raise ValueError("Exported source pixels were changed: " + state)
+            if version == 2:
+                for idx, raw in enumerate(extract_frames(atlas, 9, 16)):
+                    with Image.open(action / f"lookaround_{idx}.png") as written:
+                        saved = written.convert("RGBA")
+                    if saved.size != raw.size or saved.tobytes() != raw.tobytes():
+                        raise ValueError("Exported V2 source pixels were changed")
         (working / "pet_conf.json").write_text(json_text(pet_conf), encoding="utf-8")
         (working / "act_conf.json").write_text(json_text(act_conf), encoding="utf-8")
         preview = create_contact_sheet(frames, working / "ANIMATION_PREVIEW.png")
@@ -304,6 +334,12 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
         (working / "IMPORT_REPORT.json").write_text(
             json_text({"format": f"Codex Pets V{version}", "style": style,
                        "profile": profile,
+                       "preserve_source_frames": bool(preserve_source_frames),
+                       "source_pixel_integrity_verified": bool(preserve_source_frames),
+                       "mascot_preset": preset if source_matches else None,
+                       "source_manifest_id": manifest.get("id"),
+                       "mascot_identity_confirmed_by_filename": False,
+                       "official_character_art_verified": False,
                        "recommended_scale": pet_conf["scale"],
                        "warnings": warnings,
                        "aligned_frames_per_action": shifts,

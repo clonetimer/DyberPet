@@ -4,19 +4,85 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - "feat/pet-actions-voice-persona-20261023"
+      - "feat/personal-characters-windows-20261024"
     paths:
       - "run_DyberPet.py"
       - "DyberPet/assistant/**"
       - "DyberPet/DyberPet.py"
+      - "DyberPet/settings.py"
+      - "tests/test_default_pet_order.py"
+      - "tests/test_first_run_guide.py"
       - "DyberPet/modules.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "DyberPet/DyberSettings/GameSaveUI.py"
+      - "tools/personal_role_import.py"
+      - "tools/create_original_mascot.py"
+      - "tools/generate_builtin_chibi_demos.py"
+      - "tools/generate_mascot_demos.py"
+      - "tools/mascot_library.py"
+      - "tools/role_family.py"
+      - "tests/test_role_family_ownership.py"
+      - "tests/test_builtin_mascot_demos.py"
+      - "tools/role_action_preview.py"
+      - "DyberPet/DyberSettings/mascot_preview_dialog.py"
+      - "tests/test_mascot_live_preview.py"
+      - "tools/character_progress.py"
+      - "tools/character_catalog_search.py"
+      - "DyberPet/DyberSettings/character_catalog_dialog.py"
+      - "tests/test_character_catalog_search.py"
+      - "tests/test_character_progress.py"
+      - "tools/install_creator_mascots.py"
+      - "tools/install_artist_genshin.py"
+      - "tools/install_artist_codex.py"
+      - "tests/test_artist_genshin_install.py"
+      - "tests/test_creator_mascot_fetch.py"
+      - "tests/test_builtin_chibi_demos.py"
+      - "tools/genshin_complete_roster.py"
+      - "tools/genshin_roster.py"
+      - "tools/genshin_library.py"
+      - "tools/genshin_role_bindings.py"
+      - "tests/test_genshin_role_bindings.py"
+      - "tools/character_sources.json"
       - "tools/build_windows_portable.ps1"
       - "requirements-windows-portable.txt"
       - ".github/workflows/windows-portable.yml"
   pull_request:
     paths:
       - "run_DyberPet.py"
+      - "DyberPet/settings.py"
+      - "tests/test_default_pet_order.py"
+      - "tests/test_first_run_guide.py"
       - "DyberPet/assistant/**"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "DyberPet/DyberSettings/GameSaveUI.py"
+      - "tools/personal_role_import.py"
+      - "tools/create_original_mascot.py"
+      - "tools/generate_builtin_chibi_demos.py"
+      - "tools/generate_mascot_demos.py"
+      - "tools/mascot_library.py"
+      - "tools/role_family.py"
+      - "tests/test_role_family_ownership.py"
+      - "tests/test_builtin_mascot_demos.py"
+      - "tools/role_action_preview.py"
+      - "DyberPet/DyberSettings/mascot_preview_dialog.py"
+      - "tests/test_mascot_live_preview.py"
+      - "tools/character_progress.py"
+      - "tools/character_catalog_search.py"
+      - "DyberPet/DyberSettings/character_catalog_dialog.py"
+      - "tests/test_character_catalog_search.py"
+      - "tests/test_character_progress.py"
+      - "tools/install_creator_mascots.py"
+      - "tools/install_artist_genshin.py"
+      - "tools/install_artist_codex.py"
+      - "tests/test_artist_genshin_install.py"
+      - "tests/test_creator_mascot_fetch.py"
+      - "tests/test_builtin_chibi_demos.py"
+      - "tools/genshin_complete_roster.py"
+      - "tools/genshin_roster.py"
+      - "tools/genshin_library.py"
+      - "tools/genshin_role_bindings.py"
+      - "tests/test_genshin_role_bindings.py"
+      - "tools/character_sources.json"
       - "tools/build_windows_portable.ps1"
       - "requirements-windows-portable.txt"
       - ".github/workflows/windows-portable.yml"
@@ -37,8 +103,14 @@ jobs:
           cache-dependency-path: requirements-windows-portable.txt
       - name: Install pinned desktop and offline voice build dependencies
         run: python -m pip install -r requirements-windows-portable.txt
+      - name: Verify stable first-run starter role
+        run: python -m unittest discover -s tests -p "test_default_pet_order.py" -v
+      - name: Verify offline first-use selection guards
+        run: python -m unittest discover -s tests -p "test_first_run_guide.py" -v
       - name: Build portable Windows onedir candidate
         shell: pwsh
+        env:
+          DYBERPET_QA_KEEP_ABSTRACT_ART: "1"
         run: ./tools/build_windows_portable.ps1
       - name: Launch packaged EXE in headless assistant smoke mode
         shell: pwsh
@@ -54,15 +126,58 @@ jobs:
           if (-not (Test-Path -LiteralPath $report)) { throw "EXE did not produce smoke report" }
           $outcome = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
           if (-not $outcome.assets.ok -or -not $outcome.assistant_dialog) { throw "Packaged assistant or resources failed verification" }
+          if (-not $outcome.first_run_guide_verified) { throw "First-run GUI unavailable in packaged EXE" }
+          if (-not $outcome.offline_restore_verified -or -not $outcome.offline_restore_wizard_verified) { throw "Frozen offline restore/wizard smoke failed" }
+          if (-not $outcome.backup_snapshot_verified) { throw "Packaged full-save backup verification failed" }
           if (-not $outcome.character_importer.ok -or $outcome.character_importer.synthetic_actions -lt 1 -or $outcome.character_importer.synthetic_frames -lt 1) { throw "Packaged character importer failed real synthetic conversion" }
           if ($outcome.character_importer.modified_user_roles -or $outcome.character_importer.third_party_art_included) { throw "Character smoke mutated resources or used external art" }
+          if ($outcome.character_importer.genshin_profile_count -ne 123) { throw "Missing full 7.1 Genshin roster from packaged EXE" }
+          if ($outcome.built_in_demo_profiles -ne 123 -or $outcome.built_in_playable_profiles -lt 123 -or $outcome.built_in_unfilled_profiles -ne 0) { throw "Not all 123 animated original demo roles included in Windows EXE" }
+          if ($outcome.mascot_original_demo_count -ne 2 -or $outcome.mascot_character_likeness_verified) { throw "Packaged Doro/Guga demos missing or falsely certified as original creator art" }
+          if ($outcome.mascot_live_preview_count -ne 2 -or -not $outcome.mascot_live_preview_timer_safe) { throw "Native Guga/Doro Qt animation previews failed in Windows EXE" }
+          if ($outcome.mascot_special_actions_each -ne 10 -or $outcome.mascot_special_frames_each -ne 66) { throw "Guga/Doro special native animations missing from Windows EXE" }
+          if (-not $outcome.genshin_native_preview_verified -or $outcome.character_templates -ne 125 -or $outcome.character_native_preview_ready -ne 125) { throw "Shared Genshin/native role viewer or 125-character dashboard missing from Windows EXE" }
+          if (-not $outcome.public_art_sources_ready) { throw "11 reviewed source installers missing from frozen exe" }
+          if ($outcome.character_search_catalog_count -ne 125 -or $outcome.character_search_demo_count -ne 125 -or -not $outcome.character_search_bilingual_verified) { throw "Searchable cross-family role selector missing from Windows EXE" }
+          if ($outcome.genshin_original_demo_actions_each -ne 10 -or $outcome.genshin_original_demo_frames_each -ne 66) { throw "Genshin demos are not 10 native actions / 66 frames in Windows EXE" }
+          if ($outcome.character_importer.library_template_count -ne 123 -or $outcome.character_importer.library_installed_without_assets -ne 0) { throw "Packaged read-only character library reported invented installed roles" }
+          if (-not $outcome.character_importer.legacy_binding_verified -or $outcome.character_importer.legacy_binding_rights_verified -or -not $outcome.character_importer.legacy_unbind_preserved_original) { throw "Packaged legacy role binding/unbind failed or changed source art" }
+          if (-not $outcome.character_importer.personal_install_ok -or $outcome.character_importer.personal_install_rights_verified) { throw "Packaged private local role import failed or falsely asserted rights" }
+          if ($outcome.character_importer.original_mascot_actions -ne 7 -or $outcome.character_importer.original_mascot_frames -ne 46) { throw "Packaged original Q role generation failed" }
           foreach ($name in @("pyttsx3","vosk","sounddevice")) {
             if ($outcome.optional_voice_imports.$name -ne $true) { throw "Missing packaged voice component: $name" }
           }
           Get-Content -LiteralPath $report
+      - name: Remove abstract demos from actual Windows user download
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python -m unittest discover -s tests -p "test_strip_generated_demo_art.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Generated art stripping safety tests failed" }
+          $roleDir = "dist/DyberPet/res/role"
+          python tools/strip_generated_demo_art.py --role-root $roleDir --expected 125
+          if ($LASTEXITCODE -ne 0) { throw "Generated art removal failed" }
+          python tools/strip_generated_demo_art.py --role-root $roleDir --verify-only
+          if ($LASTEXITCODE -ne 0) { throw "Generated art remains in user package" }
+          $exe = (Resolve-Path "dist/DyberPet/DyberPet.exe").Path
+          $proc = Start-Process -FilePath $exe -ArgumentList "--personal-package-smoke" -WorkingDirectory $env:RUNNER_TEMP -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "Stripped EXE does not pass personal package smoke" }
+          $zipPath = "DyberPet-Windows-Personal-PR5.zip"
+          Remove-Item -LiteralPath $zipPath -Force
+          Compress-Archive -Path "dist/DyberPet/*" -DestinationPath $zipPath -CompressionLevel Optimal
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $zipPath).Path)
+          try {
+            $unexpected = @($zip.Entries | Where-Object { $_.FullName -match 'BUILTIN_(CHIBI|MASCOT)_DEMO' })
+            if ($unexpected.Count -gt 0) { throw "Published Windows ZIP contains low-fidelity demo art" }
+            if (-not ($zip.Entries | Where-Object { $_.FullName -match 'res/role/Kitty/pet_conf.json$' })) {
+              throw "Published Windows ZIP missing Kitty starter"
+            }
+          } finally { $zip.Dispose() }
+          Write-Output "WINDOWS_USER_ART_POLICY_VERIFIED_NO_GENERATED_DEMOS"
       - uses: actions/upload-artifact@v4
         with:
-          name: DyberPet-Windows-Portable-PR2
-          path: DyberPet-Windows-Portable-PR2.zip
+          name: DyberPet-Windows-Personal-PR5
+          path: DyberPet-Windows-Personal-PR5.zip
           if-no-files-found: error
           retention-days: 14

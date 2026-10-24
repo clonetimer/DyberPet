@@ -9,10 +9,13 @@ on:
       - "docs/character_fidelity.md"
       - "docs/guga_authenticity.md"
       - "DyberPet/DyberPet.py"
+      - "DyberPet/DyberSettings/GameSaveUI.py"
       - "DyberPet/Accessory.py"
       - "DyberPet/modules.py"
       - "DyberPet/conf.py"
       - "tests/test_assistant_*.py"
+      - "tests/test_save_snapshot.py"
+      - "tests/test_offline_restore.py"
       - "docs/pet_assistant.md"
       - ".github/workflows/pet-assistant.yml"
   push:
@@ -21,10 +24,13 @@ on:
     paths:
       - "DyberPet/assistant/**"
       - "DyberPet/DyberPet.py"
+      - "DyberPet/DyberSettings/GameSaveUI.py"
       - "DyberPet/Accessory.py"
       - "DyberPet/modules.py"
       - "DyberPet/conf.py"
       - "tests/test_assistant_*.py"
+      - "tests/test_save_snapshot.py"
+      - "tests/test_offline_restore.py"
       - ".github/workflows/pet-assistant.yml"
 
 permissions:
@@ -53,6 +59,10 @@ jobs:
         run: python -m pip install "Pillow==11.3.0"
       - name: Test workspace, PPL and voice guards
         run: python -m unittest discover -s tests -p "test_assistant_*.py" -v
+      - name: Verify full backup and tamper safeguards
+        run: python -m unittest discover -s tests -p "test_save_snapshot.py" -v
+      - name: Verify offline data restore rollback, tamper and interruption
+        run: python -m unittest discover -s tests -p "test_offline_restore.py" -v
 
   qt-gui-smoke:
     runs-on: windows-latest
