@@ -207,6 +207,12 @@ def _assistant_package_smoke():
         report["assistant_dialog"] = bool(
             dialog.workspace.root.is_dir() and dialog.persona.count() >= 7)
         dialog.close()
+    # Exercise the actual packaged role converter with an original synthetic
+    # PNG so missing Pillow/tool modules cannot pass an EXE startup-only smoke.
+    from DyberPet.assistant.character_import_smoke import verify_portable_character_importer
+    report["character_importer"] = verify_portable_character_importer()
+    if not report["character_importer"]["ok"]:
+        raise RuntimeError("Portable character import conversion failed")
     for module in ("pyttsx3", "vosk", "sounddevice"):
         try:
             __import__(module)
