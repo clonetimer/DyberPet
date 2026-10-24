@@ -66,7 +66,7 @@ def _git_blob_sha(path):
     raw = Path(path).read_bytes()
     if len(raw) > MAX_SINGLE:
         raise ValueError("Source identity anchor exceeds file size limit")
-    return hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\\0" + raw).hexdigest()
+    return hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
 def verify_artist_role_identity(folder, kind, *, identities=None):
