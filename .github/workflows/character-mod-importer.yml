@@ -30,6 +30,7 @@ on:
       - "tools/genshin_roster.py"
       - "tools/genshin_batch.py"
       - "tests/test_genshin_batch.py"
+      - "tests/test_genshin_legacy_role.py"
       - "tests/test_genshin_status_safety.py"
       - "docs/genshin_character_expansion.md"
       - "tests/test_chibi_profiles.py"
@@ -68,6 +69,7 @@ on:
       - "tools/genshin_roster.py"
       - "tools/genshin_batch.py"
       - "tests/test_genshin_batch.py"
+      - "tests/test_genshin_legacy_role.py"
       - "tests/test_genshin_status_safety.py"
       - "docs/genshin_character_expansion.md"
       - "tests/test_chibi_profiles.py"
@@ -105,6 +107,10 @@ jobs:
         run: python tools/install_native_role.py --help
       - name: Check rights-gated character pipeline CLI
         run: python tools/character_pipeline.py --help
+      - name: Check Genshin local ZIP/folder probe and status CLI
+        run: |
+          python tools/genshin_batch.py --help
+          python tools/genshin_batch.py status --roles xiao,wanderer
       - name: List and preview new Genshin characters without assets or rights claims
         run: |
           python tools/genshin_batch.py list
