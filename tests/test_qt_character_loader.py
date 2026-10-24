@@ -114,5 +114,35 @@ class QtCharacterLoaderTest(unittest.TestCase):
                 shutil.rmtree(target)
 
 
+    def test_original_mascot_renders_into_actual_qt_runtime(self):
+        from PySide6.QtGui import QPixmap
+        from DyberPet.conf import PetConfig, CheckCharFiles
+        from tools.create_original_mascot import create_original_mascot, ACTIONS
+
+        role_root = Path(__file__).resolve().parents[1] / "res" / "role"
+        name = "SyntheticOriginalMascotQt"
+        installed = role_root / name
+        self.assertFalse(installed.exists())
+        try:
+            installed = create_original_mascot(role_root, folder=name)
+            self.assertEqual(CheckCharFiles(str(installed))[0], 0)
+            frames = {
+                path.stem: QPixmap(str(path))
+                for path in (installed / "action").glob("*.png")
+            }
+            self.assertEqual(len(frames), sum(ACTIONS.values()))
+            self.assertTrue(all(not pix.isNull() for pix in frames.values()))
+            pet = PetConfig.init_config(name, frames)
+            self.assertEqual(pet.petname, name)
+            self.assertGreater(len(pet.default.images), 1)
+            self.assertIn("wave", pet.act_dict)
+            self.assertGreater(len(pet.patpat[0].images), 1)
+            self.assertEqual(len(pet.left.images), ACTIONS["left_walk"])
+            self.assertEqual(len(pet.right.images), ACTIONS["right_walk"])
+        finally:
+            if installed.exists():
+                shutil.rmtree(installed)
+
+
 if __name__ == "__main__":
     unittest.main()

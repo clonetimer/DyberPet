@@ -23,7 +23,7 @@ if __package__:
 else:
     from chibi_profiles import CHIBI_PROFILES
 
-KINDS = ("codex", "frames", "native_zip", "model3d")
+KINDS = ("codex", "frames", "native_zip", "native_folder", "model3d")
 ACTION_PLAN = ("idle", "left_walk", "right_walk", "wave", "jump",
                "wait", "sleep", "review")
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]{2,47}$")
@@ -169,15 +169,25 @@ def fingerprint(path):
 
 def attach_case(case_file, source):
     data = load_case(case_file)
-    target = Path(source).expanduser().resolve()
+    candidate = Path(source).expanduser()
+    if candidate.is_symlink():
+        raise PipelineError("Symlinked source asset is not permitted")
+    target = candidate.resolve()
     if not target.exists():
         raise PipelineError("Artwork path does not exist")
     found = identify_local(target)
-    if found != data["source"]["kind"]:
-        raise PipelineError(
-            f"Expected {data['source']['kind']}, detected {found}; "
-            "use a different case or render 3D into a supported animation folder"
-        )
+    expected = data["source"]["kind"]
+    if found != expected:
+        # Legacy GenshinImpact distributions may be an entire application.
+        # The user must select an extracted single res/role/<name> directory.
+        # Switching representation invalidates all earlier rights/QA below.
+        if expected == "native_zip" and found == "native_folder":
+            data["source"]["kind"] = found
+        else:
+            raise PipelineError(
+                f"Expected {expected}, detected {found}; "
+                "select an extracted original role folder or matching source kind"
+            )
     data["source"]["local_asset"] = str(target)
     data["source"]["sha256"] = fingerprint(target)
     data["status"] = "source_attached"
@@ -362,19 +372,30 @@ def build_case(case_file):
             author=data["source"]["artist"],
             license_name="See candidate-specific rights evidence",
             source_url=data["source"]["url"])
-    else:
+    elif kind == "native_zip":
         if __package__:
             from .install_native_role import install_native_role
         else:
             from install_native_role import install_native_role
         role = install_native_role(source, output_root,
                                    role_folder="ChibiPipelineRole")
+    elif kind == "native_folder":
+        if __package__:
+            from .install_native_role import install_native_folder
+        else:
+            from install_native_role import install_native_folder
+        role = install_native_folder(source, output_root,
+                                     role_folder="ChibiPipelineRole")
+    else:
+        raise PipelineError("Unsupported build source kind")
     if __package__:
         from .install_native_role import validate_native_role
     else:
         from install_native_role import validate_native_role
     try:
         preflight = validate_native_role(role)
+        if fingerprint(source) != data["source"]["sha256"]:
+            raise PipelineError("Source changed while building; reattach and re-review")
         (role / "PIPELINE_SOURCE.json").write_text(
             json.dumps({"candidate": data["id"],
                         "channel": data["source"]["channel"],
