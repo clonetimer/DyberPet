@@ -8,16 +8,17 @@ from PySide6.QtGui import QImage, QPixmap
 from DyberPet.conf import PetData, TaskData, ActData, ItemData
 from PySide6 import QtCore
 
+from DyberPet.assistant.portable import resource_root
+
 if platform == 'win32':
     basedir = ''
     BASEDIR = ''
 else:
-    #from pathlib import Path
-    basedir = os.path.dirname(__file__) #Path(os.path.dirname(__file__))
-    #basedir = basedir.parent
-    basedir = basedir.replace('\\','/')
-    basedir = '/'.join(basedir.split('/')[:-1])
+    # Frozen Linux binaries use the executable's directory, not __file__
+    # inside PyInstaller's module bundle.
+    basedir = str(resource_root(__file__))
     BASEDIR = basedir
+
 
 if platform == 'linux':
     configdir = os.path.dirname(os.environ['HOME']+'/.config/DyberPet/DyberPet')
