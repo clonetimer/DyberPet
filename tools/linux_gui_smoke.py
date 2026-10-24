@@ -89,6 +89,15 @@ def verify_linux_gui():
                 preview._toggle()
                 if not preview.timer.isActive():
                     raise RuntimeError("Qt play/pause did not resume")
+                for special in ("run","failed","lookaround"):
+                    special_index=preview.actions.findData(special)
+                    if special_index<0:
+                        raise RuntimeError("Missing original special animation: "+special)
+                    preview.actions.setCurrentIndex(special_index)
+                    app.processEvents()
+                    preview._advance()
+                    if preview.frame_index!=1 or preview.frame.pixmap().isNull():
+                        raise RuntimeError("Special animation failed to advance: "+special)
             finally:
                 preview.close()
                 app.processEvents()
@@ -117,6 +126,7 @@ def verify_linux_gui():
             "mascot_live_preview_visible": True,
             "mascot_live_walk_advanced": True,
             "mascot_live_preview_timer_stopped": True,
+            "mascot_special_actions_played": ["run","failed","lookaround"],
             "local_profile_count": local_catalog["summary"]["installed_profile_count"],
             "original_demo_profile_count": local_catalog["summary"]["original_demo_profile_count"],
             "personal_art_profile_count": local_catalog["summary"]["personal_art_profile_count"],
