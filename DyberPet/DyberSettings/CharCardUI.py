@@ -582,6 +582,9 @@ class CharInterface(ScrollArea):
         if not dialog.exec():
             return
         selected=dialog.selection
+        if selected=="__install_artist__":
+            self._installArtistGenshin()
+            return
         if selected=="__manage_genshin__":
             self._showGenshinLibrary()
             return
