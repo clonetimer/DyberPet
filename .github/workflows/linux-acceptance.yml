@@ -35,7 +35,7 @@ jobs:
       - name: Install virtual X11 and runtime dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libgl1 libegl1 libopengl0 libespeak1
+          sudo apt-get install -y xvfb xauth libxcb1 libx11-xcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 libxcb-shape0 libxcb-sync1 libxkbcommon-x11-0 libxrender1 libxi6 libxext6 libfontconfig1 libdbus-1-3 libglib2.0-0 libgl1 libegl1 libopengl0 libespeak1
       - name: Install application dependencies
         run: python -m pip install -r requirements-linux-portable.txt
       - name: Require real Qt Widgets and XCB platform libraries
@@ -45,6 +45,16 @@ jobs:
           from PySide6.QtGui import QPixmap
           import PySide6
           print("Linux PySide6 QtWidgets and QPixmap imports succeeded:", PySide6.__version__)
+          PY
+      - name: Verify Qt XCB plugin has all shared libraries
+        run: |
+          python - <<'PY'
+          import os,subprocess,PySide6
+          from pathlib import Path
+          plugin=Path(PySide6.__file__).parent/"Qt"/"plugins"/"platforms"/"libqxcb.so"
+          check=subprocess.run(["ldd",str(plugin)],text=True,capture_output=True,check=True)
+          print(check.stdout)
+          assert "not found" not in check.stdout, "Qt XCB plugin shared libraries unavailable"
           PY
       - name: Validate original PyInstaller/source path semantics
         run: python -m unittest discover -s tests -p "test_linux_portable_paths.py" -v
@@ -120,7 +130,7 @@ jobs:
       - name: Install X11 runtime and Linux Qt dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libgl1 libegl1 libopengl0 libespeak1
+          sudo apt-get install -y xvfb xauth libxcb1 libx11-xcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 libxcb-shape0 libxcb-sync1 libxkbcommon-x11-0 libxrender1 libxi6 libxext6 libfontconfig1 libdbus-1-3 libglib2.0-0 libgl1 libegl1 libopengl0 libespeak1
       - name: Install application/build dependencies
         run: python -m pip install -r requirements-linux-portable.txt
       - name: Build frozen Linux onedir candidate
