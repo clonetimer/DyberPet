@@ -26,6 +26,9 @@ from DyberPet.modules import *
 from DyberPet.Accessory import MouseMoveManager
 from DyberPet.custom_widgets import RoundBarBase, LevelBadge
 from DyberPet.bubbleManager import BubbleManager
+from DyberPet.assistant.character_motion import style_for, GROUND
+from DyberPet.assistant.speech_sync import available_talk_action
+from DyberPet.assistant.preferences import load as load_assistant_preferences
 
 # initialize settings
 import DyberPet.settings as settings
@@ -431,6 +434,16 @@ class PetWidget(QWidget):
         self.show()
 
         self._setup_ui()
+        self._motion_timer = QTimer(self)
+        self._motion_timer.setInterval(80)
+        self._motion_timer.timeout.connect(self._hover_motion_tick)
+        self._motion_elapsed = QElapsedTimer()
+        self._hover_offset = 0
+        try:
+            self._motion_enabled = load_assistant_preferences()["motion_enabled"]
+        except (OSError, ValueError, KeyError):
+            self._motion_enabled = True
+        self._configure_character_motion()
 
         # 开始动画模块和交互模块
         self.threads = {}
@@ -1013,6 +1026,7 @@ class PetWidget(QWidget):
             #Action(FIF.MENU, self.tr('More Options'), triggered=self._show_right_menu),
             Action(QIcon(os.path.join(basedir,'res/icons/dashboard.svg')), self.tr('Dashboard'), triggered=self._show_dashboard),
             Action(QIcon(os.path.join(basedir,'res/icons/SystemPanel.png')), self.tr('System'), triggered=self._show_controlPanel),
+            Action(FIF.EDIT, self.tr('Desktop Pet Assistant (Files / Voice / Persona)'), triggered=self._show_pet_assistant),
         ])
         self.StatMenu.addSeparator()
 
@@ -1030,6 +1044,72 @@ class PetWidget(QWidget):
     #     statusText = self.tr("Status: ") + f"{settings.TIER_NAMES[hp_tier]}"
     #     self.statLabel.setText(statusText)
 
+
+    def _show_pet_assistant(self):
+        """Open the optional assistant without interrupting pet animations."""
+        from DyberPet.assistant.ui import PetAssistantDialog
+        from pathlib import Path
+        if not hasattr(self, "_pet_assistant") or self._pet_assistant is None:
+            workspace = Path.home() / "Documents" / "DyberPetAssistant"
+            self._pet_assistant = PetAssistantDialog(
+                self.curr_pet_name, workspace, self,
+                role_root=Path(basedir) / "res" / "role")
+            self._pet_assistant.reply_ready.connect(self._assistant_reply_bubble)
+            self._pet_assistant.action_notice.connect(self._assistant_notice_bubble)
+            self._pet_assistant.action_requested.connect(self._assistant_play_action)
+            self._pet_assistant.motion_toggled.connect(self._set_character_motion_enabled)
+            self._pet_assistant.speech_started.connect(self._assistant_speech_started)
+            self._pet_assistant.speech_finished.connect(self._assistant_speech_finished)
+        else:
+            self._pet_assistant.set_character(self.curr_pet_name)
+        self._sync_assistant_actions()
+        self._set_character_motion_enabled(
+            self._pet_assistant.motion_enabled.isChecked())
+        self._pet_assistant.show()
+        self._pet_assistant.raise_()
+        self._pet_assistant.activateWindow()
+
+    def _sync_assistant_actions(self):
+        try:
+            options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+            unlocked = [key for key, value in options.items()
+                        if isinstance(value, dict) and value.get("unlocked")]
+            self._pet_assistant.set_actions(unlocked)
+        except (AttributeError, KeyError):
+            self._pet_assistant.set_actions([])
+
+    def _assistant_play_action(self, name):
+        """Never trigger a locked or nonexistent animation."""
+        available = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+        if (name in available and isinstance(available[name], dict)
+                and available[name].get("unlocked")):
+            self._show_act(name)
+
+    def _assistant_speech_started(self, character, message):
+        """React to local TTS playback, never to arbitrary model tool calls."""
+        if character != self.curr_pet_name:
+            return
+        self._assistant_voice_active = True
+        self._assistant_reply_bubble(message)
+        options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+        talk = available_talk_action(options)
+        if talk is not None:
+            self._assistant_play_action(talk)
+
+    def _assistant_speech_finished(self, character):
+        if character == self.curr_pet_name:
+            # Native actions finish normally through Interaction_worker.
+            # Do not interrupt another user-selected animation here.
+            self._assistant_voice_active = False
+
+    def _assistant_reply_bubble(self, message):
+        """Use the existing DPNote bubble path; do not create a new overlay."""
+        if settings.bubble_on and message:
+            self.register_bubbleText({"message": str(message)[:120], "timeout": 6})
+
+    def _assistant_notice_bubble(self, message):
+        if settings.bubble_on and message:
+            self.register_bubbleText({"message": str(message)[:120], "timeout": 4})
 
     def _show_Staus_menu(self):
         """
@@ -1126,6 +1206,9 @@ class PetWidget(QWidget):
 
         # reload new pet
         self.init_conf(pet_name)
+        if getattr(self, "_pet_assistant", None) is not None:
+            self._pet_assistant.set_character(pet_name)
+            self._sync_assistant_actions()
 
         # Change status
         self.pet_hp.init_HP(settings.pet_data.hp, sys_hp_interval) #2)
@@ -1143,6 +1226,7 @@ class PetWidget(QWidget):
         self.change_note.emit()
         self.repaint()
         self._setup_ui()
+        self._configure_character_motion()
 
         self.runAnimation()
         self.runInteraction()
@@ -1840,6 +1924,7 @@ class PetWidget(QWidget):
         self.threads['Animation'].started.connect(self.workers['Animation'].run)
         self.workers['Animation'].sig_setimg_anim.connect(self.set_img)
         self.workers['Animation'].sig_move_anim.connect(self._move_customized)
+        self.workers['Animation'].sig_move_native_gait.connect(self._move_native_gait)
         self.workers['Animation'].sig_repaint_anim.connect(self.repaint)
         self.workers['Animation'].acc_regist.connect(self.register_accessory)
 
@@ -1908,6 +1993,65 @@ class PetWidget(QWidget):
 
 
 
+    def _set_character_motion_enabled(self, enabled):
+        """User-controlled opt-out for authored role animations that already move."""
+        enabled = bool(enabled)
+        if getattr(self, "_motion_enabled", True) == enabled:
+            return
+        was_hover = getattr(self, "_motion_style", GROUND).kind == "hover"
+        self._motion_enabled = enabled
+        self._configure_character_motion()
+        if was_hover and not enabled and settings.onfloor != 0:
+            self.move(self.pos().x(), int(self.floor_pos +
+                                         settings.current_anchor[1]))
+
+    def _configure_character_motion(self):
+        """Reset character-specific motion without replacing animation workers."""
+        self._motion_timer.stop()
+        self._hover_offset = 0
+        self._motion_style = (style_for(self.curr_pet_name)
+                              if getattr(self, "_motion_enabled", True) else GROUND)
+        if self._motion_style.kind == "hover":
+            # Only positioning changes. Real hover sprites/gesture clips must
+            # be supplied separately by a licensed character role.
+            lift = self._motion_style.ground_lift(settings.tunable_scale)
+            floor = self.floor_pos + settings.current_anchor[1]
+            target = min(self.pos().y(), floor - lift)
+            target = max(self.current_screen.topLeft().y() - self.height() // 2,
+                         target)
+            self.move(self.pos().x(), int(target))
+            self._motion_elapsed.start()
+            self._motion_timer.start()
+
+    def _hover_motion_tick(self):
+        if (self._motion_style.kind != "hover" or self.is_follow_mouse
+                or settings.draging or settings.onfloor == 0
+                or not self.isVisible()):
+            return
+        next_offset = self._motion_style.bob_at(
+            self._motion_elapsed.elapsed() / 1000.0)
+        delta = next_offset - self._hover_offset
+        if not delta:
+            return
+        pos = self.pos()
+        target_y = pos.y() + delta
+        target_y = min(target_y, self.floor_pos +
+                       settings.current_anchor[1] -
+                       self._motion_style.ground_lift(settings.tunable_scale))
+        x, y = self.limit_in_screen(pos.x(), target_y, on_action=True)
+        actual_delta = int(y - pos.y())
+        self._hover_offset += actual_delta
+        if actual_delta:
+            self.move(int(x), int(y))
+
+    def _move_native_gait(self, plus_x, plus_y):
+        """Only the scheduler-confirmed left/right native gait gets pace boost."""
+        if getattr(self, "_motion_style", GROUND).kind == "quadruped":
+            plus_x = self._motion_style.dx(
+                plus_x, on_floor=settings.onfloor != 0,
+                dragging=self.is_follow_mouse or bool(settings.draging))
+        self._move_customized(plus_x, plus_y)
+
     def _move_customized(self, plus_x, plus_y):
 
         #print(act_list)
@@ -1949,7 +2093,11 @@ class PetWidget(QWidget):
         else:
             new_x, new_y = self.limit_in_screen(new_x, new_y, on_action=True)
 
-        self.move(new_x, new_y)
+        if self._motion_style.kind == "hover" and settings.onfloor != 0:
+            hover_floor = (self.floor_pos + settings.current_anchor[1] -
+                           self._motion_style.ground_lift(settings.tunable_scale))
+            new_y = min(new_y, hover_floor)
+        self.move(int(new_x), int(new_y))
 
 
     def switch_screen(self, screen):

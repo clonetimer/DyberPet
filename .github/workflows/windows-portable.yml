@@ -1,0 +1,68 @@
+name: Windows portable candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "feat/pet-actions-voice-persona-20261023"
+    paths:
+      - "run_DyberPet.py"
+      - "DyberPet/assistant/**"
+      - "DyberPet/DyberPet.py"
+      - "DyberPet/modules.py"
+      - "tools/build_windows_portable.ps1"
+      - "requirements-windows-portable.txt"
+      - ".github/workflows/windows-portable.yml"
+  pull_request:
+    paths:
+      - "run_DyberPet.py"
+      - "DyberPet/assistant/**"
+      - "tools/build_windows_portable.ps1"
+      - "requirements-windows-portable.txt"
+      - ".github/workflows/windows-portable.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-exe-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-windows-portable.txt
+      - name: Install pinned desktop and offline voice build dependencies
+        run: python -m pip install -r requirements-windows-portable.txt
+      - name: Build portable Windows onedir candidate
+        shell: pwsh
+        run: ./tools/build_windows_portable.ps1
+      - name: Launch packaged EXE in headless assistant smoke mode
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = (Resolve-Path "dist/DyberPet/DyberPet.exe").Path
+          $report = Join-Path $env:RUNNER_TEMP "assistant-smoke.json"
+          $env:DYBERPET_SMOKE_REPORT = $report
+          $proc = Start-Process -FilePath $exe -ArgumentList "--assistant-smoke" -WorkingDirectory $env:RUNNER_TEMP -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "Packaged EXE smoke failed with exit code $($proc.ExitCode)" }
+          if (-not (Test-Path -LiteralPath $report)) { throw "EXE did not produce smoke report" }
+          $outcome = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+          if (-not $outcome.assets.ok -or -not $outcome.assistant_dialog) { throw "Packaged assistant or resources failed verification" }
+          if (-not $outcome.character_importer.ok -or $outcome.character_importer.synthetic_actions -lt 1 -or $outcome.character_importer.synthetic_frames -lt 1) { throw "Packaged character importer failed real synthetic conversion" }
+          if ($outcome.character_importer.modified_user_roles -or $outcome.character_importer.third_party_art_included) { throw "Character smoke mutated resources or used external art" }
+          foreach ($name in @("pyttsx3","vosk","sounddevice")) {
+            if ($outcome.optional_voice_imports.$name -ne $true) { throw "Missing packaged voice component: $name" }
+          }
+          Get-Content -LiteralPath $report
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DyberPet-Windows-Portable-PR2
+          path: DyberPet-Windows-Portable-PR2.zip
+          if-no-files-found: error
+          retention-days: 14

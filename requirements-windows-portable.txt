@@ -1,0 +1,13 @@
+# Review build, Windows Python 3.11; pin build tools and UI versions for repeatability.
+PySide6==6.5.2
+PySide6-Fluent-Widgets==1.5.4
+apscheduler==3.10.4
+pynput==1.7.7
+tendo==0.3.0
+pyinstaller==6.16.0
+# Main-branch character importer processes local GIF/PNG/WEBP resources.
+Pillow==12.0.0
+# Offline voice engines are bundled; Vosk acoustic model files are NOT.
+vosk==0.3.45
+sounddevice==0.5.2
+pyttsx3==2.99

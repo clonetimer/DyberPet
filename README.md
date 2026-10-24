@@ -42,6 +42,24 @@
   <img src="https://raw.githubusercontent.com/ChaozhongLiu/DyberPet/main/docs/DyberPet.gif" alt="DyberPet interface demo" width="92%">
 </p>
 
+## Windows 便携版候选包（PR #2）
+
+新增了可复现的 [Windows EXE 便携打包与自动自检](docs/windows_portable.md)：GitHub Actions 运行 PyInstaller 构建，在不同工作目录下启动**实际打包的 EXE**，检查桌宠助手 Qt 窗口、必需资源及可选离线语音模块，并提供 ZIP 测试产物。已验证打包程序能初始化，但**尚未完成实机麦克风、系统托盘、真实角色动画与音频质量验收**；不是正式安装程序或 Release。
+
+## 多角色贴近原设验收（开发分支）
+
+新增 [Doro、派蒙、纳西妲、可莉、芙宁娜、阿丽莎及咕嘎的专属档案](docs/character_fidelity.md)：分别核查角色辨识特征、动画、对白人设与短音效来源。桌宠助手新增当前人物的原设核查/独立 WAV 登记与试听；**此处仅为技术验收框架，未自动安装任何受版权保护的模型或原声**。
+
+## 咕嘎形象/音效还原验收（开发分支）
+
+新增[咕嘎真实性核查与有授权的本地 WAV 试听](docs/guga_authenticity.md)：支持检查已有角色的原生动画覆盖范围、PNG 尺寸及本地短音效格式/哈希，并通过桌宠助手登记音效来源。**这不等于已包含咕嘎的真实美术或原声，也不代表已获得可再分发授权。** 普通系统 TTS 明确区别于角色标志音效。
+
+## 新增：受控文件操作、离线语音与 PPL 人设（开发分支）
+
+桌宠右键菜单中新增 **Desktop Pet Assistant (Files / Voice / Persona)**：经确认的文件创建/可恢复删除/恢复、可选 Vosk 按键录音识别和 pyttsx3 离线朗读、LM Studio 本地文字对话，以及 PPL Character Governance 关系状态与 Persona DSL 渲染快照。
+
+**文件操作仅限 Documents/DyberPetAssistant 专属文件夹，模型不能自主调用文件工具。** 麦克风和模型连接默认不启动，使用前须配置可选依赖及本地服务。完整步骤和当前限制见 [桌宠助手使用说明](docs/pet_assistant.md)。此功能在独立 PR 开发，尚未包含在公开发布的 EXE 中。
+
 ## 为什么值得一试
 
 - 不只是“GIF 展示器”：从动画、互动到养成与任务系统，已经是一套完整可玩的桌面宠物 App。

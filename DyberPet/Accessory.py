@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.qt import QtScheduler
 from apscheduler.triggers import interval, date, cron
 
-from PySide6.QtCore import Qt, QTimer, QObject, QPoint, QUrl, QEvent, QRectF, QRect, QSize
+from PySide6.QtCore import Qt, QTimer, QElapsedTimer, QObject, QPoint, QUrl, QEvent, QRectF, QRect, QSize
 from PySide6.QtGui import QImage, QPixmap, QIcon, QCursor,QPainter
 from PySide6.QtGui import QFont, QTransform, QAction
 
@@ -31,6 +31,9 @@ from DyberPet.conf import *
 from DyberPet.custom_widgets import DPDialogue, MenuSlider
 from DyberPet.utils import SubPet_Manager
 import DyberPet.settings as settings
+from DyberPet.assistant.character_motion import style_for
+from DyberPet.assistant.mini_motion import MiniHover
+from DyberPet.assistant.preferences import load as load_assistant_preferences
 '''
 try:
     size_factor = 1 #ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
@@ -879,6 +882,10 @@ class SubPet(QWidget):
         self.main_x = pos_x
         self.main_y = pos_y
 
+        try:
+            self._mini_hover_enabled = load_assistant_preferences()["motion_enabled"]
+        except (OSError, ValueError, KeyError):
+            self._mini_hover_enabled = True
         self._init_ui()
         self._init_widget()
         self.init_conf(self.pet_name)
@@ -941,18 +948,67 @@ class SubPet(QWidget):
         self.timer.setTimerType(Qt.PreciseTimer)
         self.timer.timeout.connect(self.animation)
         self.timer.start(self.interact_speed)
+
+        # Dedicated lightweight Qt GUI timer. Only active for mini Paimon
+        # with floor-follow mode; never competes with follow_main_y.
+        self._mini_hover_clock = QElapsedTimer()
+        self._mini_hover_timer = QTimer(self)
+        self._mini_hover_timer.setInterval(80)
+        self._mini_hover_timer.timeout.connect(self._tick_mini_hover)
+        self._configure_mini_hover()
         
+    def _configure_mini_hover(self):
+        self._mini_hover_timer.stop()
+        self._mini_hover_policy = MiniHover.for_pet(
+            self.pet_name, is_subpet=self.isSubpet,
+            follows_main_y=self.follow_main_y,
+            enabled=self._mini_hover_enabled)
+        if self._mini_hover_policy.enabled:
+            self._mini_hover_clock.start()
+            self._mini_hover_timer.start()
+
+    def _tick_mini_hover(self):
+        if (not self._mini_hover_policy.enabled or self.closing
+                or self.follow_main_y or self.is_follow_mouse
+                or self.draging or self.onfloor == 0 or not self.isVisible()):
+            return
+        floor = self.floor_pos + self.current_anchor[1]
+        new_y = self._mini_hover_policy.next_y(
+            self.pos().y(), floor,
+            self._mini_hover_clock.elapsed() / 1000,
+            scale=self.tunable_scale)
+        if new_y != self.pos().y():
+            x, y = self.limit_in_screen(self.pos().x(), new_y, on_action=True)
+            self.move(int(x), int(y))
+
+    def toggle_mini_hover(self):
+        if not (self.isSubpet and style_for(self.pet_name).kind == "hover"
+                and not self.follow_main_y):
+            return
+        self._mini_hover_enabled = not self._mini_hover_enabled
+        self._configure_mini_hover()
+        if not self._mini_hover_enabled and self.onfloor != 0 and not self.draging:
+            # Explicit opt-out restores the native bottom-aligned baseline.
+            self.move(self.pos().x(),
+                      int(self.floor_pos + self.current_anchor[1]))
+        if hasattr(self, "mini_hover_action"):
+            self.mini_hover_action.setText(
+                "Suspend Hover" if self._mini_hover_enabled else "Enable Hover")
+
     def _withdraw(self):
         self.acc_withdrawed.emit(self.pet_name)
         self._closeit()
 
     def _closeit(self):
         self.closing = True
+        self._mini_hover_timer.stop()
         self.timer.stop()
         self.close()
 
     def closeEvent(self, event):
-        # we don't need the notification anymore, delete it!
+        # Stop periodic motion before Qt destroys the floating mini-pet.
+        self._mini_hover_timer.stop()
+        self.timer.stop()
         self.closed_acc.emit(self.acc_index)
         self.deleteLater()
 
@@ -1333,6 +1389,16 @@ class SubPet(QWidget):
             self.act_menu.addActions(select_accs)
 
         menu.addMenu(self.act_menu)
+
+        # A local, session-scoped opt-out for Paimon's additional bobbing.
+        # Users with authored hover sprites can leave the source animation alone.
+        if (self.isSubpet and style_for(self.pet_name).kind == "hover"
+                and not self.follow_main_y):
+            self.mini_hover_action = Action(
+                FIF.SYNC, "Suspend Hover" if self._mini_hover_enabled
+                else "Enable Hover", menu)
+            self.mini_hover_action.triggered.connect(self.toggle_mini_hover)
+            menu.addAction(self.mini_hover_action)
 
         # Drop on/off
         if not self.follow_main_y:
