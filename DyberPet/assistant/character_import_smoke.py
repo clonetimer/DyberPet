@@ -17,6 +17,8 @@ def verify_portable_character_importer():
     from tools.import_chibi_animations import convert_animation_folder
     from tools.import_codex_pet import convert as codex_converter
     from tools.install_native_role import validate_native_role, install_native_role
+    from tools.personal_role_import import personal_install
+    from tools.create_original_mascot import create_original_mascot, ACTIONS
 
     # Import the two remaining GUI paths too; only the synthetic frames path
     # needs to perform an actual conversion for this smoke gate.
@@ -45,12 +47,29 @@ def verify_portable_character_importer():
             raise RuntimeError("Converted role is missing playable actions")
         if not (role / "ANIMATION_PREVIEW.png").is_file():
             raise RuntimeError("Character converter did not create its preview")
+        # Real packaged-module acceptance: private local frames installer, plus
+        # the generated, playable, original mascot; both use only CI geometry.
+        local_role = personal_install(
+            input_dir, root / "personal", profile="genshin_xiao",
+            confirm_local_only=True)
+        import json
+        evidence = json.loads((local_role / "PERSONAL_IMPORT.json").read_text("utf-8"))
+        if evidence["source_rights_verified"] or evidence["redistribution_allowed_by_tool"]:
+            raise RuntimeError("Personal importer must never assert rights")
+        original_role = create_original_mascot(root / "original")
+        generated = validate_native_role(original_role)
+        if generated["actions"] != len(ACTIONS) or generated["images"] != sum(ACTIONS.values()):
+            raise RuntimeError("Original mascot must be truly animated")
         return {
             "ok": True,
             "profile_count": profiles,
             "source_registry_candidates": candidates,
             "synthetic_actions": result["actions"],
             "synthetic_frames": result["images"],
+            "personal_install_ok": True,
+            "personal_install_rights_verified": evidence["source_rights_verified"],
+            "original_mascot_actions": generated["actions"],
+            "original_mascot_frames": generated["images"],
             "modified_user_roles": False,
             "third_party_art_included": False,
         }
