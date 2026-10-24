@@ -9,6 +9,8 @@ on:
       - "run_DyberPet.py"
       - "DyberPet/assistant/**"
       - "DyberPet/DyberPet.py"
+      - "DyberPet/settings.py"
+      - "tests/test_default_pet_order.py"
       - "DyberPet/modules.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tools/personal_role_import.py"
@@ -42,6 +44,8 @@ on:
   pull_request:
     paths:
       - "run_DyberPet.py"
+      - "DyberPet/settings.py"
+      - "tests/test_default_pet_order.py"
       - "DyberPet/assistant/**"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tools/personal_role_import.py"
@@ -89,6 +93,8 @@ jobs:
           cache-dependency-path: requirements-windows-portable.txt
       - name: Install pinned desktop and offline voice build dependencies
         run: python -m pip install -r requirements-windows-portable.txt
+      - name: Verify deterministic first-launch pet selection
+        run: python -m unittest discover -s tests -p "test_default_pet_order.py" -v
       - name: Build portable Windows onedir candidate
         shell: pwsh
         run: ./tools/build_windows_portable.ps1
