@@ -37,9 +37,20 @@ from DyberPet.assistant.offline_restore import data_directory, recover_interrupt
 if "--restore-save" in sys.argv:
     from DyberPet.assistant.restore_wizard import run_restore_wizard
     sys.exit(run_restore_wizard())
-# Heal a power interruption that occurred between two directory renames.
-# Never touch a live data directory when no trusted journal exists.
-recover_interrupted_restore(data_directory())
+# Obtain exclusive process ownership BEFORE importing DyberPet.DyberPet;
+# that legacy module initializes and rewrites user saves as an import side effect.
+# A second launch must never write while the offline wizard holds the same lock.
+from tendo import singleton
+_SINGLE_INSTANCE = None
+_SMOKE_MODE = ("--assistant-smoke" in sys.argv or
+               "--linux-ui-smoke" in sys.argv)
+if __name__ == "__main__" and not _SMOKE_MODE:
+    try:
+        _SINGLE_INSTANCE = singleton.SingleInstance()
+    except singleton.SingleInstanceException:
+        sys.exit(0)
+    # Only the sole app owner may recover an interrupted directory switch.
+    recover_interrupted_restore(data_directory())
 
 # Capture clean-install state before DyberPet.DyberPet imports settings.init()
 # (which creates settings.json even on the first execution).
@@ -522,12 +533,10 @@ if __name__ == '__main__':
         verify_linux_gui()
         sys.exit(0)
 
-    # Avoid multiple process
-    try:
-        me = singleton.SingleInstance()
-    except:
-        sys.exit()
-
+    # Single-instance lock was acquired before importing any save-writing
+    # modules. Keep its reference alive for the whole GUI process.
+    if _SINGLE_INSTANCE is None:
+        raise RuntimeError("Normal startup requires exclusive DyberPet lock")
 
     # Create App
     QApplication.setHighDpiScaleFactorRoundingPolicy(
