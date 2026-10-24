@@ -28,11 +28,9 @@ jobs:
       - name: Install Blender and Pillow
         run: |
           sudo apt-get update -qq
-          # Ubuntu Blender uses its system Python, not setup-python's venv.
-          # GLTF export requires numpy inside *Blender's* interpreter.
-          sudo apt-get install -y blender python3-numpy libegl1 libgl1-mesa-dri
+          sudo apt-get install -y blender libegl1 libgl1-mesa-dri python3-numpy
           python -m pip install "Pillow>=10,<13"
-      - name: Verify Blender executable and GLTF numpy dependency
+      - name: Verify Blender executable
         run: blender -b --factory-startup --python-expr "import bpy, numpy; print(bpy.app.version_string, numpy.__version__)"
       - name: Render original geometry and import as DyberPet character
         env:
