@@ -3,6 +3,28 @@ from sys import platform
 import ctypes
 import os
 
+# This explicit diagnostic exits before GUI imports, so a frozen-package
+# namespace problem can be distinguished from a missing PyInstaller module.
+if "--linux-bundle-diag" in sys.argv:
+    import importlib.util
+    import DyberPet as inspected_package
+    print("LINUX_BUNDLE_DIAG", {
+        "frozen": bool(getattr(sys, "frozen", False)),
+        "module_file": getattr(inspected_package, "__file__", None),
+        "module_path": list(getattr(inspected_package, "__path__", [])),
+        "module_spec": str(getattr(inspected_package, "__spec__", None)),
+        "sys_path": sys.path,
+    }, flush=True)
+    for module_name in ("DyberPet.assistant", "DyberPet.assistant.portable",
+                        "DyberPet.DyberPet", "tools.genshin_library"):
+        try:
+            spec = importlib.util.find_spec(module_name)
+            print("LINUX_IMPORT_SPEC", module_name, str(spec), flush=True)
+        except Exception as exc:
+            print("LINUX_IMPORT_SPEC_ERROR", module_name, repr(exc), flush=True)
+    sys.exit(0)
+
+
 # Bootstrap *before* any legacy module loads resources or writes save data.
 # On Windows, DyberPet's base dir is the current working directory. This
 # guarantees the EXE can be started from any user folder / desktop shortcut.
