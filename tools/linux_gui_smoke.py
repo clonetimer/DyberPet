@@ -103,6 +103,41 @@ def verify_linux_gui():
                 app.processEvents()
             if preview.timer.isActive():
                 raise RuntimeError("Qt animation timer survived closed preview")
+        # The exact same Qt viewer must work for a Genshin chibi, not only
+        # the two mascot-specific body types.
+        from tools.generate_builtin_chibi_demos import generate_demo_roles
+        from tools.character_progress import character_progress
+        with TemporaryDirectory(prefix="dyberpet-x11-genshin-") as gtemp:
+            genshin_root = (Path(settings.BASEDIR) / "res" / "role"
+                            if getattr(sys, "frozen", False) else
+                            Path(gtemp) / "roles")
+            if not getattr(sys, "frozen", False):
+                generate_demo_roles(genshin_root, ["genshin_lisa"])
+            viewer = MascotActionPreview(
+                genshin_root / "DemoG_lisa", original_demo=True, parent=window)
+            try:
+                viewer.show()
+                app.processEvents()
+                if not viewer.isVisible() or viewer.frame.pixmap().isNull():
+                    raise RuntimeError("Shared Qt viewer failed on original Genshin demo")
+                action = viewer.actions.findData("left_walk")
+                if action < 0:
+                    raise RuntimeError("Genshin left_walk missing from native viewer")
+                viewer.actions.setCurrentIndex(action)
+                viewer._advance()
+                if viewer.frame_index != 1 or viewer.frame.pixmap().isNull():
+                    raise RuntimeError("Genshin walking frames did not advance in Qt")
+            finally:
+                viewer.close()
+                app.processEvents()
+            if viewer.timer.isActive():
+                raise RuntimeError("Genshin preview leaked its QTimer")
+        progress = character_progress(Path(settings.BASEDIR) / "res" / "role")
+        if progress["summary"]["template_total"] != 125:
+            raise RuntimeError("Cross-family ability dashboard lost 125 character profiles")
+        if (getattr(sys, "frozen", False) and
+                progress["summary"]["native_preview_ready"] != 125):
+            raise RuntimeError("Frozen GUI lacks usable animations for all 125 roles")
         local_catalog = scan_genshin_library(Path(settings.BASEDIR) / "res" / "role")
         mascot_catalog = scan_mascot_library(Path(settings.BASEDIR) / "res" / "role")
         if local_catalog["summary"]["template_count"] != 123:
@@ -126,6 +161,9 @@ def verify_linux_gui():
             "mascot_live_preview_visible": True,
             "mascot_live_walk_advanced": True,
             "mascot_live_preview_timer_stopped": True,
+            "genshin_live_preview_rendered": True,
+            "full_character_coverage_templates": progress["summary"]["template_total"],
+            "full_character_coverage_ready": progress["summary"]["native_preview_ready"],
             "mascot_special_actions_played": ["run","failed","lookaround"],
             "local_profile_count": local_catalog["summary"]["installed_profile_count"],
             "original_demo_profile_count": local_catalog["summary"]["original_demo_profile_count"],
