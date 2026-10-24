@@ -57,7 +57,7 @@ def _download_pinned(url, expected, opener=urlopen):
         data = response.read(MAX_FILE_BYTES + 1)
     if len(data) != size:
         raise ValueError("Downloaded art length differs from pinned source")
-    if hashlib.sha1(b"blob " + str(len(data)).encode() + b"\\0" + data).hexdigest() != git_sha:
+    if hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() != git_sha:
         raise ValueError("Downloaded art differs from immutable Git source")
     return data
 
