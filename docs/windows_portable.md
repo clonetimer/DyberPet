@@ -1,17 +1,17 @@
-# DyberPet Windows Portable — PR #2 Candidate
+# DyberPet Windows Portable — main personal candidate
 
 **Purpose:** Produce a review-only portable Windows folder; not an official release, not yet a signed installer or a verified audio-device build.
 
 ## One-command build (PowerShell, Windows)
 
-Clone the development branch `feat/pet-actions-voice-persona-20261023`. Use Python 3.11.
+Clone `clonetimer/DyberPet` and check out `main`. Use Python 3.11.
 
 ```powershell
 python -m pip install -r requirements-windows-portable.txt
 powershell -ExecutionPolicy Bypass -File tools/build_windows_portable.ps1
 ```
 
-The build creates `dist/DyberPet/DyberPet.exe` plus **editable** `res/` and `data/` directories. It also generates `DyberPet-Windows-Portable-PR2.zip` with SHA-256 in the build log. Do not extract into `C:\Program Files` because the legacy application still writes under the portable `data` directory; use a user-writable directory such as Documents. Running the EXE should not require Python to be installed.
+The build creates `dist/DyberPet/DyberPet.exe` plus **editable** `res/` and `data/` directories. The current script generates `DyberPet-Windows-Personal-PR5.zip` with SHA-256 in the build log (legacy file name; it includes later merged features too). Do not extract into `C:\Program Files` because the legacy application still writes under the portable `data` directory; use a user-writable directory such as Documents. Running the EXE should not require Python to be installed.
 
 **CI:** `.github/workflows/windows-portable.yml` packages the app on Windows and executes the **packaged EXE**, not merely Python modules. It launches from a different working directory with `--assistant-smoke`, sets `QT_QPA_PLATFORM=offscreen`, reads a JSON report, checks the native Qt assistant dialog, editable resources, imports of pyttsx3, Vosk and sounddevice, and **performs a real PNG-to-role conversion using a disposable synthetic sprite**. The converter must produce action frames and a preview, and the built role must pass the DyberPet role structure validator. The package explicitly includes Pillow, character importer modules and their source registry metadata. A successful CI run attaches a ZIP artifact for 14 days. The test does not start microphone hardware, LM Studio or PPL.
 
@@ -32,7 +32,7 @@ The automated EXE smoke uses temporary, original geometry and leaves `res/role` 
 
 ## Boundary and known gaps
 
-- This is a **portable ZIP candidate**, not an MSI/NSIS installer, service, or automatic updater. No main-branch merge or GitHub Release is part of this change.
+- This is a **portable ZIP candidate**, not an MSI/NSIS installer, service, or automatic updater. The implementation has been merged into `main`; no official GitHub Stable Release, MSI/NSIS installer, or code-signing certification has been completed.
 - Some older DyberPet code stores saves relative to the executable; choose a writable folder. Data migration/backup and a signed installer are not yet implemented.
 - Character source and speech fidelity still require separately verified, licensed materials. CI only packages the already tracked resources.
 - If Windows security products block execution, record the executable hash and exact warning. Do not disable security protections as a workaround.
