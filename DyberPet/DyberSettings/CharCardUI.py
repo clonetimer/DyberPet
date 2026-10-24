@@ -499,37 +499,42 @@ class CharInterface(ScrollArea):
         self.__showSystemNote(self.tr("正在本机获取并校验角色作者发布的图集，然后转换动画。"),1)
 
     def _installArtistGenshin(self):
-        """Fetch real released desktop-pet sprites, never procedural lookalikes."""
+        """Opt-in to existing published animation artwork, never redraw it."""
         if self.chibiThread is not None:
             self.__showSystemNote("其他角色安装仍在进行。", 1)
             return
         from tools.install_artist_genshin import ROLES, SOURCE_URL
-        labels = {f"{title} · 原作者逐帧美术":key
+        from tools.install_artist_codex import SOURCES, ROOT
+        labels = {f"完整原生动画 · {title}":("artist_genshin", key)
                   for key, (_, _, title) in ROLES.items()}
+        labels.update({f"轻量创作者图集 · {row[1]}":("artist_codex", key)
+                       for key, row in SOURCES.items()})
         selected, ok = QInputDialog.getItem(
-            self, "本机安装原作者桌宠素材",
-            "选择现有作者动画；首次下载是较大的完整来源包，请保持网络畅通。"
-            "不同于程序自绘演示。",
+            self, "安装真实来源的桌宠美术",
+            "选择已有作者制作的桌宠动画；完整原生动画包可能较大，"
+            "轻量图集通常只有数 MB。不会绘制新的替代形象。",
             list(labels), 0, False)
         if not ok or selected not in labels:
             return
-        kind = labels[selected]
+        mode, kind = labels[selected]
+        source = (SOURCE_URL + ROLES[kind][0] if mode == "artist_genshin"
+                  else ROOT + "/" + SOURCES[kind][0])
         if not self.__showMessageBox(
-                "安装原作者动画（个人使用）",
-                f"来源：{SOURCE_URL}{ROLES[kind][0]}\n"
-                "下载固定版本的原作者逐帧动画和配置，直接安装为独立角色。"
-                "只保存在此电脑，不覆盖原角色、存档或演示版。"
-                "素材仍需自行核对具体原作版本；不保证声线一致。继续吗？"):
+                "本机安装公开作者动画",
+                f"来源：{source}\\n"
+                "确认后下载固定版本原始动画，并安装为独立角色。"
+                "不会覆盖现有桌宠或用户存档。"
+                "公开素材与人物形象的人工验收是两回事；安装后请先预览。继续吗？"):
             return
         self.addButton.setEnabled(False)
         self.artistSourceButton.setEnabled(False)
         self.chibiThread = ChibiImportThread(
             kind, os.path.join(basedir, "res", "role"),
-            mode="artist_genshin", profile=None, preset=kind, folder=None)
+            mode=mode, profile=None, preset=kind, folder=None)
         self.chibiThread.done.connect(self._onChibiImportComplete)
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
-        self.__showSystemNote("正在安装原作者逐帧动画，完成后可直接切换。", 1)
+        self.__showSystemNote("正在下载并校验真实作者动画，安装后即可切换。", 1)
 
     def _showQuickStartGuide(self):
         from DyberPet.assistant.first_run_dialog import FirstRunRoleDialog
@@ -1201,6 +1206,11 @@ class ChibiImportThread(QThread):
             elif self.mode == "artist_genshin":
                 from tools.install_artist_genshin import install_artist_genshin
                 installed = install_artist_genshin(
+                    self.preset, self.output_root, confirmed=True)
+                new_folder = self.output_root / installed["folder"]
+            elif self.mode == "artist_codex":
+                from tools.install_artist_codex import install_artist_codex
+                installed = install_artist_codex(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
             elif self.mode == "creator_source":
