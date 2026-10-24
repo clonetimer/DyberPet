@@ -20,8 +20,10 @@ from zipfile import ZipFile, BadZipFile
 
 try:
     from .install_native_role import validate_native_role
+    from .artist_visual_review import create_native_art_review
 except ImportError:
     from install_native_role import validate_native_role
+    from artist_visual_review import create_native_art_review
 
 REPOSITORY = "ChaozhongLiu/DyberPet_GenshinImpact"
 REVISION = "0789950b81802cc51ebeeecfc24be16aaee16e74"
@@ -205,6 +207,7 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
             # intact and drop only missing, nonessential action references.
             excluded = _prune_missing_optional_actions(staged)
             status = validate_native_role(staged)
+            visual_review = create_native_art_review(staged)
             (staged / "PERSONAL_IMPORT.json").write_text(
                 json.dumps({"selected_profile": profile,
                             "display_name": original,
@@ -212,6 +215,7 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
                             "source_commit": REVISION,
                             "source_kind": "artist_original_animation",
                             "source_identity_anchors_verified": verified_source_files,
+                            "visual_review": visual_review,
                             "source_rights_verified": False,
                             "likeness_manually_reviewed": False,
                             "voice_verified": False,
@@ -225,6 +229,7 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
             "actions": status["actions"], "frames": status["images"],
             "source": SOURCE_URL + original, "uses_original_author_frames": True,
             "source_identity_verified": True,
+            "visual_review": visual_review["visual_review_file"],
             "likeness_manually_reviewed": False}
 
 

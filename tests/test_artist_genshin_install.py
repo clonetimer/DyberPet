@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from PIL import Image
 from unittest.mock import patch
 from zipfile import ZipFile
 
@@ -13,6 +14,12 @@ from tools.install_artist_genshin import (
     _prune_missing_optional_actions, verify_artist_role_identity,
     SOURCE_IDENTITY,
 )
+
+
+def fixture_sprite():
+    output = io.BytesIO()
+    Image.new("RGBA", (16, 16), (114, 204, 150, 255)).save(output, "PNG")
+    return output.getvalue()
 
 
 def fake_archive(*, extra=None):
@@ -24,7 +31,7 @@ def fake_archive(*, extra=None):
             "left": "idle", "right": "idle"}))
         zipfile.writestr(prefix + "act_conf.json", json.dumps({
             "idle": {"images": "idle", "act_num": 1, "frame_refresh": 0.2}}))
-        zipfile.writestr(prefix + "action/idle_0.png", b"fake-png")
+        zipfile.writestr(prefix + "action/idle_0.png", fixture_sprite())
         zipfile.writestr(ROOT_PREFIX + "魈/action/ignore_0.png", b"other-role")
         if extra:
             zipfile.writestr(prefix + extra, b"unsafe")
@@ -57,7 +64,11 @@ class ArtistInstallTests(unittest.TestCase):
         role = install_artist_genshin("nahida", self.root,
                                       confirmed=True, opener=self.opener)
         folder = self.root / role["folder"]
-        self.assertEqual((folder / "action/idle_0.png").read_bytes(), b"fake-png")
+        self.assertEqual((folder / "action/idle_0.png").read_bytes(), fixture_sprite())
+        self.assertTrue((folder / "ANIMATION_PREVIEW.png").is_file())
+        with Image.open(folder / "ANIMATION_PREVIEW.png") as preview:
+            self.assertGreaterEqual(preview.width, 700)
+            self.assertGreaterEqual(preview.height, 180)
         self.assertFalse((folder / "action/ignore_0.png").exists())
         receipt = json.loads((folder / "PERSONAL_IMPORT.json").read_text("utf-8"))
         self.assertEqual(receipt["selected_profile"], "genshin_nahida")
@@ -65,6 +76,8 @@ class ArtistInstallTests(unittest.TestCase):
         self.assertEqual(receipt["source_commit"], REVISION)
         self.assertEqual(role["source_identity_verified"], True)
         self.assertEqual(len(receipt["source_identity_anchors_verified"]), 3)
+        self.assertFalse(receipt["visual_review"]["likeness_manually_reviewed"])
+        self.assertTrue(receipt["visual_review"]["source_frames_unmodified"])
         self.assertFalse(receipt["likeness_manually_reviewed"])
         self.assertEqual(role["actions"], 1)
         with self.assertRaises(FileExistsError):
