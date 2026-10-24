@@ -15,9 +15,11 @@ from pathlib import Path
 try:
     from .chibi_profiles import CHIBI_PROFILES
     from .install_native_role import inspect_native_folder
+    from .genshin_role_bindings import load_bindings, binding_status
 except ImportError:
     from chibi_profiles import CHIBI_PROFILES
     from install_native_role import inspect_native_folder
+    from genshin_role_bindings import load_bindings, binding_status
 
 _MAX_RECEIPT_BYTES = 128 * 1024
 
@@ -50,7 +52,7 @@ def _profile_of(folder):
     return found[0] if found else None
 
 
-def scan_genshin_library(role_root):
+def scan_genshin_library(role_root, mappings=None):
     """Return a detached, JSON-safe catalogue; no writes or absolute paths."""
     catalog = {key: CHIBI_PROFILES[key]["name"]
                for key in sorted(CHIBI_PROFILES)
@@ -60,6 +62,7 @@ def scan_genshin_library(role_root):
         raise ValueError("Refusing linked role root")
     if root.exists() and not root.is_dir():
         raise ValueError("Role root must be a directory")
+    bindings = load_bindings(root, mappings)
     result = {key: {"profile": key, "name": name, "status": "template_only",
                     "installed_folders": [], "desktop_qa_verified": False,
                     "rights_verified": False}
@@ -77,11 +80,18 @@ def scan_genshin_library(role_root):
             total += 1
             try:
                 profile = _profile_of(folder)
+                binding = bindings.get(folder.name)
+                if binding and profile and profile != binding["profile"]:
+                    raise ValueError("Conflicting local and original import identities")
+                stale = bool(binding and not profile and not binding_status(folder, binding))
+                if binding and not profile and not stale:
+                    profile = binding["profile"]
                 # Native folder preflight rejects linked children and unsafe
                 # contents as well as invalid animation references.
                 report = inspect_native_folder(folder)
                 if profile not in catalog:
-                    unmapped.append({"folder": folder.name, "status": "unmapped_local",
+                    unmapped.append({"folder": folder.name,
+                                     "status": "stale_association" if stale else "unmapped_local",
                                      "actions": report["validation"]["actions"]})
                     continue
                 entry = result[profile]
@@ -106,6 +116,8 @@ def scan_genshin_library(role_root):
                 not v["installed_folders"] for v in result.values()),
             "local_folder_count": total,
             "unmapped_folder_count": len(unmapped),
+            "stale_association_count": sum(
+                x["status"] == "stale_association" for x in unmapped),
             "invalid_folder_count": len(invalid),
         },
         "characters": list(result.values()),
@@ -119,9 +131,10 @@ def main(argv=None):
     ap.add_argument("--role-root", type=Path,
                     default=Path(__file__).resolve().parents[1] / "res" / "role")
     ap.add_argument("--only", choices=("all", "installed", "pending"), default="all")
+    ap.add_argument("--mappings", type=Path, help="Optional local sidecar associations")
     args = ap.parse_args(argv)
     try:
-        result = scan_genshin_library(args.role_root)
+        result = scan_genshin_library(args.role_root, args.mappings)
         if args.only != "all":
             wanted = ("structurally_installed" if args.only == "installed"
                       else "template_only")
