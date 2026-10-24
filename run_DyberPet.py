@@ -232,6 +232,10 @@ if __name__ == '__main__':
     if "--assistant-smoke" in sys.argv:
         _assistant_package_smoke()
         sys.exit(0)
+    if "--linux-ui-smoke" in sys.argv:
+        from tools.linux_gui_smoke import verify_linux_gui
+        verify_linux_gui()
+        sys.exit(0)
 
     # Avoid multiple process
     try:
