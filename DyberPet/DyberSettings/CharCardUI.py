@@ -350,19 +350,26 @@ class CharInterface(ScrollArea):
         from tools.chibi_profiles import CHIBI_PROFILES
 
         default_choice = "保留素材名称（Q版自动缩放）"
-        choices = [default_choice] + [
-            f"{data['franchise']} · {data['name']} [{key}]"
+        # Name-first labels make Qt's editable combo completer useful with
+        # dozens of role templates. Typing is navigation, not a new ID.
+        options = {
+            f"{data['name']} · {data['franchise']} [{key}]": key
             for key, data in CHIBI_PROFILES.items()
-        ]
+        }
+        choices = [default_choice] + list(options)
         selected, accepted = QInputDialog.getItem(
             self, self.tr("Q版角色模板"),
-            self.tr("请选择显示与对话模板；请确认素材确实对应所选人物："),
-            choices, 0, False
+            self.tr("可输入角色名首字快速查找；必须选列表中已有模板："),
+            choices, 0, True
         )
         if not accepted:
             return False, None
-        profile = None if selected == default_choice else selected.rsplit("[", 1)[1][:-1]
-        return True, profile
+        if selected == default_choice:
+            return True, None
+        if selected not in options:
+            self.__showSystemNote(self.tr("请选择下拉列表中的角色模板。"), 2)
+            return False, None
+        return True, options[selected]
 
     def _importNativeZip(self, archivePath):
         """Install existing native role ZIP without changing existing roles."""
