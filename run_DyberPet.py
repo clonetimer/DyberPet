@@ -267,6 +267,9 @@ def _assistant_package_smoke():
                 Path(os.getcwd()) / "res" / "role" / role,
                 original_demo=True)
             try:
+                if (len(viewer.plan["actions"]) != 10 or
+                        viewer.plan["total_frames"] != 66):
+                    raise RuntimeError("Frozen mascot lacks 10 distinct 66-frame actions: "+role)
                 viewer.show()
                 app.processEvents()
                 if not viewer.isVisible() or viewer.frame.pixmap().isNull():
@@ -278,6 +281,14 @@ def _assistant_package_smoke():
                 viewer._advance()
                 if viewer.frame_index != 1 or viewer.frame.pixmap().isNull():
                     raise RuntimeError("Frozen mascot preview did not animate: " + role)
+                for special in ("run", "failed", "lookaround"):
+                    special_index=viewer.actions.findData(special)
+                    if special_index < 0:
+                        raise RuntimeError("Frozen mascot missing special action "+special)
+                    viewer.actions.setCurrentIndex(special_index)
+                    viewer._advance()
+                    if viewer.frame_index != 1 or viewer.frame.pixmap().isNull():
+                        raise RuntimeError("Frozen mascot special animation failed: "+special)
                 viewer._toggle()
                 if viewer.timer.isActive():
                     raise RuntimeError("Frozen mascot pause control failed: " + role)
@@ -287,6 +298,8 @@ def _assistant_package_smoke():
             if viewer.timer.isActive():
                 raise RuntimeError("Frozen mascot preview leaked a Qt timer")
         report["mascot_live_preview_count"]=2
+        report["mascot_special_actions_each"]=10
+        report["mascot_special_frames_each"]=66
         report["mascot_live_preview_timer_safe"]=True
 
     for module in ("pyttsx3", "vosk", "sounddevice"):
