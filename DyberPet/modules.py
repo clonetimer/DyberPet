@@ -22,6 +22,7 @@ from DyberPet.conf import *
 
 
 import DyberPet.settings as settings
+from DyberPet.assistant.character_motion import is_authored_gait_frame
 basedir = settings.BASEDIR
 
 # system config
@@ -36,6 +37,7 @@ sys_nonDefault_prob = [1, 0.125, 0.25, 0.5] #Line 50
 class Animation_worker(QObject):
     sig_setimg_anim = Signal(name='sig_setimg_anim')
     sig_move_anim = Signal(float, float, name='sig_move_anim')
+    sig_move_native_gait = Signal(float, float, name='sig_move_native_gait')
     sig_repaint_anim = Signal()
     acc_regist = Signal(dict, name='acc_regist')
 
@@ -334,7 +336,10 @@ class Animation_worker(QObject):
         if plus_x == 0 and plus_y == 0:
             pass
         else:
-            self.sig_move_anim.emit(plus_x, plus_y)
+            if is_authored_gait_frame(act, self.pet_conf):
+                self.sig_move_native_gait.emit(plus_x, plus_y)
+            else:
+                self.sig_move_anim.emit(plus_x, plus_y)
 
 
 

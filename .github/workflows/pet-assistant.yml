@@ -1,0 +1,95 @@
+name: Desktop pet assistant
+
+on:
+  pull_request:
+    paths:
+      - "DyberPet/assistant/**"
+      - "tools/audit_guga.py"
+      - "tools/audit_character.py"
+      - "docs/character_fidelity.md"
+      - "docs/guga_authenticity.md"
+      - "DyberPet/DyberPet.py"
+      - "DyberPet/Accessory.py"
+      - "DyberPet/modules.py"
+      - "DyberPet/conf.py"
+      - "tests/test_assistant_*.py"
+      - "docs/pet_assistant.md"
+      - ".github/workflows/pet-assistant.yml"
+  push:
+    branches:
+      - "feat/pet-actions-voice-persona-20261023"
+    paths:
+      - "DyberPet/assistant/**"
+      - "DyberPet/DyberPet.py"
+      - "DyberPet/Accessory.py"
+      - "DyberPet/modules.py"
+      - "DyberPet/conf.py"
+      - "tests/test_assistant_*.py"
+      - ".github/workflows/pet-assistant.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.9", "3.11"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile assistant and main entry
+        run: python -m compileall -q DyberPet/assistant DyberPet/DyberPet.py DyberPet/Accessory.py DyberPet/modules.py DyberPet/conf.py
+      - name: Check Guga local fidelity CLI
+        run: python tools/audit_guga.py --help
+      - name: Check all-character fidelity CLI
+        run: python tools/audit_character.py --help
+      - name: Install character converter image dependency
+        run: python -m pip install "Pillow==11.3.0"
+      - name: Test workspace, PPL and voice guards
+        run: python -m unittest discover -s tests -p "test_assistant_*.py" -v
+
+  qt-gui-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PySide6
+        run: python -m pip install "PySide6==6.5.2"
+      - name: Test actual assistant UI offscreen
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests -p "test_assistant_qt.py" -v
+
+  ppl-real-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout PPL reference product
+        uses: actions/checkout@v4
+        with:
+          repository: clonetimer/PPL
+          # Qualified against PPL main at 2026-10-23; keep cross-repo smoke deterministic.
+          ref: a587e5b6ffb62fd005ac67e98eed79fac3dd66de
+          path: ppl-src
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install PPL product workspace
+        working-directory: ppl-src
+        run: npm ci --ignore-scripts
+      - name: Run live Character Governance HTTP contract
+        env:
+          PPL_INTEGRATION_HOME: ${{ github.workspace }}/ppl-src
+        run: python -m unittest discover -s tests -p "test_assistant_ppl_live.py" -v
