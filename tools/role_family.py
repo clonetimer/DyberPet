@@ -58,9 +58,6 @@ def known_mascot_family(folder):
     if genshin is not None or (other is not None and
                                other.get("selected_profile") is not None):
         raise ValueError("Mascot source also claims a Genshin or personal identity")
-    if report is not None and report.get("profile") in (
-            "genshin_lisa",) :  # handled generically below
-        raise ValueError("Contradictory Genshin profile in mascot source")
     if report is not None and isinstance(report.get("profile"), str) and (
             report["profile"].startswith("genshin_")):
         raise ValueError("Contradictory Genshin profile in mascot source")
