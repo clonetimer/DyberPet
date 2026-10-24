@@ -311,6 +311,14 @@ class CharInterface(ScrollArea):
             self._importLocalChibi(folder, mode="animations")
             return
 
+        # Early GenshinImpact distributions already contain res/role/<name>.
+        # Use the same safe worker staging/validation as the native ZIP path;
+        # do not copy untrusted extracted folders directly into the live tree.
+        if (os.path.isfile(os.path.join(folder, "pet_conf.json")) and
+                os.path.isfile(os.path.join(folder, "act_conf.json"))):
+            self._importNativeFolder(folder)
+            return
+
         # Check files integrity
         statCode, errorList = CheckCharFiles(os.path.abspath(folder))
         if 0 < statCode < 7:
@@ -369,6 +377,20 @@ class CharInterface(ScrollArea):
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在验证并安装原生角色 ZIP。"), 1)
+
+    def _importNativeFolder(self, sourceFolder):
+        """Safely stage an extracted single main-role MOD on a worker thread."""
+        if self.chibiThread is not None:
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            sourceFolder, os.path.join(basedir, "res", "role"),
+            mode="native_folder", profile=None, preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(self.tr(
+            "正在安全检查并导入原生角色文件夹（不会覆盖已有角色）。"), 1)
 
     def _importCodexCharacter(self, sourceFolder):
         self._importLocalChibi(sourceFolder, mode="codex")
@@ -651,6 +673,9 @@ class ChibiImportThread(QThread):
             if self.mode == "native_zip":
                 from tools.install_native_role import install_native_role
                 new_folder = install_native_role(self.source, self.output_root)
+            elif self.mode == "native_folder":
+                from tools.install_native_role import install_native_folder
+                new_folder = install_native_folder(self.source, self.output_root)
             elif self.mode == "codex":
                 from tools.import_codex_pet import convert
                 new_folder = convert(
