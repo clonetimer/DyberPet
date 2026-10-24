@@ -7,10 +7,16 @@ if [[ "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ]]; then
   exit 2
 fi
 
-python -m PyInstaller --noconfirm --clean --onedir \
+python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --contents-directory . --name DyberPet \
   --collect-all qfluentwidgets \
+  --collect-submodules DyberPet \
   --collect-submodules DyberPet.assistant \
+  --hidden-import DyberPet.assistant \
+  --hidden-import DyberPet.assistant.portable \
+  --hidden-import DyberPet.assistant.character_import_smoke \
+  --hidden-import DyberPet.settings \
+  --hidden-import DyberPet.DyberPet \
   --collect-data tools \
   --hidden-import tools.chibi_profiles \
   --hidden-import tools.chibi_layout \
