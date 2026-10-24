@@ -16,10 +16,12 @@ try:
     from .chibi_profiles import CHIBI_PROFILES
     from .install_native_role import inspect_native_folder
     from .genshin_role_bindings import load_bindings, binding_status
+    from .role_family import known_mascot_family
 except ImportError:
     from chibi_profiles import CHIBI_PROFILES
     from install_native_role import inspect_native_folder
     from genshin_role_bindings import load_bindings, binding_status
+    from role_family import known_mascot_family
 
 _MAX_RECEIPT_BYTES = 128 * 1024
 
@@ -86,7 +88,7 @@ def scan_genshin_library(role_root, mappings=None):
                     "installed_folders": [], "desktop_qa_verified": False,
                     "rights_verified": False}
               for key, name in catalog.items()}
-    unmapped, invalid, total = [], [], 0
+    unmapped, invalid, total, other_family = [], [], 0, 0
     if root.exists():
         for folder in sorted(root.iterdir(), key=lambda p: p.name.casefold()):
             if folder.name.startswith("."):
@@ -98,6 +100,12 @@ def scan_genshin_library(role_root, mappings=None):
                 continue
             total += 1
             try:
+                mascot = known_mascot_family(folder)
+                if mascot is not None:
+                    if folder.name in bindings:
+                        raise ValueError("Cross-family Genshin sidecar conflicts with mascot identity")
+                    other_family += 1
+                    continue
                 profile = _profile_of(folder)
                 binding = bindings.get(folder.name)
                 if binding and profile and profile != binding["profile"]:
@@ -146,6 +154,7 @@ def scan_genshin_library(role_root, mappings=None):
                 not v["installed_folders"] for v in result.values()),
             "local_folder_count": total,
             "unmapped_folder_count": len(unmapped),
+            "other_family_folder_count": other_family,
             "stale_association_count": sum(
                 x["status"] == "stale_association" for x in unmapped),
             "invalid_folder_count": len(invalid),
