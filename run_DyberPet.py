@@ -30,6 +30,17 @@ if "--linux-bundle-diag" in sys.argv:
 # guarantees the EXE can be started from any user folder / desktop shortcut.
 from DyberPet.assistant.portable import initialize_portable_directory
 initialize_portable_directory()
+
+# RESTORE MUST BE HANDLED HERE, BEFORE importing settings/DyberPet.DyberPet.
+# That legacy module calls settings.init() and writes live save files on import.
+from DyberPet.assistant.offline_restore import data_directory, recover_interrupted_restore
+if "--restore-save" in sys.argv:
+    from DyberPet.assistant.restore_wizard import run_restore_wizard
+    sys.exit(run_restore_wizard())
+# Heal a power interruption that occurred between two directory renames.
+# Never touch a live data directory when no trusted journal exists.
+recover_interrupted_restore(data_directory())
+
 # Capture clean-install state before DyberPet.DyberPet imports settings.init()
 # (which creates settings.json even on the first execution).
 import DyberPet.settings as settings
@@ -139,6 +150,25 @@ class DyberPetApp(QApplication):
         except (OSError, ValueError, KeyError) as exc:
             QMessageBox.warning(self.conp, "桌宠切换失败", str(exc))
 
+    def launch_offline_restore(self):
+        """Start the independent wizard, then gracefully close the pet."""
+        from pathlib import Path
+        from PySide6.QtCore import QProcess
+        from PySide6.QtWidgets import QMessageBox
+        if getattr(sys, "frozen", False):
+            executable, arguments = sys.executable, ["--restore-save"]
+        else:
+            executable = sys.executable
+            arguments = [str(Path(__file__).resolve()), "--restore-save"]
+        started, _pid = QProcess.startDetached(executable, arguments)
+        if not started:
+            QMessageBox.warning(
+                self.conp, "恢复向导无法启动",
+                "程序未能启动独立恢复窗口，桌宠将保持运行，数据不会被修改。")
+            return
+        # This runs PetWidget's existing flush/stop/close path.
+        self.p.quit()
+
     def __connectSignalToSlot(self):
         # Main Widget - others
         self.p.setup_notification.connect(self.note.setup_notification)
@@ -166,6 +196,7 @@ class DyberPetApp(QApplication):
         self.p.show_controlPanel.connect(self.conp.show_window)
 
         self.conp.gamesaveInterface.refresh_pet.connect(self.p.refresh_pet)
+        self.conp.gamesaveInterface.restore_requested.connect(self.launch_offline_restore)
 
         # Dashboard - others
         self.p.show_dashboard.connect(self.board.show_window)
