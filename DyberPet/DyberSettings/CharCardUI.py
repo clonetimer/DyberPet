@@ -997,9 +997,16 @@ class CharInterface(ScrollArea):
         self.newPetFolder = role_name
         self.__onAddClickedContinue()
         preview = Path(basedir) / "res" / "role" / role_name / "ANIMATION_PREVIEW.png"
-        if preview.is_file() and self.__showMessageBox(
-                self.tr("Q版角色动作预览"),
-                self.tr("角色已导入。是否打开生成的动作帧预览图，检查动画素材？")):
+        source_mode = self.chibiThread.mode if self.chibiThread is not None else ""
+        title = ("作者真实动作帧核对（非人工验收通过）"
+                 if source_mode in ("artist_genshin", "artist_codex", "creator_source")
+                 else "角色动作帧预览")
+        message = ("安装成功。是否打开由原作者 PNG 原始帧直接拼成的核对图？"
+                   "请检查脸部、发饰、服装和动作是否确实属于所选角色。"
+                   "预览不等于自动完成形象验收。"
+                   if source_mode in ("artist_genshin", "artist_codex", "creator_source")
+                   else "角色已导入。是否打开动作帧预览图，检查动画素材？")
+        if preview.is_file() and self.__showMessageBox(title, message):
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
 
     def _onChibiThreadFinished(self):
