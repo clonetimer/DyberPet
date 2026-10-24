@@ -115,6 +115,8 @@ def verify_linux_gui():
                 generate_demo_roles(genshin_root, ["genshin_lisa"])
             viewer = MascotActionPreview(
                 genshin_root / "DemoG_lisa", original_demo=True, parent=window)
+            if len(viewer.plan["actions"]) != 10 or viewer.plan["total_frames"] != 66:
+                raise RuntimeError("Genshin X11 native preview lacks 10/66 animations")
             try:
                 viewer.show()
                 app.processEvents()
@@ -127,6 +129,14 @@ def verify_linux_gui():
                 viewer._advance()
                 if viewer.frame_index != 1 or viewer.frame.pixmap().isNull():
                     raise RuntimeError("Genshin walking frames did not advance in Qt")
+                for special in ("run", "failed", "lookaround"):
+                    idx = viewer.actions.findData(special)
+                    if idx < 0:
+                        raise RuntimeError("Genshin X11 preview missing "+special)
+                    viewer.actions.setCurrentIndex(idx)
+                    viewer._advance()
+                    if viewer.frame_index != 1 or viewer.frame.pixmap().isNull():
+                        raise RuntimeError("Genshin X11 special animation failed "+special)
             finally:
                 viewer.close()
                 app.processEvents()
