@@ -11,6 +11,14 @@
 
 生成内容包括待机 8 帧、左走 6 帧、右走 6 帧、挥手 8 帧、跳跃 6 帧、休息 6 帧、阅读 6 帧，**共 46 张** 192×208 RGBA 原创动作图；另有 `pet_conf.json`、`act_conf.json`、头像、封面、气泡和 `ORIGINAL_GENERATION.json`。这是独立绘制的原创萌芽形象，不是原神角色、Doro、咕嘎或其他已有商业角色。
 
+## 不用 Python：直接下载原创角色 ZIP
+
+在此 PR 的 [GitHub Actions 角色流水线](https://github.com/clonetimer/DyberPet/actions/workflows/character-mod-importer.yml) 中，`downloadable-original-role` 会在四种系统/Python 单元测试及 Windows Qt 实际角色加载测试成功后，自动生成并验证 `StarSprout-Original-Role.zip`，然后上传 `StarSprout-Original-Role` 工件（保存 14 天）。
+
+下载该工件后先解压一次，取出里面的 `StarSprout-Original-Role.zip`，**不要二次解压这个角色包**。打开已有 DyberPet 程序，选择 **系统 → 角色管理 → 添加角色 → 选择原生角色 ZIP 压缩包**，导入内层 ZIP。它使用与其他安全角色 ZIP 相同的本地校验和安装逻辑；若已有同名角色会自动分配新目录，不覆盖以前的角色。
+
+GitHub Actions 只提供通过结构与离屏 Qt 检查的原创动画 ZIP，不表示已经测试你的实体屏幕、声音设备或连续运行表现。
+
 ## 命令行（可选）
 
 开发者可在仓库根目录运行：
