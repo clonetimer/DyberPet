@@ -240,6 +240,25 @@ jobs:
               "character_templates":123,"non_destructive_local_roles":True},sort_keys=True))
           PY
           sha256sum "$GITHUB_WORKSPACE/DyberPet-Linux-Personal-x86_64.tar.gz"
+      - name: Strip placeholder art and verify final Linux personal candidate
+        shell: bash
+        run: |
+          python -m unittest discover -s tests -p "test_strip_generated_demo_art.py" -v
+          python tools/strip_generated_demo_art.py --role-root "dist/DyberPetDesktop/res/role" --expected 125
+          python tools/strip_generated_demo_art.py --role-root "dist/DyberPetDesktop/res/role" --verify-only
+          cd "$RUNNER_TEMP/start-from-elsewhere"
+          "$GITHUB_WORKSPACE/dist/DyberPetDesktop/DyberPetDesktop" --personal-package-smoke
+          cd "$GITHUB_WORKSPACE"
+          tar -czf DyberPet-Linux-Personal-x86_64.tar.gz -C dist DyberPetDesktop
+          python - <<'PY'
+          import tarfile
+          with tarfile.open("DyberPet-Linux-Personal-x86_64.tar.gz", "r:gz") as tar:
+              names=tar.getnames()
+          assert "DyberPetDesktop/res/role/Kitty/pet_conf.json" in names
+          assert not any("BUILTIN_CHIBI_DEMO.json" in p or
+                         "BUILTIN_MASCOT_DEMO.json" in p for p in names)
+          print("LINUX_USER_ART_POLICY_VERIFIED_NO_GENERATED_DEMOS")
+          PY
       - name: Publish portable Linux x86_64 candidate
         uses: actions/upload-artifact@v4
         with:
