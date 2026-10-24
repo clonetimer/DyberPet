@@ -155,6 +155,10 @@ def seed(workspace, keys, *, dry_run=False):
 def status(workspace, keys):
     """Read-only progress board backed by *actual* local candidate states."""
     workspace = Path(workspace).expanduser()
+    # Status must be safe on user-owned workspaces too: never traverse
+    # linked intake/review directories or individual linked case files.
+    if (workspace / "cases").is_symlink() or (workspace / "reviews").is_symlink():
+        raise PipelineError("Linked cases/reviews directory is not permitted")
     rows = []
     for expected in plan(workspace, keys):
         row = {
@@ -168,8 +172,14 @@ def status(workspace, keys):
             row["stage"] = "not_seeded"
             row["next_step"] = "seed candidate"
         else:
-            case = load_case(record_path(workspace, expected["id"]))
-            audit = inspect_case(record_path(workspace, expected["id"]))
+            case_path = record_path(workspace, expected["id"])
+            if case_path.is_symlink():
+                raise PipelineError("Linked candidate is not permitted: " + expected["id"])
+            case = load_case(case_path)
+            if (case["id"] != expected["id"] or
+                    case.get("profile") != "genshin_" + expected["id"].removeprefix("genshin_").removesuffix("_main")):
+                raise PipelineError("Candidate identity/profile mismatch: " + expected["id"])
+            audit = inspect_case(case_path)
             if case["status"] == "packaged":
                 row["stage"] = "packaged_locally"
                 row["next_step"] = "verify package distribution policies independently"
@@ -188,9 +198,20 @@ def status(workspace, keys):
             else:
                 row["stage"] = "awaiting_local_artwork"
                 row["next_step"] = "find specific source and attach local licensed asset"
+            # QA flags alone are insufficient: the original may be missing,
+            # modified since intake, or the built role may not exist.
+            local_blockers = [issue for issue in audit["blockers"]
+                              if "redistribution" not in issue]
+            built_role = case["build"].get("role") or ""
             row["playable_role_verified"] = bool(
-                case["qa"]["visual_pass"] and case["qa"]["runtime_pass"])
+                case["status"] in ("qa_reviewed", "packaged") and
+                case["qa"]["visual_pass"] and case["qa"]["runtime_pass"] and
+                built_role and Path(built_role).is_dir() and
+                not local_blockers)
+            # This flag only reflects *recorded* human review, not an
+            # independent legal assessment or permission to redistribute.
             row["redistribution_verified"] = bool(
+                row["playable_role_verified"] and
                 case["rights"]["redistribution"] and
                 case["rights"]["reviewer"] and
                 case["rights"]["evidence"])
