@@ -169,6 +169,23 @@ GENSHIN_ROSTER = {
         "今天的事务顺利吗？", "慢慢处理，不必着急。"),
 }
 
+# Keep the first 26 hand-reviewed dossiers intact. Add every distinct
+# 7.1 snapshot character absent from that curated set; this changes GUI
+# selection templates only, never assets or permissions.
+try:
+    from .genshin_complete_roster import supplemental_profiles
+except ImportError:
+    from genshin_complete_roster import supplemental_profiles
+
+_more_roles = supplemental_profiles(role)
+_conflicts = set(GENSHIN_ROSTER) & set(_more_roles)
+if _conflicts:
+    raise ValueError("Duplicate full-roster role IDs: " + ", ".join(sorted(_conflicts)))
+GENSHIN_ROSTER.update(_more_roles)
+del _more_roles, _conflicts
+
+
+
 
 def as_chibi_profiles():
     """Make supported importer templates; no mutable references escape."""

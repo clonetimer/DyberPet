@@ -19,9 +19,9 @@ from tools.audit_character_sources import check_catalog
 
 
 class GenshinRosterTests(unittest.TestCase):
-    def test_twenty_six_distinct_role_templates_in_existing_gui_registry(self):
-        self.assertEqual(len(GENSHIN_ROSTER), 26)
-        self.assertEqual(len({x["name"] for x in GENSHIN_ROSTER.values()}), 26)
+    def test_all_7_1_distinct_role_templates_in_existing_gui_registry(self):
+        self.assertEqual(len(GENSHIN_ROSTER), 118)
+        self.assertEqual(len({x["name"] for x in GENSHIN_ROSTER.values()}), 118)
         for key, row in GENSHIN_ROSTER.items():
             with self.subTest(key=key):
                 profile_id = "genshin_" + key
@@ -110,7 +110,7 @@ class GenshinBatchTests(unittest.TestCase):
 
     def test_seed_all_creates_isolated_unapproved_cases_and_checklists(self):
         result = seed(self.root, tuple(GENSHIN_ROSTER))
-        self.assertEqual(result["created"], 26)
+        self.assertEqual(result["created"], 118)
         for row in result["cases"]:
             with self.subTest(id=row["id"]):
                 path = record_path(self.root, row["id"])
