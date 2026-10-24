@@ -3,9 +3,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from DyberPet.settings import get_petlist
+# The lightweight importer workflow deliberately has no Qt installed.
+# The dedicated Windows/Linux desktop CI still runs these tests with PySide6.
+try:
+    from DyberPet.settings import get_petlist
+except ModuleNotFoundError as exc:
+    if exc.name != "PySide6":
+        raise
+    get_petlist = None
 
 
+@unittest.skipIf(get_petlist is None, "PySide6 is not installed in importer-only CI")
 class DeterministicPetTests(unittest.TestCase):
     def test_original_kitty_is_first_despite_directory_order(self):
         with tempfile.TemporaryDirectory() as folder:

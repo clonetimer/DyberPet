@@ -30,6 +30,11 @@ if "--linux-bundle-diag" in sys.argv:
 # guarantees the EXE can be started from any user folder / desktop shortcut.
 from DyberPet.assistant.portable import initialize_portable_directory
 initialize_portable_directory()
+# Capture clean-install state before DyberPet.DyberPet imports settings.init()
+# (which creates settings.json even on the first execution).
+import DyberPet.settings as settings
+from DyberPet.assistant.first_run import needs_first_run
+_FIRST_RUN = needs_first_run(settings.CONFIGDIR, sys.argv)
 if "--assistant-smoke" in sys.argv:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -111,6 +116,28 @@ class DyberPetApp(QApplication):
 
         # Signal Links
         self.__connectSignalToSlot()
+
+    def show_first_run_guide(self):
+        """Nonblocking-on-start (timer), no network or AI setup needed."""
+        from pathlib import Path
+        from PySide6.QtWidgets import QMessageBox
+        from DyberPet.assistant.first_run_dialog import FirstRunRoleDialog
+        role_root = Path(settings.BASEDIR) / "res" / "role"
+        dialog = FirstRunRoleDialog(
+            role_root, current_role=self.p.curr_pet_name, parent=self.conp)
+        if not dialog.exec() or not dialog.selected_role:
+            return
+        role = dialog.selected_role
+        if role not in settings.pets:
+            QMessageBox.warning(self.conp, "桌宠选择失败", "角色已经不可用，请重新打开角色库。")
+            return
+        try:
+            if role != self.p.curr_pet_name:
+                self.p._change_pet(role)
+            settings.default_pet = role
+            settings.save_settings()
+        except (OSError, ValueError, KeyError) as exc:
+            QMessageBox.warning(self.conp, "桌宠切换失败", str(exc))
 
     def __connectSignalToSlot(self):
         # Main Widget - others
@@ -251,6 +278,23 @@ def _assistant_package_smoke():
         if not report["backup_snapshot_verified"]:
             raise RuntimeError("Frozen complete-backup functionality unavailable")
 
+    # Exercise the real bundled first-run dialog without showing it on
+    # existing installs and without touching a live data directory.
+    from DyberPet.assistant.first_run_dialog import FirstRunRoleDialog
+    from DyberPet.assistant.first_run import needs_first_run
+    with tempfile.TemporaryDirectory(prefix="dyberpet-first-run-smoke-") as temp:
+        assert needs_first_run(temp)
+        (Path(temp) / "data").mkdir()
+        (Path(temp) / "data" / "settings.json").write_text("{}", encoding="utf-8")
+        assert not needs_first_run(temp)
+    welcome = FirstRunRoleDialog(Path(os.getcwd()) / "res" / "role", current_role="Kitty")
+    report["first_run_guide_verified"] = (
+        welcome.roles.count() >= 2 and welcome.selected_id() in
+        [welcome.roles.item(i).data(Qt.ItemDataRole.UserRole)
+         for i in range(welcome.roles.count())])
+    welcome.close()
+    if not report["first_run_guide_verified"]:
+        raise RuntimeError("Frozen first-run role chooser cannot select an installed role")
     # Source CI deliberately tests an untouched checkout and does not seed it.
     if getattr(sys, "frozen", False):
         from tools.genshin_library import scan_genshin_library
@@ -432,6 +476,8 @@ if __name__ == '__main__':
 
     app = DyberPetApp(sys.argv)
     app.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
+    if _FIRST_RUN:
+        QTimer.singleShot(400, app.show_first_run_guide)
 
     sys.exit(app.exec())
 

@@ -194,7 +194,25 @@ def verify_linux_gui():
             raise RuntimeError("Linux packaged GUI does not have all 123 rendered demo roles")
         if getattr(sys,"frozen",False) and mascot_catalog["summary"]["original_demo_count"] != 2:
             raise RuntimeError("Linux Qt binary missing Guga/Doro animated original mascots")
+        # Render the actual welcome dialog in X11 using only installed roles.
+        from DyberPet.assistant.first_run_dialog import FirstRunRoleDialog
+        welcome = FirstRunRoleDialog(root / "res" / "role", current_role="Kitty")
+        try:
+            welcome.show()
+            app.processEvents()
+            if not welcome.isVisible() or welcome.roles.count() < 2:
+                raise RuntimeError("First-run guide did not show playable roles")
+            welcome.search.setText("Kitty")
+            app.processEvents()
+            if welcome.selected_id() != "Kitty" or welcome.frame.pixmap().isNull():
+                raise RuntimeError("First-run guide failed local search/image preview")
+        finally:
+            welcome.close()
+            app.processEvents()
+
         report = {
+            "first_run_guide_visible": True,
+            "first_run_local_preview_verified": True,
             "ok": True,
             "display_backend": os.getenv("QT_QPA_PLATFORM", "default"),
             "qscreen_available": True,
