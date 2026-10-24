@@ -171,4 +171,4 @@ python tools/genshin_library.py --role-root res/role --only installed
 python tools/genshin_library.py --role-root res/role --only pending
 ```
 
-报告只暴露本机目录**文件夹名**和动作/帧数量，不包含绝对路径、原始图片或个人秘密。角色导入后若想让盘点按人物归类，应在导入原始 GIF/PNG 或 Codex 素材时选择对应 Q 版人物模板；原生 ZIP 若没有明确人物来源，则先保持未关联状态，不会错误认领。
+报告只暴露本机目录**文件夹名**和动作/帧数量，不包含绝对路径、原始图片或个人秘密。角色导入后若想让盘点按人物归类，应在导入原始 GIF/PNG 或 Codex 素材时选择对应 Q 版人物模板；原生 ZIP / 已解压原生角色文件夹现在也会提示选择**可选的 Q 版人物模板**：选择后仅记录 `PERSONAL_IMPORT.json` 中的本地关联，不会篡改原始美术或认证原设。保持默认选项则仍以未关联状态安装，绝不自动按文件名猜测是哪位原神角色。
