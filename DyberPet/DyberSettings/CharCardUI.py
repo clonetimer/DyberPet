@@ -76,6 +76,9 @@ class CharInterface(ScrollArea):
         self.addButton = PushButton(self.tr("Add Characters"), self, FIF.ADD)
         self.addButton.setSizePolicy(QSizePolicy.Maximum, self.addButton.sizePolicy().verticalPolicy())
         self.addButton.setToolTip("支持 DyberPet 模组、Codex Pets 图集和透明 GIF/PNG 动画文件夹")
+        self.catalogButton = PushButton(self.tr("原神角色库"), self, FIF.SEARCH)
+        self.catalogButton.setToolTip(
+            self.tr("按人物查看本机已安装、待导入及未关联角色；不自动下载素材"))
 
         # Button to show instructions on how to manually add chars
         #self.instructButton = TransparentPushButton(self.tr("Add Chars Manually"), self, FIF.QUESTION)
@@ -88,7 +91,8 @@ class CharInterface(ScrollArea):
         self.headerLayout.setSpacing(0)
 
         self.headerLayout.addWidget(self.addButton, Qt.AlignLeft | Qt.AlignVCenter)
-        spacerItem1 = QSpacerItem(15, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
+        self.headerLayout.addWidget(self.catalogButton, Qt.AlignLeft | Qt.AlignVCenter)
+        spacerItem1 = QSpacerItem(10, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.headerLayout.addItem(spacerItem1)
         self.headerLayout.addWidget(self.CharListLink, Qt.AlignLeft | Qt.AlignVCenter)
         #spacerItem2 = QSpacerItem(15, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
@@ -174,6 +178,7 @@ class CharInterface(ScrollArea):
                 self.CharCardList[i].card.deleteClicked.connect(self.__onDeleteClicked)
 
         self.addButton.clicked.connect(self.__onAddClicked)
+        self.catalogButton.clicked.connect(self._showGenshinLibrary)
         self.panelHelp.clicked.connect(self.__onShowInstruction)
 
     def __onLaunchClicked(self, petname):
@@ -252,13 +257,15 @@ class CharInterface(ScrollArea):
     def __onAddClicked(self):
         # Confirm
         title = self.tr("Adding Character")
-        content = self.tr("You are about to import a character from a local file. Please be aware that it is from third-party sources. We are not responsible for any potential harm or issues that may arise from using this character. Only proceed if you trust the source.")
+        content = self.tr("仅将您选择的角色素材导入这台电脑，不会自动联网下载或发布角色包。请确认文件来源可信，并自行检查创作者对个人使用、修改及分享的具体要求。安装不代表作品身份或授权已经验证；已有角色不会被覆盖。")
         if not self.__showMessageBox(title, content):
             return
 
         # Keep existing role management layout: one compact choice determines
         # whether user selects an unpacked role folder or a native MOD ZIP.
-        options = ["选择角色文件夹（含原生、Codex、Q版动作素材）", "选择原生角色 ZIP 压缩包"]
+        options = ["个人本地导入：角色文件夹 / Codex / GIF / PNG", "个人本地导入：原生角色 ZIP",
+                   "生成原创 Q 版示例角色（不需下载素材）",
+                   "浏览角色合集来源（网页手动获取，不自动下载）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -276,6 +283,13 @@ class CharInterface(ScrollArea):
             )
             if archive:
                 self._importNativeZip(archive)
+            return
+        if choice == options[2]:
+            self._importOriginalDemo()
+            return
+        if choice == options[3]:
+            QDesktopServices.openUrl(QUrl(
+                "https://github.com/clonetimer/DyberPet/blob/main/docs/collection.md"))
             return
         folder = QFileDialog.getExistingDirectory(
             self, self.tr("Please select the character folder"), docs)
@@ -311,6 +325,14 @@ class CharInterface(ScrollArea):
             self._importLocalChibi(folder, mode="animations")
             return
 
+        # Early GenshinImpact distributions already contain res/role/<name>.
+        # Use the same safe worker staging/validation as the native ZIP path;
+        # do not copy untrusted extracted folders directly into the live tree.
+        if (os.path.isfile(os.path.join(folder, "pet_conf.json")) and
+                os.path.isfile(os.path.join(folder, "act_conf.json"))):
+            self._importNativeFolder(folder)
+            return
+
         # Check files integrity
         statCode, errorList = CheckCharFiles(os.path.abspath(folder))
         if 0 < statCode < 7:
@@ -337,38 +359,249 @@ class CharInterface(ScrollArea):
         #return
 
 
+    def _showGenshinLibrary(self):
+        """Read-only overview; never call seed(), download art or install."""
+        from tools.genshin_library import scan_genshin_library
+        from tools.chibi_profiles import match_chibi_profile
+        try:
+            report = scan_genshin_library(Path(basedir) / "res" / "role")
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("角色库读取失败：") + str(exc), 2)
+            return
+        summary = report["summary"]
+        manage_label = "【管理】关联一个已安装但未归类的本地角色"
+        unlink_label = "【管理】解除旧关联（不删除角色及动作）"
+        labels = {}
+        for role in report["characters"]:
+            status = ("本机已有 · 待实机验收"
+                      if role["status"] == "structurally_installed"
+                      else "模板 · 待导入素材")
+            name = f"{role['name']} · {status} [{role['profile']}]"
+            labels[name] = role
+        title = self.tr(
+            f"原神角色库：{summary['template_count']} 个模板 / "
+            f"{summary['installed_profile_count']} 个已有本地素材")
+        chosen, accepted = QInputDialog.getItem(
+            self, title,
+            self.tr("选择角色查看状态；也可输入中文名、英文名或模板 ID。"
+                    "本机扫描不访问网络，不认证角色来源。"),
+            [manage_label, unlink_label] + list(labels), 0, True)
+        if not accepted:
+            return
+        if chosen == manage_label:
+            self._associateExistingGenshinRole(report)
+            return
+        if chosen == unlink_label:
+            self._unlinkExistingGenshinRole()
+            return
+        role = labels.get(chosen)
+        if role is None:
+            try:
+                selected = match_chibi_profile(chosen)
+            except ValueError as exc:
+                self.__showSystemNote(str(exc), 2)
+                return
+            role = next((x for x in report["characters"]
+                         if x["profile"] == selected), None)
+            if role is None:
+                self.__showSystemNote("只显示原神人物模板。", 2)
+                return
+        if role["status"] != "structurally_installed":
+            self.__showMessageBox(
+                role["name"] + self.tr(" · 待导入素材"),
+                self.tr("仅存在人物配置与动作建议。本机尚无与该模板绑定、"
+                        "通过结构检查的本地角色素材。"
+                        "请使用「添加角色」自行选择已取得的 ZIP 或动画文件夹。"))
+            return
+        installed = role["installed_folders"]
+        summary_text = "\n".join(
+            f"{v['folder']}：{v['actions']} 类动作，{v['frames']} 帧"
+            for v in installed)
+        if self.__showMessageBox(
+                role["name"] + self.tr(" · 本机结构可加载"),
+                summary_text + "\n" + self.tr(
+                    "此结果不证明是该角色原设的美术、声音或已完成 Windows 实机验收。"
+                    "是否打开本地角色文件夹查看？")):
+            folder_path = Path(basedir) / "res" / "role" / installed[0]["folder"]
+            if folder_path.is_dir() and not folder_path.is_symlink():
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder_path.resolve())))
+
+    def _associateExistingGenshinRole(self, report):
+        """User-confirmed sidecar mapping of a previously installed local MOD."""
+        candidates = [item for item in report["unmapped_local"]
+                      if item["status"] == "unmapped_local"]
+        if not candidates:
+            self.__showMessageBox(
+                self.tr("暂无可关联角色"),
+                self.tr("只有已安装、结构有效且尚无角色身份记录的本地 MOD 才能关联。"
+                        "如果原有关联失效，请先在本地校验或撤销过期记录。"))
+            return
+        choices = {
+            f"{item['folder']} · {item['actions']} 类动作": item["folder"]
+            for item in candidates
+        }
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("关联已有角色（不重新导入）"),
+            self.tr("选择本机已安装的单个角色文件夹："),
+            list(choices), 0, False)
+        if not accepted:
+            return
+        folder = choices.get(selected)
+        if folder is None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted or not profile:
+            return
+        if not profile.startswith("genshin_"):
+            self.__showSystemNote(self.tr("此入口只关联原神人物模板。"), 2)
+            return
+        from tools.chibi_profiles import CHIBI_PROFILES
+        name = CHIBI_PROFILES[profile]["name"]
+        if not self.__showMessageBox(
+                self.tr("确认本地人物关联"),
+                self.tr(f"把现有本地角色「{folder}」归入「{name}」？"
+                        "只在 data 中保存人物与配置摘要，不修改、复制、"
+                        "删除现有素材，不保证作品身份、许可或可玩效果。")):
+            return
+        try:
+            from tools.genshin_role_bindings import associate_existing_role
+            associate_existing_role(
+                Path(basedir) / "res" / "role", folder, profile,
+                mappings=Path(basedir) / "data" / "genshin_role_bindings.json",
+                confirmed=True)
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("本地关联失败：") + str(exc), 2)
+            return
+        self.__showSystemNote(
+            self.tr(f"已将「{folder}」仅在本机归入「{name}」。"
+                    "重新打开原神角色库即可查看；原始素材未改变。"), 1)
+
+    def _unlinkExistingGenshinRole(self):
+        """Undo mistaken/stale local mapping without touching source artwork."""
+        root = Path(basedir) / "res" / "role"
+        mappings = Path(basedir) / "data" / "genshin_role_bindings.json"
+        try:
+            from tools.genshin_role_bindings import (load_bindings,
+                                                    unbind_existing_role)
+            records = load_bindings(root, mappings)
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("无法读取本地关联：") + str(exc), 2)
+            return
+        if not records:
+            self.__showMessageBox(
+                self.tr("暂无关联记录"),
+                self.tr("这里只有手动建立的额外角色关联。"
+                        "从文件导入时已带有人物身份的来源收据不会在此删除。"))
+            return
+        from tools.chibi_profiles import CHIBI_PROFILES
+        options = {
+            f"{folder} → {CHIBI_PROFILES[info['profile']]['name']}": folder
+            for folder, info in sorted(records.items())
+        }
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("解除本地关联"),
+            self.tr("请选择要取消的额外人物映射；不会删除角色目录："),
+            list(options), 0, False)
+        if not accepted or selected not in options:
+            return
+        folder = options[selected]
+        if not self.__showMessageBox(
+                self.tr("确认解除关联"),
+                self.tr(f"仅删除「{folder}」的本地人物映射记录？"
+                        "原始动画、配置、声音和角色目录将保留不变。")):
+            return
+        try:
+            unbind_existing_role(root, folder, mappings=mappings, confirmed=True)
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("解除关联失败：") + str(exc), 2)
+            return
+        self.__showSystemNote(
+            self.tr(f"已解除「{folder}」的本地人物关联，素材及动作未删除。"), 1)
+
     def _chooseChibiProfile(self):
         """Small modal selector, without adding permanent page controls."""
         from tools.chibi_profiles import CHIBI_PROFILES
 
         default_choice = "保留素材名称（Q版自动缩放）"
-        choices = [default_choice] + [
-            f"{data['franchise']} · {data['name']} [{key}]"
+        # Name-first labels make Qt's editable combo completer useful with
+        # dozens of role templates. Typing is navigation, not a new ID.
+        options = {
+            f"{data['name']} · {data['franchise']} [{key}]": key
             for key, data in CHIBI_PROFILES.items()
-        ]
+        }
+        choices = [default_choice] + list(options)
         selected, accepted = QInputDialog.getItem(
             self, self.tr("Q版角色模板"),
-            self.tr("请选择显示与对话模板；请确认素材确实对应所选人物："),
-            choices, 0, False
+            self.tr("可直接输入中文名/英文名；原生角色仅记录本机显示关联，需自行核对真实美术身份："),
+            choices, 0, True
         )
         if not accepted:
             return False, None
-        profile = None if selected == default_choice else selected.rsplit("[", 1)[1][:-1]
-        return True, profile
+        if selected == default_choice:
+            return True, None
+        if selected in options:
+            return True, options[selected]
+        # Editable Qt input is a practical search field with 122 presets.
+        # Resolve exact Chinese/English names or an unambiguous prefix.
+        from tools.chibi_profiles import match_chibi_profile
+        try:
+            return True, match_chibi_profile(selected)
+        except ValueError as exc:
+            self.__showSystemNote(self.tr(str(exc)), 2)
+            return False, None
+
+    def _importOriginalDemo(self):
+        """Provide a real animated starter role for users with no art assets."""
+        if self.chibiThread is not None:
+            return
+        if not self.__showMessageBox(
+                self.tr("生成原创 Q 版桌宠"),
+                self.tr("在本地生成原创星芽角色：待机、行走、挥手、跳跃、休息和阅读动作。"
+                        "所有动画由程序绘制，不下载第三方美术或原声。"
+                        "创建后可查看动作预览；仍须自行检查真实桌面效果。")):
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            "", os.path.join(basedir, "res", "role"),
+            mode="original_demo", profile=None, preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(self.tr("正在生成原创 Q 版星芽动画，不会覆盖已有角色。"), 1)
 
     def _importNativeZip(self, archivePath):
-        """Install existing native role ZIP without changing existing roles."""
+        """Import native ZIP with optional, explicit *local* profile association."""
         if self.chibiThread is not None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted:
             return
         self.addButton.setEnabled(False)
         self.chibiThread = ChibiImportThread(
             archivePath, os.path.join(basedir, "res", "role"),
-            mode="native_zip", profile=None, preset=None, folder=None
+            mode="native_zip", profile=profile, preset=None, folder=None
         )
         self.chibiThread.done.connect(self._onChibiImportComplete)
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在验证并安装原生角色 ZIP。"), 1)
+
+    def _importNativeFolder(self, sourceFolder):
+        """Stage native MOD and optionally associate with selected chibi profile."""
+        if self.chibiThread is not None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted:
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            sourceFolder, os.path.join(basedir, "res", "role"),
+            mode="native_folder", profile=profile, preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(self.tr(
+            "正在安全检查并导入原生角色文件夹（不会覆盖已有角色）。"), 1)
 
     def _importCodexCharacter(self, sourceFolder):
         self._importLocalChibi(sourceFolder, mode="codex")
@@ -648,9 +881,23 @@ class ChibiImportThread(QThread):
     def run(self):
         new_folder = None
         try:
-            if self.mode == "native_zip":
-                from tools.install_native_role import install_native_role
-                new_folder = install_native_role(self.source, self.output_root)
+            if self.mode == "original_demo":
+                from tools.create_original_mascot import create_original_mascot
+                new_folder = create_original_mascot(self.output_root)
+            elif self.mode in ("native_zip", "native_folder"):
+                if self.profile:
+                    # Attach only the user-selected display identity; never
+                    # infer the character from art names or assert permissions.
+                    from tools.personal_role_import import personal_install
+                    new_folder = personal_install(
+                        self.source, self.output_root,
+                        profile=self.profile, confirm_local_only=True)
+                elif self.mode == "native_zip":
+                    from tools.install_native_role import install_native_role
+                    new_folder = install_native_role(self.source, self.output_root)
+                else:
+                    from tools.install_native_role import install_native_folder
+                    new_folder = install_native_folder(self.source, self.output_root)
             elif self.mode == "codex":
                 from tools.import_codex_pet import convert
                 new_folder = convert(

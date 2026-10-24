@@ -4,12 +4,21 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - "feat/pet-actions-voice-persona-20261023"
+      - "feat/personal-characters-windows-20261024"
     paths:
       - "run_DyberPet.py"
       - "DyberPet/assistant/**"
       - "DyberPet/DyberPet.py"
       - "DyberPet/modules.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "tools/personal_role_import.py"
+      - "tools/create_original_mascot.py"
+      - "tools/genshin_complete_roster.py"
+      - "tools/genshin_roster.py"
+      - "tools/genshin_library.py"
+      - "tools/genshin_role_bindings.py"
+      - "tests/test_genshin_role_bindings.py"
+      - "tools/character_sources.json"
       - "tools/build_windows_portable.ps1"
       - "requirements-windows-portable.txt"
       - ".github/workflows/windows-portable.yml"
@@ -17,6 +26,15 @@ on:
     paths:
       - "run_DyberPet.py"
       - "DyberPet/assistant/**"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "tools/personal_role_import.py"
+      - "tools/create_original_mascot.py"
+      - "tools/genshin_complete_roster.py"
+      - "tools/genshin_roster.py"
+      - "tools/genshin_library.py"
+      - "tools/genshin_role_bindings.py"
+      - "tests/test_genshin_role_bindings.py"
+      - "tools/character_sources.json"
       - "tools/build_windows_portable.ps1"
       - "requirements-windows-portable.txt"
       - ".github/workflows/windows-portable.yml"
@@ -56,13 +74,18 @@ jobs:
           if (-not $outcome.assets.ok -or -not $outcome.assistant_dialog) { throw "Packaged assistant or resources failed verification" }
           if (-not $outcome.character_importer.ok -or $outcome.character_importer.synthetic_actions -lt 1 -or $outcome.character_importer.synthetic_frames -lt 1) { throw "Packaged character importer failed real synthetic conversion" }
           if ($outcome.character_importer.modified_user_roles -or $outcome.character_importer.third_party_art_included) { throw "Character smoke mutated resources or used external art" }
+          if ($outcome.character_importer.genshin_profile_count -ne 123) { throw "Missing full 7.1 Genshin roster from packaged EXE" }
+          if ($outcome.character_importer.library_template_count -ne 123 -or $outcome.character_importer.library_installed_without_assets -ne 0) { throw "Packaged read-only character library reported invented installed roles" }
+          if (-not $outcome.character_importer.legacy_binding_verified -or $outcome.character_importer.legacy_binding_rights_verified -or -not $outcome.character_importer.legacy_unbind_preserved_original) { throw "Packaged legacy role binding/unbind failed or changed source art" }
+          if (-not $outcome.character_importer.personal_install_ok -or $outcome.character_importer.personal_install_rights_verified) { throw "Packaged private local role import failed or falsely asserted rights" }
+          if ($outcome.character_importer.original_mascot_actions -ne 7 -or $outcome.character_importer.original_mascot_frames -ne 46) { throw "Packaged original Q role generation failed" }
           foreach ($name in @("pyttsx3","vosk","sounddevice")) {
             if ($outcome.optional_voice_imports.$name -ne $true) { throw "Missing packaged voice component: $name" }
           }
           Get-Content -LiteralPath $report
       - uses: actions/upload-artifact@v4
         with:
-          name: DyberPet-Windows-Portable-PR2
-          path: DyberPet-Windows-Portable-PR2.zip
+          name: DyberPet-Windows-Personal-PR5
+          path: DyberPet-Windows-Personal-PR5.zip
           if-no-files-found: error
           retention-days: 14

@@ -189,6 +189,87 @@ def install_native_role(archive_path: Path, output_root: Path, *,
     return destination
 
 
+
+def inspect_native_folder(source: Path):
+    """Read-only guard for an extracted, single legacy main-role folder.
+
+    This is intentionally *not* a full downloaded application root; the
+    user must select its res/role/<name> directory, not the app EXE or res/pet.
+    """
+    source = Path(source).expanduser()
+    if source.is_symlink() or not source.is_dir():
+        raise ValueError("Select a real, unlinked DyberPet role folder")
+    source = source.resolve()
+    if not (source / "pet_conf.json").is_file() or not (
+            source / "act_conf.json").is_file():
+        raise ValueError("Select res/role/<name>, not an entire old application")
+    if len(source.parts) >= 2 and source.parent.name.lower() == "pet" and (
+            source.parent.parent.name.lower() == "res"):
+        raise ValueError("res/pet contains mini-pets; select a res/role main character")
+    files, total = [], 0
+    for entry in sorted(source.rglob("*")):
+        if entry.is_symlink():
+            raise ValueError("Linked character resource not permitted")
+        if entry.is_dir():
+            continue
+        if not entry.is_file():
+            raise ValueError("Special character resource not permitted")
+        if entry.suffix.lower() in BLOCKED_SUFFIXES:
+            raise ValueError("Executable/script in role folder: " + entry.name)
+        size = entry.stat().st_size
+        if size > MAX_SINGLE_FILE:
+            raise ValueError("Role file exceeds 64 MiB limit")
+        total += size
+        files.append(entry)
+        if len(files) > MAX_FILES or total > MAX_TOTAL_SIZE:
+            raise ValueError("Role folder exceeds safe limits")
+    check = validate_native_role(source)
+    return {"source": source, "files": files, "total_bytes": total,
+            "validation": check}
+
+
+def install_native_folder(source_folder: Path, output_root: Path, *,
+                          role_folder: str | None = None) -> Path:
+    """Stage a previously extracted original role without overwriting anything."""
+    source = Path(source_folder).expanduser()
+    inventory = inspect_native_folder(source)
+    source = inventory["source"]
+    output_root = Path(output_root).expanduser().resolve()
+    if output_root == source or output_root.is_relative_to(source):
+        raise ValueError("Output root must be outside original role folder")
+    if role_folder is not None and not re.fullmatch(
+            r"[A-Za-z][A-Za-z0-9_-]{0,39}", role_folder):
+        raise ValueError("Explicit role folder must be safe ASCII")
+    name = (role_folder if role_folder is not None else
+            available_role_folder(output_root, source.name))
+    destination = output_root / name
+    if destination.exists() or destination.is_symlink():
+        raise FileExistsError("Character folder already exists: " + str(destination))
+    output_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=output_root,
+                                     prefix=".native-folder-install-") as tmp:
+        staged = Path(tmp) / name
+        staged.mkdir()
+        for file in inventory["files"]:
+            # Re-check links in case the external folder is modified.
+            if file.is_symlink() or not file.is_file():
+                raise ValueError("Source changed during local installation")
+            dst = staged / file.relative_to(source)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(file, dst)
+        validation = validate_native_role(staged)
+        (staged / "INSTALL_REPORT.json").write_text(json.dumps({
+            "source_kind": "extracted_native_role_folder",
+            "safe_extraction": True, "validation": validation,
+            "source_files": len(inventory["files"]),
+            "art_license": "Unverified; original artist's permissions still required",
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        if destination.exists() or destination.is_symlink():
+            raise FileExistsError("Character folder appeared during install")
+        staged.rename(destination)
+    return destination
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", type=Path, help="Local DyberPet role .zip")

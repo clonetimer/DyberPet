@@ -17,6 +17,11 @@ def verify_portable_character_importer():
     from tools.import_chibi_animations import convert_animation_folder
     from tools.import_codex_pet import convert as codex_converter
     from tools.install_native_role import validate_native_role, install_native_role
+    from tools.personal_role_import import personal_install
+    from tools.create_original_mascot import create_original_mascot, ACTIONS
+    from tools.genshin_library import scan_genshin_library
+    from tools.genshin_role_bindings import (associate_existing_role,
+                                              unbind_existing_role, config_digest)
 
     # Import the two remaining GUI paths too; only the synthetic frames path
     # needs to perform an actual conversion for this smoke gate.
@@ -24,6 +29,9 @@ def verify_portable_character_importer():
         raise RuntimeError("Character importer entrypoints are missing")
     profiles = len(CHIBI_PROFILES)
     candidates = len(registry()["candidates"])
+    genshin_profile_count = sum(k.startswith("genshin_") for k in CHIBI_PROFILES)
+    if genshin_profile_count != 123 or "genshin_vodyanitsa" not in CHIBI_PROFILES:
+        raise RuntimeError(f"Full 7.1 character roster missing: {genshin_profile_count}/123")
     if not profiles or "chibi" not in CHIBI_PROFILES:
         raise RuntimeError("Bundled Q-style character profiles are unavailable")
 
@@ -45,12 +53,58 @@ def verify_portable_character_importer():
             raise RuntimeError("Converted role is missing playable actions")
         if not (role / "ANIMATION_PREVIEW.png").is_file():
             raise RuntimeError("Character converter did not create its preview")
+        empty_library_root = root / "no-existing-roles"
+        inventory = scan_genshin_library(empty_library_root)
+        if inventory["summary"]["template_count"] != 123:
+            raise RuntimeError("Packaged library inspector lost character templates")
+        if inventory["summary"]["installed_profile_count"] or empty_library_root.exists():
+            raise RuntimeError("Read-only inventory invented or wrote character resources")
+        # Real packaged-module acceptance: private local frames installer, plus
+        # the generated, playable, original mascot; both use only CI geometry.
+        local_role = personal_install(
+            input_dir, root / "personal", profile="genshin_xiao",
+            confirm_local_only=True)
+        import json
+        evidence = json.loads((local_role / "PERSONAL_IMPORT.json").read_text("utf-8"))
+        if evidence["source_rights_verified"] or evidence["redistribution_allowed_by_tool"]:
+            raise RuntimeError("Personal importer must never assert rights")
+        original_role = create_original_mascot(root / "original")
+        generated = validate_native_role(original_role)
+        if generated["actions"] != len(ACTIONS) or generated["images"] != sum(ACTIONS.values()):
+            raise RuntimeError("Original mascot must be truly animated")
+        # The legacy mapping path must not modify the original role folder.
+        # This is a one-off synthetic role, not any actual Genshin game art.
+        mapping_path = root / "local-data" / "genshin_role_bindings.json"
+        digest_before = config_digest(original_role)
+        mapped = associate_existing_role(
+            root / "original", original_role.name, "genshin_lisa",
+            mappings=mapping_path, confirmed=True)
+        mapped_inventory = scan_genshin_library(root / "original", mappings=mapping_path)
+        if (mapped_inventory["summary"]["installed_profile_count"] != 1 or
+                mapped["rights_verified"] or mapped["identity_verified"]):
+            raise RuntimeError("Existing MOD could not be locally associated safely")
+        unbind_existing_role(root / "original", original_role.name,
+                             mappings=mapping_path, confirmed=True)
+        after_unbind = scan_genshin_library(root / "original", mappings=mapping_path)
+        if (after_unbind["summary"]["installed_profile_count"] != 0 or
+                config_digest(original_role) != digest_before):
+            raise RuntimeError("Unbinding modified the original role or left a false install")
         return {
             "ok": True,
             "profile_count": profiles,
+            "genshin_profile_count": genshin_profile_count,
+            "library_template_count": inventory["summary"]["template_count"],
+            "library_installed_without_assets": inventory["summary"]["installed_profile_count"],
             "source_registry_candidates": candidates,
             "synthetic_actions": result["actions"],
             "synthetic_frames": result["images"],
+            "personal_install_ok": True,
+            "personal_install_rights_verified": evidence["source_rights_verified"],
+            "original_mascot_actions": generated["actions"],
+            "original_mascot_frames": generated["images"],
+            "legacy_binding_verified": True,
+            "legacy_binding_rights_verified": mapped["rights_verified"],
+            "legacy_unbind_preserved_original": True,
             "modified_user_roles": False,
             "third_party_art_included": False,
         }
