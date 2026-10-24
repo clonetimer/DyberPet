@@ -169,7 +169,7 @@ jobs:
           python -c "import backports.tarfile; print('Frozen pkg_resources backports present')"
           xvfb-run -a -s "-screen 0 1280x800x24" env \
             HOME="$RUNNER_TEMP/dyberpet-build-home" QT_QPA_PLATFORM=xcb \
-            bash tools/build_linux_portable.sh
+            DYBERPET_QA_KEEP_ABSTRACT_ART=1 bash tools/build_linux_portable.sh
       - name: Run real bundled binary from an unrelated directory
         shell: bash
         run: |
