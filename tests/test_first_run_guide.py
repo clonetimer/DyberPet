@@ -57,6 +57,22 @@ class FirstRunTests(unittest.TestCase):
         }
         self.assertEqual(before, after)
 
+    def test_creator_art_is_searchable_by_chinese_name_and_ranked_first(self):
+        self._role("DemoG_nahida", demo=True)
+        creator = self._role("SourceGenshinNahida")
+        (creator / "PERSONAL_IMPORT.json").write_text(
+            '{"selected_profile":"genshin_nahida","display_name":"纳西妲",'
+            '"source_repository":"ChaozhongLiu/DyberPet_GenshinImpact",'
+            '"source_kind":"artist_original_animation"}', encoding="utf-8")
+        result = installed_playable_roles(self.roles)
+        self.assertEqual(result[0]["folder"], "SourceGenshinNahida")
+        self.assertEqual(result[0]["display"], "纳西妲")
+        self.assertTrue(result[0]["artist_source"])
+        self.assertFalse(result[0]["demo"])
+        self.assertEqual(result[1]["folder"], "DemoG_nahida")
+        self.assertFalse(result[1]["artist_source"])
+        self.assertTrue(result[1]["demo"])
+
     def test_empty_or_broken_directory_is_not_invented_as_playable(self):
         self.assertEqual(installed_playable_roles(self.roles), [])
         self._role("no_png", frame=False)
