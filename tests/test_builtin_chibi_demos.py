@@ -10,7 +10,7 @@ from PIL import Image
 
 from tools.chibi_profiles import CHIBI_PROFILES
 from tools.generate_builtin_chibi_demos import (
-    ACTIONS, folder_name, generate_demo_roles)
+    ACTIONS, DEMO_ACTIONS, folder_name, generate_demo_roles)
 from tools.genshin_library import scan_genshin_library
 from tools.install_native_role import validate_native_role
 
@@ -34,13 +34,13 @@ class BuiltinChibiDemoTests(unittest.TestCase):
         report = generate_demo_roles(self.root,
                                      ["genshin_lisa", "genshin_traveler_lumine"])
         self.assertEqual(report["created"], 2)
-        self.assertEqual(report["rendered_frames_per_profile"], 46)
+        self.assertEqual(report["rendered_frames_per_profile"], 66)
         self.assertFalse(report["official_game_art_included"])
         for key in ("genshin_lisa", "genshin_traveler_lumine"):
             role = self.root / folder_name(key)
             self.assertEqual(validate_native_role(role),
-                             {"actions": len(ACTIONS),
-                              "images": sum(ACTIONS.values())})
+                             {"actions": len(DEMO_ACTIONS),
+                              "images": sum(DEMO_ACTIONS.values())})
             receipt = json.loads(
                 (role / "BUILTIN_CHIBI_DEMO.json").read_text("utf-8"))
             self.assertEqual(receipt["profile"], key)
@@ -49,6 +49,18 @@ class BuiltinChibiDemoTests(unittest.TestCase):
             self.assertFalse(receipt["character_likeness_verified"])
             self.assertFalse(receipt["game_voice_included"])
             self.assertFalse((role / "PERSONAL_IMPORT.json").exists())
+            pet=json.loads((role/"pet_conf.json").read_text("utf-8"))
+            self.assertEqual(pet["fall"],"failed")
+            self.assertEqual(pet["on_floor"],"jump")
+            self.assertTrue(any(x.get("act_list")==["run"]
+                                for x in pet["random_act"]))
+            from hashlib import sha256
+            for action,threshold in (("run",5),("failed",4),("lookaround",4)):
+                digests=[
+                    sha256((role/"action"/f"{action}_{i}.png").read_bytes()).hexdigest()
+                    for i in range(DEMO_ACTIONS[action])
+                ]
+                self.assertGreaterEqual(len(set(digests)),threshold)
             with Image.open(role / "action" / "idle_0.png") as frame:
                 self.assertEqual(frame.size, (192, 208))
                 self.assertIsNotNone(frame.getchannel("A").getbbox())

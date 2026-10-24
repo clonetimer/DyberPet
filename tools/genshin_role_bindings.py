@@ -19,9 +19,11 @@ from pathlib import Path
 try:
     from .chibi_profiles import CHIBI_PROFILES, match_chibi_profile
     from .install_native_role import inspect_native_folder
+    from .role_family import known_mascot_family
 except ImportError:
     from chibi_profiles import CHIBI_PROFILES, match_chibi_profile
     from install_native_role import inspect_native_folder
+    from role_family import known_mascot_family
 
 MAX_MAPPING_SIZE = 256 * 1024
 MAX_MAPPINGS = 3000
@@ -153,6 +155,8 @@ def associate_existing_role(role_root, folder, profile, *,
     role = role_root / folder
     if role.is_symlink():
         raise ValueError("Refusing linked character folder")
+    if known_mascot_family(role) is not None:
+        raise ValueError("Cannot associate a Guga/Doro mascot with a Genshin profile")
     inspect_native_folder(role)
     # A deliberately chosen import receipt is authoritative; don't override.
     try:

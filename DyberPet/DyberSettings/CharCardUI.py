@@ -487,6 +487,7 @@ class CharInterface(ScrollArea):
             self.__showSystemNote(self.tr("角色库读取失败：") + str(exc), 2)
             return
         summary = report["summary"]
+        progress_label = "【进度】125 个角色的能力与素材覆盖情况"
         manage_label = "【管理】关联一个已安装但未归类的本地角色"
         unlink_label = "【管理】解除旧关联（不删除角色及动作）"
         labels = {}
@@ -506,8 +507,11 @@ class CharInterface(ScrollArea):
             self, title,
             self.tr("选择角色查看状态；也可输入中文名、英文名或模板 ID。"
                     "本机扫描不访问网络，不认证角色来源。"),
-            [manage_label, unlink_label] + list(labels), 0, True)
+            [progress_label, manage_label, unlink_label] + list(labels), 0, True)
         if not accepted:
+            return
+        if chosen == progress_label:
+            self._showCharacterProgress(genshin_snapshot=report)
             return
         if chosen == manage_label:
             self._associateExistingGenshinRole(report)
@@ -534,21 +538,98 @@ class CharInterface(ScrollArea):
                         "通过结构检查的本地角色素材。"
                         "请使用「添加角色」自行选择已取得的 ZIP 或动画文件夹。"))
             return
-        installed = role["installed_folders"]
-        summary_text = "\n".join(
-            f"{v['folder']}：{v['actions']} 类动作，{v['frames']} 帧"
-            + ("〔程序原创演示，非原神角色美术〕" if v.get("is_original_demo")
-               else "〔本地导入素材〕")
-            for v in installed)
-        if self.__showMessageBox(
-                role["name"] + self.tr(" · 本机结构可加载"),
-                summary_text + "\n" + self.tr(
-                    "演示人物仅用于桌宠动作试用，不是原神游戏美术、模型或原声。"
-                    "该结构检查不证明已完成 Linux/Windows 实机验收。"
-                    "是否打开本地角色文件夹查看？")):
-            folder_path = Path(basedir) / "res" / "role" / installed[0]["folder"]
-            if folder_path.is_dir() and not folder_path.is_symlink():
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder_path.resolve())))
+        self._openGenshinRoleActions(role)
+
+    def _showCharacterProgress(self, genshin_snapshot=None):
+        """Present actual *local* capability counts, never invent art or QA."""
+        from tools.character_progress import character_progress
+        try:
+            data = character_progress(Path(basedir) / "res" / "role",
+                                      genshin_snapshot=genshin_snapshot)
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("角色进度检查失败：") + str(exc), 2)
+            return
+        s = data["summary"]
+        rows = [
+            f"模板数量：原神 {s['genshin_templates']} / 咕嘎、Doro {s['mascot_templates']}",
+            f"原创可动演示：{s['original_demo_ready']} / {s['template_total']}",
+            f"可在本机预览动作：{s['native_preview_ready']} / {s['template_total']}",
+            f"另有个人导入美术：{s['personal_art_structurally_installed']} 人物",
+            f"暂无本机可用动画：{s['missing_native_animation']} 人物",
+            f"原神演示动作数：{s['genshin_demo_actions'] or '尚无'}",
+            f"咕嘎 / Doro 演示动作数：{s['mascot_demo_actions'] or '尚无'}",
+            "",
+            "以上是本机 PNG/配置的结构验证，并非原作形象或声音还原验收。",
+            "原设美术对照、人物原声、真实音频和长期桌面运行均需另行验收。",
+            "角色库只读取本机文件，不会偷偷下载或修改素材。",
+        ]
+        self.__showMessageBox(self.tr("DyberPet · 角色实际完成度"),
+                              "\n".join(rows))
+
+    def _openGenshinRoleActions(self, role):
+        """Preview, switch or inspect *any* safely recognized Genshin role.
+
+        This is the same native animation dialog/controller used for Guga/Doro,
+        not a second graphics engine or a claim of canonical game artwork.
+        """
+        folders = role["installed_folders"]
+        if not folders:
+            return
+        # Personal art is offered before generated demonstration assets.
+        choices = sorted(folders, key=lambda x: (bool(x["is_original_demo"]),
+                                                  x["folder"].casefold()))
+        options = {
+            (f"{item['folder']} · {item['actions']} 类动作 / "
+             f"{item['frames']} 帧 · " +
+             ("程序原创 Q 版演示，非官方美术" if item["is_original_demo"]
+              else "本机导入素材，原设与版权待核实")): item
+            for item in choices
+        }
+        if len(choices) == 1:
+            picked = choices[0]
+        else:
+            choice, accepted = QInputDialog.getItem(
+                self, role["name"] + self.tr(" · 选择本机角色"),
+                self.tr("本机真实导入的美术排列在演示皮肤之前："),
+                list(options), 0, False)
+            if not accepted or choice not in options:
+                return
+            picked = options[choice]
+        name = picked["folder"]
+        folder = Path(basedir) / "res" / "role" / name
+        if not folder.is_dir() or folder.is_symlink():
+            self.__showSystemNote(self.tr("角色文件夹丢失或无法安全读取。"), 2)
+            return
+        operations = [
+            "▶ 预览真实动画动作（播放 / 暂停）",
+            "✓ 切换成当前桌宠",
+            "↗ 查看本机素材目录",
+        ]
+        action, accepted = QInputDialog.getItem(
+            self, role["name"] + self.tr(" · 角色操作"),
+            self.tr("原创演示不代表游戏角色的原设美术、模型或原声："),
+            operations, 0, False)
+        if not accepted:
+            return
+        if action == operations[0]:
+            from .mascot_preview_dialog import MascotActionPreview
+            try:
+                viewer = MascotActionPreview(
+                    folder, original_demo=bool(picked["is_original_demo"]),
+                    parent=self)
+            except (ValueError, OSError, TypeError) as exc:
+                self.__showSystemNote(self.tr("预览无法打开：") + str(exc), 2)
+                return
+            viewer.exec()
+        elif action == operations[1]:
+            if name not in settings.pets:
+                self.__showSystemNote(
+                    self.tr("本机文件有效，但该角色尚未加载到当前桌宠会话。"
+                            "重启 DyberPet 后再切换即可。"), 2)
+                return
+            self.__onLaunchClicked(name)
+        elif action == operations[2]:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder.resolve())))
 
     def _associateExistingGenshinRole(self, report):
         """User-confirmed sidecar mapping of a previously installed local MOD."""
