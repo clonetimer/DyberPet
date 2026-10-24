@@ -6,7 +6,7 @@
 
 进入 **系统 → 角色管理 → 安装作者原画角色**。界面分为「完整原生动画」和「轻量创作者图集」两种来源；选角色，确认下载，安装成功后通过「快速选桌宠」搜索并使用。已有用户的存档、演示角色不会被覆盖。
 
-### 已接入、固定提交的 9 项真实素材
+### 已接入、固定提交的 15 项真实素材（含不同画师版本）
 
 | 可选角色 | 动画作者资源 | 来源 | 安装特点 |
 |---|---|---|---|
@@ -19,6 +19,12 @@
 | 纳西妲 | Codex pet `nahida--lingxiaotian` | [Codex 来源](https://github.com/legeling/awesome-codex-pet/tree/main/pets/nahida--lingxiaotian) | 单图集约 2.5MB |
 | 派蒙 | Codex pet `paimon--lingxiaotian` | [Codex 来源](https://github.com/legeling/awesome-codex-pet/tree/main/pets/paimon--lingxiaotian) | 单图集约 2.2MB |
 | 雷电将军 | Codex pet `raiden-shogun--lingxiaotian` | [Codex 来源](https://github.com/legeling/awesome-codex-pet/tree/main/pets/raiden-shogun--lingxiaotian) | 单图集约 2.3MB |
+| 阿蕾奇诺 | Codex pet `arlecchino--lingxiaotian` | [Codex 来源](https://github.com/legeling/awesome-codex-pet/tree/main/pets/arlecchino--lingxiaotian) | 单图集约 2.2MB |
+| 甘雨 | Codex pet `ganyu--chenxin-dlut` | [Codex 来源](https://github.com/legeling/awesome-codex-pet/tree/main/pets/ganyu--chenxin-dlut) | 单图集约 2.1MB |
+| 神里绫华 | Codex pet `kamisato-ayaka--lingxiaotian` | [Codex 来源](https://github.com/legeling/awesome-codex-pet/tree/main/pets/kamisato-ayaka--lingxiaotian) | 单图集约 2.3MB |
+| 娜维娅 | Codex pet `navia--lingxiaotian` | [Codex 来源](https://github.com/legeling/awesome-codex-pet/tree/main/pets/navia--lingxiaotian) | 单图集约 2.6MB |
+| 八重神子 | Codex pet `yae-miko--legeling` | [Codex 来源](https://github.com/legeling/awesome-codex-pet/tree/main/pets/yae-miko--legeling) | V2 图集约 3.1MB |
+| 宵宫 | Codex pet `yoimiya--chenxin-dlut` | [Codex 来源](https://github.com/legeling/awesome-codex-pet/tree/main/pets/yoimiya--chenxin-dlut) | 单图集约 1.8MB |
 
 另有既存的 **咕嘎/Doro** 一键下载来源：`tools/install_creator_mascots.py`，见 [既有安装说明](guga_doro_personal_install.md)。这些也是作者图集，不是程序通用颜色模板。
 
@@ -27,6 +33,12 @@
 - Codex: `db2f6306ce78f6559ab27155d7bfaf00bf43809d`
 
 Codex 只下载 `pet.json` 与 `spritesheet.webp`，校验文件大小和 Git 内容哈希，使用图集的原有像素帧进行裁切转换。完整原生动画从固定版本 GitHub 源码 ZIP 中只抽取当前选中的角色目录，并验证动作配置与 PNG；绝不覆盖已有同名角色目录。
+
+## 真实作者角色的显示与预览
+
+安装完成后，「快速选桌宠」现在读取 `PERSONAL_IMPORT.json` 中的中文名称与来源标识，不再只显示 `SourceGenshinNahida` 这类内部目录名。作者动画被优先排列，程序批量生成的低保真演示默认折叠。缩略图优先取角色 `pet_conf.json` 所配置的待机动画首帧，避免误用技能特效图或道具图造成错误的第一印象。
+
+从 **「安装作者原画角色」** 中选择时，完整原生动画来源为上游整个固定提交 ZIP，下载量可能达到数百 MB（安装时只保留所选角色）；Codex 来源单套通常约 2–4 MB，适合先快速试用。均不会自动重新绘制人物，也不会覆盖用户已安装角色。
 
 ## 与旧版本的区别
 
