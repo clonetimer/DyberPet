@@ -368,6 +368,16 @@ def _assistant_package_smoke():
     welcome.close()
     if not report["first_run_guide_verified"]:
         raise RuntimeError("Frozen first-run role chooser cannot select an installed role")
+    # Enforce presence of concrete pinned, opt-in artist source installers in
+    # the *frozen* EXE/ELF; this does not download art or publish images.
+    from tools.install_artist_genshin import ROLES as original_genshin
+    from tools.install_artist_codex import SOURCES as codex_art
+    from tools.install_creator_mascots import UPSTREAM as mascot_art
+    report["public_art_sources_ready"] = (
+        len(original_genshin) == 3 and len(codex_art) == 6
+        and {"guga", "doro"}.issubset(mascot_art))
+    if not report["public_art_sources_ready"]:
+        raise RuntimeError("Pinned original-art installers missing from executable")
     # Source CI deliberately tests an untouched checkout and does not seed it.
     if getattr(sys, "frozen", False):
         from tools.genshin_library import scan_genshin_library
