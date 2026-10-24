@@ -98,6 +98,7 @@ jobs:
           if ($outcome.built_in_demo_profiles -ne 123 -or $outcome.built_in_playable_profiles -lt 123 -or $outcome.built_in_unfilled_profiles -ne 0) { throw "Not all 123 animated original demo roles included in Windows EXE" }
           if ($outcome.mascot_original_demo_count -ne 2 -or $outcome.mascot_character_likeness_verified) { throw "Packaged Doro/Guga demos missing or falsely certified as original creator art" }
           if ($outcome.mascot_live_preview_count -ne 2 -or -not $outcome.mascot_live_preview_timer_safe) { throw "Native Guga/Doro Qt animation previews failed in Windows EXE" }
+          if ($outcome.mascot_special_actions_each -ne 10 -or $outcome.mascot_special_frames_each -ne 66) { throw "Guga/Doro special native animations missing from Windows EXE" }
           if ($outcome.character_importer.library_template_count -ne 123 -or $outcome.character_importer.library_installed_without_assets -ne 0) { throw "Packaged read-only character library reported invented installed roles" }
           if (-not $outcome.character_importer.legacy_binding_verified -or $outcome.character_importer.legacy_binding_rights_verified -or -not $outcome.character_importer.legacy_unbind_preserved_original) { throw "Packaged legacy role binding/unbind failed or changed source art" }
           if (-not $outcome.character_importer.personal_install_ok -or $outcome.character_importer.personal_install_rights_verified) { throw "Packaged private local role import failed or falsely asserted rights" }

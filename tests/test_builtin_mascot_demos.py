@@ -25,13 +25,13 @@ class BuiltinMascotDemosTests(unittest.TestCase):
         report=generate_mascot_demos(self.root)
         self.assertEqual(set(report["mascots"]),{"guga","doro"})
         self.assertEqual(report["created"],2)
-        self.assertEqual(report["frames_per_mascot"],46)
+        self.assertEqual(report["frames_per_mascot"],66)
         self.assertFalse(report["actual_character_likeness_verified"])
         animations={}
         for kind,role_meta in MASCOTS.items():
             folder=self.root/role_meta["folder"]
             self.assertEqual(validate_native_role(folder),
-                             {"actions":7,"images":46})
+                             {"actions":10,"images":66})
             receipt=json.loads((folder/"BUILTIN_MASCOT_DEMO.json").read_text("utf-8"))
             self.assertEqual(receipt["mascot"],kind)
             self.assertTrue(receipt["original_geometry"])
@@ -54,6 +54,20 @@ class BuiltinMascotDemosTests(unittest.TestCase):
             self.assertGreaterEqual(len(set(sets["right_walk"])),4)
             self.assertGreaterEqual(len(set(sets["wave"])),3)
             self.assertGreaterEqual(len(set(sets["jump"])),3)
+            self.assertGreaterEqual(len(set(sets["run"])),5)
+            self.assertGreaterEqual(len(set(sets["failed"])),4)
+            self.assertGreaterEqual(len(set(sets["lookaround"])),4)
+            self.assertNotEqual(sets["failed"][0], sets["failed"][3])
+            self.assertEqual(receipt["animation_actions"]["run"],8)
+            self.assertEqual(receipt["animation_actions"]["failed"],6)
+            pet=json.loads((folder/"pet_conf.json").read_text("utf-8"))
+            acts=json.loads((folder/"act_conf.json").read_text("utf-8"))
+            self.assertEqual(pet["fall"],"failed")
+            self.assertEqual(pet["on_floor"],"jump")
+            self.assertTrue(all(action in acts for action in ("run","failed","lookaround")))
+            self.assertTrue(any(entry.get("act_list")==["run"] and
+                                entry.get("act_prob")==0.05
+                                for entry in pet["random_act"]))
             animations[kind]=sets
         self.assertNotEqual(animations["guga"]["idle"][0],
                             animations["doro"]["idle"][0])

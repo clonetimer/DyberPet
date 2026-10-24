@@ -18,12 +18,12 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 try:
-    from .generate_builtin_chibi_demos import ACTIONS, CELL
+    from .generate_builtin_chibi_demos import ACTIONS as BASE_ACTIONS, CELL
     from .import_codex_pet import build_configs, make_info_images
     from .chibi_profiles import make_bubble_config
     from .install_native_role import validate_native_role
 except ImportError:
-    from generate_builtin_chibi_demos import ACTIONS, CELL
+    from generate_builtin_chibi_demos import ACTIONS as BASE_ACTIONS, CELL
     from import_codex_pet import build_configs, make_info_images
     from chibi_profiles import make_bubble_config
     from install_native_role import validate_native_role
@@ -42,17 +42,52 @@ MASCOTS = {
 }
 
 
+# These three are actual distinct painted poses, not aliases to Genshin frames.
+ACTIONS = {**BASE_ACTIONS, "run": 8, "failed": 6, "lookaround": 6}
+
+
+def _special_pose(image, action, index, count, *, quadruped=False):
+    """First-party dust, directional curiosity and staged fall/recovery frames."""
+    if action not in ("run", "failed", "lookaround"):
+        return image
+    if action == "failed":
+        # Start upright, tumble and stand up within six ordered frames.
+        phases = [0, 22, 67, 83, 35, 0]
+        angle = (-1 if quadruped else 1) * phases[index % len(phases)]
+        image = image.rotate(angle, Image.Resampling.BICUBIC,
+                             expand=False, fillcolor=(0, 0, 0, 0))
+        d = ImageDraw.Draw(image)
+        d.ellipse((66, 188, 137, 194), fill=(125, 123, 144, 35))
+        # A non-game-specific cartoon dizzy mark, largest at the bottom.
+        if index in (2, 3, 4):
+            d.arc((132, 33, 172, 63), 210, 330,
+                  fill=(240, 178, 72, 255), width=3)
+            d.ellipse((145, 26, 151, 32), fill=(245, 194, 91, 255))
+        return image
+    d = ImageDraw.Draw(image)
+    if action == "run":
+        # Distinct visible forward-rush speed marks, unlike normal walking.
+        for n in range(3):
+            x = 25 - n*5
+            y = 134 + n*11 + round(3 * math.sin(index*math.pi/4))
+            d.line((x, y, x+21, y-1), fill=(140, 157, 176, 190), width=3)
+    else:
+        d.arc((70, 20, 126, 45), 195 + index*15, 245 + index*15,
+              fill=(242, 191, 109, 230), width=3)
+    return image
+
+
 def _guga(action: str, i: int, count: int):
     t = 2 * math.pi * i / count
-    walks = action in ("left_walk", "right_walk")
+    walks = action in ("left_walk", "right_walk", "run")
     direction = -1 if action == "left_walk" else 1
     # Combine sine and cosine so six walk frames remain visually distinct.
     shift = round(5 * math.sin(t) + 3 * math.cos(t)) * direction if walks else 0
-    steps = round(8 * math.sin(t)) if walks else 0
-    tilt = round(4 * math.sin(t)) if walks or action == "wave" else 0
+    steps = round((13 if action == "run" else 8) * math.sin(t)) if walks else 0
+    tilt = round((10 if action == "lookaround" else 4) * math.sin(t)) if walks or action in ("wave", "lookaround") else 0
     hop = round(28 * math.sin(math.pi*i/max(1,count-1))) if action == "jump" else 0
     wave = round(25*(1+math.sin(t))/2) if action == "wave" else 0
-    bob = round(2*math.sin(t)) if action == "idle" else 0
+    bob = round(5 * abs(math.sin(t))) if action == "run" else (round(2*math.sin(t)) if action == "idle" else 0)
     y = bob - hop
     im=Image.new("RGBA",CELL,(0,0,0,0)); d=ImageDraw.Draw(im)
     def ell(box, fill, line=None, w=2):
@@ -110,18 +145,18 @@ def _guga(action: str, i: int, count: int):
                             3,fill=(253,239,218,255))
         d.line((127+shift,142+y,148+shift,142+y),
                fill=(76,108,131,255),width=2)
-    return im
+    return _special_pose(im, action, i, count)
 
 
 def _doro(action: str, i: int, count: int):
     t=2*math.pi*i/count
-    walking=action in ("right_walk","left_walk")
+    walking=action in ("right_walk","left_walk","run")
     direction=-1 if action == "left_walk" else 1
-    stride=round(10*math.sin(t)) if walking else 0
-    stride2=round(10*math.sin(t+math.pi)) if walking else 0
-    dx=round(5*math.cos(t))*direction if walking else 0
+    stride=round((16 if action=="run" else 10)*math.sin(t)) if walking else 0
+    stride2=round((16 if action=="run" else 10)*math.sin(t+math.pi)) if walking else 0
+    dx=round((9 if action=="run" else 5)*math.cos(t))*direction if walking else 0
     jump=round(32*math.sin(math.pi*i/max(1,count-1))) if action=="jump" else 0
-    sway=round(4*math.sin(t)) if action in ("wave","idle") else 0
+    sway=round((10 if action=="lookaround" else 4)*math.sin(t)) if action in ("wave","idle","lookaround") else 0
     y= -jump + (round(2*math.sin(t)) if action=="idle" else 0)
     im=Image.new("RGBA",CELL,(0,0,0,0));d=ImageDraw.Draw(im)
     def ell(box, color, outline=None, w=2):
@@ -179,7 +214,7 @@ def _doro(action: str, i: int, count: int):
                fill=(172,124,106,255),width=2)
     if action=="left_walk":
         return im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-    return im
+    return _special_pose(im, action, i, count, quadruped=True)
 
 
 def generate_mascot_demos(root: Path, keys=None):
@@ -210,6 +245,16 @@ def generate_mascot_demos(root: Path, keys=None):
             actions,pet,info=build_configs(set(ACTIONS),1,meta["name"],
                                           "DyberPet original geometric illustration")
             pet["scale"]=0.82
+            # Native DyberPet loader resolves fall/on_floor by action name.
+            # Show a visibly staged stumble, then use the existing jump-based
+            # floor recovery. Add a low-probability autonomous dash animation.
+            pet["fall"] = "failed"
+            pet["on_floor"] = "jump"
+            pet["random_act"].append({
+                "name": "撒欢冲刺" if key == "doro" else "企鹅小跑",
+                "act_list": ["run"], "act_prob": 0.05,
+                "act_type": [3, 0],
+            })
             info["intro"]=meta["description"]+" 个人可另行导入作者原素材，不包括角色原声。"
             info["tages"]={"原创演示":"#9CD0E1","非原设素材":"#D8BDD2"}
             for file,data in (("act_conf.json",actions),("pet_conf.json",pet)):
