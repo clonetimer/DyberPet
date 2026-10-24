@@ -245,6 +245,16 @@ def generate_mascot_demos(root: Path, keys=None):
             actions,pet,info=build_configs(set(ACTIONS),1,meta["name"],
                                           "DyberPet original geometric illustration")
             pet["scale"]=0.82
+            # Native DyberPet loader resolves fall/on_floor by action name.
+            # Show a visibly staged stumble, then use the existing jump-based
+            # floor recovery. Add a low-probability autonomous dash animation.
+            pet["fall"] = "failed"
+            pet["on_floor"] = "jump"
+            pet["random_act"].append({
+                "name": "撒欢冲刺" if key == "doro" else "企鹅小跑",
+                "act_list": ["run"], "act_prob": 0.05,
+                "act_type": [3, 0],
+            })
             info["intro"]=meta["description"]+" 个人可另行导入作者原素材，不包括角色原声。"
             info["tages"]={"原创演示":"#9CD0E1","非原设素材":"#D8BDD2"}
             for file,data in (("act_conf.json",actions),("pet_conf.json",pet)):
