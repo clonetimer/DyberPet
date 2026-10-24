@@ -46,8 +46,7 @@ def _render_frame(state: str, index: int, total: int):
         raise ImportError("Pillow required to draw original character")
     t = 2.0 * math.pi * index / total
     walking = state in ("left_walk", "right_walk")
-    running = walking
-    bob = round(2 * math.sin(t)) if state == "idle" else 0
+    bob = round(2 * math.sin(t)) if state in ("idle", "wait") else 0
     leap = max(0, round(29 * math.sin(math.pi * index / (total - 1)))) if state == "jump" else 0
     walk = round(7 * math.sin(t)) if walking else 0
     hand = round(18 * (1 + math.sin(t))) if state == "wave" else 0
