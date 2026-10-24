@@ -109,6 +109,46 @@ except ImportError:  # standalone tool usage: python tools/import_chibi_animatio
 
 CHIBI_PROFILES.update(as_chibi_profiles())
 
+
+
+def match_chibi_profile(user_input: str) -> str:
+    """Resolve typed Chinese, English or stable ID without guessing ambiguities.
+
+    QInputDialog allows typing but should not require the whole GUI label.
+    A profile is ONLY a formatting preset; it is not an installed artwork.
+    """
+    if not isinstance(user_input, str) or not user_input.strip():
+        raise ValueError("请输入角色中文名、英文名或模板 ID")
+    raw = user_input.strip().casefold()
+    from_candidates = []
+    for key, entry in CHIBI_PROFILES.items():
+        if raw in (key.casefold(), entry["name"].casefold()):
+            from_candidates.append(key)
+    try:
+        from .genshin_roster import GENSHIN_ROSTER
+    except ImportError:
+        from genshin_roster import GENSHIN_ROSTER
+    for key, entry in GENSHIN_ROSTER.items():
+        if raw == entry["english"].casefold():
+            from_candidates.append("genshin_" + key)
+    unique = sorted(set(from_candidates))
+    if len(unique) == 1:
+        return unique[0]
+    if len(unique) > 1:
+        raise ValueError("多个角色名称相同，请使用完整模板 ID")
+    # Disallow single-letter prefix guesses; short input must be an exact name
+    # (e.g. one Chinese character 琴 is still accepted above).
+    if len(raw) < 2:
+        raise ValueError("请输入更完整的角色名")
+    prefix = sorted({key for key, entry in CHIBI_PROFILES.items()
+                     if entry["name"].casefold().startswith(raw)
+                     or key.casefold().startswith(raw)})
+    if len(prefix) == 1:
+        return prefix[0]
+    if len(prefix) > 1:
+        raise ValueError("匹配到多个角色，请继续输入以消除歧义")
+    raise ValueError("没有匹配的角色模板")
+
 def available_role_folder(root, suggested):
     """Pick a safe unused role folder name; never overwrite existing artwork.
 
