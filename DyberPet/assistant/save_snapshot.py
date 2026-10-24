@@ -123,16 +123,19 @@ def create_backup(data_dir, destination):
                 "files": rows,
             }, ensure_ascii=False))
         verify_backup(temp)
+        created = False
         try:
-            with open(dest, "xb") as output, open(temp, "rb") as source:
-                shutil.copyfileobj(source, output, 1024 * 1024)
+            with open(dest, "xb") as output:
+                created = True
+                with open(temp, "rb") as source:
+                    shutil.copyfileobj(source, output, 1024 * 1024)
                 output.flush()
                 os.fsync(output.fileno())
             return verify_backup(dest)
         except Exception:
-            # Remove only the file created by this operation, never preexisting backups.
-            if dest.exists() and dest.is_file():
-                dest.unlink()
+            # A competing writer can win the exclusive-create race.
+            if created:
+                dest.unlink(missing_ok=True)
             raise
     finally:
         Path(temp).unlink(missing_ok=True)
