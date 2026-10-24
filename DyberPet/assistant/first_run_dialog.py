@@ -91,7 +91,10 @@ class FirstRunRoleDialog(QDialog):
             name = entry["display"]
             if name != entry["folder"]:
                 name += " (" + entry["folder"] + ")"
-            label = name + (" · 程序原创演示" if entry["demo"] else " · 本机角色")
+            origin = (" · 程序低保真演示（非原设）" if entry["demo"] else
+                      " · 公开作者素材（待人工核对）" if entry.get("artist_source") else
+                      " · 已安装本机角色")
+            label = name + origin
             item = QListWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, entry["folder"])
             self.roles.addItem(item)
@@ -127,7 +130,8 @@ class FirstRunRoleDialog(QDialog):
                 Qt.TransformationMode.SmoothTransformation))
         self.status.setText(
             f"将使用本机文件：{entry['folder']}。"
-            + ("此形象是原创 Q 版演示，不代表角色原设。" if entry["demo"]
+            + ("此形象是程序生成的低保真演示，并非真实角色画作。" if entry["demo"]
+               else "这些是公开作者制作的原始帧，但具体版本的相似度仍需您预览。" if entry.get("artist_source")
                else "这是已安装的本地素材，不自动认证原设或许可。"))
 
     def preview_animation(self):
