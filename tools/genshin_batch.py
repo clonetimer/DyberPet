@@ -16,11 +16,13 @@ from pathlib import Path
 if __package__:
     from .genshin_roster import GENSHIN_ROSTER
     from .character_pipeline import (DEFAULT_WORKSPACE, PipelineError,
-                                      dump_json, init_case, record_path, registry)
+                                      dump_json, init_case, record_path, registry,
+                                      load_case, inspect_case, identify_local)
 else:
     from genshin_roster import GENSHIN_ROSTER
     from character_pipeline import (DEFAULT_WORKSPACE, PipelineError,
-                                    dump_json, init_case, record_path, registry)
+                                    dump_json, init_case, record_path, registry,
+                                    load_case, inspect_case, identify_local)
 
 
 def catalogue():
@@ -149,6 +151,99 @@ def seed(workspace, keys, *, dry_run=False):
             "workspace": str(workspace)}
 
 
+
+def status(workspace, keys):
+    """Read-only progress board backed by *actual* local candidate states."""
+    workspace = Path(workspace).expanduser()
+    rows = []
+    for expected in plan(workspace, keys):
+        row = {
+            "id": expected["id"], "character": expected["character"],
+            "source_known": bool(expected["source_url"]),
+            "case_exists": expected["case_exists"],
+            "playable_role_verified": False,
+            "redistribution_verified": False,
+        }
+        if not expected["case_exists"]:
+            row["stage"] = "not_seeded"
+            row["next_step"] = "seed candidate"
+        else:
+            case = load_case(record_path(workspace, expected["id"]))
+            audit = inspect_case(record_path(workspace, expected["id"]))
+            if case["status"] == "packaged":
+                row["stage"] = "packaged_locally"
+                row["next_step"] = "verify package distribution policies independently"
+            elif case["status"] == "qa_reviewed":
+                row["stage"] = "qa_reviewed"
+                row["next_step"] = "check redistribution rights before package"
+            elif case["status"] == "built":
+                row["stage"] = "built_pending_visual_runtime_qa"
+                row["next_step"] = "complete human visual and running Qt QA"
+            elif case["status"] == "rights_reviewed":
+                row["stage"] = "rights_reviewed"
+                row["next_step"] = "run existing guarded build"
+            elif case["status"] == "source_attached":
+                row["stage"] = "source_attached"
+                row["next_step"] = "review actual asset rights, not source video alone"
+            else:
+                row["stage"] = "awaiting_local_artwork"
+                row["next_step"] = "find specific source and attach local licensed asset"
+            row["playable_role_verified"] = bool(
+                case["qa"]["visual_pass"] and case["qa"]["runtime_pass"])
+            row["redistribution_verified"] = bool(
+                case["rights"]["redistribution"] and
+                case["rights"]["reviewer"] and
+                case["rights"]["evidence"])
+            row["blocking_issue_count"] = len(audit["blockers"])
+        rows.append(row)
+    return {"mode": "status", "characters": rows,
+            "counts": {
+                "total": len(rows),
+                "seeded": sum(v["case_exists"] for v in rows),
+                "qa_verified": sum(v["playable_role_verified"] for v in rows),
+                "locally_packaged": sum(v["stage"] == "packaged_locally"
+                                       for v in rows),
+            }}
+
+
+def probe_asset(asset):
+    """Non-mutating identification of a *single* local role source.
+
+    A ZIP of an entire old executable release must not be mistaken for a MOD.
+    Caller decides which Genshin person the art represents and checks rights.
+    """
+    import zipfile
+    if __package__:
+        from .install_native_role import inspect_zip, inspect_native_folder
+    else:
+        from install_native_role import inspect_zip, inspect_native_folder
+    original = Path(asset).expanduser()
+    if original.is_symlink():
+        raise PipelineError("Symlinked artwork path is not permitted")
+    source = original.resolve()
+    kind = identify_local(source)
+    if kind == "native_folder":
+        check = inspect_native_folder(source)
+        info = {"actions": check["validation"]["actions"],
+                "frames": check["validation"]["images"],
+                "file_count": len(check["files"])}
+    elif kind == "native_zip":
+        with zipfile.ZipFile(source) as archive:
+            files, prefix = inspect_zip(archive)
+        info = {"contained_role_folder": prefix.name,
+                "file_count": len(files)}
+    else:
+        raise PipelineError(
+            "Select a single native role ZIP, or extracted res/role/<character> folder; "
+            "full application, mini-pet and model assets need different workflows")
+    return {
+        "mode": "read_only_probe", "kind": kind, "configuration": info,
+        "playable_role_verified": False, "license_verified": False,
+        "role_identity_verified": False, "asset_modified": False,
+        "next_step": "attach to a matching candidate, review rights, build and run QA",
+    }
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
@@ -164,6 +259,10 @@ def main(argv=None):
     p.add_argument("--roles", default="all", help="all or comma-separated IDs")
     p = sub.add_parser("seed", help="Create local unapproved candidate records")
     p.add_argument("--roles", default="all", help="all or comma-separated IDs")
+    p = sub.add_parser("status", help="Summarize actual local role approvals without writing")
+    p.add_argument("--roles", default="all", help="all or comma-separated IDs")
+    p = sub.add_parser("probe", help="Read-only structural preflight for one local original MOD")
+    p.add_argument("--asset", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "list":
@@ -173,12 +272,17 @@ def main(argv=None):
                       "rights_verified": False, "playable": False}
                 for key, role in GENSHIN_ROSTER.items()
             }
+        elif args.command == "probe":
+            output = probe_asset(args.asset)
+        elif args.command == "status":
+            output = status(args.workspace, select_roles(args.roles))
         else:
             keys = select_roles(args.roles)
             output = seed(args.workspace, keys, dry_run=args.command == "preview")
         print(json.dumps(output, ensure_ascii=False, indent=2))
         return 0
-    except (PipelineError, ValueError, FileExistsError, OSError) as exc:
+    except (PipelineError, ValueError, FileExistsError, OSError, KeyError,
+            json.JSONDecodeError) as exc:
         parser.exit(1, "Genshin batch blocked: " + str(exc) + "\n")
 
 
