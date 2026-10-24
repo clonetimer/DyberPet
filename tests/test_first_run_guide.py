@@ -87,6 +87,21 @@ class FirstRunTests(unittest.TestCase):
         self.assertTrue(installed[0]["preview"].endswith("hx_0.png"))
         self.assertEqual(Path(installed[0]["preview"]).read_bytes(), b"actual")
 
+    def test_existing_native_role_card_uses_real_artist_identity(self):
+        # Import the GUI source as AST: importer-only Windows/Linux CI does not
+        # install Qt. Full Qt widget loading is checked by frozen desktop CI.
+        import ast
+        path = Path(__file__).resolve().parents[1] / "DyberPet" / "DyberSettings" / "custom_utils.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        card = next(n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)
+                    and n.name == "CharLine")
+        method = next(n for n in card.body if isinstance(n, ast.FunctionDef)
+                      and n.name == "__init_InfoList")
+        body = ast.unparse(method)
+        self.assertIn("PERSONAL_IMPORT.json", body)
+        self.assertIn("display_name", body)
+        self.assertIn("_native_idle_preview", body)
+
     def test_empty_or_broken_directory_is_not_invented_as_playable(self):
         self.assertEqual(installed_playable_roles(self.roles), [])
         self._role("no_png", frame=False)
