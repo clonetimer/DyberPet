@@ -35,6 +35,9 @@ ACTIONS = {
     "idle": 8, "left_walk": 6, "right_walk": 6,
     "wave": 8, "jump": 6, "wait": 6, "review": 6,
 }
+# Keep ACTIONS stable for the separate mascot generator's original base poses.
+# Genshin demos have three more truly rendered generic animation sequences.
+DEMO_ACTIONS = {**ACTIONS, "run": 8, "failed": 6, "lookaround": 6}
 ELEMENT_COLORS = {
     "火": (226, 103, 81), "水": (91, 160, 224),
     "风": (91, 191, 157), "雷": (157, 110, 214),
@@ -88,12 +91,17 @@ def _palette(profile):
 def _render(profile, action, index, total):
     record, visual, salt, outfit, hair = _palette(profile)
     t = 2 * math.pi * index / total
-    walking = action in ("left_walk", "right_walk")
-    sx = (5 if action == "right_walk" else -5) * math.sin(t) if walking else 0
-    step = round(7 * math.sin(t)) if walking else 0
+    walking = action in ("left_walk", "right_walk", "run")
+    sx = ((6 * math.sin(t) + 3 * math.cos(t))
+          if action == "run" else
+          (5 if action == "right_walk" else -5) * math.sin(t)
+          if walking else
+          5 * math.sin(t) + 3 * math.cos(t)
+          if action == "lookaround" else 0)
+    step = round((12 if action == "run" else 7) * math.sin(t)) if walking else 0
     bob = round(3 * math.sin(t)) if action in ("idle", "wait", "review") else 0
     jump = round(25 * max(0, math.sin(math.pi * index / max(1,total-1)))) if action == "jump" else 0
-    hand = round(23 * (1 + math.sin(t)) / 2) if action == "wave" else 0
+    hand = round(23 * (1 + math.sin(t)) / 2) if action == "wave" else (round(8 * math.cos(t)) if action == "run" else 0)
     y = bob - jump
     x = round(sx)
     # All shapes are code-drawn; they are not copies of game art.
@@ -183,6 +191,29 @@ def _render(profile, action, index, total):
               (122+x,159+y)],(255,241,218,255))
         draw.line((128+x,137+y,143+x,134+y),fill=ink,width=2)
         draw.line((128+x,145+y,144+x,142+y),fill=ink,width=2)
+    # Real first-party poses rather than JSON-only aliases to idle.
+    if action == "failed":
+        # A 6-frame collapse -> tumble -> return. This is a visual cartoon
+        # sequence and is not evidence of a complete physics fall recovery.
+        angles = (0, 20, 58, 77, 31, 0)
+        im = im.rotate(angles[index % len(angles)], Image.Resampling.BICUBIC,
+                       expand=False, fillcolor=(0, 0, 0, 0))
+        marks = ImageDraw.Draw(im)
+        if index in (2, 3, 4):
+            marks.arc((135, 29, 169, 57), 192, 315,
+                      fill=(239, 177, 89, 240), width=3)
+        return im
+    if action == "run":
+        marks = ImageDraw.Draw(im)
+        for n in range(3):
+            ymark = 134 + n * 13 + round(4 * math.sin(t))
+            marks.line((13, ymark, 43, ymark - 2),
+                       fill=(136, 165, 175, 210), width=3)
+    elif action == "lookaround":
+        marks = ImageDraw.Draw(im)
+        angle = 185 + index * 16
+        marks.arc((71, 26, 129, 54), angle, angle + 49,
+                  fill=(242, 194, 109, 220), width=3)
     return im
 
 
@@ -212,16 +243,23 @@ def generate_demo_roles(root, profiles=None):
             (staged/"action").mkdir(parents=True)
             (staged/"info").mkdir()
             frames={}
-            for action,n in ACTIONS.items():
+            for action,n in DEMO_ACTIONS.items():
                 frames[action]=[]
                 for i in range(n):
                     frame=_render(key,action,i,n)
                     frame.save(staged/"action"/f"{action}_{i}.png",optimize=False,
                                compress_level=3)
                     frames[action].append(frame)
-            config,pet,info=build_configs(set(ACTIONS),1,"〔演示〕"+name,
+            config,pet,info=build_configs(set(DEMO_ACTIONS),1,"〔演示〕"+name,
                                          "DyberPet first-party drawing code")
             pet["scale"]=0.84
+            # Native actions, not extra independent UI logic.
+            pet["fall"] = "failed"
+            pet["on_floor"] = "jump"
+            pet["random_act"].append({
+                "name": "原创演示小跑", "act_list": ["run"],
+                "act_prob": 0.05, "act_type": [3, 0],
+            })
             info["intro"]=("原创几何风格 Q 版演示形象，仅与人物配置关联；"
                            "不是原神官方角色美术、模型、立绘或配音。"
                            "可通过导入本地美术替换。")
@@ -243,7 +281,7 @@ def generate_demo_roles(root, profiles=None):
                 "original_illustration":True,
                 "official_character_art":False,"character_likeness_verified":False,
                 "game_voice_included":False,"actual_character_rights_verified":False,
-                "needs_real_desktop_qa":True,"per_action_frames":dict(ACTIONS),
+                "needs_real_desktop_qa":True,"per_action_frames":dict(DEMO_ACTIONS),
             }
             (staged/"BUILTIN_CHIBI_DEMO.json").write_text(
                 json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",
@@ -259,7 +297,7 @@ def generate_demo_roles(root, profiles=None):
         "selected":len(keys),"created":len(created),
         "existing_preserved":len(already_present),
         "official_game_art_included":False,
-        "rendered_frames_per_profile":sum(ACTIONS.values()),
+        "rendered_frames_per_profile":sum(DEMO_ACTIONS.values()),
         "generated_dirs":created,
     }
 
