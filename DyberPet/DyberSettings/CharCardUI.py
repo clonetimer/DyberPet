@@ -81,6 +81,9 @@ class CharInterface(ScrollArea):
         self.catalogButton = PushButton(self.tr("全部角色库"), self, FIF.SEARCH)
         self.catalogButton.setToolTip(
             self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
+        self.artistSourceButton = PushButton(self.tr("安装作者原画角色"), self, FIF.DOWNLOAD)
+        self.artistSourceButton.setToolTip(
+            self.tr("本机下载已有原作者逐帧动画：纳西妲／魈／流浪者，不再生成替代造型"))
         self.mascotButton = PushButton(self.tr("咕嘎 / Doro"), self, FIF.HEART)
         self.mascotButton.setToolTip(
             self.tr("查看企鹅/四足演示角色以及个人导入的对应素材；不冒充作者原设美术"))
@@ -98,6 +101,7 @@ class CharInterface(ScrollArea):
         self.headerLayout.addWidget(self.addButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.quickStartButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.catalogButton, Qt.AlignLeft | Qt.AlignVCenter)
+        self.headerLayout.addWidget(self.artistSourceButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.mascotButton, Qt.AlignLeft | Qt.AlignVCenter)
         spacerItem1 = QSpacerItem(10, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.headerLayout.addItem(spacerItem1)
@@ -187,6 +191,7 @@ class CharInterface(ScrollArea):
         self.addButton.clicked.connect(self.__onAddClicked)
         self.quickStartButton.clicked.connect(self._showQuickStartGuide)
         self.catalogButton.clicked.connect(self._showAllCharacterCatalog)
+        self.artistSourceButton.clicked.connect(self._installArtistGenshin)
         self.mascotButton.clicked.connect(self._showMascotLibrary)
         self.panelHelp.clicked.connect(self.__onShowInstruction)
 
@@ -492,6 +497,39 @@ class CharInterface(ScrollArea):
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在本机获取并校验角色作者发布的图集，然后转换动画。"),1)
+
+    def _installArtistGenshin(self):
+        """Fetch real released desktop-pet sprites, never procedural lookalikes."""
+        if self.chibiThread is not None:
+            self.__showSystemNote("其他角色安装仍在进行。", 1)
+            return
+        from tools.install_artist_genshin import ROLES, SOURCE_URL
+        labels = {f"{title} · 原作者逐帧美术":key
+                  for key, (_, _, title) in ROLES.items()}
+        selected, ok = QInputDialog.getItem(
+            self, "本机安装原作者桌宠素材",
+            "选择现有作者动画；首次下载是较大的完整来源包，请保持网络畅通。"
+            "不同于程序自绘演示。",
+            list(labels), 0, False)
+        if not ok or selected not in labels:
+            return
+        kind = labels[selected]
+        if not self.__showMessageBox(
+                "安装原作者动画（个人使用）",
+                f"来源：{SOURCE_URL}{ROLES[kind][0]}\n"
+                "下载固定版本的原作者逐帧动画和配置，直接安装为独立角色。"
+                "只保存在此电脑，不覆盖原角色、存档或演示版。"
+                "素材仍需自行核对具体原作版本；不保证声线一致。继续吗？"):
+            return
+        self.addButton.setEnabled(False)
+        self.artistSourceButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            kind, os.path.join(basedir, "res", "role"),
+            mode="artist_genshin", profile=None, preset=kind, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote("正在安装原作者逐帧动画，完成后可直接切换。", 1)
 
     def _showQuickStartGuide(self):
         from DyberPet.assistant.first_run_dialog import FirstRunRoleDialog
@@ -934,6 +972,7 @@ class CharInterface(ScrollArea):
 
     def _onChibiThreadFinished(self):
         self.addButton.setEnabled(True)
+        self.artistSourceButton.setEnabled(True)
         thread = self.chibiThread
         self.chibiThread = None
         if thread is not None:
@@ -1159,6 +1198,11 @@ class ChibiImportThread(QThread):
             if self.mode == "original_demo":
                 from tools.create_original_mascot import create_original_mascot
                 new_folder = create_original_mascot(self.output_root)
+            elif self.mode == "artist_genshin":
+                from tools.install_artist_genshin import install_artist_genshin
+                installed = install_artist_genshin(
+                    self.preset, self.output_root, confirmed=True)
+                new_folder = self.output_root / installed["folder"]
             elif self.mode == "creator_source":
                 from tools.install_creator_mascots import install_creator_mascot
                 installed = install_creator_mascot(
