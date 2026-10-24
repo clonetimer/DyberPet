@@ -15,6 +15,7 @@ on:
       - "tools/create_original_mascot.py"
       - "tools/genshin_complete_roster.py"
       - "tools/genshin_roster.py"
+      - "tools/genshin_library.py"
       - "tools/character_sources.json"
       - "tools/build_windows_portable.ps1"
       - "requirements-windows-portable.txt"
@@ -28,6 +29,7 @@ on:
       - "tools/create_original_mascot.py"
       - "tools/genshin_complete_roster.py"
       - "tools/genshin_roster.py"
+      - "tools/genshin_library.py"
       - "tools/character_sources.json"
       - "tools/build_windows_portable.ps1"
       - "requirements-windows-portable.txt"
@@ -68,7 +70,7 @@ jobs:
           if (-not $outcome.assets.ok -or -not $outcome.assistant_dialog) { throw "Packaged assistant or resources failed verification" }
           if (-not $outcome.character_importer.ok -or $outcome.character_importer.synthetic_actions -lt 1 -or $outcome.character_importer.synthetic_frames -lt 1) { throw "Packaged character importer failed real synthetic conversion" }
           if ($outcome.character_importer.modified_user_roles -or $outcome.character_importer.third_party_art_included) { throw "Character smoke mutated resources or used external art" }
-          if ($outcome.character_importer.genshin_profile_count -ne 122) { throw "Missing full 7.1 Genshin roster from packaged EXE" }
+          if ($outcome.character_importer.genshin_profile_count -ne 123) { throw "Missing full 7.1 Genshin roster from packaged EXE" }
           if (-not $outcome.character_importer.personal_install_ok -or $outcome.character_importer.personal_install_rights_verified) { throw "Packaged private local role import failed or falsely asserted rights" }
           if ($outcome.character_importer.original_mascot_actions -ne 7 -or $outcome.character_importer.original_mascot_frames -ne 46) { throw "Packaged original Q role generation failed" }
           foreach ($name in @("pyttsx3","vosk","sounddevice")) {
