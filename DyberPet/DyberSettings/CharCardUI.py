@@ -432,7 +432,7 @@ class CharInterface(ScrollArea):
         choices = [default_choice] + list(options)
         selected, accepted = QInputDialog.getItem(
             self, self.tr("Q版角色模板"),
-            self.tr("可输入角色名首字快速查找；必须选列表中已有模板："),
+            self.tr("可直接输入中文名/英文名；原生角色仅记录本机显示关联，需自行核对真实美术身份："),
             choices, 0, True
         )
         if not accepted:
@@ -470,13 +470,16 @@ class CharInterface(ScrollArea):
         self.__showSystemNote(self.tr("正在生成原创 Q 版星芽动画，不会覆盖已有角色。"), 1)
 
     def _importNativeZip(self, archivePath):
-        """Install existing native role ZIP without changing existing roles."""
+        """Import native ZIP with optional, explicit *local* profile association."""
         if self.chibiThread is not None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted:
             return
         self.addButton.setEnabled(False)
         self.chibiThread = ChibiImportThread(
             archivePath, os.path.join(basedir, "res", "role"),
-            mode="native_zip", profile=None, preset=None, folder=None
+            mode="native_zip", profile=profile, preset=None, folder=None
         )
         self.chibiThread.done.connect(self._onChibiImportComplete)
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
@@ -484,13 +487,16 @@ class CharInterface(ScrollArea):
         self.__showSystemNote(self.tr("正在验证并安装原生角色 ZIP。"), 1)
 
     def _importNativeFolder(self, sourceFolder):
-        """Safely stage an extracted single main-role MOD on a worker thread."""
+        """Stage native MOD and optionally associate with selected chibi profile."""
         if self.chibiThread is not None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted:
             return
         self.addButton.setEnabled(False)
         self.chibiThread = ChibiImportThread(
             sourceFolder, os.path.join(basedir, "res", "role"),
-            mode="native_folder", profile=None, preset=None, folder=None)
+            mode="native_folder", profile=profile, preset=None, folder=None)
         self.chibiThread.done.connect(self._onChibiImportComplete)
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
@@ -778,12 +784,20 @@ class ChibiImportThread(QThread):
             if self.mode == "original_demo":
                 from tools.create_original_mascot import create_original_mascot
                 new_folder = create_original_mascot(self.output_root)
-            elif self.mode == "native_zip":
-                from tools.install_native_role import install_native_role
-                new_folder = install_native_role(self.source, self.output_root)
-            elif self.mode == "native_folder":
-                from tools.install_native_role import install_native_folder
-                new_folder = install_native_folder(self.source, self.output_root)
+            elif self.mode in ("native_zip", "native_folder"):
+                if self.profile:
+                    # Attach only the user-selected display identity; never
+                    # infer the character from art names or assert permissions.
+                    from tools.personal_role_import import personal_install
+                    new_folder = personal_install(
+                        self.source, self.output_root,
+                        profile=self.profile, confirm_local_only=True)
+                elif self.mode == "native_zip":
+                    from tools.install_native_role import install_native_role
+                    new_folder = install_native_role(self.source, self.output_root)
+                else:
+                    from tools.install_native_role import install_native_folder
+                    new_folder = install_native_folder(self.source, self.output_root)
             elif self.mode == "codex":
                 from tools.import_codex_pet import convert
                 new_folder = convert(
