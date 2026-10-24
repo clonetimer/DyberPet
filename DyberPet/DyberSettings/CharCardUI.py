@@ -370,6 +370,7 @@ class CharInterface(ScrollArea):
             return
         summary = report["summary"]
         manage_label = "【管理】关联一个已安装但未归类的本地角色"
+        unlink_label = "【管理】解除旧关联（不删除角色及动作）"
         labels = {}
         for role in report["characters"]:
             status = ("本机已有 · 待实机验收"
@@ -384,11 +385,14 @@ class CharInterface(ScrollArea):
             self, title,
             self.tr("选择角色查看状态；也可输入中文名、英文名或模板 ID。"
                     "本机扫描不访问网络，不认证角色来源。"),
-            [manage_label] + list(labels), 0, True)
+            [manage_label, unlink_label] + list(labels), 0, True)
         if not accepted:
             return
         if chosen == manage_label:
             self._associateExistingGenshinRole(report)
+            return
+        if chosen == unlink_label:
+            self._unlinkExistingGenshinRole()
             return
         role = labels.get(chosen)
         if role is None:
@@ -471,6 +475,48 @@ class CharInterface(ScrollArea):
         self.__showSystemNote(
             self.tr(f"已将「{folder}」仅在本机归入「{name}」。"
                     "重新打开原神角色库即可查看；原始素材未改变。"), 1)
+
+    def _unlinkExistingGenshinRole(self):
+        """Undo mistaken/stale local mapping without touching source artwork."""
+        root = Path(basedir) / "res" / "role"
+        mappings = Path(basedir) / "data" / "genshin_role_bindings.json"
+        try:
+            from tools.genshin_role_bindings import (load_bindings,
+                                                    unbind_existing_role)
+            records = load_bindings(root, mappings)
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("无法读取本地关联：") + str(exc), 2)
+            return
+        if not records:
+            self.__showMessageBox(
+                self.tr("暂无关联记录"),
+                self.tr("这里只有手动建立的额外角色关联。"
+                        "从文件导入时已带有人物身份的来源收据不会在此删除。"))
+            return
+        from tools.chibi_profiles import CHIBI_PROFILES
+        options = {
+            f"{folder} → {CHIBI_PROFILES[info['profile']]['name']}": folder
+            for folder, info in sorted(records.items())
+        }
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("解除本地关联"),
+            self.tr("请选择要取消的额外人物映射；不会删除角色目录："),
+            list(options), 0, False)
+        if not accepted or selected not in options:
+            return
+        folder = options[selected]
+        if not self.__showMessageBox(
+                self.tr("确认解除关联"),
+                self.tr(f"仅删除「{folder}」的本地人物映射记录？"
+                        "原始动画、配置、声音和角色目录将保留不变。")):
+            return
+        try:
+            unbind_existing_role(root, folder, mappings=mappings, confirmed=True)
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("解除关联失败：") + str(exc), 2)
+            return
+        self.__showSystemNote(
+            self.tr(f"已解除「{folder}」的本地人物关联，素材及动作未删除。"), 1)
 
     def _chooseChibiProfile(self):
         """Small modal selector, without adding permanent page controls."""
