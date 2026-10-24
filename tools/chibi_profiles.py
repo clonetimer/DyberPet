@@ -100,6 +100,15 @@ CHIBI_PROFILES = {
     },
 }
 
+# These profiles enter the existing role-import GUI, conversion, preview and
+# speech-bubble workflows automatically. No artwork is included.
+try:
+    from .genshin_roster import as_chibi_profiles
+except ImportError:  # standalone tool usage: python tools/import_chibi_animations.py
+    from genshin_roster import as_chibi_profiles
+
+CHIBI_PROFILES.update(as_chibi_profiles())
+
 def available_role_folder(root, suggested):
     """Pick a safe unused role folder name; never overwrite existing artwork.
 
