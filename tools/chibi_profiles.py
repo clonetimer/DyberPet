@@ -122,7 +122,8 @@ def match_chibi_profile(user_input: str) -> str:
     raw = user_input.strip().casefold()
     from_candidates = []
     for key, entry in CHIBI_PROFILES.items():
-        if raw in (key.casefold(), entry["name"].casefold()):
+        short_name = entry["name"].split("（", 1)[0].strip().casefold()
+        if raw in (key.casefold(), entry["name"].casefold(), short_name):
             from_candidates.append(key)
     try:
         from .genshin_roster import GENSHIN_ROSTER
