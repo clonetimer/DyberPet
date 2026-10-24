@@ -192,6 +192,8 @@ jobs:
           assert assistant["mascot_special_actions_each"]==10 and assistant["mascot_special_frames_each"]==66,assistant
           assert assistant["genshin_native_preview_verified"] and assistant["character_templates"]==125 and assistant["character_native_preview_ready"]==125,assistant
           assert gui["genshin_live_preview_rendered"] and gui["full_character_coverage_templates"]==125 and gui["full_character_coverage_ready"]==125,gui
+          assert gui["genshin_original_demo_actions_each"]==10 and gui["genshin_original_demo_frames_each"]==66,gui
+          assert assistant["genshin_original_demo_actions_each"]==10 and assistant["genshin_original_demo_frames_each"]==66,assistant
           assert assistant["mascot_live_preview_count"]==2 and assistant["mascot_live_preview_timer_safe"],assistant
           assert not importer["third_party_art_included"] and not importer["modified_user_roles"],importer
           assert gui["ok"] and gui["display_backend"]=="xcb" and gui["catalog_dialog_opened"],gui
