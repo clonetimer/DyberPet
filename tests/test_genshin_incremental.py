@@ -34,9 +34,9 @@ class IncrementalGenshinIntakeTests(unittest.TestCase):
         case_before, notes_before = existing_case.read_bytes(), checklist.read_bytes()
 
         result = seed_missing(self.root, tuple(GENSHIN_ROSTER))
-        self.assertEqual(result["created"], 104)
+        self.assertEqual(result["created"], 105)
         self.assertEqual(result["preserved"], 14)
-        self.assertEqual(result["total_selected"], 118)
+        self.assertEqual(result["total_selected"], 119)
         self.assertEqual(existing_case.read_bytes(), case_before)
         self.assertEqual(checklist.read_bytes(), notes_before)
         for key in tuple(GENSHIN_ROSTER)[14:]:
@@ -48,7 +48,7 @@ class IncrementalGenshinIntakeTests(unittest.TestCase):
 
         second = seed_missing(self.root, tuple(GENSHIN_ROSTER))
         self.assertEqual(second["created"], 0)
-        self.assertEqual(second["preserved"], 118)
+        self.assertEqual(second["preserved"], 119)
         self.assertEqual(existing_case.read_bytes(), case_before)
         self.assertEqual(checklist.read_bytes(), notes_before)
 
