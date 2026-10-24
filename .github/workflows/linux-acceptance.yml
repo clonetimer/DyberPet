@@ -35,6 +35,7 @@ on:
       - "tests/test_save_snapshot.py"
       - "DyberPet/settings.py"
       - "tests/test_default_pet_order.py"
+      - "tests/test_first_run_guide.py"
       - "DyberPet/conf.py"
       - "run_DyberPet.py"
 
@@ -81,6 +82,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_linux_portable_paths.py" -v
       - name: Verify stable first-run starter role
         run: python -m unittest discover -s tests -p "test_default_pet_order.py" -v
+      - name: Verify offline first-use selection and returning-user guard
+        run: python -m unittest discover -s tests -p "test_first_run_guide.py" -v
       - name: Exercise real animation QPixmap/PetConfig under X11
         shell: bash
         run: |
@@ -190,6 +193,8 @@ jobs:
           gui=json.loads((temp/"linux-frozen-gui.json").read_text())
           assert assistant["assets"]["ok"] and assistant["assistant_dialog"],assistant
           assert assistant["backup_snapshot_verified"],assistant
+          assert assistant["first_run_guide_verified"],assistant
+          assert gui["first_run_guide_visible"] and gui["first_run_local_preview_verified"],gui
           importer=assistant["character_importer"]
           assert importer["genshin_profile_count"]==123 and importer["library_template_count"]==123,importer
           assert importer["legacy_binding_verified"] and importer["legacy_unbind_preserved_original"],importer
