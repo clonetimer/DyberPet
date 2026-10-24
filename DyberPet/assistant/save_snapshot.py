@@ -113,10 +113,19 @@ def create_backup(data_dir, destination):
         rows = []
         with ZipFile(temp, "w", compression=ZIP_DEFLATED, compresslevel=6) as archive:
             for name, path in sources:
-                archive.write(path, "data/" + name)
-                with archive.open("data/" + name) as member:
-                    size, checksum = _digest(member)
-                rows.append({"name": name, "size": size, "sha256": checksum})
+                # ZipFile.write() uses Windows os.path.normpath() for arcname,
+                # which can create a central-directory/backslash mismatch.
+                # Explicit stream member names stay POSIX on all platforms.
+                h = hashlib.sha256()
+                size = 0
+                with path.open("rb") as source, archive.open("data/" + name, "w") as member:
+                    for block in iter(lambda: source.read(1024 * 1024), b""):
+                        size += len(block)
+                        if size > FILE_LIMIT:
+                            raise BackupError("User data grew beyond backup limit")
+                        member.write(block)
+                        h.update(block)
+                rows.append({"name": name, "size": size, "sha256": h.hexdigest()})
             archive.writestr("manifest.json", json.dumps({
                 "format": "dyberpet-data-v1",
                 "scope": "data files only; excludes character art, audio and models",
