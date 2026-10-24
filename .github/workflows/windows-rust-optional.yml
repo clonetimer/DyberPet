@@ -43,8 +43,10 @@ jobs:
           maturin build --release --manifest-path rust/pet_core/Cargo.toml --interpreter python --out wheelhouse
           python -m pip install --no-index --find-links wheelhouse dyberpet-native-core
           python -c "import dyberpet_native; assert dyberpet_native.engine_version() == '0.1.0'"
-      - name: Build isolated Windows Rust opt-in archive
+      - name: Build isolated Windows Rust opt-in archive with temporary test-only frames
         shell: pwsh
+        env:
+          DYBERPET_QA_KEEP_ABSTRACT_ART: "1"
         run: ./tools/build_windows_portable.ps1 -IncludeRust
       - name: Launch packaged EXE from another working directory in Rust mode
         shell: pwsh
@@ -62,11 +64,32 @@ jobs:
           if (-not (Test-Path -LiteralPath $report)) { throw "Native EXE smoke report missing" }
           $state = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
           if (-not $state.assets.ok -or -not $state.assistant_dialog) { throw "Qt assistant/assets smoke failed" }
+          if (-not $state.backup_snapshot_verified -or -not $state.offline_restore_verified -or -not $state.offline_restore_wizard_verified -or -not $state.first_run_guide_verified) { throw "Native EXE regressed current-main backup/restore/first-run checks" }
+          if (-not $state.public_art_sources_ready) { throw "Native EXE missing real creator-art installers" }
           if ($state.native_backend.active -ne "rust" -or $state.native_backend.fallback) { throw "Packaged EXE silently fell back from Rust" }
           foreach ($name in @("pyttsx3","vosk","sounddevice")) {
             if ($state.optional_voice_imports.$name -ne $true) { throw "Missing voice package: $name" }
           }
           Get-Content -LiteralPath $report
+      - name: Verify personal-art policy and strip all generated QA-only sprites
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python tools/strip_generated_demo_art.py --role-root "dist/DyberPet/res/role" --expected 125
+          if ($LASTEXITCODE -ne 0) { throw "Failed to remove generated demo sprites" }
+          python tools/strip_generated_demo_art.py --role-root "dist/DyberPet/res/role" --verify-only
+          if ($LASTEXITCODE -ne 0) { throw "Generated sprites remain in experimental download" }
+          $exe = (Resolve-Path "dist/DyberPet/DyberPet.exe").Path
+          $proc = Start-Process -FilePath $exe -ArgumentList "--personal-package-smoke" -WorkingDirectory $env:RUNNER_TEMP -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "Final Rust package contains placeholders or lacks starter assets" }
+          Remove-Item -LiteralPath "DyberPet-Windows-Rust-Experimental.zip" -Force
+          Compress-Archive -Path "dist/DyberPet/*" -DestinationPath "DyberPet-Windows-Rust-Experimental.zip" -CompressionLevel Optimal
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "DyberPet-Windows-Rust-Experimental.zip").Path)
+          try {
+            $leaked = @($archive.Entries | Where-Object { $_.FullName -match 'BUILTIN_(CHIBI|MASCOT)_DEMO' })
+            if ($leaked.Count -gt 0) { throw "Generated art leaked into downloadable Rust ZIP" }
+          } finally { $archive.Dispose() }
       - uses: actions/upload-artifact@v4
         with:
           name: DyberPet-Windows-Rust-Experimental
