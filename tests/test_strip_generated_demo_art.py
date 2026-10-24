@@ -16,7 +16,8 @@ class CleanPersonalBuildTests(unittest.TestCase):
         self.real = self.root / "SourceGenshinNahida"
         self.real.mkdir()
         (self.real / "PERSONAL_IMPORT.json").write_text(
-            '{"display_name":"纳西妲","source_kind":"artist_original_animation"}')
+            '{"display_name":"纳西妲","source_kind":"artist_original_animation"}',
+            encoding="utf-8")
 
     def _demo(self, folder, mascot=False):
         path = self.root / folder
