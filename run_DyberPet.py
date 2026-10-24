@@ -235,6 +235,20 @@ def _assistant_package_smoke():
     report["character_importer"] = verify_portable_character_importer()
     if not report["character_importer"]["ok"]:
         raise RuntimeError("Portable character import conversion failed")
+    # Only packaged releases must contain pre-rendered demo animations.
+    # Source CI deliberately tests an untouched checkout and does not seed it.
+    if getattr(sys, "frozen", False):
+        from tools.genshin_library import scan_genshin_library
+        lib = scan_genshin_library(os.path.join(os.getcwd(), "res", "role"))
+        counts = lib["summary"]
+        report["built_in_demo_profiles"] = counts["original_demo_profile_count"]
+        report["built_in_playable_profiles"] = counts["installed_profile_count"]
+        report["built_in_unfilled_profiles"] = counts["pending_template_count"]
+        if (counts["original_demo_profile_count"] != 123 or
+                counts["installed_profile_count"] < 123 or
+                counts["pending_template_count"] != 0):
+            raise RuntimeError("Packaged install lacks full 123 playable original demo animations")
+
     for module in ("pyttsx3", "vosk", "sounddevice"):
         try:
             __import__(module)

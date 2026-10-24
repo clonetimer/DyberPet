@@ -60,6 +60,9 @@ package="dist/DyberPetDesktop"
 test -x "$package/DyberPetDesktop"
 test -d res
 cp -a res "$package/res"
+# Pre-render truly playable but unmistakably first-party *demo* chibis.
+# Never writes to repository assets or overwrites existing user MODs.
+python tools/generate_builtin_chibi_demos.py --output-root "$package/res/role"
 mkdir -p "$package/data"
 cp docs/pet_assistant.md "$package/ASSISTANT_GUIDE.md"
 cp docs/character_fidelity.md "$package/CHARACTER_FIDELITY.md"

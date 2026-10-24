@@ -53,6 +53,10 @@ def verify_linux_gui():
         local_catalog = scan_genshin_library(Path(settings.BASEDIR) / "res" / "role")
         if local_catalog["summary"]["template_count"] != 123:
             raise RuntimeError("Genshin character catalogue not loaded in Linux UI")
+        expected_demos = 123 if getattr(sys, "frozen", False) else 0
+        if (getattr(sys, "frozen", False) and
+                local_catalog["summary"]["original_demo_profile_count"] != expected_demos):
+            raise RuntimeError("Linux packaged GUI does not have all 123 rendered demo roles")
         report = {
             "ok": True,
             "display_backend": os.getenv("QT_QPA_PLATFORM", "default"),
@@ -61,6 +65,8 @@ def verify_linux_gui():
             "catalog_dialog_opened": True,
             "genshin_templates": 123,
             "local_profile_count": local_catalog["summary"]["installed_profile_count"],
+            "original_demo_profile_count": local_catalog["summary"]["original_demo_profile_count"],
+            "personal_art_profile_count": local_catalog["summary"]["personal_art_profile_count"],
             "resource_root_is_executable_directory": True,
             "real_audio_hardware_tested": False,
             "actual_character_likeness_verified": False,

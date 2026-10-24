@@ -373,14 +373,17 @@ class CharInterface(ScrollArea):
         unlink_label = "【管理】解除旧关联（不删除角色及动作）"
         labels = {}
         for role in report["characters"]:
-            status = ("本机已有 · 待实机验收"
-                      if role["status"] == "structurally_installed"
-                      else "模板 · 待导入素材")
+            status = ("用户素材已安装 · 待实机验收"
+                      if role["status"] == "structurally_installed" else
+                      "原创演示动画可用 · 非官方角色美术"
+                      if role["status"] == "demo_installed" else
+                      "模板 · 待导入素材")
             name = f"{role['name']} · {status} [{role['profile']}]"
             labels[name] = role
         title = self.tr(
             f"原神角色库：{summary['template_count']} 个模板 / "
-            f"{summary['installed_profile_count']} 个已有本地素材")
+            f"{summary['installed_profile_count']} 个有动画（其中 "
+            f"{summary['original_demo_profile_count']} 个程序原创演示）")
         chosen, accepted = QInputDialog.getItem(
             self, title,
             self.tr("选择角色查看状态；也可输入中文名、英文名或模板 ID。"
@@ -406,7 +409,7 @@ class CharInterface(ScrollArea):
             if role is None:
                 self.__showSystemNote("只显示原神人物模板。", 2)
                 return
-        if role["status"] != "structurally_installed":
+        if role["status"] not in ("structurally_installed", "demo_installed"):
             self.__showMessageBox(
                 role["name"] + self.tr(" · 待导入素材"),
                 self.tr("仅存在人物配置与动作建议。本机尚无与该模板绑定、"
@@ -416,11 +419,14 @@ class CharInterface(ScrollArea):
         installed = role["installed_folders"]
         summary_text = "\n".join(
             f"{v['folder']}：{v['actions']} 类动作，{v['frames']} 帧"
+            + ("〔程序原创演示，非原神角色美术〕" if v.get("is_original_demo")
+               else "〔本地导入素材〕")
             for v in installed)
         if self.__showMessageBox(
                 role["name"] + self.tr(" · 本机结构可加载"),
                 summary_text + "\n" + self.tr(
-                    "此结果不证明是该角色原设的美术、声音或已完成 Windows 实机验收。"
+                    "演示人物仅用于桌宠动作试用，不是原神游戏美术、模型或原声。"
+                    "该结构检查不证明已完成 Linux/Windows 实机验收。"
                     "是否打开本地角色文件夹查看？")):
             folder_path = Path(basedir) / "res" / "role" / installed[0]["folder"]
             if folder_path.is_dir() and not folder_path.is_symlink():

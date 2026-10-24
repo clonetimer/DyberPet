@@ -10,6 +10,8 @@ on:
       - ".github/workflows/linux-acceptance.yml"
       - "requirements-linux-portable.txt"
       - "tools/build_linux_portable.sh"
+      - "tools/generate_builtin_chibi_demos.py"
+      - "tests/test_builtin_chibi_demos.py"
       - "tools/linux_gui_smoke.py"
       - "tests/test_linux_portable_paths.py"
       - "DyberPet/assistant/portable.py"
@@ -170,6 +172,9 @@ jobs:
           assert importer["genshin_profile_count"]==123 and importer["library_template_count"]==123,importer
           assert importer["legacy_binding_verified"] and importer["legacy_unbind_preserved_original"],importer
           assert importer["personal_install_ok"] and importer["original_mascot_frames"]==46,importer
+          assert assistant["built_in_demo_profiles"]==123 and assistant["built_in_playable_profiles"]>=123,assistant
+          assert assistant["built_in_unfilled_profiles"]==0,assistant
+          assert gui["original_demo_profile_count"]==123 and gui["local_profile_count"]>=123,gui
           assert not importer["third_party_art_included"] and not importer["modified_user_roles"],importer
           assert gui["ok"] and gui["display_backend"]=="xcb" and gui["catalog_dialog_opened"],gui
           assert gui["management_window_visible"] and gui["resource_root_is_executable_directory"],gui
@@ -177,7 +182,10 @@ jobs:
           assert archive.exists() and archive.stat().st_size>0
           with tarfile.open(archive,"r:gz") as tgz:
               members=tgz.getnames()
-              for required in ("DyberPetDesktop/DyberPetDesktop","DyberPetDesktop/res/language/language.json",
+              for required in ("DyberPetDesktop/DyberPetDesktop",
+                               "DyberPetDesktop/res/role/DemoG_lisa/pet_conf.json",
+                               "DyberPetDesktop/res/role/DemoG_lisa/BUILTIN_CHIBI_DEMO.json",
+                               "DyberPetDesktop/res/language/language.json",
                                "DyberPetDesktop/res/role/sys/sys_conf.json","DyberPetDesktop/BUILD_INFO.json"):
                   assert required in members,required
           print("LINUX_FROZEN_X11_ACCEPTED", json.dumps({"assistant":True,"qt":True,
