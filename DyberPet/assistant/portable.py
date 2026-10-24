@@ -19,6 +19,22 @@ REQUIRED_RESOURCES = (
 )
 
 
+
+def resource_root(source_module=None, *, frozen=None, executable=None):
+    """Absolute res/ parent for source and PyInstaller --onedir on any OS.
+
+    Source module lives under DyberPet/*.py; frozen module __file__ can
+    reference the bundled tree rather than the writable onedir root.
+    """
+    if frozen is None:
+        frozen = bool(getattr(sys, "frozen", False))
+    if frozen:
+        return Path(executable or sys.executable).resolve().parent
+    if source_module is None:
+        raise ValueError("Source resource root requires the importing module path")
+    return Path(source_module).resolve().parent.parent
+
+
 def initialize_portable_directory(frozen=None, executable=None):
     if frozen is None:
         frozen = bool(getattr(sys, "frozen", False))
