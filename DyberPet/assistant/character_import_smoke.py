@@ -19,6 +19,7 @@ def verify_portable_character_importer():
     from tools.install_native_role import validate_native_role, install_native_role
     from tools.personal_role_import import personal_install
     from tools.create_original_mascot import create_original_mascot, ACTIONS
+    from tools.genshin_library import scan_genshin_library
 
     # Import the two remaining GUI paths too; only the synthetic frames path
     # needs to perform an actual conversion for this smoke gate.
@@ -50,6 +51,12 @@ def verify_portable_character_importer():
             raise RuntimeError("Converted role is missing playable actions")
         if not (role / "ANIMATION_PREVIEW.png").is_file():
             raise RuntimeError("Character converter did not create its preview")
+        empty_library_root = root / "no-existing-roles"
+        inventory = scan_genshin_library(empty_library_root)
+        if inventory["summary"]["template_count"] != 123:
+            raise RuntimeError("Packaged library inspector lost character templates")
+        if inventory["summary"]["installed_profile_count"] or empty_library_root.exists():
+            raise RuntimeError("Read-only inventory invented or wrote character resources")
         # Real packaged-module acceptance: private local frames installer, plus
         # the generated, playable, original mascot; both use only CI geometry.
         local_role = personal_install(
@@ -67,6 +74,8 @@ def verify_portable_character_importer():
             "ok": True,
             "profile_count": profiles,
             "genshin_profile_count": genshin_profile_count,
+            "library_template_count": inventory["summary"]["template_count"],
+            "library_installed_without_assets": inventory["summary"]["installed_profile_count"],
             "source_registry_candidates": candidates,
             "synthetic_actions": result["actions"],
             "synthetic_frames": result["images"],
