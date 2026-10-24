@@ -145,17 +145,17 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$RUNNER_TEMP/dyberpet-linux-home" "$RUNNER_TEMP/start-from-elsewhere"
-          root="$GITHUB_WORKSPACE/dist/DyberPet"
+          root="$GITHUB_WORKSPACE/dist/DyberPetDesktop"
           cd "$RUNNER_TEMP/start-from-elsewhere"
-          "$root/DyberPet" --linux-bundle-diag
+          "$root/DyberPetDesktop" --linux-bundle-diag
           xvfb-run -a -s "-screen 0 1280x800x24" env \
             HOME="$RUNNER_TEMP/dyberpet-linux-home" QT_QPA_PLATFORM=xcb \
             DYBERPET_SMOKE_REPORT="$RUNNER_TEMP/linux-frozen-assistant.json" \
-            timeout 120s "$root/DyberPet" --assistant-smoke
+            timeout 120s "$root/DyberPetDesktop" --assistant-smoke
           xvfb-run -a -s "-screen 0 1280x800x24" env \
             HOME="$RUNNER_TEMP/dyberpet-linux-home" QT_QPA_PLATFORM=xcb \
             DYBERPET_LINUX_GUI_REPORT="$RUNNER_TEMP/linux-frozen-gui.json" \
-            timeout 120s "$root/DyberPet" --linux-ui-smoke
+            timeout 120s "$root/DyberPetDesktop" --linux-ui-smoke
       - name: Check binary execution evidence and artifact contents
         shell: bash
         run: |
@@ -177,8 +177,8 @@ jobs:
           assert archive.exists() and archive.stat().st_size>0
           with tarfile.open(archive,"r:gz") as tgz:
               members=tgz.getnames()
-              for required in ("DyberPet/DyberPet","DyberPet/res/language/language.json",
-                               "DyberPet/res/role/sys/sys_conf.json","DyberPet/BUILD_INFO.json"):
+              for required in ("DyberPetDesktop/DyberPetDesktop","DyberPetDesktop/res/language/language.json",
+                               "DyberPetDesktop/res/role/sys/sys_conf.json","DyberPetDesktop/BUILD_INFO.json"):
                   assert required in members,required
           print("LINUX_FROZEN_X11_ACCEPTED", json.dumps({"assistant":True,"qt":True,
               "character_templates":123,"non_destructive_local_roles":True},sort_keys=True))
