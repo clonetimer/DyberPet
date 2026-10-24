@@ -36,6 +36,7 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.mascot_library \
   --hidden-import tools.role_family \
   --hidden-import tools.install_artist_genshin \
+  --hidden-import tools.artist_visual_review \
   --hidden-import tools.install_artist_codex \
   --hidden-import tools.install_creator_mascots \
   --hidden-import tools.role_action_preview \
