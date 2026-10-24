@@ -8,9 +8,11 @@ from pathlib import Path
 try:
     from .generate_mascot_demos import MASCOTS
     from .install_native_role import inspect_native_folder
+    from .role_family import known_mascot_family
 except ImportError:
     from generate_mascot_demos import MASCOTS
     from install_native_role import inspect_native_folder
+    from role_family import known_mascot_family
 
 SOURCE_IDS={"guga":"guga--circus","doro":"doro--lingxiaotian"}
 MAX_JSON=128*1024
@@ -47,6 +49,9 @@ def scan_mascot_library(role_root):
             if not folder.is_dir() or folder.name.startswith("."):
                 continue
             try:
+                known_identity=known_mascot_family(folder)
+                if known_identity is None:
+                    continue
                 demo=_load_report(folder/"BUILTIN_MASCOT_DEMO.json")
                 original=_load_report(folder/"IMPORT_REPORT.json")
                 identified=None
@@ -66,8 +71,8 @@ def scan_mascot_library(role_root):
                     if original.get("source_manifest_id")!=SOURCE_IDS[identified]:
                         raise ValueError("Codex mascot preset does not match source ID")
                     category="imported_creator_art"
-                if category is None:
-                    continue
+                if category is None or identified != known_identity:
+                    raise ValueError("Mascot receipt classification conflicts with origin")
                 valid=inspect_native_folder(folder)["validation"]
                 items[identified][category].append({
                     "folder":folder.name,

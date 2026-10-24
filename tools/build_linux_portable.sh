@@ -34,6 +34,7 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.create_original_mascot \
   --hidden-import tools.generate_mascot_demos \
   --hidden-import tools.mascot_library \
+  --hidden-import tools.role_family \
   --hidden-import tools.install_creator_mascots \
   --hidden-import tools.role_action_preview \
   --hidden-import tools.character_progress \
