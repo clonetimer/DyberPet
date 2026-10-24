@@ -258,7 +258,8 @@ class CharInterface(ScrollArea):
 
         # Keep existing role management layout: one compact choice determines
         # whether user selects an unpacked role folder or a native MOD ZIP.
-        options = ["选择角色文件夹（含原生、Codex、Q版动作素材）", "选择原生角色 ZIP 压缩包"]
+        options = ["选择角色文件夹（含原生、Codex、Q版动作素材）", "选择原生角色 ZIP 压缩包",
+                   "生成原创 Q 版示例角色（不需下载素材）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -276,6 +277,9 @@ class CharInterface(ScrollArea):
             )
             if archive:
                 self._importNativeZip(archive)
+            return
+        if choice == options[2]:
+            self._importOriginalDemo()
             return
         folder = QFileDialog.getExistingDirectory(
             self, self.tr("Please select the character folder"), docs)
@@ -370,6 +374,25 @@ class CharInterface(ScrollArea):
             self.__showSystemNote(self.tr("请选择下拉列表中的角色模板。"), 2)
             return False, None
         return True, options[selected]
+
+    def _importOriginalDemo(self):
+        """Provide a real animated starter role for users with no art assets."""
+        if self.chibiThread is not None:
+            return
+        if not self.__showMessageBox(
+                self.tr("生成原创 Q 版桌宠"),
+                self.tr("在本地生成原创星芽角色：待机、行走、挥手、跳跃、休息和阅读动作。"
+                        "所有动画由程序绘制，不下载第三方美术或原声。"
+                        "创建后可查看动作预览；仍须自行检查真实桌面效果。")):
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            "", os.path.join(basedir, "res", "role"),
+            mode="original_demo", profile=None, preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(self.tr("正在生成原创 Q 版星芽动画，不会覆盖已有角色。"), 1)
 
     def _importNativeZip(self, archivePath):
         """Install existing native role ZIP without changing existing roles."""
@@ -677,7 +700,10 @@ class ChibiImportThread(QThread):
     def run(self):
         new_folder = None
         try:
-            if self.mode == "native_zip":
+            if self.mode == "original_demo":
+                from tools.create_original_mascot import create_original_mascot
+                new_folder = create_original_mascot(self.output_root)
+            elif self.mode == "native_zip":
                 from tools.install_native_role import install_native_role
                 new_folder = install_native_role(self.source, self.output_root)
             elif self.mode == "native_folder":
