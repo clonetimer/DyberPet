@@ -36,6 +36,7 @@ on:
       - "DyberPet/settings.py"
       - "tests/test_default_pet_order.py"
       - "tests/test_first_run_guide.py"
+      - "tests/test_offline_restore.py"
       - "DyberPet/conf.py"
       - "run_DyberPet.py"
 
@@ -84,6 +85,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_default_pet_order.py" -v
       - name: Verify offline first-use selection and returning-user guard
         run: python -m unittest discover -s tests -p "test_first_run_guide.py" -v
+      - name: Verify transactional offline restore and crash rollback
+        run: python -m unittest discover -s tests -p "test_offline_restore.py" -v
       - name: Exercise real animation QPixmap/PetConfig under X11
         shell: bash
         run: |
@@ -193,6 +196,7 @@ jobs:
           gui=json.loads((temp/"linux-frozen-gui.json").read_text())
           assert assistant["assets"]["ok"] and assistant["assistant_dialog"],assistant
           assert assistant["backup_snapshot_verified"],assistant
+          assert assistant["offline_restore_verified"] and assistant["offline_restore_wizard_verified"],assistant
           assert assistant["first_run_guide_verified"],assistant
           assert gui["first_run_guide_visible"] and gui["first_run_local_preview_verified"],gui
           importer=assistant["character_importer"]
