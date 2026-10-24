@@ -60,6 +60,8 @@ def plan(workspace, keys):
             raise PipelineError("Conflicting item-specific discovery source: " + key)
         case_id = candidate["id"]
         target = record_path(workspace, case_id)
+        if target.is_symlink():
+            raise PipelineError("Candidate file cannot be a symlink: " + case_id)
         planned.append({
             "id": case_id,
             "profile": "genshin_" + key,
@@ -82,6 +84,13 @@ def seed(workspace, keys, *, dry_run=False):
     workspace = Path(workspace).expanduser().resolve()
     result = plan(workspace, keys)
     # Avoid partially creating a batch when any candidate ID already exists.
+    # Also inspect all sidecars BEFORE writing anything.
+    if not dry_run:
+        for row in result:
+            sidecar = workspace / "reviews" / (row["id"] + ".json")
+            if sidecar.exists() or sidecar.is_symlink():
+                raise FileExistsError("Review checklist already exists: " +
+                                      sidecar.name)
     existing = [item["id"] for item in result if item["case_exists"]]
     if existing and not dry_run:
         raise FileExistsError("Existing candidates; no files modified: " +
