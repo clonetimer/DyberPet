@@ -41,6 +41,21 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import pynput.keyboard._xorg \
   run_DyberPet.py
 
+# Fail at build time if PyInstaller failed to embed the actual Python package.
+python - <<'PY'
+from pathlib import Path
+from PyInstaller.archive.readers import ZlibArchiveReader
+source = Path("build/DyberPet/PYZ-00.pyz")
+pyz = ZlibArchiveReader(str(source))
+names = set(pyz.toc)
+for name in ("DyberPet", "DyberPet.assistant",
+             "DyberPet.assistant.portable", "DyberPet.DyberPet",
+             "tools.genshin_library"):
+    print("FROZEN_MODULE_CHECK", name, name in names, flush=True)
+assert "DyberPet.assistant.portable" in names, (
+    "PyInstaller did not include the required assistant module in PYZ")
+PY
+
 package="dist/DyberPet"
 test -x "$package/DyberPet"
 test -d res
