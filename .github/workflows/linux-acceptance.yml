@@ -35,9 +35,17 @@ jobs:
       - name: Install virtual X11 and runtime dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libgl1 libespeak1
+          sudo apt-get install -y xvfb xauth libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libgl1 libegl1 libopengl0 libespeak1
       - name: Install application dependencies
         run: python -m pip install -r requirements-linux-portable.txt
+      - name: Require real Qt Widgets and XCB platform libraries
+        run: |
+          python - <<'PY'
+          from PySide6.QtWidgets import QApplication
+          from PySide6.QtGui import QPixmap
+          import PySide6
+          print("Linux PySide6 QtWidgets and QPixmap imports succeeded:", PySide6.__version__)
+          PY
       - name: Validate original PyInstaller/source path semantics
         run: python -m unittest discover -s tests -p "test_linux_portable_paths.py" -v
       - name: Exercise real animation QPixmap/PetConfig under X11
@@ -112,7 +120,7 @@ jobs:
       - name: Install X11 runtime and Linux Qt dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libgl1 libespeak1
+          sudo apt-get install -y xvfb xauth libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libgl1 libegl1 libopengl0 libespeak1
       - name: Install application/build dependencies
         run: python -m pip install -r requirements-linux-portable.txt
       - name: Build frozen Linux onedir candidate
