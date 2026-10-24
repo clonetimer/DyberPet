@@ -15,7 +15,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QStandardPaths, QSize
 from PySide6.QtGui import QDesktopServices, QIcon, QFont
-from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QSizePolicy, QHBoxLayout, QSpacerItem
+from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QCheckBox, QSizePolicy, QHBoxLayout, QSpacerItem
 
 from .custom_utils import CharCard, CharCardGroup, CharLine
 from DyberPet.conf import CheckCharFiles
@@ -78,6 +78,9 @@ class CharInterface(ScrollArea):
         self.addButton.setToolTip("支持 DyberPet 模组、Codex Pets 图集和透明 GIF/PNG 动画文件夹")
         self.quickStartButton = PushButton(self.tr("快速选桌宠"), self, FIF.HEART)
         self.quickStartButton.setToolTip(self.tr("搜索本机可播放角色、预览动作并立即切换"))
+        self.showDemoRoles = QCheckBox(self.tr("显示低保真演示"), self)
+        self.showDemoRoles.setChecked(False)
+        self.showDemoRoles.setToolTip(self.tr("仅供开发与演示，不代表角色原设；默认不推荐"))
         self.catalogButton = PushButton(self.tr("全部角色库"), self, FIF.SEARCH)
         self.catalogButton.setToolTip(
             self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
@@ -102,6 +105,7 @@ class CharInterface(ScrollArea):
         self.headerLayout.addWidget(self.quickStartButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.catalogButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.artistSourceButton, Qt.AlignLeft | Qt.AlignVCenter)
+        self.headerLayout.addWidget(self.showDemoRoles, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.mascotButton, Qt.AlignLeft | Qt.AlignVCenter)
         spacerItem1 = QSpacerItem(10, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.headerLayout.addItem(spacerItem1)
@@ -116,6 +120,24 @@ class CharInterface(ScrollArea):
         self.__initCardLayout()
 
         self.__initWidget()
+
+    @staticmethod
+    def _isLowFidelityDemo(role):
+        path = Path(basedir) / "res" / "role" / role
+        return (path / "BUILTIN_CHIBI_DEMO.json").is_file() or (
+            path / "BUILTIN_MASCOT_DEMO.json").is_file()
+
+    def _applyDemoRoleVisibility(self):
+        enabled = self.showDemoRoles.isChecked()
+        # Never hide a currently active legacy character: existing users
+        # should still be able to see and manage their selected pet.
+        for line in self.CharLineList:
+            role = getattr(line, "chrFolder", None)
+            if role is None:
+                role = getattr(line, "petFolder", None)
+            if isinstance(role, str):
+                line.setVisible(enabled or not self._isLowFidelityDemo(role)
+                                or role == settings.petname)
 
     def __initCardLayout(self):
 
@@ -191,6 +213,8 @@ class CharInterface(ScrollArea):
         self.addButton.clicked.connect(self.__onAddClicked)
         self.quickStartButton.clicked.connect(self._showQuickStartGuide)
         self.catalogButton.clicked.connect(self._showAllCharacterCatalog)
+        self.showDemoRoles.toggled.connect(self._applyDemoRoleVisibility)
+        self._applyDemoRoleVisibility()
         self.artistSourceButton.clicked.connect(self._installArtistGenshin)
         self.mascotButton.clicked.connect(self._showMascotLibrary)
         self.panelHelp.clicked.connect(self.__onShowInstruction)
@@ -1024,6 +1048,7 @@ class CharInterface(ScrollArea):
             self.CharCardList[iCard].card.gotoClicked.connect(self.__onGotoClicked)
             self.CharCardList[iCard].card.deleteClicked.connect(self.__onDeleteClicked)
 
+        self._applyDemoRoleVisibility()
         content = self.tr("Adding character completed! It's recommended to restart the App to have all features enabled.")
         self.__showSystemNote(content, 0)
 
