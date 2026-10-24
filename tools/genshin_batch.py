@@ -59,6 +59,10 @@ def plan(workspace, keys):
         if role["source_work_url"] != source:
             raise PipelineError("Conflicting item-specific discovery source: " + key)
         case_id = candidate["id"]
+        if case_id != "genshin_" + key + "_main":
+            raise PipelineError("Unexpected candidate ID for " + key)
+        if candidate["rights_status"] != "unknown":
+            raise PipelineError("Batch seed cannot assert item-level author permission")
         target = record_path(workspace, case_id)
         if target.is_symlink():
             raise PipelineError("Candidate file cannot be a symlink: " + case_id)
@@ -68,6 +72,7 @@ def plan(workspace, keys):
             "character": role["name"],
             "channel": candidate["channel"],
             "source_url": source,
+            "creator": candidate.get("creator", ""),
             "kind": candidate["kind_suggestion"],
             "needs_source_research": not bool(source),
             "case_exists": target.exists(),
@@ -102,7 +107,8 @@ def seed(workspace, keys, *, dry_run=False):
         for row in result:
             case = init_case(
                 workspace, row["id"], row["character"], row["channel"],
-                row["source_url"], row["kind"], row["profile"])
+                row["source_url"], row["kind"], row["profile"],
+                row["creator"])
             created.append(case)
             # Checklist contains no art or inferred license. No author is
             # invented, and passing criteria never grants redistribution.
