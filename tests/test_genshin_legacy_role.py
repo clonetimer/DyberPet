@@ -173,6 +173,43 @@ class LegacyGenshinRoleMigrationTests(unittest.TestCase):
         self.assertEqual(report["counts"]["qa_verified"], 0)
         self.assertFalse(unknown.exists())
 
+    def test_actual_qt_import_worker_routes_folder_to_guarded_installer(self):
+        import ast
+        from shutil import rmtree
+        source = Path(__file__).resolve().parents[1] / "DyberPet" / "DyberSettings" / "CharCardUI.py"
+        tree = ast.parse(source.read_text("utf-8"))
+        worker = next(node for node in tree.body if isinstance(node, ast.ClassDef)
+                      and node.name == "ChibiImportThread")
+        impl = next(node for node in worker.body if isinstance(node, ast.FunctionDef)
+                    and node.name == "run")
+        ns = {"rmtree": rmtree,
+              "CheckCharFiles": lambda path: (0, []),
+              "Path": Path}
+        exec(compile(ast.Module(body=[impl], type_ignores=[]),
+                     str(source), "exec"), ns)
+        class Signal:
+            def __init__(self):
+                self.calls = []
+            def emit(self, *args):
+                self.calls.append(args)
+        class Worker:
+            pass
+        instance = Worker()
+        instance.source = self.role
+        instance.output_root = self.root / "qt-live-role"
+        instance.mode = "native_folder"
+        instance.profile = None
+        instance.preset = None
+        instance.folder = None
+        instance.done = Signal()
+        ns["run"](instance)
+        self.assertEqual(len(instance.done.calls), 1)
+        name, error = instance.done.calls[0]
+        self.assertEqual(error, "")
+        self.assertTrue((instance.output_root / name / "action" / "walk_0.png").exists())
+        self.assertFalse((self.root / "legacy-app" / "res" / "role" / "魈" /
+                          "INSTALL_REPORT.json").exists())
+
     def test_explicit_folder_name_must_be_safe(self):
         with self.assertRaisesRegex(ValueError, "ASCII"):
             install_native_folder(self.role, self.root / "out", role_folder="../escape")
