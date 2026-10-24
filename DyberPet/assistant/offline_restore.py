@@ -75,6 +75,10 @@ def _safe_transaction_paths(data_dir):
 
 def recover_interrupted_restore(data_dir):
     """Fix only an interrupted directory rename; never overwrite live data."""
+    # An untouched first installation does not have a config directory yet.
+    parent = Path(data_dir).expanduser().absolute().parent
+    if not parent.exists():
+        return "none"
     data, journal = _safe_transaction_paths(data_dir)
     if not journal.exists() and not journal.is_symlink():
         return "none"
