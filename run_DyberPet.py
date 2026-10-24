@@ -301,6 +301,41 @@ def _assistant_package_smoke():
         report["mascot_special_actions_each"]=10
         report["mascot_special_frames_each"]=66
         report["mascot_live_preview_timer_safe"]=True
+        # Shared non-mascot viewer: actually render an original Genshin role
+        # inside the frozen Windows EXE / Linux ELF rather than only AST-check.
+        from tools.character_progress import character_progress
+        coverage = character_progress(Path(os.getcwd()) / "res" / "role")
+        if (coverage["summary"]["template_total"] != 125 or
+                coverage["summary"]["native_preview_ready"] != 125):
+            raise RuntimeError("Frozen character coverage is not 125/125")
+        viewer = MascotActionPreview(
+            Path(os.getcwd()) / "res" / "role" / "DemoG_lisa",
+            original_demo=True)
+        try:
+            if (len(viewer.plan["actions"]) != 7 or
+                    viewer.plan["total_frames"] != 46):
+                raise RuntimeError("Shared character viewer lost Genshin 7/46 playback")
+            viewer.show()
+            app.processEvents()
+            if not viewer.isVisible() or viewer.frame.pixmap().isNull():
+                raise RuntimeError("Frozen Genshin preview is not visible")
+            idx = viewer.actions.findData("left_walk")
+            if idx < 0:
+                raise RuntimeError("Genshin native walking action missing")
+            viewer.actions.setCurrentIndex(idx)
+            viewer._advance()
+            if viewer.frame_index != 1 or viewer.frame.pixmap().isNull():
+                raise RuntimeError("Genshin walking preview did not advance")
+        finally:
+            viewer.close()
+            app.processEvents()
+        if viewer.timer.isActive():
+            raise RuntimeError("Frozen Genshin preview leaked timer")
+        report["genshin_native_preview_verified"] = True
+        report["character_templates"] = coverage["summary"]["template_total"]
+        report["character_native_preview_ready"] = coverage["summary"]["native_preview_ready"]
+        report["genshin_demo_actions"] = coverage["summary"]["genshin_demo_actions"]
+        report["mascot_demo_actions"] = coverage["summary"]["mascot_demo_actions"]
 
     for module in ("pyttsx3", "vosk", "sounddevice"):
         try:
