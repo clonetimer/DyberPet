@@ -79,6 +79,9 @@ class CharInterface(ScrollArea):
         self.catalogButton = PushButton(self.tr("原神角色库"), self, FIF.SEARCH)
         self.catalogButton.setToolTip(
             self.tr("按人物查看本机已安装、待导入及未关联角色；不自动下载素材"))
+        self.mascotButton = PushButton(self.tr("咕嘎 / Doro"), self, FIF.HEART)
+        self.mascotButton.setToolTip(
+            self.tr("查看企鹅/四足演示角色以及个人导入的对应素材；不冒充作者原设美术"))
 
         # Button to show instructions on how to manually add chars
         #self.instructButton = TransparentPushButton(self.tr("Add Chars Manually"), self, FIF.QUESTION)
@@ -92,6 +95,7 @@ class CharInterface(ScrollArea):
 
         self.headerLayout.addWidget(self.addButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.catalogButton, Qt.AlignLeft | Qt.AlignVCenter)
+        self.headerLayout.addWidget(self.mascotButton, Qt.AlignLeft | Qt.AlignVCenter)
         spacerItem1 = QSpacerItem(10, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.headerLayout.addItem(spacerItem1)
         self.headerLayout.addWidget(self.CharListLink, Qt.AlignLeft | Qt.AlignVCenter)
@@ -179,6 +183,7 @@ class CharInterface(ScrollArea):
 
         self.addButton.clicked.connect(self.__onAddClicked)
         self.catalogButton.clicked.connect(self._showGenshinLibrary)
+        self.mascotButton.clicked.connect(self._showMascotLibrary)
         self.panelHelp.clicked.connect(self.__onShowInstruction)
 
     def __onLaunchClicked(self, petname):
@@ -358,6 +363,48 @@ class CharInterface(ScrollArea):
         #    return
         #return
 
+
+    def _showMascotLibrary(self):
+        """Actual local mascot status; never mistake generated art for source."""
+        from tools.mascot_library import scan_mascot_library
+        try:
+            report=scan_mascot_library(Path(basedir)/"res"/"role")
+        except (ValueError,OSError) as exc:
+            self.__showSystemNote(self.tr("咕嘎 / Doro 角色库读取失败：")+str(exc),2)
+            return
+        names={}
+        for entry in report["mascots"]:
+            actual=len(entry["imported_creator_art"])
+            demos=len(entry["original_demos"])
+            name=("咕嘎 Guga" if entry["key"]=="guga" else "Doro 四足宠物")
+            label=f"{name} · 原创演示 {demos} / 个人来源导入 {actual}"
+            names[label]=entry
+        chosen,accepted=QInputDialog.getItem(
+            self,self.tr("咕嘎 / Doro 独立角色库"),
+            self.tr("这里的原创演示为可动几何画，不是 CIRCUS/legeling 作者的原始角色图和音频。"),
+            list(names),0,False)
+        if not accepted or chosen not in names:
+            return
+        entry=names[chosen]
+        roles=entry["imported_creator_art"]+entry["original_demos"]
+        if not roles:
+            self.__showMessageBox(self.tr("尚无角色动画"),
+                                  self.tr("请通过「添加角色」导入本地 Codex/PNG 素材。"))
+            return
+        descriptions=[
+            f"{r['folder']}：{r['actions']} 类动作、{r['frames']} 帧"
+            + ("（本地导入，原设形象尚未验证）"
+               if r in entry["imported_creator_art"]
+               else "（原创演示，不是作者原图）")
+            for r in roles
+        ]
+        if self.__showMessageBox(
+                self.tr("本机角色动画"),
+                "\\n".join(descriptions)+"\\n"+
+                self.tr("是否打开第一份角色资源的本机目录？")):
+            path=Path(basedir)/"res"/"role"/roles[0]["folder"]
+            if path.is_dir() and not path.is_symlink():
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve())))
 
     def _showGenshinLibrary(self):
         """Read-only overview; never call seed(), download art or install."""
