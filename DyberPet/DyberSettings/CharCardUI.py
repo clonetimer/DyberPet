@@ -487,6 +487,7 @@ class CharInterface(ScrollArea):
             self.__showSystemNote(self.tr("角色库读取失败：") + str(exc), 2)
             return
         summary = report["summary"]
+        progress_label = "【进度】125 个角色的能力与素材覆盖情况"
         manage_label = "【管理】关联一个已安装但未归类的本地角色"
         unlink_label = "【管理】解除旧关联（不删除角色及动作）"
         labels = {}
@@ -506,8 +507,11 @@ class CharInterface(ScrollArea):
             self, title,
             self.tr("选择角色查看状态；也可输入中文名、英文名或模板 ID。"
                     "本机扫描不访问网络，不认证角色来源。"),
-            [manage_label, unlink_label] + list(labels), 0, True)
+            [progress_label, manage_label, unlink_label] + list(labels), 0, True)
         if not accepted:
+            return
+        if chosen == progress_label:
+            self._showCharacterProgress()
             return
         if chosen == manage_label:
             self._associateExistingGenshinRole(report)
@@ -535,6 +539,31 @@ class CharInterface(ScrollArea):
                         "请使用「添加角色」自行选择已取得的 ZIP 或动画文件夹。"))
             return
         self._openGenshinRoleActions(role)
+
+    def _showCharacterProgress(self):
+        """Present actual *local* capability counts, never invent art or QA."""
+        from tools.character_progress import character_progress
+        try:
+            data = character_progress(Path(basedir) / "res" / "role")
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("角色进度检查失败：") + str(exc), 2)
+            return
+        s = data["summary"]
+        rows = [
+            f"模板数量：原神 {s['genshin_templates']} / 咕嘎、Doro {s['mascot_templates']}",
+            f"原创可动演示：{s['original_demo_ready']} / {s['template_total']}",
+            f"可在本机预览动作：{s['native_preview_ready']} / {s['template_total']}",
+            f"另有个人导入美术：{s['personal_art_structurally_installed']} 人物",
+            f"暂无本机可用动画：{s['missing_native_animation']} 人物",
+            f"原神演示动作数：{s['genshin_demo_actions'] or '尚无'}",
+            f"咕嘎 / Doro 演示动作数：{s['mascot_demo_actions'] or '尚无'}",
+            "",
+            "以上是本机 PNG/配置的结构验证，并非原作形象或声音还原验收。",
+            "原设美术对照、人物原声、真实音频和长期桌面运行均需另行验收。",
+            "角色库只读取本机文件，不会偷偷下载或修改素材。",
+        ]
+        self.__showMessageBox(self.tr("DyberPet · 角色实际完成度"),
+                              "\n".join(rows))
 
     def _openGenshinRoleActions(self, role):
         """Preview, switch or inspect *any* safely recognized Genshin role.
