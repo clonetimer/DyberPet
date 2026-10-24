@@ -1,0 +1,178 @@
+name: Linux X11 acceptance and portable candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "feat/linux-acceptance-personal-20261024"
+  pull_request:
+    paths:
+      - ".github/workflows/linux-acceptance.yml"
+      - "requirements-linux-portable.txt"
+      - "tools/build_linux_portable.sh"
+      - "tools/linux_gui_smoke.py"
+      - "tests/test_linux_portable_paths.py"
+      - "DyberPet/assistant/portable.py"
+      - "DyberPet/settings.py"
+      - "DyberPet/conf.py"
+      - "run_DyberPet.py"
+
+permissions:
+  contents: read
+
+jobs:
+  linux-source-x11:
+    name: linux-source-x11-real-qt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-linux-portable.txt
+      - name: Install virtual X11 and runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libgl1 libespeak1
+      - name: Install application dependencies
+        run: python -m pip install -r requirements-linux-portable.txt
+      - name: Validate original PyInstaller/source path semantics
+        run: python -m unittest discover -s tests -p "test_linux_portable_paths.py" -v
+      - name: Exercise real animation QPixmap/PetConfig under X11
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/dyberpet-linux-home"
+          xvfb-run -a -s "-screen 0 1280x800x24" env \
+            HOME="$RUNNER_TEMP/dyberpet-linux-home" QT_QPA_PLATFORM=xcb \
+            python -m unittest discover -s tests -p "test_qt_character_loader.py" -v
+      - name: Exercise actual assistant interaction widgets under X11
+        shell: bash
+        run: |
+          xvfb-run -a -s "-screen 0 1280x800x24" env \
+            HOME="$RUNNER_TEMP/dyberpet-linux-home" QT_QPA_PLATFORM=xcb \
+            python -m unittest discover -s tests -p "test_assistant_qt.py" -v
+      - name: Start actual character management GUI under X11
+        shell: bash
+        run: |
+          xvfb-run -a -s "-screen 0 1280x800x24" env \
+            HOME="$RUNNER_TEMP/dyberpet-linux-home" QT_QPA_PLATFORM=xcb \
+            DYBERPET_LINUX_GUI_REPORT="$RUNNER_TEMP/linux-source-gui.json" \
+            timeout 90s python run_DyberPet.py --linux-ui-smoke
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          report=json.loads((Path(os.environ["RUNNER_TEMP"])/"linux-source-gui.json").read_text())
+          assert report["ok"] and report["management_window_visible"],report
+          assert report["catalog_dialog_opened"] and report["genshin_templates"]==123,report
+          assert report["display_backend"]=="xcb",report
+          assert not report["user_role_files_modified"],report
+          print("LINUX_SOURCE_GUI_ACCEPTED",report)
+          PY
+      - name: Check actual app assistant and synthetic character path
+        shell: bash
+        run: |
+          xvfb-run -a -s "-screen 0 1280x800x24" env \
+            HOME="$RUNNER_TEMP/dyberpet-linux-home" QT_QPA_PLATFORM=xcb \
+            DYBERPET_SMOKE_REPORT="$RUNNER_TEMP/linux-source-assistant.json" \
+            timeout 90s python run_DyberPet.py --assistant-smoke
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          report=json.loads((Path(os.environ["RUNNER_TEMP"])/"linux-source-assistant.json").read_text())
+          assert report["assets"]["ok"] and report["assistant_dialog"],report
+          assert report["character_importer"]["genshin_profile_count"]==123,report
+          assert report["character_importer"]["legacy_unbind_preserved_original"],report
+          print("LINUX_SOURCE_APP_ACCEPTED")
+          PY
+      - name: Save Linux source test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DyberPet-Linux-Source-X11-Evidence
+          path: |
+            ${{ runner.temp }}/linux-source-gui.json
+            ${{ runner.temp }}/linux-source-assistant.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  linux-frozen-x11:
+    name: linux-frozen-x11-real-executable
+    needs: linux-source-x11
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-linux-portable.txt
+      - name: Install X11 runtime and Linux Qt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libgl1 libespeak1
+      - name: Install application/build dependencies
+        run: python -m pip install -r requirements-linux-portable.txt
+      - name: Build frozen Linux onedir candidate
+        run: bash tools/build_linux_portable.sh
+      - name: Run real bundled binary from an unrelated directory
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/dyberpet-linux-home" "$RUNNER_TEMP/start-from-elsewhere"
+          root="$GITHUB_WORKSPACE/dist/DyberPet"
+          cd "$RUNNER_TEMP/start-from-elsewhere"
+          xvfb-run -a -s "-screen 0 1280x800x24" env \
+            HOME="$RUNNER_TEMP/dyberpet-linux-home" QT_QPA_PLATFORM=xcb \
+            DYBERPET_SMOKE_REPORT="$RUNNER_TEMP/linux-frozen-assistant.json" \
+            timeout 120s "$root/DyberPet" --assistant-smoke
+          xvfb-run -a -s "-screen 0 1280x800x24" env \
+            HOME="$RUNNER_TEMP/dyberpet-linux-home" QT_QPA_PLATFORM=xcb \
+            DYBERPET_LINUX_GUI_REPORT="$RUNNER_TEMP/linux-frozen-gui.json" \
+            timeout 120s "$root/DyberPet" --linux-ui-smoke
+      - name: Check binary execution evidence and artifact contents
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,os,tarfile
+          from pathlib import Path
+          temp=Path(os.environ["RUNNER_TEMP"])
+          assistant=json.loads((temp/"linux-frozen-assistant.json").read_text())
+          gui=json.loads((temp/"linux-frozen-gui.json").read_text())
+          assert assistant["assets"]["ok"] and assistant["assistant_dialog"],assistant
+          importer=assistant["character_importer"]
+          assert importer["genshin_profile_count"]==123 and importer["library_template_count"]==123,importer
+          assert importer["legacy_binding_verified"] and importer["legacy_unbind_preserved_original"],importer
+          assert importer["personal_install_ok"] and importer["original_mascot_frames"]==46,importer
+          assert not importer["third_party_art_included"] and not importer["modified_user_roles"],importer
+          assert gui["ok"] and gui["display_backend"]=="xcb" and gui["catalog_dialog_opened"],gui
+          assert gui["management_window_visible"] and gui["resource_root_is_executable_directory"],gui
+          archive=Path(os.environ["GITHUB_WORKSPACE"])/"DyberPet-Linux-Personal-x86_64.tar.gz"
+          assert archive.exists() and archive.stat().st_size>0
+          with tarfile.open(archive,"r:gz") as tgz:
+              members=tgz.getnames()
+              for required in ("DyberPet/DyberPet","DyberPet/res/language/language.json",
+                               "DyberPet/res/role/sys/sys_conf.json","DyberPet/BUILD_INFO.json"):
+                  assert required in members,required
+          print("LINUX_FROZEN_X11_ACCEPTED", json.dumps({"assistant":True,"qt":True,
+              "character_templates":123,"non_destructive_local_roles":True},sort_keys=True))
+          PY
+          sha256sum "$GITHUB_WORKSPACE/DyberPet-Linux-Personal-x86_64.tar.gz"
+      - name: Publish portable Linux x86_64 candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: DyberPet-Linux-Personal-x86_64
+          path: DyberPet-Linux-Personal-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve machine-readable acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DyberPet-Linux-Frozen-X11-Evidence
+          path: |
+            ${{ runner.temp }}/linux-frozen-assistant.json
+            ${{ runner.temp }}/linux-frozen-gui.json
+          if-no-files-found: warn
+          retention-days: 14
