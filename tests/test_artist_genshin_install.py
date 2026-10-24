@@ -8,6 +8,7 @@ from zipfile import ZipFile
 
 from tools.install_artist_genshin import (
     install_artist_genshin, ROOT_PREFIX, REVISION, ROLES,
+    _prune_missing_optional_actions,
 )
 
 
@@ -65,6 +66,24 @@ class ArtistInstallTests(unittest.TestCase):
             install_artist_genshin("nahida", self.root,
                                    confirmed=True, opener=self.opener)
         self.assertFalse((self.root / "SourceGenshinNahida").exists())
+
+    def test_drop_unpublished_optional_effect_but_never_redraw_art(self):
+        folder = self.root / "example"
+        (folder / "action").mkdir(parents=True)
+        original = b"original-artist-bytes"
+        (folder / "action/idle_0.png").write_bytes(original)
+        (folder / "pet_conf.json").write_text(json.dumps({
+            "default":"idle", "drag":"idle", "fall":"idle",
+            "left":"unused", "random_act":[{"act_list":["unused"]}]}))
+        (folder / "act_conf.json").write_text(json.dumps({
+            "idle":{"images":"idle", "act_num":1, "frame_refresh":0.2},
+            "unused":{"images":"not_distributed", "act_num":1, "frame_refresh":0.2}}))
+        self.assertEqual(_prune_missing_optional_actions(folder), ["unused"])
+        self.assertEqual((folder / "action/idle_0.png").read_bytes(), original)
+        self.assertTrue((folder / "UPSTREAM_ACT_CONF.json").is_file())
+        updated = json.loads((folder / "pet_conf.json").read_text())
+        self.assertEqual(updated["left"], "idle")
+        self.assertEqual(updated["random_act"], [])
 
     def test_all_named_roles_have_pinned_profiles(self):
         self.assertEqual(set(ROLES), {"nahida", "xiao", "wanderer"})
