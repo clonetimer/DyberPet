@@ -31,7 +31,7 @@ def _native_idle_preview(folder, action):
         actions = json.loads(act_path.read_text(encoding="utf-8"))
         default = actions.get(pet.get("default"), {})
         prefix = default.get("images") if isinstance(default, dict) else None
-        if isinstance(prefix, str) and 1 <= len(prefix) <= 80 and "/" not in prefix and "\\\\" not in prefix:
+        if isinstance(prefix, str) and 1 <= len(prefix) <= 80 and "/" not in prefix and chr(92) not in prefix:
             for candidate in sorted(action.glob(prefix + "_*.png")):
                 if candidate.is_file() and not candidate.is_symlink():
                     return candidate
