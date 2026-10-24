@@ -154,6 +154,57 @@ def seed(workspace, keys, *, dry_run=False):
 
 
 
+
+def seed_missing(workspace, keys):
+    """Create only missing candidate pairs, preserving *all* earlier reviews.
+
+    Existing case+review pairs are accepted only if their identities match the
+    selected roster. An incomplete pair is an error, not permission to repair or
+    overwrite a user's audit trail.
+    """
+    workspace = Path(workspace).expanduser().resolve()
+    if (workspace / "cases").is_symlink() or (workspace / "reviews").is_symlink():
+        raise PipelineError("Linked cases/reviews directory is not permitted")
+    rows = plan(workspace, keys)
+    missing, preserved = [], []
+    for key, row in zip(keys, rows):
+        case_file = record_path(workspace, row["id"])
+        review_file = workspace / "reviews" / (row["id"] + ".json")
+        if (case_file.is_symlink() or review_file.is_symlink() or
+                (case_file.exists() and not case_file.is_file()) or
+                (review_file.exists() and not review_file.is_file())):
+            raise PipelineError("Unsafe case or review path: " + row["id"])
+        if case_file.exists() != review_file.exists():
+            raise PipelineError("Incomplete case/review pair: " + row["id"])
+        if not case_file.exists():
+            missing.append(key)
+            continue
+        case = load_case(case_file)
+        review = json.loads(review_file.read_text(encoding="utf-8"))
+        if (not isinstance(review, dict) or
+                case.get("id") != row["id"] or
+                case.get("profile") != row["profile"] or
+                review.get("candidate") != row["id"] or
+                review.get("profile") != row["profile"]):
+            raise PipelineError("Existing candidate identity mismatch: " + row["id"])
+        preserved.append(row["id"])
+    if missing:
+        # seed() preflights all missing case and checklist paths before writing.
+        created = seed(workspace, tuple(missing))
+        new_rows = created["cases"]
+    else:
+        new_rows = []
+    return {
+        "mode": "seed_missing",
+        "total_selected": len(rows),
+        "created": len(new_rows),
+        "preserved": len(preserved),
+        "created_ids": [row["id"] for row in new_rows],
+        "preserved_ids": preserved,
+        "workspace": str(workspace),
+    }
+
+
 def status(workspace, keys):
     """Read-only progress board backed by *actual* local candidate states."""
     workspace = Path(workspace).expanduser()
@@ -290,10 +341,12 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", type=Path, default=DEFAULT_WORKSPACE)
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("list", help="List 14 asset-free character candidates")
+    sub.add_parser("list", help="List asset-free character candidates")
     p = sub.add_parser("preview", help="Inspect batch before any local write")
     p.add_argument("--roles", default="all", help="all or comma-separated IDs")
     p = sub.add_parser("seed", help="Create local unapproved candidate records")
+    p.add_argument("--roles", default="all", help="all or comma-separated IDs")
+    p = sub.add_parser("seed-missing", help="Add only missing roles without altering approved local cases")
     p.add_argument("--roles", default="all", help="all or comma-separated IDs")
     p = sub.add_parser("status", help="Summarize actual local role approvals without writing")
     p.add_argument("--roles", default="all", help="all or comma-separated IDs")
@@ -312,6 +365,8 @@ def main(argv=None):
             output = probe_asset(args.asset)
         elif args.command == "status":
             output = status(args.workspace, select_roles(args.roles))
+        elif args.command == "seed-missing":
+            output = seed_missing(args.workspace, select_roles(args.roles))
         else:
             keys = select_roles(args.roles)
             output = seed(args.workspace, keys, dry_run=args.command == "preview")
