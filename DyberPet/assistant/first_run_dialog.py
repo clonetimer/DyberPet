@@ -79,9 +79,12 @@ class FirstRunRoleDialog(QDialog):
         self.roles.clear()
         text = self.search.text().casefold().strip()
         for entry in self.entries:
-            if text not in entry["folder"].casefold():
+            if text not in (entry["folder"] + " " + entry["display"]).casefold():
                 continue
-            label = entry["folder"] + (" · 程序原创演示" if entry["demo"] else " · 本机角色")
+            name = entry["display"]
+            if name != entry["folder"]:
+                name += " (" + entry["folder"] + ")"
+            label = name + (" · 程序原创演示" if entry["demo"] else " · 本机角色")
             item = QListWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, entry["folder"])
             self.roles.addItem(item)
