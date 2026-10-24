@@ -103,6 +103,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_first_run_guide.py" -v
       - name: Build portable Windows onedir candidate
         shell: pwsh
+        env:
+          DYBERPET_QA_KEEP_ABSTRACT_ART: "1"
         run: ./tools/build_windows_portable.ps1
       - name: Launch packaged EXE in headless assistant smoke mode
         shell: pwsh
@@ -140,6 +142,33 @@ jobs:
             if ($outcome.optional_voice_imports.$name -ne $true) { throw "Missing packaged voice component: $name" }
           }
           Get-Content -LiteralPath $report
+      - name: Remove abstract demos from actual Windows user download
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python -m unittest discover -s tests -p "test_strip_generated_demo_art.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Generated art stripping safety tests failed" }
+          $roleDir = "dist/DyberPet/res/role"
+          python tools/strip_generated_demo_art.py --role-root $roleDir --expected 125
+          if ($LASTEXITCODE -ne 0) { throw "Generated art removal failed" }
+          python tools/strip_generated_demo_art.py --role-root $roleDir --verify-only
+          if ($LASTEXITCODE -ne 0) { throw "Generated art remains in user package" }
+          $exe = (Resolve-Path "dist/DyberPet/DyberPet.exe").Path
+          $proc = Start-Process -FilePath $exe -ArgumentList "--personal-package-smoke" -WorkingDirectory $env:RUNNER_TEMP -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "Stripped EXE does not pass personal package smoke" }
+          $zipPath = "DyberPet-Windows-Personal-PR5.zip"
+          Remove-Item -LiteralPath $zipPath -Force
+          Compress-Archive -Path "dist/DyberPet/*" -DestinationPath $zipPath -CompressionLevel Optimal
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $zipPath).Path)
+          try {
+            $unexpected = @($zip.Entries | Where-Object { $_.FullName -match 'BUILTIN_(CHIBI|MASCOT)_DEMO' })
+            if ($unexpected.Count -gt 0) { throw "Published Windows ZIP contains low-fidelity demo art" }
+            if (-not ($zip.Entries | Where-Object { $_.FullName -match 'res/role/Kitty/pet_conf.json$' })) {
+              throw "Published Windows ZIP missing Kitty starter"
+            }
+          } finally { $zip.Dispose() }
+          Write-Output "WINDOWS_USER_ART_POLICY_VERIFIED_NO_GENERATED_DEMOS"
       - uses: actions/upload-artifact@v4
         with:
           name: DyberPet-Windows-Personal-PR5

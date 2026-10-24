@@ -16,6 +16,14 @@ python tools/generate_builtin_chibi_demos.py --output-root (Join-Path $package "
 if ($LASTEXITCODE -ne 0) { throw "Bundled Genshin demos did not generate" }
 python tools/generate_mascot_demos.py --output-root (Join-Path $package "res/role")
 if ($LASTEXITCODE -ne 0) { throw "Bundled character demos did not generate" }
+# QA may need synthetic role frames for executable animation tests. Normal
+# personal build MUST NOT ship the 125 generic lookalikes as real characters.
+if ($env:DYBERPET_QA_KEEP_ABSTRACT_ART -ne "1") {
+  python tools/strip_generated_demo_art.py --role-root (Join-Path $package "res/role") --expected 125
+  if ($LASTEXITCODE -ne 0) { throw "Failed to remove placeholder demo art from personal package" }
+  & $exe --personal-package-smoke
+  if ($LASTEXITCODE -ne 0) { throw "Personal candidate art policy smoke failed" }
+}
 New-Item -ItemType Directory -Force -Path (Join-Path $package "data") | Out-Null
 Copy-Item -LiteralPath (Join-Path $root "docs/pet_assistant.md") -Destination (Join-Path $package "ASSISTANT_GUIDE.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/character_fidelity.md") -Destination (Join-Path $package "CHARACTER_FIDELITY.md")

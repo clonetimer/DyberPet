@@ -75,6 +75,12 @@ cp -a res "$package/res"
 # Never writes to repository assets or overwrites existing user MODs.
 python tools/generate_builtin_chibi_demos.py --output-root "$package/res/role"
 python tools/generate_mascot_demos.py --output-root "$package/res/role"
+# CI deliberately keeps generated frames for runtime-only synthetic QA and
+# strips them before distribution. A normal user-built tar contains NO demos.
+if [[ "${DYBERPET_QA_KEEP_ABSTRACT_ART:-0}" != "1" ]]; then
+  python tools/strip_generated_demo_art.py --role-root "$package/res/role" --expected 125
+  "$package/DyberPetDesktop" --personal-package-smoke
+fi
 mkdir -p "$package/data"
 cp docs/pet_assistant.md "$package/ASSISTANT_GUIDE.md"
 cp docs/character_fidelity.md "$package/CHARACTER_FIDELITY.md"
