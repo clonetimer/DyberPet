@@ -308,6 +308,37 @@ def _assistant_package_smoke():
         if (coverage["summary"]["template_total"] != 125 or
                 coverage["summary"]["native_preview_ready"] != 125):
             raise RuntimeError("Frozen character coverage is not 125/125")
+        # Verify the *frozen* Windows EXE / Linux ELF has a working native
+        # search UI, not just 125 strings in a JSON manifest.
+        from DyberPet.DyberSettings.character_catalog_dialog import CharacterCatalogDialog
+        selector=CharacterCatalogDialog(coverage)
+        try:
+            selector.show()
+            app.processEvents()
+            if not selector.isVisible() or selector.results.count()!=125:
+                raise RuntimeError("Frozen searchable character catalog is missing")
+            selector.searchBox.setText("Lisa")
+            app.processEvents()
+            if (selector.results.count()!=1 or
+                    selector.selected_character_id()!="genshin_lisa"):
+                raise RuntimeError("English character search failed in packaged app")
+            selector.searchBox.setText("Doro")
+            app.processEvents()
+            if (selector.results.count()!=1 or
+                    selector.selected_character_id()!="mascot_doro"):
+                raise RuntimeError("Mascot name search failed in packaged app")
+            selector.searchBox.clear()
+            selector.statusFilter.setCurrentIndex(
+                selector.statusFilter.findData("demo"))
+            app.processEvents()
+            if selector.results.count()!=125:
+                raise RuntimeError("Packaged catalog falsely dropped demo characters")
+        finally:
+            selector.close()
+            app.processEvents()
+        report["character_search_catalog_count"]=125
+        report["character_search_demo_count"]=125
+        report["character_search_bilingual_verified"]=True
         viewer = MascotActionPreview(
             Path(os.getcwd()) / "res" / "role" / "DemoG_lisa",
             original_demo=True)
