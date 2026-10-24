@@ -8,7 +8,7 @@ if [[ "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ]]; then
 fi
 
 python -m PyInstaller --paths . --noconfirm --clean --onedir \
-  --contents-directory . --name DyberPet \
+  --contents-directory . --name DyberPetDesktop \
   --collect-all qfluentwidgets \
   --collect-submodules DyberPet \
   --collect-submodules DyberPet.assistant \
@@ -45,7 +45,7 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
 python - <<'PY'
 from pathlib import Path
 from PyInstaller.archive.readers import ZlibArchiveReader
-source = Path("build/DyberPet/PYZ-00.pyz")
+source = Path("build/DyberPetDesktop/PYZ-00.pyz")
 pyz = ZlibArchiveReader(str(source))
 names = set(pyz.toc)
 for name in ("DyberPet", "DyberPet.assistant",
@@ -56,8 +56,8 @@ assert "DyberPet.assistant.portable" in names, (
     "PyInstaller did not include the required assistant module in PYZ")
 PY
 
-package="dist/DyberPet"
-test -x "$package/DyberPet"
+package="dist/DyberPetDesktop"
+test -x "$package/DyberPetDesktop"
 test -d res
 cp -a res "$package/res"
 mkdir -p "$package/data"
@@ -79,13 +79,13 @@ meta = {
     "voice_models_bundled": False,
     "note": "CI candidate, not a public stable release or hardware/audio endorsement"
 }
-Path("dist/DyberPet/BUILD_INFO.json").write_text(
+Path("dist/DyberPetDesktop/BUILD_INFO.json").write_text(
     json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
 
 archive="DyberPet-Linux-Personal-x86_64.tar.gz"
 rm -f "$archive"
-tar -czf "$archive" -C dist DyberPet
+tar -czf "$archive" -C dist DyberPetDesktop
 test -s "$archive"
 printf 'LINUX_PORTABLE_ARCHIVE=%s\n' "$archive"
 sha256sum "$archive"
