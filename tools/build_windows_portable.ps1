@@ -2,7 +2,7 @@
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $root
-$argsPy = @("--noconfirm", "--clean", "--onedir", "--noconsole", "--contents-directory", ".", "--name", "DyberPet", "--collect-all", "qfluentwidgets", "--collect-submodules", "DyberPet.assistant", "--collect-data", "tools", "--hidden-import", "tools.chibi_profiles", "--hidden-import", "tools.chibi_layout", "--hidden-import", "tools.chibi_preview", "--hidden-import", "tools.import_codex_pet", "--hidden-import", "tools.import_chibi_animations", "--hidden-import", "tools.install_native_role", "--hidden-import", "tools.character_pipeline", "--hidden-import", "tools.genshin_roster", "--hidden-import", "tools.genshin_library", "--hidden-import", "tools.genshin_role_bindings", "--hidden-import", "tools.genshin_complete_roster", "--hidden-import", "tools.genshin_batch", "--hidden-import", "tools.personal_role_import", "--hidden-import", "tools.create_original_mascot", "--collect-submodules", "pyttsx3.drivers", "--collect-all", "vosk", "--hidden-import", "pynput.mouse._win32", "--hidden-import", "pynput.keyboard._win32", "run_DyberPet.py")
+$argsPy = @("--noconfirm", "--clean", "--onedir", "--noconsole", "--contents-directory", ".", "--name", "DyberPet", "--collect-all", "qfluentwidgets", "--collect-submodules", "DyberPet.assistant", "--collect-data", "tools", "--hidden-import", "tools.chibi_profiles", "--hidden-import", "tools.chibi_layout", "--hidden-import", "tools.chibi_preview", "--hidden-import", "tools.import_codex_pet", "--hidden-import", "tools.import_chibi_animations", "--hidden-import", "tools.install_native_role", "--hidden-import", "tools.character_pipeline", "--hidden-import", "tools.genshin_roster", "--hidden-import", "tools.genshin_library", "--hidden-import", "tools.genshin_role_bindings", "--hidden-import", "tools.genshin_complete_roster", "--hidden-import", "tools.genshin_batch", "--hidden-import", "tools.personal_role_import", "--hidden-import", "tools.create_original_mascot", "--hidden-import", "tools.generate_mascot_demos", "--hidden-import", "tools.mascot_library", "--hidden-import", "tools.install_creator_mascots", "--collect-submodules", "pyttsx3.drivers", "--collect-all", "vosk", "--hidden-import", "pynput.mouse._win32", "--hidden-import", "pynput.keyboard._win32", "run_DyberPet.py")
 python -m PyInstaller @argsPy
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed: $LASTEXITCODE" }
 $package = Join-Path $root "dist/DyberPet"
@@ -13,11 +13,14 @@ Copy-Item -LiteralPath (Join-Path $root "res") -Destination (Join-Path $package 
 # Generate first-party geometric chibi demo frames for every roster profile.
 # Does not overwrite imported character art; no copyrighted assets downloaded.
 python tools/generate_builtin_chibi_demos.py --output-root (Join-Path $package "res/role")
+if ($LASTEXITCODE -ne 0) { throw "Bundled Genshin demos did not generate" }
+python tools/generate_mascot_demos.py --output-root (Join-Path $package "res/role")
 if ($LASTEXITCODE -ne 0) { throw "Bundled character demos did not generate" }
 New-Item -ItemType Directory -Force -Path (Join-Path $package "data") | Out-Null
 Copy-Item -LiteralPath (Join-Path $root "docs/pet_assistant.md") -Destination (Join-Path $package "ASSISTANT_GUIDE.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/character_fidelity.md") -Destination (Join-Path $package "CHARACTER_FIDELITY.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/personal_character_install.md") -Destination (Join-Path $package "PERSONAL_CHARACTER_GUIDE.md")
+Copy-Item -LiteralPath (Join-Path $root "docs/guga_doro_personal_install.md") -Destination (Join-Path $package "GUGA_DORO_GUIDE.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/original_chibi_starter.md") -Destination (Join-Path $package "ORIGINAL_MASCOT_GUIDE.md")
 $commit = (git rev-parse HEAD).Trim()
 $meta = @{candidate="portable-ci-review";source_commit=$commit;note="Not an official release; no unverified third-party character or voice packs.";optional_services=@("LM Studio localhost","PPL Character Governance localhost");voice="Vosk language model provided separately by user"} | ConvertTo-Json -Depth 4

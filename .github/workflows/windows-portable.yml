@@ -14,6 +14,11 @@ on:
       - "tools/personal_role_import.py"
       - "tools/create_original_mascot.py"
       - "tools/generate_builtin_chibi_demos.py"
+      - "tools/generate_mascot_demos.py"
+      - "tools/mascot_library.py"
+      - "tests/test_builtin_mascot_demos.py"
+      - "tools/install_creator_mascots.py"
+      - "tests/test_creator_mascot_fetch.py"
       - "tests/test_builtin_chibi_demos.py"
       - "tools/genshin_complete_roster.py"
       - "tools/genshin_roster.py"
@@ -32,6 +37,11 @@ on:
       - "tools/personal_role_import.py"
       - "tools/create_original_mascot.py"
       - "tools/generate_builtin_chibi_demos.py"
+      - "tools/generate_mascot_demos.py"
+      - "tools/mascot_library.py"
+      - "tests/test_builtin_mascot_demos.py"
+      - "tools/install_creator_mascots.py"
+      - "tests/test_creator_mascot_fetch.py"
       - "tests/test_builtin_chibi_demos.py"
       - "tools/genshin_complete_roster.py"
       - "tools/genshin_roster.py"
@@ -80,6 +90,7 @@ jobs:
           if ($outcome.character_importer.modified_user_roles -or $outcome.character_importer.third_party_art_included) { throw "Character smoke mutated resources or used external art" }
           if ($outcome.character_importer.genshin_profile_count -ne 123) { throw "Missing full 7.1 Genshin roster from packaged EXE" }
           if ($outcome.built_in_demo_profiles -ne 123 -or $outcome.built_in_playable_profiles -lt 123 -or $outcome.built_in_unfilled_profiles -ne 0) { throw "Not all 123 animated original demo roles included in Windows EXE" }
+          if ($outcome.mascot_original_demo_count -ne 2 -or $outcome.mascot_character_likeness_verified) { throw "Packaged Doro/Guga demos missing or falsely certified as original creator art" }
           if ($outcome.character_importer.library_template_count -ne 123 -or $outcome.character_importer.library_installed_without_assets -ne 0) { throw "Packaged read-only character library reported invented installed roles" }
           if (-not $outcome.character_importer.legacy_binding_verified -or $outcome.character_importer.legacy_binding_rights_verified -or -not $outcome.character_importer.legacy_unbind_preserved_original) { throw "Packaged legacy role binding/unbind failed or changed source art" }
           if (-not $outcome.character_importer.personal_install_ok -or $outcome.character_importer.personal_install_rights_verified) { throw "Packaged private local role import failed or falsely asserted rights" }

@@ -11,6 +11,11 @@ on:
       - "requirements-linux-portable.txt"
       - "tools/build_linux_portable.sh"
       - "tools/generate_builtin_chibi_demos.py"
+      - "tools/generate_mascot_demos.py"
+      - "tools/mascot_library.py"
+      - "tests/test_builtin_mascot_demos.py"
+      - "tools/install_creator_mascots.py"
+      - "tests/test_creator_mascot_fetch.py"
       - "tests/test_builtin_chibi_demos.py"
       - "tools/linux_gui_smoke.py"
       - "tests/test_linux_portable_paths.py"
@@ -175,6 +180,8 @@ jobs:
           assert assistant["built_in_demo_profiles"]==123 and assistant["built_in_playable_profiles"]>=123,assistant
           assert assistant["built_in_unfilled_profiles"]==0,assistant
           assert gui["original_demo_profile_count"]==123 and gui["local_profile_count"]>=123,gui
+          assert assistant["mascot_original_demo_count"]==2 and not assistant["mascot_character_likeness_verified"],assistant
+          assert gui["mascot_original_demo_count"]==2 and gui["mascot_dialog_opened"],gui
           assert not importer["third_party_art_included"] and not importer["modified_user_roles"],importer
           assert gui["ok"] and gui["display_backend"]=="xcb" and gui["catalog_dialog_opened"],gui
           assert gui["management_window_visible"] and gui["resource_root_is_executable_directory"],gui
@@ -185,6 +192,8 @@ jobs:
               for required in ("DyberPetDesktop/DyberPetDesktop",
                                "DyberPetDesktop/res/role/DemoG_lisa/pet_conf.json",
                                "DyberPetDesktop/res/role/DemoG_lisa/BUILTIN_CHIBI_DEMO.json",
+                               "DyberPetDesktop/res/role/DemoMascotDoro/BUILTIN_MASCOT_DEMO.json",
+                               "DyberPetDesktop/res/role/DemoMascotGuga/BUILTIN_MASCOT_DEMO.json",
                                "DyberPetDesktop/res/language/language.json",
                                "DyberPetDesktop/res/role/sys/sys_conf.json","DyberPetDesktop/BUILD_INFO.json"):
                   assert required in members,required

@@ -248,6 +248,17 @@ def _assistant_package_smoke():
                 counts["installed_profile_count"] < 123 or
                 counts["pending_template_count"] != 0):
             raise RuntimeError("Packaged install lacks full 123 playable original demo animations")
+        # Two genuinely different demo bodies must also be available:
+        # penguin-hoodie Guga / horizontally moving four-legged Doro.
+        from tools.mascot_library import scan_mascot_library
+        mascots=scan_mascot_library(os.path.join(os.getcwd(),"res","role"))
+        report["mascot_original_demo_count"]=mascots["summary"]["original_demo_count"]
+        report["mascot_imported_creator_art_count"]=mascots["summary"]["imported_creator_art_count"]
+        report["mascot_character_likeness_verified"]=mascots["summary"]["character_likeness_verified"]
+        if report["mascot_original_demo_count"] != 2:
+            raise RuntimeError("Packaged application missing playable Guga/Doro original demo animations")
+        if report["mascot_character_likeness_verified"]:
+            raise RuntimeError("Demo assets must never assert original creator identity")
 
     for module in ("pyttsx3", "vosk", "sounddevice"):
         try:

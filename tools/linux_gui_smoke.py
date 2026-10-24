@@ -22,6 +22,7 @@ def verify_linux_gui():
     import DyberPet.settings as settings
     from DyberPet.DyberSettings.CharCardUI import CharInterface
     from tools.genshin_library import scan_genshin_library
+    from tools.mascot_library import scan_mascot_library
 
     root = resource_root(__file__)
     if getattr(sys, "frozen", False):
@@ -46,17 +47,26 @@ def verify_linux_gui():
             raise RuntimeError("Character management window failed to show")
         if not window.catalogButton.isEnabled():
             raise RuntimeError("Genshin collection action is disabled")
+        if not window.mascotButton.isEnabled():
+            raise RuntimeError("Guga / Doro status action is disabled")
+        with patch.object(QInputDialog, "getItem", return_value=("", False)) as mascot_dialog:
+            window._showMascotLibrary()
+            if not mascot_dialog.called:
+                raise RuntimeError("Guga / Doro selection dialog did not open")
         with patch.object(QInputDialog, "getItem", return_value=("", False)) as select:
             window._showGenshinLibrary()
             if not select.called:
                 raise RuntimeError("Character collection dialog did not open")
         local_catalog = scan_genshin_library(Path(settings.BASEDIR) / "res" / "role")
+        mascot_catalog = scan_mascot_library(Path(settings.BASEDIR) / "res" / "role")
         if local_catalog["summary"]["template_count"] != 123:
             raise RuntimeError("Genshin character catalogue not loaded in Linux UI")
         expected_demos = 123 if getattr(sys, "frozen", False) else 0
         if (getattr(sys, "frozen", False) and
                 local_catalog["summary"]["original_demo_profile_count"] != expected_demos):
             raise RuntimeError("Linux packaged GUI does not have all 123 rendered demo roles")
+        if getattr(sys,"frozen",False) and mascot_catalog["summary"]["original_demo_count"] != 2:
+            raise RuntimeError("Linux Qt binary missing Guga/Doro animated original mascots")
         report = {
             "ok": True,
             "display_backend": os.getenv("QT_QPA_PLATFORM", "default"),
@@ -64,6 +74,9 @@ def verify_linux_gui():
             "management_window_visible": True,
             "catalog_dialog_opened": True,
             "genshin_templates": 123,
+            "mascot_original_demo_count": mascot_catalog["summary"]["original_demo_count"],
+            "mascot_creator_art_count": mascot_catalog["summary"]["imported_creator_art_count"],
+            "mascot_dialog_opened": True,
             "local_profile_count": local_catalog["summary"]["installed_profile_count"],
             "original_demo_profile_count": local_catalog["summary"]["original_demo_profile_count"],
             "personal_art_profile_count": local_catalog["summary"]["personal_art_profile_count"],

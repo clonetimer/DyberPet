@@ -1,0 +1,43 @@
+name: Guga Doro pinned upstream source acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/guga-doro-builtin-demos-20261024
+    paths:
+      - tools/install_creator_mascots.py
+      - tools/import_codex_pet.py
+      - tools/verify_creator_mascots.py
+      - tools/mascot_library.py
+      - .github/workflows/mascot-source-integrity.yml
+  pull_request:
+    paths:
+      - tools/install_creator_mascots.py
+      - tools/import_codex_pet.py
+      - tools/verify_creator_mascots.py
+      - tools/mascot_library.py
+      - .github/workflows/mascot-source-integrity.yml
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-creator-source:
+    name: exact-guga-doro-real-creator-sprites
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install only sprite converter dependency
+        run: python -m pip install Pillow==12.0.0
+      - name: Verify two exact upstream sprite SHA hashes then convert offline locally
+        run: |
+          PYTHONPATH=. python tools/verify_creator_mascots.py
+      - name: Ensure no third party sprites were committed as artifacts
+        run: |
+          git status --porcelain
+          test -z "$(git status --porcelain)"

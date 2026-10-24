@@ -1,3 +1,5 @@
+**咕嘎 / Doro 内置与一键安装（PR #8）**：在 123 套原神模板演示动画之外，新版包增加**独立的咕嘎风企鹅与 Doro 风四足桌宠**（每个 7 类动作／46 帧，程序原创、非原设素材）。角色管理页面提供「咕嘎 / Doro」状态窗口，用户确认后可直接联网获取具体作者公开的 Codex 图集，按固定 SHA-256 验证并转换到本机，不需要手动下载／解压／导入；不在安装包中再分发作者图像及音频。咕嘎原作作者素材无明确再分发许可、Doro 粉丝图集标注 CC BY-NC 且底层 IP 另计。参见 [个人安装使用指南](docs/guga_doro_personal_install.md)。
+
 <h1 align="center">
   <img src="docs/app_icon.png" alt="DyberPet app icon" width="64" valign="middle"> 呆啵宠物  DyberPet<br>
   <sup><sub>让喜欢的角色住进桌面，模组自由，AI 相伴。</sub></sup>

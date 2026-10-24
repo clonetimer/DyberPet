@@ -32,6 +32,9 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.genshin_batch \
   --hidden-import tools.personal_role_import \
   --hidden-import tools.create_original_mascot \
+  --hidden-import tools.generate_mascot_demos \
+  --hidden-import tools.mascot_library \
+  --hidden-import tools.install_creator_mascots \
   --hidden-import tools.linux_gui_smoke \
   --collect-submodules backports \
   --hidden-import backports.tarfile \
@@ -63,10 +66,12 @@ cp -a res "$package/res"
 # Pre-render truly playable but unmistakably first-party *demo* chibis.
 # Never writes to repository assets or overwrites existing user MODs.
 python tools/generate_builtin_chibi_demos.py --output-root "$package/res/role"
+python tools/generate_mascot_demos.py --output-root "$package/res/role"
 mkdir -p "$package/data"
 cp docs/pet_assistant.md "$package/ASSISTANT_GUIDE.md"
 cp docs/character_fidelity.md "$package/CHARACTER_FIDELITY.md"
 cp docs/personal_character_install.md "$package/PERSONAL_CHARACTER_GUIDE.md"
+cp docs/guga_doro_personal_install.md "$package/GUGA_DORO_GUIDE.md"
 cp docs/original_chibi_starter.md "$package/ORIGINAL_MASCOT_GUIDE.md"
 cp docs/linux_acceptance.md "$package/LINUX_ACCEPTANCE.md"
 
