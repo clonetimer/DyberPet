@@ -82,3 +82,32 @@ python tools/character_pipeline.py qa genshin_xiao_main --reviewer 'local-user' 
 自动测试验证的是 14 个模板均进入导入器、每个角色身份/动作/气泡目标单独存在、已知作品链接可追溯、未知链接不造假、批量创建不覆盖既有用户资料、没有素材和授权时不能构建角色或公开打包。
 
 这并不代表所有新增角色的形象、骨骼动作、音色和语气已经达到官方水准。任何角色素材的实际可运行和贴近原设仍须有真实素材与 Windows GUI 人工验收。
+
+## P2：优先核验魈、流浪者的原生资源（2026-10-24）
+
+进一步查证的旧版项目 [DyberPet_GenshinImpact](https://github.com/ChaozhongLiu/DyberPet_GenshinImpact) 在 README 中明确宣布项目已停止维护，并建议用户将**角色文件夹**迁移至新版 DyberPet。原合集对应 [魈视频](https://www.bilibili.com/video/BV1gv4y1a7Q7) 和 [流浪者视频](https://www.bilibili.com/video/BV1W24y1p7es) 可用于追查作者来源，但作者视频并不授权我们重新分发角色动画和游戏配音。旧版有包含 EXE 的全程序压缩包，**它不是单个角色 ZIP，切勿直接安装或运行来提取桌宠素材**。
+
+支持的两条无网络本地入口：
+
+1. **原生单角色 ZIP**：只需包含唯一一个 `pet_conf.json`、`act_conf.json` 以及 `action/xxx_N.png`；不允许包含 exe、bat、DLL、链接或路径穿越条目。
+2. **原版已解压的单角色文件夹**：在个人合法取得的旧版资源中选择 `res/role/魈` / `res/role/流浪者` 这一层级，而不是选择全程序根目录，也不要把 `res/pet` 迷你宠物错装成主宠物。新的安装器在后台完成文件上限检查、链接/脚本拒绝、原生动作配置检查，再原子性安装到一个独立且不覆盖现有角色的目录。
+
+对已经合法取得的素材，先执行只读预检：
+
+```powershell
+python tools/genshin_batch.py probe --asset "D:/PetAssets/res/role/Xiao"
+python tools/genshin_batch.py status --roles xiao,wanderer
+```
+
+准备好审核任务后，用之前的 `seed` 命令建立候选，再执行：
+
+```powershell
+python tools/character_pipeline.py attach genshin_xiao_main --asset "D:/PetAssets/res/role/Xiao"
+python tools/character_pipeline.py inspect genshin_xiao_main
+```
+
+成功关联会将原先的 `native_zip` 类型自动标记为真正的 `native_folder`，并清除以前记录的许可与 QA；未获得本地使用许可时后续 `build` 仍会拒绝。获得作品特定的真实许可并完成 `rights` 才能生成本地角色；`qa` 必须经过实际 Windows PySide6 动画/缩放/拖拽和动作预览验收。重新分发仍需额外许可审核。
+
+在图形界面中仍走“系统 → 角色管理 → 添加角色 → 选择角色文件夹”，但检测到 `pet_conf.json` 和 `act_conf.json` 后会使用新增的**安全后台原生文件夹安装器**，而非直接复制未经检验的旧文件。此 GUI 安装仅是本机加载，**并不等价于作品授权审查或可公开发布角色包**。
+
+状态定义遵循真实本地候选记录：`not_seeded` → `awaiting_local_artwork` → `source_attached` → `rights_reviewed` → `built_pending_visual_runtime_qa` → `qa_reviewed`。未完成阶段不宣称“角色已可用”。`status` 命令不会读取或复制美术内容，也不输出素材文件的本机绝对路径。
