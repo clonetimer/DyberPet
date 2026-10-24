@@ -36,17 +36,19 @@ class MascotPreviewTests(unittest.TestCase):
                 before=self.snapshot(folder)
                 plan=action_preview_plan(folder)
                 self.assertTrue(plan["read_only"])
-                self.assertEqual(plan["total_frames"],46)
-                self.assertEqual(len(plan["actions"]),7)
+                self.assertEqual(plan["total_frames"],66)
+                self.assertEqual(len(plan["actions"]),10)
                 self.assertEqual(plan["actions"][0]["name"],"idle")
                 self.assertEqual(plan["actions"][1]["name"],"left_walk")
                 self.assertEqual(plan["actions"][2]["name"],"right_walk")
                 self.assertEqual(plan["actions"][1]["frame_count"],6)
                 self.assertEqual(plan["actions"][1]["interval_ms"],120)
+                names={x["name"] for x in plan["actions"]}
+                self.assertTrue({"run","failed","lookaround"}.issubset(names))
                 self.assertEqual(
                     sorted(a["name"] for a in plan["actions"]),
                     sorted(["idle","left_walk","right_walk","wave",
-                            "jump","wait","review"]))
+                            "jump","wait","review","run","failed","lookaround"]))
                 self.assertTrue(all(f.is_file() for action in plan["actions"]
                                     for f in action["frames"]))
                 self.assertEqual(before,self.snapshot(folder))
