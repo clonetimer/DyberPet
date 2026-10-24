@@ -133,8 +133,14 @@ jobs:
           sudo apt-get install -y xvfb xauth libxcb1 libx11-xcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 libxcb-shape0 libxcb-sync1 libxkbcommon-x11-0 libxrender1 libxi6 libxext6 libfontconfig1 libdbus-1-3 libglib2.0-0 libgl1 libegl1 libopengl0 libespeak1
       - name: Install application/build dependencies
         run: python -m pip install -r requirements-linux-portable.txt
-      - name: Build frozen Linux onedir candidate
-        run: bash tools/build_linux_portable.sh
+      - name: Build frozen Linux onedir candidate with real X11 available
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/dyberpet-build-home"
+          python -c "import backports.tarfile; print('Frozen pkg_resources backports present')"
+          xvfb-run -a -s "-screen 0 1280x800x24" env \
+            HOME="$RUNNER_TEMP/dyberpet-build-home" QT_QPA_PLATFORM=xcb \
+            bash tools/build_linux_portable.sh
       - name: Run real bundled binary from an unrelated directory
         shell: bash
         run: |
