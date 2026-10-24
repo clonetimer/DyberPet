@@ -199,7 +199,7 @@ jobs:
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
   verify-real-artist-download:
-    name: Verify all six real published Codex art sources (no redistribution)
+    name: Verify all reviewed Codex artist sources (no redistribution)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -209,10 +209,10 @@ jobs:
           python-version: "3.11"
       - name: Install original sprite atlas conversion dependency
         run: python -m pip install "Pillow>=10,<13"
-      - name: Download six actual pinned author sprite atlases and test native actions
+      - name: Download every reviewed pinned author atlas and test native actions
         shell: bash
         run: |
-          for role in furina hu_tao klee nahida paimon raiden; do
+          for role in $(python -c 'from tools.install_artist_codex import SOURCES; print(" ".join(SOURCES))'); do
             python tools/install_artist_codex.py "$role" --role-root "$RUNNER_TEMP/original-art-qa" --accept-personal-use
           done
           python - <<'PY'
