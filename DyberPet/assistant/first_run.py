@@ -41,16 +41,29 @@ def installed_playable_roles(root):
             continue
         marker = folder / "BUILTIN_CHIBI_DEMO.json"
         demo = marker.is_file() or (folder / "BUILTIN_MASCOT_DEMO.json").is_file()
-        # First-party roster demos carry Chinese display names. Read only a
-        # bounded local manifest; untrusted/invalid metadata uses the folder ID.
+        # Creator downloads are installed into safe ASCII folder IDs such as
+        # SourceGenshinNahida. Read the display name from the LOCAL receipt so
+        # Chinese searches find 纳西妲 rather than showing only an internal ID.
         display = folder.name
-        for metadata in (marker, folder / "info" / "info.json"):
+        artist_source = False
+        for metadata in (folder / "PERSONAL_IMPORT.json", marker,
+                         folder / "info" / "info.json"):
             try:
-                if metadata.is_symlink() or not metadata.is_file() or metadata.stat().st_size > 16384:
+                if (metadata.is_symlink() or not metadata.is_file() or
+                        metadata.stat().st_size > 16384):
                     continue
-                value = json.loads(metadata.read_text(encoding="utf-8")).get("name")
+                record = json.loads(metadata.read_text(encoding="utf-8"))
+                if not isinstance(record, dict):
+                    continue
+                value = record.get("display_name") or record.get("name")
                 if isinstance(value, str) and 1 <= len(value.strip()) <= 80:
                     display = value.strip()
+                if (metadata.name == "PERSONAL_IMPORT.json" and
+                        record.get("source_kind") in
+                        ("artist_original_animation", "curated_creator_spritesheet") and
+                        isinstance(record.get("source_repository"), str)):
+                    artist_source = True
+                if display != folder.name:
                     break
             except (OSError, UnicodeError, ValueError, AttributeError):
                 continue
@@ -59,7 +72,9 @@ def installed_playable_roles(root):
             "display": display,
             "preview": str(image),
             "demo": bool(demo),
+            "artist_source": artist_source,
         })
     result.sort(key=lambda item: (item["folder"] != "Kitty",
+                                  not item["artist_source"],
                                   item["folder"].casefold(), item["folder"]))
     return result
