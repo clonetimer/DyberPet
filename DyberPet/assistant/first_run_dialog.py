@@ -7,7 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QCheckBox, QDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QMessageBox, QPushButton, QVBoxLayout,
 )
 
@@ -32,7 +32,8 @@ class FirstRunRoleDialog(QDialog):
         layout.addWidget(heading)
         self.notice = QLabel(
             "无需 AI 模型、麦克风或登录。角色库中只列出本机可播放的素材；"
-            "标记为「原创演示」的形象不是原作者的游戏美术或配音。",
+            "程序自绘的低保真演示已默认隐藏；可按需展开。"
+            "建议优先安装原作者动画，而不是把演示当作原设。",
             self)
         self.notice.setWordWrap(True)
         layout.addWidget(self.notice)
@@ -41,6 +42,9 @@ class FirstRunRoleDialog(QDialog):
         self.search.setPlaceholderText("搜索本机角色名称，例如 Kitty、Doro")
         layout.addWidget(self.search)
 
+        self.showDemos = QCheckBox("显示低保真程序演示（非原设还原）", self)
+        self.showDemos.setChecked(False)
+        layout.addWidget(self.showDemos)
         self.roles = QListWidget(self)
         self.roles.setMinimumHeight(145)
         self.roles.itemDoubleClicked.connect(lambda _item: self.choose())
@@ -67,6 +71,7 @@ class FirstRunRoleDialog(QDialog):
         controls.addWidget(self.skip)
         layout.addLayout(controls)
         self.search.textChanged.connect(self.refresh)
+        self.showDemos.toggled.connect(self.refresh)
         self.roles.currentItemChanged.connect(lambda _now, _old: self.refresh_preview())
         self.refresh()
         for i in range(self.roles.count()):
@@ -79,6 +84,8 @@ class FirstRunRoleDialog(QDialog):
         self.roles.clear()
         text = self.search.text().casefold().strip()
         for entry in self.entries:
+            if entry["demo"] and not self.showDemos.isChecked():
+                continue
             if text not in (entry["folder"] + " " + entry["display"]).casefold():
                 continue
             name = entry["display"]
@@ -108,7 +115,8 @@ class FirstRunRoleDialog(QDialog):
         entry = self._selected_entry()
         if entry is None:
             self.frame.clear()
-            self.status.setText("本机没有匹配的可播放角色。可以先使用默认角色或在角色管理中导入。")
+            self.status.setText("没有匹配的真实素材。可点击「安装作者原画角色」，"
+                                "或勾选上方选项查看程序演示；当前桌宠不会被修改。")
             return
         pixmap = QPixmap(entry["preview"])
         if pixmap.isNull():
