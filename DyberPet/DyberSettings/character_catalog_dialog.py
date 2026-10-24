@@ -37,8 +37,10 @@ class CharacterCatalogDialog(QDialog):
                              ("咕嘎 / Doro", "mascot")):
             self.familyFilter.addItem(label, value)
         self.statusFilter = QComboBox(self)
-        for label, value in (("全部状态", "all"), ("已有个人美术", "personal"),
-                             ("有原创演示皮肤", "demo"), ("缺少动画", "missing")):
+        for label, value in (("已安装真实来源素材（优先）", "personal"),
+                             ("全部角色（含低保真演示）", "all"),
+                             ("程序绘制演示（非原设）", "demo"),
+                             ("待安装素材", "missing")):
             self.statusFilter.addItem(label, value)
         filters.addWidget(self.familyFilter)
         filters.addWidget(self.statusFilter)
@@ -52,18 +54,21 @@ class CharacterCatalogDialog(QDialog):
         self.countLabel = QLabel(self)
         layout.addWidget(self.countLabel)
         self.disclaimer = QLabel(
-            "本机结构可播放 ≠ 原设外观还原或作者许可已验证；"
-            "原创演示均不含游戏人物原声。", self)
+            "默认优先展示真实来源素材；程序低保真演示须主动切换筛选。"
+            "安装成功也不等于已经通过原设相似度人工验收。", self)
         self.disclaimer.setWordWrap(True)
         layout.addWidget(self.disclaimer)
 
         buttons = QHBoxLayout()
+        self.installArtistButton = QPushButton("安装真实作者素材", self)
+        self.installArtistButton.clicked.connect(self._install_artist)
         self.manageButton = QPushButton("管理原神素材关联", self)
         self.manageButton.clicked.connect(self._open_manage)
         self.openButton = QPushButton("查看角色 / 预览动作", self)
         self.openButton.clicked.connect(self._select)
         close = QPushButton("关闭", self)
         close.clicked.connect(self.reject)
+        buttons.addWidget(self.installArtistButton)
         buttons.addWidget(self.manageButton)
         buttons.addStretch(1)
         buttons.addWidget(self.openButton)
@@ -97,7 +102,7 @@ class CharacterCatalogDialog(QDialog):
             self.results.setCurrentRow(0)
         self.countLabel.setText(
             f"当前筛选 {self.results.count()} / {len(self._entries)} 个角色。"
-            "可直接双击选择，也可切换筛选项。")
+            "可切换为「全部角色」查看程序演示，或点击素材管理安装真实角色。")
         self.openButton.setEnabled(self.results.count() > 0)
 
     def selected_character_id(self):
@@ -109,6 +114,10 @@ class CharacterCatalogDialog(QDialog):
         if selected:
             self._selected_id = selected
             self.accept()
+
+    def _install_artist(self):
+        self._selected_id = "__install_artist__"
+        self.accept()
 
     def _open_manage(self):
         self._selected_id = "__manage_genshin__"

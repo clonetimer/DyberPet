@@ -15,7 +15,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QStandardPaths, QSize
 from PySide6.QtGui import QDesktopServices, QIcon, QFont
-from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QSizePolicy, QHBoxLayout, QSpacerItem
+from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QCheckBox, QSizePolicy, QHBoxLayout, QSpacerItem
 
 from .custom_utils import CharCard, CharCardGroup, CharLine
 from DyberPet.conf import CheckCharFiles
@@ -78,9 +78,17 @@ class CharInterface(ScrollArea):
         self.addButton.setToolTip("支持 DyberPet 模组、Codex Pets 图集和透明 GIF/PNG 动画文件夹")
         self.quickStartButton = PushButton(self.tr("快速选桌宠"), self, FIF.HEART)
         self.quickStartButton.setToolTip(self.tr("搜索本机可播放角色、预览动作并立即切换"))
+        self.showDemoRoles = QCheckBox(self.tr("显示低保真演示"), self)
+        self.showDemoRoles.setChecked(False)
+        self.showDemoRoles.setToolTip(self.tr("仅供开发与演示，不代表角色原设；默认不推荐"))
+        self.titleLayout.addWidget(self.showDemoRoles, Qt.AlignRight | Qt.AlignVCenter)
+        self.titleLayout.addWidget(self.CharListLink, Qt.AlignRight | Qt.AlignVCenter)
         self.catalogButton = PushButton(self.tr("全部角色库"), self, FIF.SEARCH)
         self.catalogButton.setToolTip(
             self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
+        self.artistSourceButton = PushButton(self.tr("安装作者原画角色"), self, FIF.DOWNLOAD)
+        self.artistSourceButton.setToolTip(
+            self.tr("本机下载已有原作者逐帧动画：纳西妲／魈／流浪者，不再生成替代造型"))
         self.mascotButton = PushButton(self.tr("咕嘎 / Doro"), self, FIF.HEART)
         self.mascotButton.setToolTip(
             self.tr("查看企鹅/四足演示角色以及个人导入的对应素材；不冒充作者原设美术"))
@@ -98,10 +106,10 @@ class CharInterface(ScrollArea):
         self.headerLayout.addWidget(self.addButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.quickStartButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.catalogButton, Qt.AlignLeft | Qt.AlignVCenter)
+        self.headerLayout.addWidget(self.artistSourceButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.mascotButton, Qt.AlignLeft | Qt.AlignVCenter)
         spacerItem1 = QSpacerItem(10, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.headerLayout.addItem(spacerItem1)
-        self.headerLayout.addWidget(self.CharListLink, Qt.AlignLeft | Qt.AlignVCenter)
         #spacerItem2 = QSpacerItem(15, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
         #self.headerLayout.addItem(spacerItem2)
         #self.headerLayout.addWidget(self.instructButton, Qt.AlignLeft | Qt.AlignVCenter)
@@ -112,6 +120,24 @@ class CharInterface(ScrollArea):
         self.__initCardLayout()
 
         self.__initWidget()
+
+    @staticmethod
+    def _isLowFidelityDemo(role):
+        path = Path(basedir) / "res" / "role" / role
+        return (path / "BUILTIN_CHIBI_DEMO.json").is_file() or (
+            path / "BUILTIN_MASCOT_DEMO.json").is_file()
+
+    def _applyDemoRoleVisibility(self):
+        enabled = self.showDemoRoles.isChecked()
+        # Never hide a currently active legacy character: existing users
+        # should still be able to see and manage their selected pet.
+        for line in self.CharLineList:
+            role = getattr(line, "chrFolder", None)
+            if role is None:
+                role = getattr(line, "petFolder", None)
+            if isinstance(role, str):
+                line.setVisible(enabled or not self._isLowFidelityDemo(role)
+                                or role == settings.petname)
 
     def __initCardLayout(self):
 
@@ -187,6 +213,9 @@ class CharInterface(ScrollArea):
         self.addButton.clicked.connect(self.__onAddClicked)
         self.quickStartButton.clicked.connect(self._showQuickStartGuide)
         self.catalogButton.clicked.connect(self._showAllCharacterCatalog)
+        self.showDemoRoles.toggled.connect(self._applyDemoRoleVisibility)
+        self._applyDemoRoleVisibility()
+        self.artistSourceButton.clicked.connect(self._installArtistGenshin)
         self.mascotButton.clicked.connect(self._showMascotLibrary)
         self.panelHelp.clicked.connect(self.__onShowInstruction)
 
@@ -493,6 +522,44 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在本机获取并校验角色作者发布的图集，然后转换动画。"),1)
 
+    def _installArtistGenshin(self):
+        """Opt-in to existing published animation artwork, never redraw it."""
+        if self.chibiThread is not None:
+            self.__showSystemNote("其他角色安装仍在进行。", 1)
+            return
+        from tools.install_artist_genshin import ROLES, SOURCE_URL
+        from tools.install_artist_codex import SOURCES, ROOT
+        labels = {f"完整原生动画 · {title}":("artist_genshin", key)
+                  for key, (_, _, title) in ROLES.items()}
+        labels.update({f"轻量创作者图集 · {row[1]}":("artist_codex", key)
+                       for key, row in SOURCES.items()})
+        selected, ok = QInputDialog.getItem(
+            self, "安装真实来源的桌宠美术",
+            "选择已有作者制作的桌宠动画；完整原生动画包可能较大，"
+            "轻量图集通常只有数 MB。不会绘制新的替代形象。",
+            list(labels), 0, False)
+        if not ok or selected not in labels:
+            return
+        mode, kind = labels[selected]
+        source = (SOURCE_URL + ROLES[kind][0] if mode == "artist_genshin"
+                  else ROOT + "/" + SOURCES[kind][0])
+        if not self.__showMessageBox(
+                "本机安装公开作者动画",
+                f"来源：{source}\\n"
+                "确认后下载固定版本原始动画，并安装为独立角色。"
+                "不会覆盖现有桌宠或用户存档。"
+                "公开素材与人物形象的人工验收是两回事；安装后请先预览。继续吗？"):
+            return
+        self.addButton.setEnabled(False)
+        self.artistSourceButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            kind, os.path.join(basedir, "res", "role"),
+            mode=mode, profile=None, preset=kind, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote("正在下载并校验真实作者动画，安装后即可切换。", 1)
+
     def _showQuickStartGuide(self):
         from DyberPet.assistant.first_run_dialog import FirstRunRoleDialog
         dialog = FirstRunRoleDialog(
@@ -515,6 +582,9 @@ class CharInterface(ScrollArea):
         if not dialog.exec():
             return
         selected=dialog.selection
+        if selected=="__install_artist__":
+            self._installArtistGenshin()
+            return
         if selected=="__manage_genshin__":
             self._showGenshinLibrary()
             return
@@ -934,6 +1004,7 @@ class CharInterface(ScrollArea):
 
     def _onChibiThreadFinished(self):
         self.addButton.setEnabled(True)
+        self.artistSourceButton.setEnabled(True)
         thread = self.chibiThread
         self.chibiThread = None
         if thread is not None:
@@ -980,6 +1051,7 @@ class CharInterface(ScrollArea):
             self.CharCardList[iCard].card.gotoClicked.connect(self.__onGotoClicked)
             self.CharCardList[iCard].card.deleteClicked.connect(self.__onDeleteClicked)
 
+        self._applyDemoRoleVisibility()
         content = self.tr("Adding character completed! It's recommended to restart the App to have all features enabled.")
         self.__showSystemNote(content, 0)
 
@@ -1159,6 +1231,16 @@ class ChibiImportThread(QThread):
             if self.mode == "original_demo":
                 from tools.create_original_mascot import create_original_mascot
                 new_folder = create_original_mascot(self.output_root)
+            elif self.mode == "artist_genshin":
+                from tools.install_artist_genshin import install_artist_genshin
+                installed = install_artist_genshin(
+                    self.preset, self.output_root, confirmed=True)
+                new_folder = self.output_root / installed["folder"]
+            elif self.mode == "artist_codex":
+                from tools.install_artist_codex import install_artist_codex
+                installed = install_artist_codex(
+                    self.preset, self.output_root, confirmed=True)
+                new_folder = self.output_root / installed["folder"]
             elif self.mode == "creator_source":
                 from tools.install_creator_mascots import install_creator_mascot
                 installed = install_creator_mascot(

@@ -46,6 +46,10 @@ on:
       - "tests/test_character_catalog_search.py"
       - "tests/test_character_progress.py"
       - "tools/install_creator_mascots.py"
+      - "tools/install_artist_genshin.py"
+      - "tools/install_artist_codex.py"
+      - "tests/test_artist_codex_install.py"
+      - "tests/test_artist_genshin_install.py"
       - "tests/test_creator_mascot_fetch.py"
       - "tests/test_builtin_chibi_demos.py"
       - "tools/personal_role_import.py"
@@ -111,6 +115,10 @@ on:
       - "tests/test_character_catalog_search.py"
       - "tests/test_character_progress.py"
       - "tools/install_creator_mascots.py"
+      - "tools/install_artist_genshin.py"
+      - "tools/install_artist_codex.py"
+      - "tests/test_artist_codex_install.py"
+      - "tests/test_artist_genshin_install.py"
       - "tests/test_creator_mascot_fetch.py"
       - "tests/test_builtin_chibi_demos.py"
       - "tools/personal_role_import.py"
@@ -179,8 +187,51 @@ jobs:
         run: python tools/audit_character_sources.py
       - name: Check Blender runner CLI
         run: python tools/render_chibi_blender.py --help
+      - name: Check lightweight creator spritesheet source CLI
+        run: python tools/install_artist_codex.py --help
+      - name: Test Git-pinned 6-role Codex source registry
+        run: python -m unittest discover -s tests -p "test_artist_codex_install.py" -v
+      - name: Check artist-source personal installer CLI
+        run: python tools/install_artist_genshin.py --help
+      - name: Verify pinned artist source ZIP installer without network
+        run: python -m unittest discover -s tests -p "test_artist_genshin_install.py" -v
       - name: Run importer unit tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  verify-real-artist-download:
+    name: Verify all reviewed Codex artist sources (no redistribution)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install original sprite atlas conversion dependency
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Download every reviewed pinned author atlas and test native actions
+        shell: bash
+        run: |
+          for role in $(python -c 'from tools.install_artist_codex import SOURCES; print(" ".join(SOURCES))'); do
+            python tools/install_artist_codex.py "$role" --role-root "$RUNNER_TEMP/original-art-qa" --accept-personal-use
+          done
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from tools.install_native_role import validate_native_role
+          from tools.install_artist_codex import SOURCES
+          root=Path(os.environ["RUNNER_TEMP"])/"original-art-qa"
+          for key,source in SOURCES.items():
+              folder="SourceCodex"+"".join(piece.title() for piece in key.split("_"))
+              target=root/folder
+              report=validate_native_role(target)
+              assert report["images"]>=6 and report["actions"]>=2,(key,report)
+              receipt=json.loads((target/"PERSONAL_IMPORT.json").read_text("utf-8"))
+              assert receipt["selected_profile"]==source[2]
+              assert receipt["likeness_manually_reviewed"] is False
+              print("REAL_ART_PIXELS_VALIDATED",key,report)
+          PY
+      # No artifact upload: author-created character images are temporary CI input.
 
   qt-loader-smoke:
     # Calls the actual DyberPet runtime PetConfig/Act/QPixmap loader, not

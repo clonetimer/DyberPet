@@ -57,6 +57,36 @@ class FirstRunTests(unittest.TestCase):
         }
         self.assertEqual(before, after)
 
+    def test_creator_art_is_searchable_by_chinese_name_and_ranked_first(self):
+        self._role("DemoG_nahida", demo=True)
+        creator = self._role("SourceGenshinNahida")
+        (creator / "PERSONAL_IMPORT.json").write_text(
+            '{"selected_profile":"genshin_nahida","display_name":"纳西妲",'
+            '"source_repository":"ChaozhongLiu/DyberPet_GenshinImpact",'
+            '"source_kind":"artist_original_animation"}', encoding="utf-8")
+        result = installed_playable_roles(self.roles)
+        self.assertEqual(result[0]["folder"], "SourceGenshinNahida")
+        self.assertEqual(result[0]["display"], "纳西妲")
+        self.assertTrue(result[0]["artist_source"])
+        self.assertFalse(result[0]["demo"])
+        self.assertEqual(result[1]["folder"], "DemoG_nahida")
+        self.assertFalse(result[1]["artist_source"])
+        self.assertTrue(result[1]["demo"])
+
+    def test_actual_native_idle_is_preferred_to_unrelated_effect_frame(self):
+        role = self._role("SourceGenshinNahida")
+        (role / "pet_conf.json").write_text(
+            '{"default":"idle", "drag":"idle", "fall":"idle"}', encoding="utf8")
+        (role / "act_conf.json").write_text(
+            '{"idle":{"images":"hx","act_num":1,"frame_refresh":0.1}}',
+            encoding="utf8")
+        (role / "action" / "a_unrelated_0.png").write_bytes(b"effect")
+        (role / "action" / "hx_0.png").write_bytes(b"actual")
+        installed = installed_playable_roles(self.roles)
+        self.assertEqual(len(installed), 1)
+        self.assertTrue(installed[0]["preview"].endswith("hx_0.png"))
+        self.assertEqual(Path(installed[0]["preview"]).read_bytes(), b"actual")
+
     def test_empty_or_broken_directory_is_not_invented_as_playable(self):
         self.assertEqual(installed_playable_roles(self.roles), [])
         self._role("no_png", frame=False)

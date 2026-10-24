@@ -217,6 +217,7 @@ jobs:
           assert gui["character_catalog_demo_count"]==125,gui
           assert assistant["character_search_catalog_count"]==125 and assistant["character_search_demo_count"]==125,assistant
           assert assistant["character_search_bilingual_verified"],assistant
+          assert assistant["public_art_sources_ready"],assistant
           assert gui["genshin_original_demo_actions_each"]==10 and gui["genshin_original_demo_frames_each"]==66,gui
           assert assistant["genshin_original_demo_actions_each"]==10 and assistant["genshin_original_demo_frames_each"]==66,assistant
           assert assistant["mascot_live_preview_count"]==2 and assistant["mascot_live_preview_timer_safe"],assistant

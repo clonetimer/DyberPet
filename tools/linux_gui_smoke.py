@@ -155,8 +155,11 @@ def verify_linux_gui():
         try:
             search_dialog.show()
             app.processEvents()
-            if not search_dialog.isVisible() or search_dialog.results.count()!=125:
-                raise RuntimeError("Searchable 125-character Qt catalog did not render")
+            if (not search_dialog.isVisible() or search_dialog.results.count()!=0 or
+                    search_dialog.statusFilter.currentData()!="personal"):
+                raise RuntimeError("Low-fidelity demos unexpectedly offered as finished roles")
+            search_dialog.statusFilter.setCurrentIndex(
+                search_dialog.statusFilter.findData("all"))
             search_dialog.searchBox.setText("Lisa")
             app.processEvents()
             if (search_dialog.results.count()!=1 or
@@ -200,8 +203,9 @@ def verify_linux_gui():
         try:
             welcome.show()
             app.processEvents()
-            if not welcome.isVisible() or welcome.roles.count() < 2:
-                raise RuntimeError("First-run guide did not show playable roles")
+            if (not welcome.isVisible() or welcome.roles.count() < 1 or
+                    welcome.showDemos.isChecked()):
+                raise RuntimeError("First-run guide failed low-fidelity hide policy")
             welcome.search.setText("Kitty")
             app.processEvents()
             if welcome.selected_id() != "Kitty" or welcome.frame.pixmap().isNull():

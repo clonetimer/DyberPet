@@ -361,12 +361,23 @@ def _assistant_package_smoke():
         assert not needs_first_run(temp)
     welcome = FirstRunRoleDialog(Path(os.getcwd()) / "res" / "role", current_role="Kitty")
     report["first_run_guide_verified"] = (
-        welcome.roles.count() >= 2 and welcome.selected_id() in
+        welcome.roles.count() >= 1 and not welcome.showDemos.isChecked() and
+        welcome.selected_id() in
         [welcome.roles.item(i).data(Qt.ItemDataRole.UserRole)
          for i in range(welcome.roles.count())])
     welcome.close()
     if not report["first_run_guide_verified"]:
         raise RuntimeError("Frozen first-run role chooser cannot select an installed role")
+    # Enforce presence of concrete pinned, opt-in artist source installers in
+    # the *frozen* EXE/ELF; this does not download art or publish images.
+    from tools.install_artist_genshin import ROLES as original_genshin
+    from tools.install_artist_codex import SOURCES as codex_art
+    from tools.install_creator_mascots import UPSTREAM as mascot_art
+    report["public_art_sources_ready"] = (
+        len(original_genshin) == 3 and len(codex_art) == 12
+        and {"guga", "doro"}.issubset(mascot_art))
+    if not report["public_art_sources_ready"]:
+        raise RuntimeError("Pinned original-art installers missing from executable")
     # Source CI deliberately tests an untouched checkout and does not seed it.
     if getattr(sys, "frozen", False):
         from tools.genshin_library import scan_genshin_library
@@ -446,8 +457,10 @@ def _assistant_package_smoke():
         try:
             selector.show()
             app.processEvents()
-            if not selector.isVisible() or selector.results.count()!=125:
-                raise RuntimeError("Frozen searchable character catalog is missing")
+            if (not selector.isVisible() or selector.results.count()!=0 or
+                    selector.statusFilter.currentData()!="personal"):
+                raise RuntimeError("Low-fidelity demos unexpectedly recommended")
+            selector.statusFilter.setCurrentIndex(selector.statusFilter.findData("all"))
             selector.searchBox.setText("Lisa")
             app.processEvents()
             if (selector.results.count()!=1 or
