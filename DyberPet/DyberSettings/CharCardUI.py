@@ -400,20 +400,58 @@ class CharInterface(ScrollArea):
             self.__showMessageBox(self.tr("尚无角色动画"),
                                   self.tr("请通过「添加角色」导入本地 Codex/PNG 素材。"))
             return
-        descriptions=[
-            f"{r['folder']}：{r['actions']} 类动作、{r['frames']} 帧"
-            + ("（本地导入，原设形象尚未验证）"
-               if r in entry["imported_creator_art"]
-               else "（原创演示，不是作者原图）")
-            for r in roles
+        options={}
+        for row in roles:
+            provenance=("个人导入的作者公开图集 · 原设需人工核对"
+                        if row in entry["imported_creator_art"]
+                        else "程序原创演示 · 非原作者的图和声音")
+            options[
+                f"{row['folder']} · {row['actions']} 类动作 / "
+                f"{row['frames']} 帧 · {provenance}"]=row
+        if len(options)==1:
+            role=roles[0]
+        else:
+            choice,ok=QInputDialog.getItem(
+                self,self.tr("选择桌宠素材"),
+                self.tr("优先查看个人导入的角色，也可以继续使用内置原创演示："),
+                list(options),0,False)
+            if not ok or choice not in options:
+                return
+            role=options[choice]
+        name=role["folder"]
+        folder=Path(basedir)/"res"/"role"/name
+        if not folder.is_dir() or folder.is_symlink():
+            self.__showSystemNote(self.tr("角色目录已丢失或不可安全读取。"),2)
+            return
+        operations=[
+            "▶ 在界面中预览动画（可选择动作）",
+            "✓ 使用这个角色作为桌宠",
+            "↗ 查看本地素材目录",
         ]
-        if self.__showMessageBox(
-                self.tr("本机角色动画"),
-                "\n".join(descriptions)+"\n"+
-                self.tr("是否打开第一份角色资源的本机目录？")):
-            path=Path(basedir)/"res"/"role"/roles[0]["folder"]
-            if path.is_dir() and not path.is_symlink():
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve())))
+        operation,ok=QInputDialog.getItem(
+            self,self.tr("咕嘎 / Doro · 角色操作"),
+            self.tr("请选择要进行的操作，预览不修改角色文件："),
+            operations,0,False)
+        if not ok:
+            return
+        if operation==operations[0]:
+            from .mascot_preview_dialog import MascotActionPreview
+            try:
+                viewer=MascotActionPreview(
+                    folder,original_demo=role in entry["original_demos"],
+                    parent=self)
+            except (ValueError,OSError,TypeError) as exc:
+                self.__showSystemNote(self.tr("预览失败：")+str(exc),2)
+                return
+            viewer.exec()
+        elif operation==operations[1]:
+            if name not in settings.pets:
+                self.__showSystemNote(
+                    self.tr("角色存在于磁盘但尚未被当前桌宠会话加载，请重启 DyberPet。"),2)
+                return
+            self.__onLaunchClicked(name)
+        elif operation==operations[2]:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder.resolve())))
 
     def _installCreatorMascot(self, kind):
         """One user-confirmed network fetch; all art remains local, not bundled."""
@@ -733,6 +771,13 @@ class CharInterface(ScrollArea):
 
     def _onChibiImportComplete(self, role_name, error):
         if error:
+            if (self.chibiThread is not None and
+                    self.chibiThread.mode == "creator_source"):
+                error = (self.tr("未能安装作者动画素材：") + error[:360] +
+                         self.tr("\n内置原创咕嘎 / Doro 演示版仍可正常使用。"
+                                 "请检查网络后再次点击「联网安装」；"
+                                 "安全校验不通过时不要尝试绕过 SHA-256。"
+                                 "原有角色文件未被覆盖。"))
             self.__showMessageBox(self.tr("Adding Failed"), error)
             return
         self.newPetFolder = role_name

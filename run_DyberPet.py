@@ -259,6 +259,35 @@ def _assistant_package_smoke():
             raise RuntimeError("Packaged application missing playable Guga/Doro original demo animations")
         if report["mascot_character_likeness_verified"]:
             raise RuntimeError("Demo assets must never assert original creator identity")
+        # Actually construct the preview Qt dialog from this frozen EXE:
+        # synthetic Guga/Doro artwork only, no source downloads.
+        from DyberPet.DyberSettings.mascot_preview_dialog import MascotActionPreview
+        for role in ("DemoMascotGuga", "DemoMascotDoro"):
+            viewer=MascotActionPreview(
+                Path(os.getcwd()) / "res" / "role" / role,
+                original_demo=True)
+            try:
+                viewer.show()
+                app.processEvents()
+                if not viewer.isVisible() or viewer.frame.pixmap().isNull():
+                    raise RuntimeError("Frozen mascot Qt live preview did not render: " + role)
+                idx=viewer.actions.findData("left_walk")
+                if idx < 0:
+                    raise RuntimeError("Frozen mascot missing native left_walk: " + role)
+                viewer.actions.setCurrentIndex(idx)
+                viewer._advance()
+                if viewer.frame_index != 1 or viewer.frame.pixmap().isNull():
+                    raise RuntimeError("Frozen mascot preview did not animate: " + role)
+                viewer._toggle()
+                if viewer.timer.isActive():
+                    raise RuntimeError("Frozen mascot pause control failed: " + role)
+            finally:
+                viewer.close()
+                app.processEvents()
+            if viewer.timer.isActive():
+                raise RuntimeError("Frozen mascot preview leaked a Qt timer")
+        report["mascot_live_preview_count"]=2
+        report["mascot_live_preview_timer_safe"]=True
 
     for module in ("pyttsx3", "vosk", "sounddevice"):
         try:
