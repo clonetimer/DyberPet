@@ -31,6 +31,7 @@ on:
       - "tests/test_linux_portable_paths.py"
       - "DyberPet/assistant/portable.py"
       - "DyberPet/settings.py"
+      - "tests/test_default_pet_order.py"
       - "DyberPet/conf.py"
       - "run_DyberPet.py"
 
@@ -75,6 +76,8 @@ jobs:
           PY
       - name: Validate original PyInstaller/source path semantics
         run: python -m unittest discover -s tests -p "test_linux_portable_paths.py" -v
+      - name: Verify deterministic default character selection
+        run: python -m unittest discover -s tests -p "test_default_pet_order.py" -v
       - name: Exercise real animation QPixmap/PetConfig under X11
         shell: bash
         run: |
