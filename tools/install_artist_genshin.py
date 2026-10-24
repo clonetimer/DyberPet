@@ -7,6 +7,7 @@ configuration. Does not produce replacement/generated character artwork.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -37,6 +38,58 @@ MAX_ROLE = 180 * 1024 * 1024
 MAX_FILES = 5000
 SAFE_EXTENSIONS = {".png", ".json", ".wav"}
 ROOT_PREFIX = "DyberPet_GenshinImpact-" + REVISION + "/res/role/"
+
+# Exact Git blob IDs at pinned upstream commit, checked against the raw
+# original bytes *before* any required legacy configuration compatibility fix.
+# These bind display identity to genuine artist-provided default PNG artwork.
+# A structural-valid-but-swapped role can no longer install under another name.
+SOURCE_IDENTITY = {
+    "nahida": {
+        "pet_conf.json": "c35730bfef960b692ede3909e4d79dc45e6641a7",
+        "act_conf.json": "f5d6d3b8c1e4a5659ac3f995d12e40d23bff2146",
+        "action/hx_0.png": "9d6893fd9304ef7c8d011b0cac0e807e188c0a0d",
+    },
+    "xiao": {
+        "pet_conf.json": "ed9f64fae6a011a3bb249d10bdb0a1452d00ca0d",
+        "act_conf.json": "e1f467b16eb38de114b166738269e1585ba22b3a",
+        "action/stand_0.png": "111112768a305901213c54cf8efbbe68c934fc01",
+    },
+    "wanderer": {
+        "pet_conf.json": "a204e9495fad1c42130b401813681b616817caae",
+        "act_conf.json": "f40d19d250dfb136f881f9241210f0b627a948b9",
+        "action/stand_0.png": "4467a4c6c41abcb41d61294292ad6b5231400b1c",
+    },
+}
+
+
+def _git_blob_sha(path):
+    raw = Path(path).read_bytes()
+    if len(raw) > MAX_SINGLE:
+        raise ValueError("Source identity anchor exceeds file size limit")
+    return hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\\0" + raw).hexdigest()
+
+
+def verify_artist_role_identity(folder, kind, *, identities=None):
+    """Bind character identity to 3 immutable upstream bytestrings.
+
+    Verifies *source authenticity*, not perceived character likeness, outfit,
+    rights, voice, or manual visual acceptance.
+    """
+    expected = SOURCE_IDENTITY if identities is None else identities
+    if kind not in expected or kind not in ROLES:
+        raise ValueError("Unknown source identity")
+    root = Path(folder)
+    verified = []
+    for rel, sha in expected[kind].items():
+        file = root / rel
+        if not file.is_file() or file.is_symlink():
+            raise ValueError("Missing authentic source asset: " + rel)
+        actual = _git_blob_sha(file)
+        if actual != sha:
+            raise ValueError("Character artwork/config identity mismatch: " + rel)
+        verified.append(rel)
+    return verified
+
 
 
 def _prune_missing_optional_actions(folder):
@@ -146,6 +199,7 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with archive.open(info) as reader, target.open("xb") as writer:
                     shutil.copyfileobj(reader, writer, 1024 * 1024)
+            verified_source_files = verify_artist_role_identity(staged, kind)
             # Some author-released older configurations list effects whose
             # sprites were never published (e.g. Wanderer). Keep genuine art
             # intact and drop only missing, nonessential action references.
@@ -157,6 +211,7 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
                             "source_repository": REPOSITORY,
                             "source_commit": REVISION,
                             "source_kind": "artist_original_animation",
+                            "source_identity_anchors_verified": verified_source_files,
                             "source_rights_verified": False,
                             "likeness_manually_reviewed": False,
                             "voice_verified": False,
@@ -169,6 +224,7 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
     return {"folder": destination.name, "profile": profile,
             "actions": status["actions"], "frames": status["images"],
             "source": SOURCE_URL + original, "uses_original_author_frames": True,
+            "source_identity_verified": True,
             "likeness_manually_reviewed": False}
 
 
