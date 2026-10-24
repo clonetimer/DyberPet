@@ -198,6 +198,37 @@ jobs:
       - name: Run importer unit tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
+  verify-real-artist-download:
+    name: Verify one real public sprite source (not redistributed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install image dependency for original-art frame converter
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Download actual fixed-commit Klee author sprites and validate converted frames
+        shell: bash
+        run: |
+          python tools/install_artist_codex.py klee --role-root "$RUNNER_TEMP/original-art-qa" --accept-personal-use
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from tools.install_native_role import validate_native_role
+          root=Path(os.environ["RUNNER_TEMP"])/"original-art-qa"/"SourceCodexKlee"
+          assert root.is_dir()
+          report=validate_native_role(root)
+          assert report["images"] >= 6 and report["actions"] >= 2, report
+          record=json.loads((root/"PERSONAL_IMPORT.json").read_text("utf-8"))
+          assert record["selected_profile"]=="genshin_klee"
+          assert record["likeness_manually_reviewed"] is False
+          print("ARTIST_SOURCE_REAL_PIXELS_VALIDATED", report)
+          PY
+      # Deliberately no artifact upload: public upstream character art stays
+      # ephemeral on CI runners and never enters repository or release assets.
+
   qt-loader-smoke:
     # Calls the actual DyberPet runtime PetConfig/Act/QPixmap loader, not
     # only the independent artwork conversion functions.
