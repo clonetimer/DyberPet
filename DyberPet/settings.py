@@ -365,21 +365,18 @@ def save_settings():
         json.dump(data_js, f, ensure_ascii=False, indent=4)
 
 def get_petlist(dirname):
-    folders = os.listdir(dirname)
-    pets = []
-    # subpets = []
-    # v0.3.3 subpet now moved to folder: res/pet/
-    for folder in folders:
-        folder_path = os.path.join(dirname, folder)
-        if folder != 'sys' and os.path.isdir(folder_path):
-            pets.append(folder)
-            #conf_path = os.path.join(folder_path, 'pet_conf.json')
-            #conf = dict(json.load(open(conf_path, 'r', encoding='UTF-8')))
-            #subpets += [i for i in conf.get('subpet',{}).keys()]
-    pets = list(set(pets))
-    #subpets = list(set(subpets))
-    #for subpet in subpets:
-    #    pets.remove(subpet)
+    """Stable default order without changing a returning user's saved choice.
+
+    Before this fix, converting a set() back into a list produced a
+    hash-randomized first pet on a fresh installation.
+    """
+    pets = sorted({
+        folder for folder in os.listdir(dirname)
+        if folder != 'sys' and os.path.isdir(os.path.join(dirname, folder))
+    }, key=lambda name: (name.casefold(), name))
+    if 'Kitty' in pets:
+        pets.remove('Kitty')
+        pets.insert(0, 'Kitty')
     return pets
 
 def change_translator(language_code):
