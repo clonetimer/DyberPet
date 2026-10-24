@@ -60,12 +60,15 @@ class CharacterCatalogDialog(QDialog):
         layout.addWidget(self.disclaimer)
 
         buttons = QHBoxLayout()
+        self.installArtistButton = QPushButton("安装真实作者素材", self)
+        self.installArtistButton.clicked.connect(self._install_artist)
         self.manageButton = QPushButton("管理原神素材关联", self)
         self.manageButton.clicked.connect(self._open_manage)
         self.openButton = QPushButton("查看角色 / 预览动作", self)
         self.openButton.clicked.connect(self._select)
         close = QPushButton("关闭", self)
         close.clicked.connect(self.reject)
+        buttons.addWidget(self.installArtistButton)
         buttons.addWidget(self.manageButton)
         buttons.addStretch(1)
         buttons.addWidget(self.openButton)
@@ -111,6 +114,10 @@ class CharacterCatalogDialog(QDialog):
         if selected:
             self._selected_id = selected
             self.accept()
+
+    def _install_artist(self):
+        self._selected_id = "__install_artist__"
+        self.accept()
 
     def _open_manage(self):
         self._selected_id = "__manage_genshin__"
