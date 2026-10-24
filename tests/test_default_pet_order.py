@@ -18,9 +18,9 @@ class DeterministicPetTests(unittest.TestCase):
 
     def test_stable_fallback_when_kitty_is_not_installed(self):
         with tempfile.TemporaryDirectory() as folder:
-            for name in ("zeta", "Alpha", "alpha", "sys"):
+            for name in ("zeta", "Bravo", "alpha", "sys"):
                 (Path(folder) / name).mkdir()
-            self.assertEqual(get_petlist(folder), ["Alpha", "alpha", "zeta"])
+            self.assertEqual(get_petlist(folder), ["alpha", "Bravo", "zeta"])
 
 
 if __name__ == "__main__":
