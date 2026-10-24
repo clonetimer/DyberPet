@@ -46,7 +46,8 @@ def _guga(action: str, i: int, count: int):
     t = 2 * math.pi * i / count
     walks = action in ("left_walk", "right_walk")
     direction = -1 if action == "left_walk" else 1
-    shift = round(5 * math.sin(t)) * direction if walks else 0
+    # Combine sine and cosine so six walk frames remain visually distinct.
+    shift = round(5 * math.sin(t) + 3 * math.cos(t)) * direction if walks else 0
     steps = round(8 * math.sin(t)) if walks else 0
     tilt = round(4 * math.sin(t)) if walks or action == "wave" else 0
     hop = round(28 * math.sin(math.pi*i/max(1,count-1))) if action == "jump" else 0
