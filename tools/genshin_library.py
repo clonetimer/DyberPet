@@ -35,6 +35,22 @@ def _read_receipt(path):
     return data
 
 
+
+
+def _demo_profile(folder):
+    """Only a first-party mathematical sprite receipt counts as a demo."""
+    record = _read_receipt(folder / "BUILTIN_CHIBI_DEMO.json")
+    if record is None:
+        return None
+    if (record.get("generator") != "DyberPet-first-party-abstract-chibi-v1"
+            or record.get("official_character_art") is not False
+            or record.get("original_illustration") is not True):
+        raise ValueError("Invalid or contradictory built-in demo receipt")
+    value = record.get("profile")
+    if not isinstance(value, str) or not value.startswith("genshin_"):
+        raise ValueError("Invalid built-in demo profile")
+    return value
+
 def _profile_of(folder):
     """Prefer an explicit PERSONAL_IMPORT binding; detect contradictory IDs."""
     found = []
@@ -47,6 +63,9 @@ def _profile_of(folder):
                 if not isinstance(val, str):
                     raise ValueError("Invalid profile in local receipt")
                 found.append(val)
+    demo = _demo_profile(folder)
+    if demo is not None:
+        found.append(demo)
     if len(set(found)) > 1:
         raise ValueError("Conflicting character profiles in local receipts")
     return found[0] if found else None
@@ -95,12 +114,17 @@ def scan_genshin_library(role_root, mappings=None):
                                      "actions": report["validation"]["actions"]})
                     continue
                 entry = result[profile]
+                is_demo = _demo_profile(folder) is not None
                 entry["installed_folders"].append({
+                    "is_original_demo": is_demo,
                     "folder": folder.name,
                     "actions": report["validation"]["actions"],
                     "frames": report["validation"]["images"],
                 })
-                entry["status"] = "structurally_installed"
+                if not is_demo:
+                    entry["status"] = "structurally_installed"
+                elif entry["status"] == "template_only":
+                    entry["status"] = "demo_installed"
             except (ValueError, OSError, UnicodeError, TypeError,
                     json.JSONDecodeError) as exc:
                 invalid.append({"folder": folder.name, "reason": "invalid_local_role",
@@ -112,6 +136,12 @@ def scan_genshin_library(role_root, mappings=None):
             "template_count": len(catalog),
             "installed_profile_count": sum(
                 bool(v["installed_folders"]) for v in result.values()),
+            "original_demo_profile_count": sum(
+                any(x.get("is_original_demo") for x in v["installed_folders"])
+                for v in result.values()),
+            "personal_art_profile_count": sum(
+                any(not x.get("is_original_demo") for x in v["installed_folders"])
+                for v in result.values()),
             "pending_template_count": sum(
                 not v["installed_folders"] for v in result.values()),
             "local_folder_count": total,
@@ -136,10 +166,10 @@ def main(argv=None):
     try:
         result = scan_genshin_library(args.role_root, args.mappings)
         if args.only != "all":
-            wanted = ("structurally_installed" if args.only == "installed"
-                      else "template_only")
+            selected = (("structurally_installed", "demo_installed")
+                        if args.only == "installed" else ("template_only",))
             result["characters"] = [
-                x for x in result["characters"] if x["status"] == wanted]
+                x for x in result["characters"] if x["status"] in selected]
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except (ValueError, OSError) as exc:
