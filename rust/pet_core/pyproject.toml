@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "dyberpet-native-core"
+version = "0.1.0"
+requires-python = ">=3.9"
+description = "Optional native-only resource checks for DyberPet"
+
+[tool.maturin]
+module-name = "dyberpet_native"
+bindings = "pyo3"
+features = ["pyo3/extension-module"]

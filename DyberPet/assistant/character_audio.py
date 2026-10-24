@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 from .character_fidelity import FidelityError, inspect_wav
 from .character_profiles import resolve_profile
 from .preferences import default_preference_path
+from .native_bridge import sha256_file
 
 MAX_RECORD = 8192
 
@@ -30,12 +31,7 @@ def manifest_for(character_name: str, *, root: Path | None = None) -> Path:
 
 
 def digest(path: Path) -> str:
-    filehash = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            filehash.update(chunk)
-    return filehash.hexdigest()
-
+    return sha256_file(path)
 
 def register(character_name: str, clip_path: str | Path, creator: str, source_url: str,
              *, acknowledged_local_rights: bool,
