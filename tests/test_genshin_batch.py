@@ -146,6 +146,19 @@ class GenshinBatchTests(unittest.TestCase):
         with self.assertRaisesRegex(PipelineError, "symlink"):
             plan(self.root, ("hu_tao",))
 
+    def test_linked_review_workspace_is_rejected_without_writes(self):
+        with tempfile.TemporaryDirectory() as outside:
+            self.root.mkdir(parents=True)
+            review = self.root / "reviews"
+            try:
+                review.symlink_to(Path(outside), target_is_directory=True)
+            except (NotImplementedError, OSError):
+                self.skipTest("Directory symlinks unavailable")
+            with self.assertRaisesRegex(PipelineError, "Linked"):
+                seed(self.root, ("xiao",))
+            self.assertFalse(record_path(self.root, "genshin_xiao_main").exists())
+            self.assertEqual(list(Path(outside).iterdir()), [])
+
     def test_cli_lists_and_previews_without_assets(self):
         cli = Path(__file__).resolve().parents[1] / "tools" / "genshin_batch.py"
         for cmd in ("list", "preview"):
