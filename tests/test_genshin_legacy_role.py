@@ -18,6 +18,7 @@ from tools.character_pipeline import (
 from tools.install_native_role import (
     inspect_native_folder, install_native_folder,
 )
+from tools.genshin_batch import status, probe_asset
 
 
 def legacy_character(folder):
@@ -123,6 +124,54 @@ class LegacyGenshinRoleMigrationTests(unittest.TestCase):
     def test_install_rejects_output_root_inside_original(self):
         with self.assertRaisesRegex(ValueError, "outside original"):
             install_native_folder(self.role, self.role / "nested")
+
+    def test_read_only_probe_recognizes_extracted_original_character(self):
+        preview = probe_asset(self.role)
+        self.assertEqual(preview["kind"], "native_folder")
+        self.assertEqual(preview["configuration"]["frames"], 8)
+        self.assertFalse(preview["license_verified"])
+        self.assertFalse(preview["role_identity_verified"])
+        self.assertFalse(preview["asset_modified"])
+
+    def test_read_only_probe_of_zip_does_not_unpack_or_approve_art(self):
+        import zipfile
+        archive = self.root / "xiao-synthetic.zip"
+        with zipfile.ZipFile(archive, "w") as container:
+            for file in self.role.rglob("*"):
+                if file.is_file():
+                    container.write(file, "res/role/Xiao/" + file.relative_to(
+                        self.role).as_posix())
+        result = probe_asset(archive)
+        self.assertEqual(result["kind"], "native_zip")
+        self.assertEqual(result["configuration"]["contained_role_folder"], "Xiao")
+        self.assertFalse(result["playable_role_verified"])
+        self.assertFalse((self.root / "Xiao").exists())
+
+    def test_status_tracks_real_pipeline_without_claiming_role_installation(self):
+        result = status(self.workspace, ("xiao",))
+        self.assertEqual(result["characters"][0]["stage"], "awaiting_local_artwork")
+        self.assertEqual(result["counts"]["qa_verified"], 0)
+        attach_case(self.case, self.role)
+        self.assertEqual(status(self.workspace, ("xiao",))["characters"][0]["stage"],
+                         "source_attached")
+        rights_review(self.case, "CI", str(self.evidence), local_use=True)
+        self.assertEqual(status(self.workspace, ("xiao",))["characters"][0]["stage"],
+                         "rights_reviewed")
+        build_case(self.case)
+        self.assertEqual(status(self.workspace, ("xiao",))["characters"][0]["stage"],
+                         "built_pending_visual_runtime_qa")
+        qa_review(self.case, "CI", visual_pass=True, runtime_pass=True)
+        row = status(self.workspace, ("xiao",))["characters"][0]
+        self.assertEqual(row["stage"], "qa_reviewed")
+        self.assertTrue(row["playable_role_verified"])
+        self.assertFalse(row["redistribution_verified"])
+
+    def test_unseeded_status_does_not_create_workspace(self):
+        unknown = self.root / "unset"
+        report = status(unknown, ("xiao", "wanderer"))
+        self.assertEqual(report["counts"]["seeded"], 0)
+        self.assertEqual(report["counts"]["qa_verified"], 0)
+        self.assertFalse(unknown.exists())
 
     def test_explicit_folder_name_must_be_safe(self):
         with self.assertRaisesRegex(ValueError, "ASCII"):
