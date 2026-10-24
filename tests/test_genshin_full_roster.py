@@ -82,6 +82,8 @@ class FullGenshinRosterTests(unittest.TestCase):
         expected = {
             "安柏": "genshin_amber",
             "Amber": "genshin_amber",
+            "丽莎": "genshin_lisa",
+            "Lisa": "genshin_lisa",
             "genshin_amber": "genshin_amber",
             "哥伦比娅": "genshin_columbina",
             "Vodyanitsa": "genshin_vodyanitsa",
