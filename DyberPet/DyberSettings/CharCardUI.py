@@ -76,9 +76,9 @@ class CharInterface(ScrollArea):
         self.addButton = PushButton(self.tr("Add Characters"), self, FIF.ADD)
         self.addButton.setSizePolicy(QSizePolicy.Maximum, self.addButton.sizePolicy().verticalPolicy())
         self.addButton.setToolTip("支持 DyberPet 模组、Codex Pets 图集和透明 GIF/PNG 动画文件夹")
-        self.catalogButton = PushButton(self.tr("原神角色库"), self, FIF.SEARCH)
+        self.catalogButton = PushButton(self.tr("全部角色库"), self, FIF.SEARCH)
         self.catalogButton.setToolTip(
-            self.tr("按人物查看本机已安装、待导入及未关联角色；不自动下载素材"))
+            self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
         self.mascotButton = PushButton(self.tr("咕嘎 / Doro"), self, FIF.HEART)
         self.mascotButton.setToolTip(
             self.tr("查看企鹅/四足演示角色以及个人导入的对应素材；不冒充作者原设美术"))
@@ -182,7 +182,7 @@ class CharInterface(ScrollArea):
                 self.CharCardList[i].card.deleteClicked.connect(self.__onDeleteClicked)
 
         self.addButton.clicked.connect(self.__onAddClicked)
-        self.catalogButton.clicked.connect(self._showGenshinLibrary)
+        self.catalogButton.clicked.connect(self._showAllCharacterCatalog)
         self.mascotButton.clicked.connect(self._showMascotLibrary)
         self.panelHelp.clicked.connect(self.__onShowInstruction)
 
@@ -364,7 +364,7 @@ class CharInterface(ScrollArea):
         #return
 
 
-    def _showMascotLibrary(self):
+    def _showMascotLibrary(self, selected_kind=None):
         """Actual local mascot status; never mistake generated art for source."""
         from tools.mascot_library import scan_mascot_library
         try:
@@ -383,18 +383,24 @@ class CharInterface(ScrollArea):
             "【联网安装】咕嘎作者公开图集（个人本地使用）":"guga",
             "【联网安装】Doro 二创作者图集（CC BY-NC，本机使用）":"doro",
         }
-        chosen,accepted=QInputDialog.getItem(
-            self,self.tr("咕嘎 / Doro 独立角色库"),
-            self.tr("这里的原创演示为可动几何画，不是 CIRCUS/legeling 作者的原始角色图和音频。"),
-            list(install_actions)+list(names),0,False)
-        if not accepted:
-            return
-        if chosen in install_actions:
-            self._installCreatorMascot(install_actions[chosen])
-            return
-        if chosen not in names:
-            return
-        entry=names[chosen]
+        if selected_kind in ("guga", "doro"):
+            # The all-character catalogue already resolved the chosen mascot.
+            # Keep the original independent picker for consent-driven downloads.
+            entry=next(item for item in report["mascots"]
+                       if item["key"]==selected_kind)
+        else:
+            chosen,accepted=QInputDialog.getItem(
+                self,self.tr("咕嘎 / Doro 独立角色库"),
+                self.tr("原创演示不是 CIRCUS/legeling 作者的原画或原声。"),
+                list(install_actions)+list(names),0,False)
+            if not accepted:
+                return
+            if chosen in install_actions:
+                self._installCreatorMascot(install_actions[chosen])
+                return
+            if chosen not in names:
+                return
+            entry=names[chosen]
         roles=entry["imported_creator_art"]+entry["original_demos"]
         if not roles:
             self.__showMessageBox(self.tr("尚无角色动画"),
@@ -476,6 +482,45 @@ class CharInterface(ScrollArea):
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在本机获取并校验角色作者发布的图集，然后转换动画。"),1)
+
+    def _showAllCharacterCatalog(self):
+        """Search all families using the same local evidence and preview engine."""
+        from tools.character_progress import character_progress
+        from .character_catalog_dialog import CharacterCatalogDialog
+        from tools.genshin_library import scan_genshin_library
+        try:
+            progress=character_progress(Path(basedir)/"res"/"role")
+        except (ValueError,OSError) as exc:
+            self.__showSystemNote(self.tr("无法读取全部角色：")+str(exc),2)
+            return
+        dialog=CharacterCatalogDialog(progress,parent=self)
+        if not dialog.exec():
+            return
+        selected=dialog.selection
+        if selected=="__manage_genshin__":
+            self._showGenshinLibrary()
+            return
+        if selected in ("mascot_guga","mascot_doro"):
+            self._showMascotLibrary(selected.split("_",1)[1])
+            return
+        if selected is None or not selected.startswith("genshin_"):
+            return
+        try:
+            report=scan_genshin_library(Path(basedir)/"res"/"role")
+        except (ValueError,OSError) as exc:
+            self.__showSystemNote(self.tr("无法读取原神人物素材：")+str(exc),2)
+            return
+        role=next((x for x in report["characters"] if x["profile"]==selected),None)
+        if role is None:
+            self.__showSystemNote(self.tr("角色模板不再存在，请重新打开目录。"),2)
+            return
+        if not role["installed_folders"]:
+            self.__showMessageBox(
+                role["name"]+self.tr(" · 暂无动画"),
+                self.tr("这个角色只有模板，没有通过本地结构检查的动画。"
+                        "可从「添加角色」导入你已有权使用的素材。"))
+            return
+        self._openGenshinRoleActions(role)
 
     def _showGenshinLibrary(self):
         """Read-only overview; never call seed(), download art or install."""
