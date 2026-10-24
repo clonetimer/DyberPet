@@ -511,7 +511,7 @@ class CharInterface(ScrollArea):
         if not accepted:
             return
         if chosen == progress_label:
-            self._showCharacterProgress()
+            self._showCharacterProgress(genshin_snapshot=report)
             return
         if chosen == manage_label:
             self._associateExistingGenshinRole(report)
@@ -540,11 +540,12 @@ class CharInterface(ScrollArea):
             return
         self._openGenshinRoleActions(role)
 
-    def _showCharacterProgress(self):
+    def _showCharacterProgress(self, genshin_snapshot=None):
         """Present actual *local* capability counts, never invent art or QA."""
         from tools.character_progress import character_progress
         try:
-            data = character_progress(Path(basedir) / "res" / "role")
+            data = character_progress(Path(basedir) / "res" / "role",
+                                      genshin_snapshot=genshin_snapshot)
         except (ValueError, OSError) as exc:
             self.__showSystemNote(self.tr("角色进度检查失败：") + str(exc), 2)
             return

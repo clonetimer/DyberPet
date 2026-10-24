@@ -68,7 +68,22 @@ class CharacterCoverageTests(unittest.TestCase):
         self.assertIn("self.__onLaunchClicked(name)",methods["_openGenshinRoleActions"])
         self.assertIn("_openGenshinRoleActions(role)",
                       methods["_showGenshinLibrary"])
-        self.assertIn("_showCharacterProgress()",methods["_showGenshinLibrary"])
+        # A recent role-library scan must be forwarded to the progress viewer:
+        # the argument intentionally prevents a costly duplicate full scan.
+        ui_method=next(node for node in ast.walk(tree)
+                       if isinstance(node,ast.FunctionDef)
+                       and node.name=="_showGenshinLibrary")
+        progress_calls=[
+            node for node in ast.walk(ui_method)
+            if isinstance(node,ast.Call)
+            and isinstance(node.func,ast.Attribute)
+            and node.func.attr=="_showCharacterProgress"
+        ]
+        self.assertEqual(len(progress_calls),1)
+        self.assertTrue(any(key.arg=="genshin_snapshot"
+                            and isinstance(key.value,ast.Name)
+                            and key.value.id=="report"
+                            for key in progress_calls[0].keywords))
         self.assertIn("character_progress(",methods["_showCharacterProgress"])
         # Viewing coverage or preview must never install/download third-party assets.
         for name in ("_showCharacterProgress","_openGenshinRoleActions"):

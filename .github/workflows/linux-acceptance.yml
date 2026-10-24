@@ -13,6 +13,8 @@ on:
       - "tools/generate_builtin_chibi_demos.py"
       - "tools/generate_mascot_demos.py"
       - "tools/mascot_library.py"
+      - "tools/role_family.py"
+      - "tests/test_role_family_ownership.py"
       - "tests/test_builtin_mascot_demos.py"
       - "tools/role_action_preview.py"
       - "DyberPet/DyberSettings/mascot_preview_dialog.py"
