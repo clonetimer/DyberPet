@@ -259,7 +259,8 @@ class CharInterface(ScrollArea):
         # Keep existing role management layout: one compact choice determines
         # whether user selects an unpacked role folder or a native MOD ZIP.
         options = ["个人本地导入：角色文件夹 / Codex / GIF / PNG", "个人本地导入：原生角色 ZIP",
-                   "生成原创 Q 版示例角色（不需下载素材）"]
+                   "生成原创 Q 版示例角色（不需下载素材）",
+                   "浏览角色合集来源（网页手动获取，不自动下载）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -280,6 +281,10 @@ class CharInterface(ScrollArea):
             return
         if choice == options[2]:
             self._importOriginalDemo()
+            return
+        if choice == options[3]:
+            QDesktopServices.openUrl(QUrl(
+                "https://github.com/clonetimer/DyberPet/blob/main/docs/collection.md"))
             return
         folder = QFileDialog.getExistingDirectory(
             self, self.tr("Please select the character folder"), docs)
