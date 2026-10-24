@@ -10,6 +10,10 @@ $exe = Join-Path $package "DyberPet.exe"
 if (-not (Test-Path -LiteralPath $exe)) { throw "EXE not found: $exe" }
 # Keep res/ editable beside the executable; do not embed user character art.
 Copy-Item -LiteralPath (Join-Path $root "res") -Destination (Join-Path $package "res") -Recurse -Force
+# Generate first-party geometric chibi demo frames for every roster profile.
+# Does not overwrite imported character art; no copyrighted assets downloaded.
+python tools/generate_builtin_chibi_demos.py --output-root (Join-Path $package "res/role")
+if ($LASTEXITCODE -ne 0) { throw "Bundled character demos did not generate" }
 New-Item -ItemType Directory -Force -Path (Join-Path $package "data") | Out-Null
 Copy-Item -LiteralPath (Join-Path $root "docs/pet_assistant.md") -Destination (Join-Path $package "ASSISTANT_GUIDE.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/character_fidelity.md") -Destination (Join-Path $package "CHARACTER_FIDELITY.md")
