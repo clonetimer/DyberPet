@@ -594,6 +594,20 @@
       "notes": "7.1可玩角色目录占位，仅预设角色名与导入模板；尚无该人物素材或逐件授权确认。个人本机使用需自行提供文件并核对具体使用条款。"
     },
     {
+      "id": "genshin_lisa_main",
+      "name": "丽莎（Q版主桌宠候选）",
+      "channel": "aplaybox",
+      "asset_url": "",
+      "format": "unconfirmed",
+      "profile": "genshin_lisa",
+      "kind_suggestion": "frames",
+      "rights_status": "unknown",
+      "status": "research_needed",
+      "target": "main_role",
+      "creator": "",
+      "notes": "7.1 可玩角色丽莎（Lisa）补齐；只有角色模板与本地导入能力，未附带素材、作者来源和可再分发授权。"
+    },
+    {
       "id": "genshin_mika_main",
       "name": "米卡（Q版主桌宠候选）",
       "channel": "aplaybox",
@@ -1806,8 +1820,9 @@
     "version": "7.1",
     "as_of": "2026-10-24",
     "scope": "playable character silhouettes; Traveler variants split; Paimon existing nonplayable preset",
-    "new_template_count": 92,
+    "new_template_count": 93,
     "roster_source": "https://gamewith.net/genshin-impact/article/show/22357",
-    "release_announcement": "https://www.gamespress.com/uk-UA/Genshin-Impact-Version-71-Launches-September-23-as-Forces-Gather-in-Sn"
+    "release_announcement": "https://www.gamespress.com/uk-UA/Genshin-Impact-Version-71-Launches-September-23-as-Forces-Gather-in-Sn",
+    "audit_note": "Lisa absent in previous 7.1 snapshot; fixed after cross-check against GameWith 7.1 Electro 4-star roster (2026-10-24)."
   }
 }
