@@ -39,6 +39,48 @@ SAFE_EXTENSIONS = {".png", ".json", ".wav"}
 ROOT_PREFIX = "DyberPet_GenshinImpact-" + REVISION + "/res/role/"
 
 
+def _prune_missing_optional_actions(folder):
+    """Repair an upstream legacy configuration with missing *optional* sprites.
+
+    Only action references to absent original PNGs are removed; no frames,
+    artwork, proportions or image pixels are generated or modified. Current
+    artist config is preserved in a separate source metadata file.
+    """
+    pet_file = folder / "pet_conf.json"
+    act_file = folder / "act_conf.json"
+    pet = json.loads(pet_file.read_text(encoding="utf-8"))
+    actions = json.loads(act_file.read_text(encoding="utf-8"))
+    missing = sorted(name for name, cfg in actions.items()
+                     if not list((folder / "action").glob(str(cfg.get("images", "")) + "_*.png")))
+    if not missing:
+        return []
+    for core in ("default", "drag", "fall"):
+        if pet.get(core) in missing:
+            raise ValueError("Upstream core action is missing artist sprites: " + core)
+    (folder / "UPSTREAM_ACT_CONF.json").write_text(
+        json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
+    (folder / "UPSTREAM_PET_CONF.json").write_text(
+        json.dumps(pet, ensure_ascii=False, indent=2), encoding="utf-8")
+    for key in missing:
+        del actions[key]
+    for field in ("up", "down", "left", "right", "prefall", "on_floor", "focus"):
+        if pet.get(field) in missing:
+            pet[field] = pet["default"]
+    if isinstance(pet.get("patpat"), str) and pet["patpat"] in missing:
+        pet["patpat"] = pet["default"]
+    if isinstance(pet.get("patpat"), dict):
+        pet["patpat"] = {key: (pet["default"] if act in missing else act)
+                         for key, act in pet["patpat"].items()}
+    pet["random_act"] = [entry for entry in pet.get("random_act", [])
+                         if all(act in actions for act in entry.get("act_list", []))]
+    pet["accessory_act"] = [entry for entry in pet.get("accessory_act", [])
+                            if all(act in actions for act in
+                                   entry.get("act_list", []) + entry.get("acc_list", []))]
+    pet_file.write_text(json.dumps(pet, ensure_ascii=False, indent=2), encoding="utf-8")
+    act_file.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
+    return missing
+
+
 def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen):
     """Return folder name; fail without modifying existing roles."""
     if not confirmed:
@@ -104,7 +146,10 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with archive.open(info) as reader, target.open("xb") as writer:
                     shutil.copyfileobj(reader, writer, 1024 * 1024)
-            # This validates original configuration and its genuine image frames.
+            # Some author-released older configurations list effects whose
+            # sprites were never published (e.g. Wanderer). Keep genuine art
+            # intact and drop only missing, nonessential action references.
+            excluded = _prune_missing_optional_actions(staged)
             status = validate_native_role(staged)
             (staged / "PERSONAL_IMPORT.json").write_text(
                 json.dumps({"selected_profile": profile,
@@ -114,7 +159,8 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
                             "source_rights_verified": False,
                             "likeness_manually_reviewed": False,
                             "voice_verified": False,
-                            "installed_for_personal_use": True},
+                            "installed_for_personal_use": True,
+                            "absent_upstream_actions": excluded},
                            ensure_ascii=False, indent=2), encoding="utf-8")
             if destination.exists() or destination.is_symlink():
                 raise FileExistsError("Source role folder was created concurrently")
