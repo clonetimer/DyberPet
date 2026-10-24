@@ -217,11 +217,19 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
             folder: str | None = None, name: str | None = None,
             author: str | None = None, license_name: str | None = None,
             source_url: str | None = None, style: str = "classic",
-            profile: str | None = None) -> Path:
+            profile: str | None = None,
+            preserve_source_frames: bool = False) -> Path:
+    """Preserve exact artist frame pixels for pinned sources, including layout.
+
+    Ordinary user-selected chibi normalization stays available. Preserving a
+    creator's art must not suppress persona/franchise metadata or dialogue.
+    """
     if style not in ("classic", "chibi"):
         raise ValueError("Unknown style: " + str(style))
     profile_info = get_profile(profile)
-    if profile_info is not None:
+    if preserve_source_frames:
+        style = "classic"
+    elif profile_info is not None:
         style = "chibi"
     atlas_path, manifest = resolve_source(source)
     preset_data = PRESETS.get(preset or "", {})
@@ -278,8 +286,10 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
     if profile_info is not None:
         info["tages"][profile_info["franchise"]] = "#C7E3D1"
         info["intro"] = (
-            f"{profile_info['name']}的Q版桌宠配置模板；图像由用户自行提供，"
-            "不代表该作品官方授权。"
+            (f"{profile_info['name']}的创作者原始桌宠动画；已保留原画帧布局。"
+             if preserve_source_frames else
+             f"{profile_info['name']}的Q版桌宠配置模板；图像由用户自行提供。")
+            + "不代表该作品官方授权。"
         )
 
     dest_root.mkdir(parents=True, exist_ok=True)
@@ -304,6 +314,7 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
         (working / "IMPORT_REPORT.json").write_text(
             json_text({"format": f"Codex Pets V{version}", "style": style,
                        "profile": profile,
+                       "preserve_source_frames": bool(preserve_source_frames),
                        "mascot_preset": preset if source_matches else None,
                        "source_manifest_id": manifest.get("id"),
                        "mascot_identity_confirmed_by_filename": False,
