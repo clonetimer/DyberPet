@@ -181,6 +181,14 @@ class GenshinSidecarMappingTests(unittest.TestCase):
         self.assertIn("confirmed=True", source)
         self.assertIn("self.__showMessageBox(", source)
         self.assertIn("Path(basedir) / 'data' / 'genshin_role_bindings.json'", source)
+        unbind = next(x for x in ast.walk(tree)
+                      if isinstance(x, ast.FunctionDef)
+                      and x.name == "_unlinkExistingGenshinRole")
+        unbind_source = ast.unparse(unbind)
+        self.assertIn("unbind_existing_role(", unbind_source)
+        self.assertIn("confirmed=True", unbind_source)
+        self.assertIn("self.__showMessageBox(", unbind_source)
+
 
 
 if __name__ == "__main__":
