@@ -64,6 +64,38 @@ class ImportCodexPetTests(unittest.TestCase):
         with Image.open(out / "info" / "cover.png") as cover:
             self.assertEqual(cover.size, (300, 169))
 
+    def test_artist_source_retains_exact_pixels_and_persona_without_shifts(self):
+        """The real-source path must ignore generic chibi ground correction."""
+        self.make_atlas()
+        atlas_path = self.source / "spritesheet.webp"
+        with Image.open(atlas_path) as original:
+            artist_atlas = original.convert("RGBA")
+        # A second real idle frame intentionally has a different baseline:
+        # chibi normalization would otherwise translate its visible pixels.
+        marker = ImageDraw.Draw(artist_atlas)
+        marker.rectangle((192 + 11, 95, 192 + 60, 145),
+                         fill=(200, 70, 110, 255))
+        artist_atlas.save(atlas_path, "WEBP", lossless=True)
+        with Image.open(atlas_path) as original:
+            source_pixels = original.convert("RGBA")
+            expected_0 = source_pixels.crop((0, 0, 192, 208)).tobytes()
+            expected_1 = source_pixels.crop((192, 0, 384, 208)).tobytes()
+        out = convert(self.source, self.dest, folder="SourceCodexNahida",
+                      name="纳西妲", profile="genshin_nahida",
+                      style="classic", preserve_source_frames=True)
+        with Image.open(out / "action" / "idle_0.png") as first:
+            self.assertEqual(first.convert("RGBA").tobytes(), expected_0)
+        with Image.open(out / "action" / "idle_1.png") as second:
+            self.assertEqual(second.convert("RGBA").tobytes(), expected_1)
+        report = json.loads((out / "IMPORT_REPORT.json").read_text("utf-8"))
+        self.assertTrue(report["preserve_source_frames"])
+        self.assertEqual(report["style"], "classic")
+        self.assertEqual(report["aligned_frames_per_action"], {})
+        self.assertEqual(report["profile"], "genshin_nahida")
+        self.assertTrue((out / "note" / "bubble_conf.json").exists())
+        avatar = json.loads((out / "info" / "info.json").read_text("utf-8"))
+        self.assertEqual(avatar["petName"], "纳西妲")
+
     def test_import_v2_16_way_look(self):
         self.make_atlas(version=2)
         out = convert(self.source, self.dest, preset="doro")
