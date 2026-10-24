@@ -18,10 +18,15 @@ except ImportError:
     from mascot_library import scan_mascot_library
 
 
-def character_progress(role_root):
-    """Return a detached, JSON-compatible capability ledger; no file writes."""
-    genshin = scan_genshin_library(role_root)
-    mascots = scan_mascot_library(role_root)
+def character_progress(role_root, *, genshin_snapshot=None, mascot_snapshot=None):
+    """Return a read-only capability ledger; optionally reuse fresh GUI scan.
+
+    The role picker already scanned every native PNG. Reusing that snapshot
+    avoids a second complete filesystem traversal in the same GUI operation.
+    Callers needing up-to-date data should omit the optional snapshots.
+    """
+    genshin = genshin_snapshot if genshin_snapshot is not None else scan_genshin_library(role_root)
+    mascots = mascot_snapshot if mascot_snapshot is not None else scan_mascot_library(role_root)
     entries = []
     for item in genshin["characters"]:
         folders = item["installed_folders"]
