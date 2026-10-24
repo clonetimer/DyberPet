@@ -236,6 +236,21 @@ def _assistant_package_smoke():
     if not report["character_importer"]["ok"]:
         raise RuntimeError("Portable character import conversion failed")
     # Only packaged releases must contain pre-rendered demo animations.
+    # Exercise genuine packaged backup creation/verification in a temporary
+    # sandbox so CI cannot pass just because source-level helpers are importable.
+    from DyberPet.assistant.save_snapshot import create_backup, verify_backup
+    with tempfile.TemporaryDirectory(prefix="dyberpet-save-smoke-") as temp:
+        savedir = Path(temp) / "data"
+        savedir.mkdir()
+        (savedir / "settings.json").write_text("{}", encoding="utf-8")
+        (savedir / "pet_data.json").write_text("{}", encoding="utf-8")
+        archive_path = Path(temp) / "backup.zip"
+        create_backup(savedir, archive_path)
+        report["backup_snapshot_verified"] = (
+            verify_backup(archive_path)["files"] == ["settings.json", "pet_data.json"])
+        if not report["backup_snapshot_verified"]:
+            raise RuntimeError("Frozen complete-backup functionality unavailable")
+
     # Source CI deliberately tests an untouched checkout and does not seed it.
     if getattr(sys, "frozen", False):
         from tools.genshin_library import scan_genshin_library

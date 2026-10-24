@@ -13,6 +13,7 @@ on:
       - "tests/test_default_pet_order.py"
       - "DyberPet/modules.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
+      - "DyberPet/DyberSettings/GameSaveUI.py"
       - "tools/personal_role_import.py"
       - "tools/create_original_mascot.py"
       - "tools/generate_builtin_chibi_demos.py"
@@ -48,6 +49,7 @@ on:
       - "tests/test_default_pet_order.py"
       - "DyberPet/assistant/**"
       - "DyberPet/DyberSettings/CharCardUI.py"
+      - "DyberPet/DyberSettings/GameSaveUI.py"
       - "tools/personal_role_import.py"
       - "tools/create_original_mascot.py"
       - "tools/generate_builtin_chibi_demos.py"
@@ -93,7 +95,7 @@ jobs:
           cache-dependency-path: requirements-windows-portable.txt
       - name: Install pinned desktop and offline voice build dependencies
         run: python -m pip install -r requirements-windows-portable.txt
-      - name: Verify deterministic first-launch pet selection
+      - name: Verify stable first-run starter role
         run: python -m unittest discover -s tests -p "test_default_pet_order.py" -v
       - name: Build portable Windows onedir candidate
         shell: pwsh
@@ -112,6 +114,7 @@ jobs:
           if (-not (Test-Path -LiteralPath $report)) { throw "EXE did not produce smoke report" }
           $outcome = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
           if (-not $outcome.assets.ok -or -not $outcome.assistant_dialog) { throw "Packaged assistant or resources failed verification" }
+          if (-not $outcome.backup_snapshot_verified) { throw "Packaged full-save backup verification failed" }
           if (-not $outcome.character_importer.ok -or $outcome.character_importer.synthetic_actions -lt 1 -or $outcome.character_importer.synthetic_frames -lt 1) { throw "Packaged character importer failed real synthetic conversion" }
           if ($outcome.character_importer.modified_user_roles -or $outcome.character_importer.third_party_art_included) { throw "Character smoke mutated resources or used external art" }
           if ($outcome.character_importer.genshin_profile_count -ne 123) { throw "Missing full 7.1 Genshin roster from packaged EXE" }
