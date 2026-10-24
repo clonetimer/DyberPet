@@ -47,6 +47,7 @@ class ArtistInstallTests(unittest.TestCase):
         self.assertFalse((folder / "action/ignore_0.png").exists())
         receipt = json.loads((folder / "PERSONAL_IMPORT.json").read_text("utf-8"))
         self.assertEqual(receipt["selected_profile"], "genshin_nahida")
+        self.assertEqual(receipt["display_name"], "纳西妲")
         self.assertEqual(receipt["source_commit"], REVISION)
         self.assertFalse(receipt["likeness_manually_reviewed"])
         self.assertEqual(role["actions"], 1)
