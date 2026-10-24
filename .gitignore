@@ -33,3 +33,15 @@ res/items/Pikesou
 res/role/像素猫meme
 res/role/咕咕
 res/role/守岸人
+# User-imported third-party sprite assets (do not publish without permission)
+/res/role/Guga/
+/res/role/Doro/
+/res/role/Chibi/
+/res/role/GenshinPaimon/
+/res/role/GenshinNahida/
+/res/role/GenshinKlee/
+/res/role/GenshinFurina/
+/res/role/AilimitArrisa/
+/res/role/ArknightsAmiya/
+/res/role/StarrailMarch7/
+/res/role/WutheringRover/

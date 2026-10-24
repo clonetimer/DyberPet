@@ -1,0 +1,121 @@
+name: Character MOD importer tests
+
+on:
+  pull_request:
+    paths:
+      - "tools/import_codex_pet.py"
+      - "tools/character_pipeline.py"
+      - "tools/blender_chibi_scene.py"
+      - "tools/chibi_clip_map.py"
+      - "tools/render_chibi_blender.py"
+      - "tests/test_blender_render_pipeline.py"
+      - "tests/test_chibi_clip_map.py"
+      - ".github/workflows/blender-chibi-smoke.yml"
+      - "tools/audit_character_sources.py"
+      - "tests/test_source_registry.py"
+      - "tools/character_sources.json"
+      - "tests/test_character_pipeline.py"
+      - "docs/character_pipeline.md"
+      - "tools/install_native_role.py"
+      - "tests/test_native_role_install.py"
+      - "tests/test_qt_character_loader.py"
+      - "DyberPet/conf.py"
+      - "docs/chibi_character_pipeline.md"
+      - "docs/chibi_character_sources.md"
+      - "tools/chibi_layout.py"
+      - "tools/chibi_preview.py"
+      - "tools/import_chibi_animations.py"
+      - "tests/test_import_chibi_animations.py"
+      - "tools/chibi_profiles.py"
+      - "tests/test_chibi_profiles.py"
+      - "tools/__init__.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "docs/codex_character_import.md"
+      - "tests/test_import_codex_pet.py"
+      - ".github/workflows/character-mod-importer.yml"
+  push:
+    branches: [main]
+    paths:
+      - "tools/import_codex_pet.py"
+      - "tools/character_pipeline.py"
+      - "tools/blender_chibi_scene.py"
+      - "tools/chibi_clip_map.py"
+      - "tools/render_chibi_blender.py"
+      - "tests/test_blender_render_pipeline.py"
+      - "tests/test_chibi_clip_map.py"
+      - ".github/workflows/blender-chibi-smoke.yml"
+      - "tools/audit_character_sources.py"
+      - "tests/test_source_registry.py"
+      - "tools/character_sources.json"
+      - "tests/test_character_pipeline.py"
+      - "docs/character_pipeline.md"
+      - "tools/install_native_role.py"
+      - "tests/test_native_role_install.py"
+      - "tests/test_qt_character_loader.py"
+      - "DyberPet/conf.py"
+      - "docs/chibi_character_pipeline.md"
+      - "docs/chibi_character_sources.md"
+      - "tools/chibi_layout.py"
+      - "tools/chibi_preview.py"
+      - "tools/import_chibi_animations.py"
+      - "tests/test_import_chibi_animations.py"
+      - "tools/chibi_profiles.py"
+      - "tests/test_chibi_profiles.py"
+      - "tools/__init__.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "docs/codex_character_import.md"
+      - "tests/test_import_codex_pet.py"
+      - ".github/workflows/character-mod-importer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.9", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install image dependency
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Compile modified Python modules
+        run: python -m py_compile tools/chibi_clip_map.py tools/render_chibi_blender.py tools/audit_character_sources.py tools/character_pipeline.py tools/install_native_role.py DyberPet/conf.py tools/import_codex_pet.py tools/import_chibi_animations.py tools/chibi_layout.py tools/chibi_profiles.py tools/chibi_preview.py DyberPet/DyberSettings/CharCardUI.py tests/test_qt_character_loader.py
+      - name: Check standalone Windows-friendly CLI
+        run: python tools/import_codex_pet.py --help
+      - name: Check GIF/PNG importer CLI
+        run: python tools/import_chibi_animations.py --help
+      - name: Check native ZIP importer CLI
+        run: python tools/install_native_role.py --help
+      - name: Check rights-gated character pipeline CLI
+        run: python tools/character_pipeline.py --help
+      - name: Validate source registry structure
+        run: python tools/character_pipeline.py sources
+      - name: Audit source registry offline
+        run: python tools/audit_character_sources.py
+      - name: Check Blender runner CLI
+        run: python tools/render_chibi_blender.py --help
+      - name: Run importer unit tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  qt-loader-smoke:
+    # Calls the actual DyberPet runtime PetConfig/Act/QPixmap loader, not
+    # only the independent artwork conversion functions.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install native GUI dependency
+        run: python -m pip install "Pillow>=10,<13" "PySide6==6.5.2"
+      - name: Exercise real QPixmap and PetConfig role loader
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests -p "test_qt_character_loader.py" -v

@@ -106,17 +106,17 @@ class PetConfig:
             o.act_dict = act_dict
             # 载入默认动作
             o.default = act_dict[conf_params['default']]
-            o.up = act_dict[conf_params.get('up', 'default')]
-            o.down = act_dict[conf_params.get('down', 'default')]
-            o.left = act_dict[conf_params.get('left', 'default')]
-            o.right = act_dict[conf_params.get('right', 'default')]
+            o.up = act_dict[conf_params.get('up', conf_params['default'])]
+            o.down = act_dict[conf_params.get('down', conf_params['default'])]
+            o.left = act_dict[conf_params.get('left', conf_params['default'])]
+            o.right = act_dict[conf_params.get('right', conf_params['default'])]
             o.drag = act_dict[conf_params['drag']]
             o.fall = act_dict[conf_params['fall']]
-            o.prefall = act_dict[conf_params.get('prefall','fall')]
-            o.on_floor = act_dict[conf_params.get('on_floor', 'default')]
+            o.prefall = act_dict[conf_params.get('prefall', conf_params['fall'])]
+            o.on_floor = act_dict[conf_params.get('on_floor', conf_params['default'])]
             o.focus = act_dict[conf_params['focus']] if 'focus' in conf_params.keys() else None
 
-            pat_conf = conf_params.get('patpat', 'default')
+            pat_conf = conf_params.get('patpat', conf_params['default'])
             if isinstance(pat_conf, str):
                 # only a single action defined for pat
                 pat_conf = dict([(i,pat_conf) for i in range(num_hp_states)])
@@ -400,7 +400,12 @@ def CheckCharFiles(folder):
     error_action = []
     missing_imgs = []
     for action, actDic in act_conf.items():
-        if "images" not in actDic.keys():
+        # Imported third-party MODs may contain malformed action entries.
+        # Report them instead of raising AttributeError/TypeError in the UI.
+        if (not isinstance(actDic, dict) or
+                not isinstance(actDic.get("images"), str) or
+                not actDic["images"] or
+                any(bad in actDic["images"] for bad in ("/", chr(92), ".."))):
             error_action.append(action)
             continue
         else:
@@ -412,6 +417,11 @@ def CheckCharFiles(folder):
                 [pattern.match(os.path.basename(file)).group(1) for file in list_images if pattern.match(os.path.basename(file))],
                 key=lambda x: int(x)
             )
+            # A missing action prefix must return a validation error, rather
+            # than crashing the "Add Characters" UI with IndexError.
+            if not matching_idx:
+                missing_imgs.append(f'{img_dir}_*.png')
+                continue
             padding_width = len(matching_idx[0])
             m = int(matching_idx[0])
             n = int(matching_idx[-1])
@@ -438,7 +448,8 @@ def CheckCharFiles(folder):
         return 5, missAct
 
     # Check action in pet_conf.json are all defined in act_conf
-    actionsKey = ["default", "up", "down", "left", "right", "drag", "fall", "on_floor"]
+    actionsKey = ["default", "up", "down", "left", "right", "drag",
+                  "fall", "prefall", "on_floor", "focus"]
     actions = [pet_conf[i] for i in actionsKey if i in pet_conf.keys()]
 
     if "patpat" in pet_conf.keys():

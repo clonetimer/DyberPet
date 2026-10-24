@@ -1,0 +1,22 @@
+name: Character source freshness audit
+
+on:
+  schedule:
+    - cron: "15 2 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check registry integrity
+        run: python tools/audit_character_sources.py
+      - name: Require manual source catalog refresh within 90 days
+        run: python tools/audit_character_sources.py --strict-freshness --max-age-days 90
