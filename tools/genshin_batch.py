@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Batch-create Genshin character *cases*, never artwork, in the mature pipeline.
 
-The roster and item-specific source registry are the sole inputs. This tool
+The roster and item-specific source registry define characters. This tool
 does not crawl, download, import games' assets, attest rights, run Blender,
-convert or package a character. Cases are user-local and initially blocked
-until an authorized asset is attached and explicitly rights-reviewed.
+convert or package public character releases. Audit cases are local and
+public release remains restricted. The explicitly acknowledged personal-install
+command can install an independently obtained file without creating audit cases.
 """
 from __future__ import annotations
 
@@ -350,6 +351,13 @@ def main(argv=None):
     p.add_argument("--roles", default="all", help="all or comma-separated IDs")
     p = sub.add_parser("status", help="Summarize actual local role approvals without writing")
     p.add_argument("--roles", default="all", help="all or comma-separated IDs")
+    p = sub.add_parser("personal-install", help="Install a selected local character without release paperwork")
+    p.add_argument("--role", required=True, help="Single roster ID such as xiao")
+    p.add_argument("--asset", type=Path, required=True, help="Already locally obtained ZIP/folder")
+    p.add_argument("--output-root", type=Path,
+                   default=Path(__file__).resolve().parents[1] / "res" / "role")
+    p.add_argument("--personal-use", action="store_true",
+                   help="Confirm personal local handling (not a reuse license)")
     p = sub.add_parser("probe", help="Read-only structural preflight for one local original MOD")
     p.add_argument("--asset", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -363,6 +371,28 @@ def main(argv=None):
             }
         elif args.command == "probe":
             output = probe_asset(args.asset)
+        elif args.command == "personal-install":
+            selected = select_roles(args.role)
+            if len(selected) != 1:
+                raise PipelineError("Install exactly one identified character at a time")
+            if not args.personal_use:
+                raise PipelineError("Confirm this is private local use with --personal-use")
+            if __package__:
+                from .personal_role_import import personal_install
+            else:
+                from personal_role_import import personal_install
+            role = selected[0]
+            installed = personal_install(
+                args.asset, args.output_root, profile="genshin_" + role,
+                confirm_local_only=True)
+            output = {
+                "mode": "personal_local_only",
+                "selected_role": role,
+                "installed_role_folder": installed.name,
+                "art_identity_verified": False,
+                "rights_verified": False, "redistribution_enabled": False,
+                "case_or_rights_records_modified": False,
+            }
         elif args.command == "status":
             output = status(args.workspace, select_roles(args.roles))
         elif args.command == "seed-missing":
