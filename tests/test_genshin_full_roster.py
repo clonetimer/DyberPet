@@ -27,13 +27,13 @@ class FullGenshinRosterTests(unittest.TestCase):
         self.assertEqual(SNAPSHOT_DATE, "2026-10-24")
         self.assertEqual(len(SNAPSHOT_SOURCES), 2)
         lines = RAW_SUPPLEMENTAL.splitlines()
-        self.assertEqual(len(lines), 92)
-        self.assertEqual(len(GENSHIN_ROSTER), 118)
-        self.assertEqual(len(set(GENSHIN_ROSTER)), 118)
+        self.assertEqual(len(lines), 93)
+        self.assertEqual(len(GENSHIN_ROSTER), 119)
+        self.assertEqual(len(set(GENSHIN_ROSTER)), 119)
         current = {"genshin_" + key for key in GENSHIN_ROSTER}
         originals = {"genshin_paimon", "genshin_nahida",
                      "genshin_klee", "genshin_furina"}
-        self.assertEqual(len(current | originals), 122)
+        self.assertEqual(len(current | originals), 123)
         self.assertTrue(current.isdisjoint(originals))
         self.assertTrue(current | originals <= set(CHIBI_PROFILES))
         expected = ("amber", "zhongli", "raiden_shogun", "nahida",
@@ -47,7 +47,7 @@ class FullGenshinRosterTests(unittest.TestCase):
 
     def test_snapshot_candidates_are_not_pretend_sprite_assets(self):
         catalog = catalogue()
-        self.assertEqual(len(catalog), 118)
+        self.assertEqual(len(catalog), 119)
         for key, person in GENSHIN_ROSTER.items():
             with self.subTest(key=key):
                 candidate = catalog["genshin_" + key]

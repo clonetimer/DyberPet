@@ -76,6 +76,9 @@ class CharInterface(ScrollArea):
         self.addButton = PushButton(self.tr("Add Characters"), self, FIF.ADD)
         self.addButton.setSizePolicy(QSizePolicy.Maximum, self.addButton.sizePolicy().verticalPolicy())
         self.addButton.setToolTip("支持 DyberPet 模组、Codex Pets 图集和透明 GIF/PNG 动画文件夹")
+        self.catalogButton = PushButton(self.tr("原神角色库"), self, FIF.SEARCH)
+        self.catalogButton.setToolTip(
+            self.tr("按人物查看本机已安装、待导入及未关联角色；不自动下载素材"))
 
         # Button to show instructions on how to manually add chars
         #self.instructButton = TransparentPushButton(self.tr("Add Chars Manually"), self, FIF.QUESTION)
@@ -88,7 +91,8 @@ class CharInterface(ScrollArea):
         self.headerLayout.setSpacing(0)
 
         self.headerLayout.addWidget(self.addButton, Qt.AlignLeft | Qt.AlignVCenter)
-        spacerItem1 = QSpacerItem(15, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
+        self.headerLayout.addWidget(self.catalogButton, Qt.AlignLeft | Qt.AlignVCenter)
+        spacerItem1 = QSpacerItem(10, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.headerLayout.addItem(spacerItem1)
         self.headerLayout.addWidget(self.CharListLink, Qt.AlignLeft | Qt.AlignVCenter)
         #spacerItem2 = QSpacerItem(15, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
@@ -174,6 +178,7 @@ class CharInterface(ScrollArea):
                 self.CharCardList[i].card.deleteClicked.connect(self.__onDeleteClicked)
 
         self.addButton.clicked.connect(self.__onAddClicked)
+        self.catalogButton.clicked.connect(self._showGenshinLibrary)
         self.panelHelp.clicked.connect(self.__onShowInstruction)
 
     def __onLaunchClicked(self, petname):
@@ -353,6 +358,65 @@ class CharInterface(ScrollArea):
         #    return
         #return
 
+
+    def _showGenshinLibrary(self):
+        """Read-only overview; never call seed(), download art or install."""
+        from tools.genshin_library import scan_genshin_library
+        from tools.chibi_profiles import match_chibi_profile
+        try:
+            report = scan_genshin_library(Path(basedir) / "res" / "role")
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("角色库读取失败：") + str(exc), 2)
+            return
+        summary = report["summary"]
+        labels = {}
+        for role in report["characters"]:
+            status = ("本机已有 · 待实机验收"
+                      if role["status"] == "structurally_installed"
+                      else "模板 · 待导入素材")
+            name = f"{role['name']} · {status} [{role['profile']}]"
+            labels[name] = role
+        title = self.tr(
+            f"原神角色库：{summary['template_count']} 个模板 / "
+            f"{summary['installed_profile_count']} 个已有本地素材")
+        chosen, accepted = QInputDialog.getItem(
+            self, title,
+            self.tr("选择角色查看状态；也可输入中文名、英文名或模板 ID。"
+                    "本机扫描不访问网络，不认证角色来源。"),
+            list(labels), 0, True)
+        if not accepted:
+            return
+        role = labels.get(chosen)
+        if role is None:
+            try:
+                selected = match_chibi_profile(chosen)
+            except ValueError as exc:
+                self.__showSystemNote(str(exc), 2)
+                return
+            role = next((x for x in report["characters"]
+                         if x["profile"] == selected), None)
+            if role is None:
+                self.__showSystemNote("只显示原神人物模板。", 2)
+                return
+        if role["status"] != "structurally_installed":
+            self.__showMessageBox(
+                role["name"] + self.tr(" · 待导入素材"),
+                self.tr("仅存在人物配置与动作建议。本机尚无与该模板绑定、"
+                        "通过结构检查的本地角色素材。"
+                        "请使用「添加角色」自行选择已取得的 ZIP 或动画文件夹。"))
+            return
+        installed = role["installed_folders"]
+        summary_text = "\n".join(
+            f"{v['folder']}：{v['actions']} 类动作，{v['frames']} 帧"
+            for v in installed)
+        if self.__showMessageBox(
+                role["name"] + self.tr(" · 本机结构可加载"),
+                summary_text + "\n" + self.tr(
+                    "此结果不证明是该角色原设的美术、声音或已完成 Windows 实机验收。"
+                    "是否打开本地角色文件夹查看？")):
+            folder_path = Path(basedir) / "res" / "role" / installed[0]["folder"]
+            if folder_path.is_dir() and not folder_path.is_symlink():
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder_path.resolve())))
 
     def _chooseChibiProfile(self):
         """Small modal selector, without adding permanent page controls."""
