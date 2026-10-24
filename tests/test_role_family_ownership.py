@@ -95,6 +95,33 @@ class CrossFamilyOwnershipTests(unittest.TestCase):
             associate_existing_role(self.root,"DemoMascotDoro","genshin_lisa",
                                     confirmed=True)
 
+    def test_real_creator_receipt_validates_matching_mascot_and_rejects_cross_family(self):
+        generate_mascot_demos(self.root, ["guga"])
+        folder = self.root / "DemoMascotGuga"
+        (folder / "BUILTIN_MASCOT_DEMO.json").unlink()
+        (folder / "IMPORT_REPORT.json").write_text(json.dumps({
+            "mascot_preset": "guga", "source_manifest_id": "guga--circus",
+            "source_pixel_integrity_verified": True,
+            "preserve_source_frames": True,
+        }), encoding="utf-8")
+        record = {"selected_profile": "guga", "source_id": "guga--circus",
+                  "source_kind": "curated_creator_spritesheet",
+                  "display_name": "咕嘎"}
+        receipt = folder / "PERSONAL_IMPORT.json"
+        receipt.write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
+        self.assertEqual(known_mascot_family(folder), "guga")
+        self.assertEqual(scan_mascot_library(self.root)["summary"]["imported_creator_art_count"], 1)
+        self.assertEqual(scan_genshin_library(self.root)["summary"]["other_family_folder_count"], 1)
+        for selected, source in (("doro", "guga--circus"),
+                                 ("guga", "doro--lingxiaotian"),
+                                 ("genshin_nahida", "guga--circus")):
+            with self.subTest(selected=selected, source=source):
+                record["selected_profile"] = selected
+                record["source_id"] = source
+                receipt.write_text(json.dumps(record), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "identity"):
+                    known_mascot_family(folder)
+
     def test_incorrect_source_id_never_moves_to_genshin_unmapped_list(self):
         generate_mascot_demos(self.root,["guga"])
         role=self.root/"DemoMascotGuga"

@@ -29,6 +29,14 @@ def main():
             record=install_creator_mascot(name,root,confirmed=True)
             v=validate_native_role(root/record["folder"])
             playback=action_preview_plan(root/record["folder"])
+            import_report=json.loads((root/record["folder"]/"IMPORT_REPORT.json").read_text("utf-8"))
+            provenance=json.loads((root/record["folder"]/"PERSONAL_IMPORT.json").read_text("utf-8"))
+            if (import_report.get("style")!="classic" or
+                    import_report.get("preserve_source_frames") is not True or
+                    import_report.get("source_pixel_integrity_verified") is not True or
+                    provenance.get("display_name") not in ("咕嘎","Doro") or
+                    provenance.get("likeness_manually_reviewed") is not False):
+                raise RuntimeError("Artist sprite geometry or character provenance was not preserved: "+name)
             walk={x["name"]: x for x in playback["actions"]}
             if (playback["total_frames"]!=v["images"] or
                     not all(walk.get(k,{}).get("frame_count",0)>=4

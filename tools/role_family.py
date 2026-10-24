@@ -55,9 +55,20 @@ def known_mascot_family(folder):
         raise ValueError("Conflicting Guga and Doro identity receipts")
     # Reject simultaneous Genshin claims instead of silently classifying one
     # library as valid and letting the other report a different owner.
-    if genshin is not None or (other is not None and
-                               other.get("selected_profile") is not None):
-        raise ValueError("Mascot source also claims a Genshin or personal identity")
+    if genshin is not None:
+        raise ValueError("Mascot source also claims Genshin artwork")
+    if other is not None:
+        # Guga/Doro now have PERSONAL_IMPORT provenance just like Codex art.
+        # Accept only a matching mascot identity; never allow a Genshin
+        # profile or another mascot's source ID to cross family boundaries.
+        selected = other.get("selected_profile")
+        source_id = other.get("source_id")
+        if selected not in (None, identities[0]) or source_id not in (
+                None, KNOWN_MASCOTS[identities[0]]):
+            raise ValueError("Mascot source conflicts with personal/Genshin identity")
+        if selected is not None and other.get("source_kind") not in (
+                None, "curated_creator_spritesheet"):
+            raise ValueError("Mascot source kind conflicts with local provenance")
     if report is not None and isinstance(report.get("profile"), str) and (
             report["profile"].startswith("genshin_")):
         raise ValueError("Contradictory Genshin profile in mascot source")
