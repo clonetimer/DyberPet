@@ -34,6 +34,7 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.create_original_mascot \
   --hidden-import tools.generate_mascot_demos \
   --hidden-import tools.mascot_library \
+  --hidden-import tools.install_creator_mascots \
   --hidden-import tools.linux_gui_smoke \
   --collect-submodules backports \
   --hidden-import backports.tarfile \
