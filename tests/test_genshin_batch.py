@@ -110,6 +110,11 @@ class GenshinBatchTests(unittest.TestCase):
                 self.assertFalse(notes["artwork_available"])
                 self.assertEqual(case["profile"], row["profile"])
                 self.assertEqual(case["source"]["url"], row["source_url"])
+                self.assertEqual(case["source"]["artist"], row["creator"])
+                if row["profile"] in ("genshin_xiao", "genshin_wanderer"):
+                    self.assertEqual(case["source"]["artist"], "栎咕咕")
+                else:
+                    self.assertEqual(case["source"]["artist"], "")
                 self.assertGreaterEqual(len(notes["human_visual_checks"]), 3)
                 with self.assertRaises(PipelineError):
                     check_build_gate(case)
