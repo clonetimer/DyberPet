@@ -154,3 +154,21 @@ python tools/character_pipeline.py inspect genshin_xiao_main
 状态定义遵循真实本地候选记录：`not_seeded` → `awaiting_local_artwork` → `source_attached` → `rights_reviewed` → `built_pending_visual_runtime_qa` → `qa_reviewed`。未完成阶段不宣称“角色已可用”。`status` 会读取源文件用于 SHA-256 完整性校验，但不会输出、复制或上传图像、音效，也不会在状态摘要中显示素材的本地绝对路径。
 
 **2026-10-24 名单纠错**：经过 [GameWith 7.1 可玩角色表](https://gamewith.net/genshin-impact/article/show/22357) 按元素交叉审查，修复上一版遗漏的四星雷元素角色**丽莎（Lisa）**。因此共 119 个扩展角色模板，外加原有 3 个可玩人物模板（纳西妲、可莉、芙宁娜）和 1 个伙伴模板（派蒙），合计 123 个选择项；不会继续沿用原先“122项即全角色”的错误。
+
+## 本机角色状态管理（只读）
+
+在 **系统 → 角色管理** 点击 **「原神角色库」**，可以按中文名、英文名或模板 ID 查询全量 123 项；页面会清楚区分：
+
+- **模板 · 待导入素材**：有角色名称、Q 版互动文字和导入模板，但在本机尚没有与此模板绑定且通过结构预检的角色。
+- **本机已有 · 待实机验收**：读取本地 `PERSONAL_IMPORT.json` / `IMPORT_REPORT.json` 的明确模板 ID，验证动作资源目录、引用关系和文件安全限制均满足结构要求。该结果不证明原画确为此人、版权归属或 Windows 真实运行体验。
+- **未关联本地角色**：没有人物模板收据的独立 MOD 或原创星芽仍可在桌宠正常导入使用，但**绝不根据文件夹名字猜测它属于哪个原神角色**。
+
+命令行同样支持完全只读的盘点，无需网络及重新建档：
+
+```powershell
+python tools/genshin_library.py --role-root res/role --only all
+python tools/genshin_library.py --role-root res/role --only installed
+python tools/genshin_library.py --role-root res/role --only pending
+```
+
+报告只暴露本机目录**文件夹名**和动作/帧数量，不包含绝对路径、原始图片或个人秘密。角色导入后若想让盘点按人物归类，应在导入原始 GIF/PNG 或 Codex 素材时选择对应 Q 版人物模板；原生 ZIP 若没有明确人物来源，则先保持未关联状态，不会错误认领。
