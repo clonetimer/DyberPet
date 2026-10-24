@@ -534,21 +534,72 @@ class CharInterface(ScrollArea):
                         "通过结构检查的本地角色素材。"
                         "请使用「添加角色」自行选择已取得的 ZIP 或动画文件夹。"))
             return
-        installed = role["installed_folders"]
-        summary_text = "\n".join(
-            f"{v['folder']}：{v['actions']} 类动作，{v['frames']} 帧"
-            + ("〔程序原创演示，非原神角色美术〕" if v.get("is_original_demo")
-               else "〔本地导入素材〕")
-            for v in installed)
-        if self.__showMessageBox(
-                role["name"] + self.tr(" · 本机结构可加载"),
-                summary_text + "\n" + self.tr(
-                    "演示人物仅用于桌宠动作试用，不是原神游戏美术、模型或原声。"
-                    "该结构检查不证明已完成 Linux/Windows 实机验收。"
-                    "是否打开本地角色文件夹查看？")):
-            folder_path = Path(basedir) / "res" / "role" / installed[0]["folder"]
-            if folder_path.is_dir() and not folder_path.is_symlink():
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder_path.resolve())))
+        self._openGenshinRoleActions(role)
+
+    def _openGenshinRoleActions(self, role):
+        """Preview, switch or inspect *any* safely recognized Genshin role.
+
+        This is the same native animation dialog/controller used for Guga/Doro,
+        not a second graphics engine or a claim of canonical game artwork.
+        """
+        folders = role["installed_folders"]
+        if not folders:
+            return
+        # Personal art is offered before generated demonstration assets.
+        choices = sorted(folders, key=lambda x: (bool(x["is_original_demo"]),
+                                                  x["folder"].casefold()))
+        options = {
+            (f"{item['folder']} · {item['actions']} 类动作 / "
+             f"{item['frames']} 帧 · " +
+             ("程序原创 Q 版演示，非官方美术" if item["is_original_demo"]
+              else "本机导入素材，原设与版权待核实")): item
+            for item in choices
+        }
+        if len(choices) == 1:
+            picked = choices[0]
+        else:
+            choice, accepted = QInputDialog.getItem(
+                self, role["name"] + self.tr(" · 选择本机角色"),
+                self.tr("本机真实导入的美术排列在演示皮肤之前："),
+                list(options), 0, False)
+            if not accepted or choice not in options:
+                return
+            picked = options[choice]
+        name = picked["folder"]
+        folder = Path(basedir) / "res" / "role" / name
+        if not folder.is_dir() or folder.is_symlink():
+            self.__showSystemNote(self.tr("角色文件夹丢失或无法安全读取。"), 2)
+            return
+        operations = [
+            "▶ 预览真实动画动作（播放 / 暂停）",
+            "✓ 切换成当前桌宠",
+            "↗ 查看本机素材目录",
+        ]
+        action, accepted = QInputDialog.getItem(
+            self, role["name"] + self.tr(" · 角色操作"),
+            self.tr("原创演示不代表游戏角色的原设美术、模型或原声："),
+            operations, 0, False)
+        if not accepted:
+            return
+        if action == operations[0]:
+            from .mascot_preview_dialog import MascotActionPreview
+            try:
+                viewer = MascotActionPreview(
+                    folder, original_demo=bool(picked["is_original_demo"]),
+                    parent=self)
+            except (ValueError, OSError, TypeError) as exc:
+                self.__showSystemNote(self.tr("预览无法打开：") + str(exc), 2)
+                return
+            viewer.exec()
+        elif action == operations[1]:
+            if name not in settings.pets:
+                self.__showSystemNote(
+                    self.tr("本机文件有效，但该角色尚未加载到当前桌宠会话。"
+                            "重启 DyberPet 后再切换即可。"), 2)
+                return
+            self.__onLaunchClicked(name)
+        elif action == operations[2]:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder.resolve())))
 
     def _associateExistingGenshinRole(self, report):
         """User-confirmed sidecar mapping of a previously installed local MOD."""
