@@ -22,10 +22,11 @@ class PinnedSourceTests(unittest.TestCase):
             _download_pinned("https://raw.githubusercontent.com/test",
                              (len(data)+1, sha), opener=fake_open)
 
-    def test_six_real_artist_source_ids_are_pinned(self):
+    def test_twelve_real_artist_source_ids_are_pinned(self):
         self.assertEqual(set(SOURCES), {
-            "furina", "hu_tao", "klee", "nahida", "paimon", "raiden"})
-        self.assertEqual(len({v[0] for v in SOURCES.values()}), 6)
+            "furina", "hu_tao", "klee", "nahida", "paimon", "raiden",
+            "arlecchino", "ganyu", "ayaka", "navia", "yae_miko", "yoimiya"})
+        self.assertEqual(len({v[0] for v in SOURCES.values()}), 12)
         for values in SOURCES.values():
             for size, digest in values[3:]:
                 self.assertGreater(size, 10)
