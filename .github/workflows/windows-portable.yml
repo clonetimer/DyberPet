@@ -103,6 +103,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_first_run_guide.py" -v
       - name: Build portable Windows onedir candidate
         shell: pwsh
+        env:
+          DYBERPET_QA_KEEP_ABSTRACT_ART: "1"
         run: ./tools/build_windows_portable.ps1
       - name: Launch packaged EXE in headless assistant smoke mode
         shell: pwsh
