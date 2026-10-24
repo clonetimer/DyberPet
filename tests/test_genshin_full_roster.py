@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from tools.chibi_profiles import CHIBI_PROFILES
+from tools.chibi_profiles import CHIBI_PROFILES, match_chibi_profile
 from tools.genshin_complete_roster import (
     RAW_SUPPLEMENTAL, SNAPSHOT_DATE, SNAPSHOT_SOURCES, SNAPSHOT_VERSION)
 from tools.genshin_roster import GENSHIN_ROSTER
@@ -77,6 +77,28 @@ class FullGenshinRosterTests(unittest.TestCase):
             self.assertEqual(receipt["selected_profile"], "genshin_vodyanitsa")
             self.assertFalse(receipt["source_rights_verified"])
             self.assertFalse(receipt["visual_identity_verified"])
+
+    def test_search_accepts_chinese_english_id_and_traveler_alias(self):
+        expected = {
+            "安柏": "genshin_amber",
+            "Amber": "genshin_amber",
+            "genshin_amber": "genshin_amber",
+            "哥伦比娅": "genshin_columbina",
+            "Vodyanitsa": "genshin_vodyanitsa",
+            "旅行": "genshin_traveler_aether",  # ambiguous: should be rejected
+            "空": "genshin_traveler_aether",
+            "荧": "genshin_traveler_lumine",
+            "琴": "genshin_jean",
+            "魈": "genshin_xiao",
+        }
+        expected.pop("旅行")
+        for raw, key in expected.items():
+            with self.subTest(input=raw):
+                self.assertEqual(match_chibi_profile(raw), key)
+        for ambiguous in ("g", "genshin_", "no_such_character", ""):
+            with self.subTest(bad=ambiguous):
+                with self.assertRaises(ValueError):
+                    match_chibi_profile(ambiguous)
 
     def test_full_roster_seed_missing_is_repeatable_and_read_only_status(self):
         with tempfile.TemporaryDirectory() as tmp:
