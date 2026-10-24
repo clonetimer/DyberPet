@@ -104,10 +104,18 @@ class LocalGenshinLibraryTests(unittest.TestCase):
         methods = [n for n in ast.walk(tree)
                    if isinstance(n, ast.FunctionDef) and n.name == "_showGenshinLibrary"]
         self.assertEqual(len(methods), 1)
-        body = ast.unparse(methods[0])
-        self.assertIn("scan_genshin_library", body)
-        self.assertNotIn("personal_install(", body)
-        self.assertNotIn("seed(", body)
+        call_names = []
+        for node in ast.walk(methods[0]):
+            if isinstance(node, ast.Call):
+                target = node.func
+                if isinstance(target, ast.Name):
+                    call_names.append(target.id)
+                elif isinstance(target, ast.Attribute):
+                    call_names.append(target.attr)
+        self.assertIn("scan_genshin_library", call_names)
+        self.assertTrue({"personal_install", "seed", "seed_missing",
+                         "install_native_role", "convert_animation_folder",
+                         "requests", "urlopen"}.isdisjoint(call_names))
 
 
 if __name__ == "__main__":
