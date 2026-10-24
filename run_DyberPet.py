@@ -31,6 +31,29 @@ if "--linux-bundle-diag" in sys.argv:
 from DyberPet.assistant.portable import initialize_portable_directory
 initialize_portable_directory()
 
+# This check runs against the FINAL distributed personal package, after QA
+# generation stubs were removed. It does not import Qt or initialize saves.
+if "--personal-package-smoke" in sys.argv:
+    import json
+    from pathlib import Path
+    root = Path.cwd()
+    role_root = root / "res" / "role"
+    if not ((role_root / "Kitty" / "pet_conf.json").is_file() and
+            (root / "res" / "language" / "language.json").is_file()):
+        raise RuntimeError("Personal package is missing starter art or UI assets")
+    leaked = [p.name for p in role_root.iterdir() if p.is_dir() and
+              ((p / "BUILTIN_CHIBI_DEMO.json").exists() or
+               (p / "BUILTIN_MASCOT_DEMO.json").exists())]
+    if leaked:
+        raise RuntimeError("Low-fidelity generated characters still bundled: " +
+                           ", ".join(leaked[:5]))
+    print("PERSONAL_ART_PACKAGE_CLEAN", json.dumps({
+        "creator_sources_installer_only": True,
+        "included_generated_character_demos": 0,
+        "native_role_count": sum(p.is_dir() for p in role_root.iterdir()),
+    }), flush=True)
+    sys.exit(0)
+
 # RESTORE MUST BE HANDLED HERE, BEFORE importing settings/DyberPet.DyberPet.
 # That legacy module calls settings.init() and writes live save files on import.
 from DyberPet.assistant.offline_restore import data_directory, recover_interrupted_restore
