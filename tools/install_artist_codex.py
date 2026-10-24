@@ -115,6 +115,7 @@ def install_artist_codex(kind, output_root, *, confirmed=False,
         converted = convert(src, root, folder=folder,
                             profile=profile if profile in CHIBI_PROFILES else None,
                             name=display, style="classic",
+                            preserve_source_frames=True,
                             source_url=f"https://github.com/{REPO}/tree/{REVISION}/pets/{pet_id}",
                             license_name="See original artist submission; private install")
         result = validate_native_role(converted)
