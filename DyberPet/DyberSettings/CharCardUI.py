@@ -771,6 +771,13 @@ class CharInterface(ScrollArea):
 
     def _onChibiImportComplete(self, role_name, error):
         if error:
+            if (self.chibiThread is not None and
+                    self.chibiThread.mode == "creator_source"):
+                error = (self.tr("未能安装作者动画素材：") + error[:360] +
+                         self.tr("\n内置原创咕嘎 / Doro 演示版仍可正常使用。"
+                                 "请检查网络后再次点击「联网安装」；"
+                                 "安全校验不通过时不要尝试绕过 SHA-256。"
+                                 "原有角色文件未被覆盖。"))
             self.__showMessageBox(self.tr("Adding Failed"), error)
             return
         self.newPetFolder = role_name
