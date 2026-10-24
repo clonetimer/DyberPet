@@ -148,6 +148,42 @@ def verify_linux_gui():
         if (getattr(sys, "frozen", False) and
                 progress["summary"]["native_preview_ready"] != 125):
             raise RuntimeError("Frozen GUI lacks usable animations for all 125 roles")
+        # Exercise the real 125-item searchable catalogue against the X11 Qt
+        # display, with genuine native demo assets in frozen mode.
+        from DyberPet.DyberSettings.character_catalog_dialog import CharacterCatalogDialog
+        search_dialog = CharacterCatalogDialog(progress, parent=window)
+        try:
+            search_dialog.show()
+            app.processEvents()
+            if not search_dialog.isVisible() or search_dialog.results.count()!=125:
+                raise RuntimeError("Searchable 125-character Qt catalog did not render")
+            search_dialog.searchBox.setText("Lisa")
+            app.processEvents()
+            if (search_dialog.results.count()!=1 or
+                    search_dialog.selected_character_id()!="genshin_lisa"):
+                raise RuntimeError("English character search failed on X11")
+            search_dialog.searchBox.setText("Doro")
+            app.processEvents()
+            if (search_dialog.results.count()!=1 or
+                    search_dialog.selected_character_id()!="mascot_doro"):
+                raise RuntimeError("Cross-family mascot search failed on X11")
+            search_dialog.searchBox.clear()
+            search_dialog.familyFilter.setCurrentIndex(
+                search_dialog.familyFilter.findData("mascot"))
+            app.processEvents()
+            if search_dialog.results.count()!=2:
+                raise RuntimeError("Cross-family filter failed on X11")
+            search_dialog.familyFilter.setCurrentIndex(
+                search_dialog.familyFilter.findData("all"))
+            search_dialog.statusFilter.setCurrentIndex(
+                search_dialog.statusFilter.findData("demo"))
+            app.processEvents()
+            expected_count=125 if getattr(sys,"frozen",False) else 0
+            if search_dialog.results.count()!=expected_count:
+                raise RuntimeError("Original demo availability filter fabricated assets")
+        finally:
+            search_dialog.close()
+            app.processEvents()
         local_catalog = scan_genshin_library(Path(settings.BASEDIR) / "res" / "role")
         mascot_catalog = scan_mascot_library(Path(settings.BASEDIR) / "res" / "role")
         if local_catalog["summary"]["template_count"] != 123:
@@ -176,6 +212,10 @@ def verify_linux_gui():
             "genshin_original_demo_frames_each": 66,
             "full_character_coverage_templates": progress["summary"]["template_total"],
             "full_character_coverage_ready": progress["summary"]["native_preview_ready"],
+            "character_catalog_searchable": True,
+            "character_catalog_english_search": True,
+            "character_catalog_mascot_filter": True,
+            "character_catalog_demo_count": expected_count,
             "mascot_special_actions_played": ["run","failed","lookaround"],
             "local_profile_count": local_catalog["summary"]["installed_profile_count"],
             "original_demo_profile_count": local_catalog["summary"]["original_demo_profile_count"],
