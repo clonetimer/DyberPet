@@ -86,7 +86,8 @@ def recover_interrupted_restore(data_dir):
         raise BackupError("Corrupted restore journal; preserve files for recovery") from exc
     previous = state.get("previous") if isinstance(state, dict) else None
     stage = state.get("stage") if isinstance(state, dict) else None
-    if (state.get("format") != "dyberpet-offline-restore-v1" or
+    if (not isinstance(state, dict) or
+            state.get("format") != "dyberpet-offline-restore-v1" or
             not isinstance(previous, str) or not isinstance(stage, str) or
             not previous.startswith(PREFIX) or not stage.startswith(STAGE_PREFIX) or
             len(previous) != len(PREFIX) + 32 or len(stage) != len(STAGE_PREFIX) + 32 or
@@ -114,8 +115,11 @@ def restore_backup(archive_path, data_dir, *, failure_hook=None):
     failure_hook is only for simulating a commit-step failure in regression tests.
     """
     data, journal = _safe_transaction_paths(data_dir)
-    source = Path(archive_path).expanduser().resolve()
-    if not source.is_file() or source.is_symlink() or data in source.parents:
+    supplied = Path(archive_path).expanduser()
+    if supplied.is_symlink():
+        raise BackupError("Backup archive must not be a symbolic link")
+    source = supplied.resolve()
+    if not source.is_file() or data in source.parents:
         raise BackupError("Archive must be a regular file outside active saves")
     if journal.exists() or journal.is_symlink():
         raise BackupError("Pending interrupted restore: recover it first")
