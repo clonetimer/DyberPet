@@ -369,6 +369,7 @@ class CharInterface(ScrollArea):
             self.__showSystemNote(self.tr("角色库读取失败：") + str(exc), 2)
             return
         summary = report["summary"]
+        manage_label = "【管理】关联一个已安装但未归类的本地角色"
         labels = {}
         for role in report["characters"]:
             status = ("本机已有 · 待实机验收"
@@ -383,8 +384,11 @@ class CharInterface(ScrollArea):
             self, title,
             self.tr("选择角色查看状态；也可输入中文名、英文名或模板 ID。"
                     "本机扫描不访问网络，不认证角色来源。"),
-            list(labels), 0, True)
+            [manage_label] + list(labels), 0, True)
         if not accepted:
+            return
+        if chosen == manage_label:
+            self._associateExistingGenshinRole(report)
             return
         role = labels.get(chosen)
         if role is None:
@@ -417,6 +421,56 @@ class CharInterface(ScrollArea):
             folder_path = Path(basedir) / "res" / "role" / installed[0]["folder"]
             if folder_path.is_dir() and not folder_path.is_symlink():
                 QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder_path.resolve())))
+
+    def _associateExistingGenshinRole(self, report):
+        """User-confirmed sidecar mapping of a previously installed local MOD."""
+        candidates = [item for item in report["unmapped_local"]
+                      if item["status"] == "unmapped_local"]
+        if not candidates:
+            self.__showMessageBox(
+                self.tr("暂无可关联角色"),
+                self.tr("只有已安装、结构有效且尚无角色身份记录的本地 MOD 才能关联。"
+                        "如果原有关联失效，请先在本地校验或撤销过期记录。"))
+            return
+        choices = {
+            f"{item['folder']} · {item['actions']} 类动作": item["folder"]
+            for item in candidates
+        }
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("关联已有角色（不重新导入）"),
+            self.tr("选择本机已安装的单个角色文件夹："),
+            list(choices), 0, False)
+        if not accepted:
+            return
+        folder = choices.get(selected)
+        if folder is None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted or not profile:
+            return
+        if not profile.startswith("genshin_"):
+            self.__showSystemNote(self.tr("此入口只关联原神人物模板。"), 2)
+            return
+        from tools.chibi_profiles import CHIBI_PROFILES
+        name = CHIBI_PROFILES[profile]["name"]
+        if not self.__showMessageBox(
+                self.tr("确认本地人物关联"),
+                self.tr(f"把现有本地角色「{folder}」归入「{name}」？"
+                        "只在 data 中保存人物与配置摘要，不修改、复制、"
+                        "删除现有素材，不保证作品身份、许可或可玩效果。")):
+            return
+        try:
+            from tools.genshin_role_bindings import associate_existing_role
+            associate_existing_role(
+                Path(basedir) / "res" / "role", folder, profile,
+                mappings=Path(basedir) / "data" / "genshin_role_bindings.json",
+                confirmed=True)
+        except (ValueError, OSError) as exc:
+            self.__showSystemNote(self.tr("本地关联失败：") + str(exc), 2)
+            return
+        self.__showSystemNote(
+            self.tr(f"已将「{folder}」仅在本机归入「{name}」。"
+                    "重新打开原神角色库即可查看；原始素材未改变。"), 1)
 
     def _chooseChibiProfile(self):
         """Small modal selector, without adding permanent page controls."""
