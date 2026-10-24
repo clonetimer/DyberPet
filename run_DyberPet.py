@@ -374,7 +374,7 @@ def _assistant_package_smoke():
     from tools.install_artist_codex import SOURCES as codex_art
     from tools.install_creator_mascots import UPSTREAM as mascot_art
     report["public_art_sources_ready"] = (
-        len(original_genshin) == 3 and len(codex_art) == 6
+        len(original_genshin) == 3 and len(codex_art) == 12
         and {"guga", "doro"}.issubset(mascot_art))
     if not report["public_art_sources_ready"]:
         raise RuntimeError("Pinned original-art installers missing from executable")
