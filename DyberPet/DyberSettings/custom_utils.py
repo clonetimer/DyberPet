@@ -982,7 +982,30 @@ class CharLine(SimpleCardWidget):
         infoFile = os.path.join(basedir, f"res/{self.parentDir}", self.chrFolder, "info/info.json")
         if not os.path.exists(infoFile):
             self.chrName = self.chrFolder
-            pfpPath = os.path.join(basedir,'res/icons/unknown.svg')
+            pfpPath = os.path.join(basedir, 'res/icons/unknown.svg')
+            if self.parentDir == 'role':
+                # A downloaded artist role has a safe ASCII folder name but
+                # may not have a legacy info/info.json. Read its bounded local
+                # receipt so the main role management card shows e.g. 纳西妲
+                # instead of SourceGenshinNahida, without changing the art.
+                role_dir = Path(basedir) / 'res' / 'role' / self.chrFolder
+                receipt = role_dir / 'PERSONAL_IMPORT.json'
+                try:
+                    if (receipt.is_file() and not receipt.is_symlink() and
+                            receipt.stat().st_size <= 16384):
+                        record = json.loads(receipt.read_text(encoding='utf-8'))
+                        name = record.get('display_name') if isinstance(record, dict) else None
+                        if isinstance(name, str) and 1 <= len(name.strip()) <= 80:
+                            self.chrName = name.strip()
+                except (OSError, ValueError, UnicodeError):
+                    pass
+                try:
+                    from DyberPet.assistant.first_run import _native_idle_preview
+                    sprite = _native_idle_preview(role_dir, role_dir / 'action')
+                    if sprite is not None:
+                        pfpPath = str(sprite)
+                except (OSError, ValueError, ImportError):
+                    pass
         else:
             infoConfig = json.load(open(infoFile, 'r', encoding='UTF-8'))
             self.chrName = infoConfig.get("petName", self.chrFolder)
