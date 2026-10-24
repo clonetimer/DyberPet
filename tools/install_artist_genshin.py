@@ -153,6 +153,7 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
             status = validate_native_role(staged)
             (staged / "PERSONAL_IMPORT.json").write_text(
                 json.dumps({"selected_profile": profile,
+                            "display_name": original,
                             "source_repository": REPOSITORY,
                             "source_commit": REVISION,
                             "source_kind": "artist_original_animation",
