@@ -379,11 +379,20 @@ class CharInterface(ScrollArea):
             name=("咕嘎 Guga" if entry["key"]=="guga" else "Doro 四足宠物")
             label=f"{name} · 原创演示 {demos} / 个人来源导入 {actual}"
             names[label]=entry
+        install_actions={
+            "【联网安装】咕嘎作者公开图集（个人本地使用）":"guga",
+            "【联网安装】Doro 二创作者图集（CC BY-NC，本机使用）":"doro",
+        }
         chosen,accepted=QInputDialog.getItem(
             self,self.tr("咕嘎 / Doro 独立角色库"),
             self.tr("这里的原创演示为可动几何画，不是 CIRCUS/legeling 作者的原始角色图和音频。"),
-            list(names),0,False)
-        if not accepted or chosen not in names:
+            list(install_actions)+list(names),0,False)
+        if not accepted:
+            return
+        if chosen in install_actions:
+            self._installCreatorMascot(install_actions[chosen])
+            return
+        if chosen not in names:
             return
         entry=names[chosen]
         roles=entry["imported_creator_art"]+entry["original_demos"]
@@ -400,11 +409,35 @@ class CharInterface(ScrollArea):
         ]
         if self.__showMessageBox(
                 self.tr("本机角色动画"),
-                "\\n".join(descriptions)+"\\n"+
+                "\n".join(descriptions)+"\n"+
                 self.tr("是否打开第一份角色资源的本机目录？")):
             path=Path(basedir)/"res"/"role"/roles[0]["folder"]
             if path.is_dir() and not path.is_symlink():
                 QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve())))
+
+    def _installCreatorMascot(self, kind):
+        """One user-confirmed network fetch; all art remains local, not bundled."""
+        if self.chibiThread is not None:
+            return
+        explanation = (
+            "咕嘎图集由 CIRCUS 发布，来源页没有明确再分发许可；"
+            "仅为你自己在本机获取并转换，请尊重创作者的后续使用条款。"
+            if kind == "guga" else
+            "Doro 图集为 legeling 发布的 CC BY-NC 4.0 二创；"
+            "相关游戏人物的权利另行保留。仅下载本机试用，不含原声。"
+        )
+        if not self.__showMessageBox(
+                self.tr("联网下载独立角色来源图集"),
+                explanation + " 软件会校验固定版本 SHA-256，不会上传本机文件。确认获取？"):
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread=ChibiImportThread(
+            kind, os.path.join(basedir,"res","role"),
+            mode="creator_source", profile=None, preset=kind, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(self.tr("正在本机获取并校验角色作者发布的图集，然后转换动画。"),1)
 
     def _showGenshinLibrary(self):
         """Read-only overview; never call seed(), download art or install."""
@@ -937,6 +970,11 @@ class ChibiImportThread(QThread):
             if self.mode == "original_demo":
                 from tools.create_original_mascot import create_original_mascot
                 new_folder = create_original_mascot(self.output_root)
+            elif self.mode == "creator_source":
+                from tools.install_creator_mascots import install_creator_mascot
+                installed = install_creator_mascot(
+                    self.preset, self.output_root, confirmed=True)
+                new_folder = self.output_root / installed["folder"]
             elif self.mode in ("native_zip", "native_folder"):
                 if self.profile:
                     # Attach only the user-selected display identity; never
