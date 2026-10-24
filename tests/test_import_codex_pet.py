@@ -89,6 +89,7 @@ class ImportCodexPetTests(unittest.TestCase):
             self.assertEqual(second.convert("RGBA").tobytes(), expected_1)
         report = json.loads((out / "IMPORT_REPORT.json").read_text("utf-8"))
         self.assertTrue(report["preserve_source_frames"])
+        self.assertTrue(report["source_pixel_integrity_verified"])
         self.assertEqual(report["style"], "classic")
         self.assertEqual(report["aligned_frames_per_action"], {})
         self.assertEqual(report["profile"], "genshin_nahida")
