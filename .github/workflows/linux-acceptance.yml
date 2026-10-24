@@ -34,6 +34,7 @@ on:
       - "DyberPet/DyberSettings/GameSaveUI.py"
       - "tests/test_save_snapshot.py"
       - "DyberPet/settings.py"
+      - "tests/test_default_pet_order.py"
       - "DyberPet/conf.py"
       - "run_DyberPet.py"
 
@@ -78,6 +79,8 @@ jobs:
           PY
       - name: Validate original PyInstaller/source path semantics
         run: python -m unittest discover -s tests -p "test_linux_portable_paths.py" -v
+      - name: Verify stable first-run starter role
+        run: python -m unittest discover -s tests -p "test_default_pet_order.py" -v
       - name: Exercise real animation QPixmap/PetConfig under X11
         shell: bash
         run: |
