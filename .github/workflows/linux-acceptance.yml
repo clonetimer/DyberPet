@@ -147,6 +147,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/dyberpet-linux-home" "$RUNNER_TEMP/start-from-elsewhere"
           root="$GITHUB_WORKSPACE/dist/DyberPet"
           cd "$RUNNER_TEMP/start-from-elsewhere"
+          "$root/DyberPet" --linux-bundle-diag
           xvfb-run -a -s "-screen 0 1280x800x24" env \
             HOME="$RUNNER_TEMP/dyberpet-linux-home" QT_QPA_PLATFORM=xcb \
             DYBERPET_SMOKE_REPORT="$RUNNER_TEMP/linux-frozen-assistant.json" \
