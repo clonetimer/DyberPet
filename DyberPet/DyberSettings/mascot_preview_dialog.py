@@ -1,4 +1,4 @@
-"""Live Qt action preview of an already-installed Guga/Doro role.
+"""Live Qt action preview of any safely installed DyberPet native role.
 
 Preview is deliberately read-only; it neither changes the active pet nor
 copies original fan-art. Nothing is uploaded and no network is used.
@@ -32,9 +32,9 @@ class MascotActionPreview(QDialog):
 
         layout=QVBoxLayout(self)
         if self.original_demo:
-            message="程序原创演示：不代表咕嘎／Doro 原作者的素材或声音。"
+            message="程序原创演示：不代表相关游戏或角色创作者的美术、模型、语音。"
         else:
-            message="本地来源角色：仅预览实际动画，不认证原设一致性或授权。"
+            message="本地导入素材：仅预览实际动作，不认证原设一致性或再分发权利。"
         self.disclaimer=QLabel(message,self)
         self.disclaimer.setWordWrap(True)
         layout.addWidget(self.disclaimer)
