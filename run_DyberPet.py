@@ -30,6 +30,28 @@ if "--linux-bundle-diag" in sys.argv:
 # guarantees the EXE can be started from any user folder / desktop shortcut.
 from DyberPet.assistant.portable import initialize_portable_directory
 initialize_portable_directory()
+
+# RESTORE MUST BE HANDLED HERE, BEFORE importing settings/DyberPet.DyberPet.
+# That legacy module calls settings.init() and writes live save files on import.
+from DyberPet.assistant.offline_restore import data_directory, recover_interrupted_restore
+if "--restore-save" in sys.argv:
+    from DyberPet.assistant.restore_wizard import run_restore_wizard
+    sys.exit(run_restore_wizard())
+# Obtain exclusive process ownership BEFORE importing DyberPet.DyberPet;
+# that legacy module initializes and rewrites user saves as an import side effect.
+# A second launch must never write while the offline wizard holds the same lock.
+from tendo import singleton
+_SINGLE_INSTANCE = None
+_SMOKE_MODE = ("--assistant-smoke" in sys.argv or
+               "--linux-ui-smoke" in sys.argv)
+if __name__ == "__main__" and not _SMOKE_MODE:
+    try:
+        _SINGLE_INSTANCE = singleton.SingleInstance()
+    except singleton.SingleInstanceException:
+        sys.exit(0)
+    # Only the sole app owner may recover an interrupted directory switch.
+    recover_interrupted_restore(data_directory())
+
 # Capture clean-install state before DyberPet.DyberPet imports settings.init()
 # (which creates settings.json even on the first execution).
 import DyberPet.settings as settings
@@ -139,6 +161,25 @@ class DyberPetApp(QApplication):
         except (OSError, ValueError, KeyError) as exc:
             QMessageBox.warning(self.conp, "桌宠切换失败", str(exc))
 
+    def launch_offline_restore(self):
+        """Start the independent wizard, then gracefully close the pet."""
+        from pathlib import Path
+        from PySide6.QtCore import QProcess
+        from PySide6.QtWidgets import QMessageBox
+        if getattr(sys, "frozen", False):
+            executable, arguments = sys.executable, ["--restore-save"]
+        else:
+            executable = sys.executable
+            arguments = [str(Path(__file__).resolve()), "--restore-save"]
+        started, _pid = QProcess.startDetached(executable, arguments)
+        if not started:
+            QMessageBox.warning(
+                self.conp, "恢复向导无法启动",
+                "程序未能启动独立恢复窗口，桌宠将保持运行，数据不会被修改。")
+            return
+        # This runs PetWidget's existing flush/stop/close path.
+        self.p.quit()
+
     def __connectSignalToSlot(self):
         # Main Widget - others
         self.p.setup_notification.connect(self.note.setup_notification)
@@ -166,6 +207,7 @@ class DyberPetApp(QApplication):
         self.p.show_controlPanel.connect(self.conp.show_window)
 
         self.conp.gamesaveInterface.refresh_pet.connect(self.p.refresh_pet)
+        self.conp.gamesaveInterface.restore_requested.connect(self.launch_offline_restore)
 
         # Dashboard - others
         self.p.show_dashboard.connect(self.board.show_window)
@@ -277,6 +319,36 @@ def _assistant_package_smoke():
             verify_backup(archive_path)["files"] == ["settings.json", "pet_data.json"])
         if not report["backup_snapshot_verified"]:
             raise RuntimeError("Frozen complete-backup functionality unavailable")
+
+    # Real offline restore exercise in an isolated data directory, including
+    # retaining the original state and confirming the standalone Qt wizard.
+    from DyberPet.assistant.offline_restore import restore_backup
+    from DyberPet.assistant.restore_wizard import RestoreWizard
+    with tempfile.TemporaryDirectory(prefix="dyberpet-restore-smoke-") as temp:
+        home = Path(temp)
+        current = home / "data"
+        current.mkdir()
+        old_pet = {"Kitty": {"HP": 80, "HP_tier": 3, "FV": 0, "FV_lvl": 0}}
+        new_pet = {"Kitty": {"HP": 40, "HP_tier": 3, "FV": 2, "FV_lvl": 1}}
+        (current / "settings.json").write_text('{"default_pet":"Kitty"}', encoding="utf-8")
+        (current / "pet_data.json").write_text(json.dumps(old_pet), encoding="utf-8")
+        candidate = home / "candidate"
+        candidate.mkdir()
+        (candidate / "settings.json").write_text('{"default_pet":"Kitty"}', encoding="utf-8")
+        (candidate / "pet_data.json").write_text(json.dumps(new_pet), encoding="utf-8")
+        zip_path = home / "candidate.zip"
+        create_backup(candidate, zip_path)
+        changed = restore_backup(zip_path, current)
+        report["offline_restore_verified"] = (
+            json.loads((current / "pet_data.json").read_text()) == new_pet
+            and Path(changed["pre_restore_directory"]).is_dir()
+            and verify_backup(changed["pre_restore_archive"])["ok"])
+    wizard = RestoreWizard()
+    report["offline_restore_wizard_verified"] = (
+        wizard.commit.isEnabled() is False and wizard.browse.isEnabled())
+    wizard.close()
+    if not report["offline_restore_verified"] or not report["offline_restore_wizard_verified"]:
+        raise RuntimeError("Frozen offline restore failed safety smoke")
 
     # Exercise the real bundled first-run dialog without showing it on
     # existing installs and without touching a live data directory.
@@ -461,12 +533,10 @@ if __name__ == '__main__':
         verify_linux_gui()
         sys.exit(0)
 
-    # Avoid multiple process
-    try:
-        me = singleton.SingleInstance()
-    except:
-        sys.exit()
-
+    # Single-instance lock was acquired before importing any save-writing
+    # modules. Keep its reference alive for the whole GUI process.
+    if _SINGLE_INSTANCE is None:
+        raise RuntimeError("Normal startup requires exclusive DyberPet lock")
 
     # Create App
     QApplication.setHighDpiScaleFactorRoundingPolicy(

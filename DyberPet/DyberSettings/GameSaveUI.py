@@ -29,6 +29,7 @@ class SaveInterface(ScrollArea):
     """ Gaem Save interface """
     freeze_pet = Signal(name='freeze_pet')
     refresh_pet = Signal(name='refresh_pet')
+    restore_requested = Signal(name='restore_requested')
 
     def __init__(self, sizeHintDyber, parent=None):
         super().__init__(parent=parent)
@@ -92,6 +93,12 @@ class SaveInterface(ScrollArea):
             QIcon(os.path.join(basedir, 'res/icons/system/download.svg')),
             self.tr("备份完整存档与设置（ZIP）"),
             self.tr("只备份数据文件，不含角色图片、声音或模型"),
+            self.TransferSaveGroup)
+        self.RestoreBackupCard = PushSettingCard(
+            self.tr("启动安全恢复向导"),
+            QIcon(os.path.join(basedir, 'res/icons/system/upload.svg')),
+            self.tr("恢复完整存档（需退出桌宠）"),
+            self.tr("先安全退出，再在独立窗口校验 ZIP、备份原数据并恢复"),
             self.TransferSaveGroup)
         self.VerifyBackupCard = PushSettingCard(
             self.tr("选择 ZIP 校验"),
@@ -178,6 +185,7 @@ class SaveInterface(ScrollArea):
         self.TransferSaveGroup.addSettingCard(self.ImportSaveCard)
         self.TransferSaveGroup.addSettingCard(self.FullBackupCard)
         self.TransferSaveGroup.addSettingCard(self.VerifyBackupCard)
+        self.TransferSaveGroup.addSettingCard(self.RestoreBackupCard)
         
         # add setting card group to layout
         self.expandLayout.setSpacing(28)
@@ -204,6 +212,7 @@ class SaveInterface(ScrollArea):
             self.__onImportSaveCardClicked)
         self.FullBackupCard.clicked.connect(self._createFullDataBackup)
         self.VerifyBackupCard.clicked.connect(self._verifyFullDataBackup)
+        self.RestoreBackupCard.clicked.connect(self._requestOfflineRestore)
 
         for i in range(len(self.saveCardList)):
             self.saveCardList[i].saveClicked.connect(self.__onCardSaveClicked)
@@ -212,6 +221,14 @@ class SaveInterface(ScrollArea):
             self.saveCardList[i].deleteClicked.connect(self.__onCardDeleteClicked)
             self.saveCardList[i].backtraceClicked.connect(self.__onCardBackClicked)
 
+
+    def _requestOfflineRestore(self):
+        if self.__showMessageBox(
+            self.tr("退出桌宠并打开独立恢复向导？"),
+            self.tr("完整 ZIP 恢复必须在退出桌宠后进行。"
+                    "向导先校验文件，恢复前保存现有数据；"
+                    "个人角色素材和模型不会被 ZIP 覆盖。")):
+            self.restore_requested.emit()
 
     def _createFullDataBackup(self):
         """Give non-programmers an integrity-checked, non-overwriting copy."""

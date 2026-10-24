@@ -119,6 +119,7 @@ jobs:
           $outcome = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
           if (-not $outcome.assets.ok -or -not $outcome.assistant_dialog) { throw "Packaged assistant or resources failed verification" }
           if (-not $outcome.first_run_guide_verified) { throw "First-run GUI unavailable in packaged EXE" }
+          if (-not $outcome.offline_restore_verified -or -not $outcome.offline_restore_wizard_verified) { throw "Frozen offline restore/wizard smoke failed" }
           if (-not $outcome.backup_snapshot_verified) { throw "Packaged full-save backup verification failed" }
           if (-not $outcome.character_importer.ok -or $outcome.character_importer.synthetic_actions -lt 1 -or $outcome.character_importer.synthetic_frames -lt 1) { throw "Packaged character importer failed real synthetic conversion" }
           if ($outcome.character_importer.modified_user_roles -or $outcome.character_importer.third_party_art_included) { throw "Character smoke mutated resources or used external art" }
