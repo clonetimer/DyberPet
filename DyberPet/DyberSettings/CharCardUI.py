@@ -252,13 +252,13 @@ class CharInterface(ScrollArea):
     def __onAddClicked(self):
         # Confirm
         title = self.tr("Adding Character")
-        content = self.tr("You are about to import a character from a local file. Please be aware that it is from third-party sources. We are not responsible for any potential harm or issues that may arise from using this character. Only proceed if you trust the source.")
+        content = self.tr("仅将您选择的角色素材导入这台电脑，不会自动联网下载或发布角色包。请确认文件来源可信，并自行检查创作者对个人使用、修改及分享的具体要求。安装不代表作品身份或授权已经验证；已有角色不会被覆盖。")
         if not self.__showMessageBox(title, content):
             return
 
         # Keep existing role management layout: one compact choice determines
         # whether user selects an unpacked role folder or a native MOD ZIP.
-        options = ["选择角色文件夹（含原生、Codex、Q版动作素材）", "选择原生角色 ZIP 压缩包",
+        options = ["个人本地导入：角色文件夹 / Codex / GIF / PNG", "个人本地导入：原生角色 ZIP",
                    "生成原创 Q 版示例角色（不需下载素材）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
