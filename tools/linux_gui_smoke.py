@@ -172,6 +172,8 @@ def verify_linux_gui():
             "mascot_live_walk_advanced": True,
             "mascot_live_preview_timer_stopped": True,
             "genshin_live_preview_rendered": True,
+            "genshin_original_demo_actions_each": 10,
+            "genshin_original_demo_frames_each": 66,
             "full_character_coverage_templates": progress["summary"]["template_total"],
             "full_character_coverage_ready": progress["summary"]["native_preview_ready"],
             "mascot_special_actions_played": ["run","failed","lookaround"],
