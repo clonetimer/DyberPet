@@ -110,4 +110,4 @@ python tools/character_pipeline.py inspect genshin_xiao_main
 
 在图形界面中仍走“系统 → 角色管理 → 添加角色 → 选择角色文件夹”，但检测到 `pet_conf.json` 和 `act_conf.json` 后会使用新增的**安全后台原生文件夹安装器**，而非直接复制未经检验的旧文件。此 GUI 安装仅是本机加载，**并不等价于作品授权审查或可公开发布角色包**。
 
-状态定义遵循真实本地候选记录：`not_seeded` → `awaiting_local_artwork` → `source_attached` → `rights_reviewed` → `built_pending_visual_runtime_qa` → `qa_reviewed`。未完成阶段不宣称“角色已可用”。`status` 命令不会读取或复制美术内容，也不输出素材文件的本机绝对路径。
+状态定义遵循真实本地候选记录：`not_seeded` → `awaiting_local_artwork` → `source_attached` → `rights_reviewed` → `built_pending_visual_runtime_qa` → `qa_reviewed`。未完成阶段不宣称“角色已可用”。`status` 会读取源文件用于 SHA-256 完整性校验，但不会输出、复制或上传图像、音效，也不会在状态摘要中显示素材的本地绝对路径。
