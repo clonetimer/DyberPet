@@ -102,6 +102,7 @@ def install_artist_codex(kind, output_root, *, confirmed=False,
         result = validate_native_role(converted)
         (converted / "PERSONAL_IMPORT.json").write_text(
             json.dumps({"selected_profile": profile, "source_id": pet_id,
+                        "display_name": display,
                         "source_repository": REPO, "source_commit": REVISION,
                         "source_kind": "curated_creator_spritesheet",
                         "source_rights_verified": False,
