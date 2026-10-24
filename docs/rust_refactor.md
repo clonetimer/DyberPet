@@ -1,3 +1,15 @@
+## R5：同步当前 Python 主干与作者原画（2026-10-24）
+
+现有 Rust Draft PR #3 已通过双父提交与最新 main 合流：**保留原 Rust 研究历史，同时以当前 Python main 的首次使用引导、完整数据备份/停机恢复、15 项真实来源素材安装、低保真占位图剔除、像素保真整改为基线**。目标 PR 已改为 main，且仍为 Draft，不会自动替代 Python 版本。
+
+本阶段只保留可选 **PyO3 PNG 元数据、批量帧索引和 SHA-256**；`DYBERPET_NATIVE_BACKEND=python` 是默认模式，`DYBERPET_NATIVE_BACKEND=rust` 才尝试加载扩展。音频 SHA-256 路由、角色审计和原启动程序均继承主干安全逻辑。新增 `tests/test_rust_creator_art_parity.py`，以**真正可解码的透明 PNG（非仅33字节伪帧）**核对 Python/Rust 完整报告、校验和，以及修改帧后无缓存污染。合成图形只用于数值等价性回归，不宣称游戏美术的视觉真实性。
+
+`tools/build_windows_portable.ps1 -IncludeRust` 生成独立 `DyberPet-Windows-Rust-Experimental.zip`，不影响默认 Python 候选版。Windows 实验 CI 必须在 **打包 EXE 实际运行**中报告 `native_backend.active=rust` 且不可静默回退，校验当前主干的首次启动、备份、独立恢复向导和真实画师素材安装器。作为模拟 UI 烟测输入的 125 套低保真图仅供临时构建过程使用，**最终 Rust 试验下载包同样必须剔除这 125 套占位图**并通过 `--personal-package-smoke` 门禁。
+
+Rust 的潜在收益仍限定在离线资源扫描、完整性校验，不等于桌宠动画帧率提高。只有在 Windows 真机、真实作者素材下重复测量帧率、内存占用、启动耗时、连续运行稳定性且达到收益门槛后，才考虑更深的 Rust 桌面重构。实验分支不合 main，不标记 Stable。
+
+---
+
 # DyberPet Rust Refactor R1/R2 — 批量资源索引和 Windows 原生实验包
 
 **目标：在不打断 Python 版使用和发布的前提下，验证 Rust 原生模块是否有实际收益。**
