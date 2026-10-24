@@ -16,6 +16,8 @@ from tools.genshin_library import scan_genshin_library
 from tools.genshin_role_bindings import associate_existing_role, default_mapping_path
 from tools.mascot_library import scan_mascot_library
 from tools.role_family import known_mascot_family
+from tools.character_progress import character_progress
+from unittest.mock import patch
 
 
 class CrossFamilyOwnershipTests(unittest.TestCase):
@@ -47,6 +49,20 @@ class CrossFamilyOwnershipTests(unittest.TestCase):
         after={p.relative_to(self.root):p.read_bytes()
                for p in self.root.rglob("*") if p.is_file()}
         self.assertEqual(before,after)
+
+    def test_coverage_reuses_recent_genshin_inventory_without_rescanning(self):
+        generate_mascot_demos(self.root)
+        generate_demo_roles(self.root, ["genshin_lisa"])
+        recent=scan_genshin_library(self.root)
+        with patch("tools.character_progress.scan_genshin_library",
+                   side_effect=AssertionError("Unnecessary second full scan")):
+            coverage=character_progress(self.root, genshin_snapshot=recent)
+        self.assertEqual(coverage["summary"]["template_total"], 125)
+        self.assertEqual(coverage["summary"]["native_preview_ready"], 3)
+        self.assertEqual(coverage["summary"]["original_demo_ready"], 3)
+        self.assertEqual(coverage["summary"]["missing_native_animation"], 122)
+        self.assertEqual(coverage["summary"]["genshin_demo_actions"], [10])
+        self.assertEqual(coverage["summary"]["mascot_demo_actions"], [10])
 
     def test_source_import_cannot_be_reassigned_without_real_genshin_receipt(self):
         generate_mascot_demos(self.root,["guga"])
