@@ -95,10 +95,24 @@ def install_creator_mascot(kind, output_root, *, confirmed=False,
                 manifest.get("spritesheetPath")!="spritesheet.webp" or
                 manifest.get("spriteVersionNumber",1)!=1):
             raise ValueError("Remote Codex character ID/layout does not match pinned record")
-        made=convert(source,root,preset=kind,folder=folder,style="chibi",
+        made=convert(source,root,preset=kind,folder=folder,style="classic",
+                     preserve_source_frames=True,
                      source_url=f"https://github.com/{REPO}/tree/{PINNED_REVISION}/pets/{roleid}",
                      license_name=selected["license"])
     info=validate_native_role(made)
+    # Match the other artist installers: keep a bounded, explicit local
+    # identity receipt. This is provenance, not manual likeness approval.
+    (made / "PERSONAL_IMPORT.json").write_text(
+        json.dumps({"display_name": selected["name"],
+                    "selected_profile": kind,
+                    "source_id": roleid,
+                    "source_repository": REPO,
+                    "source_commit": PINNED_REVISION,
+                    "source_kind": "curated_creator_spritesheet",
+                    "preserve_source_frames": True,
+                    "likeness_manually_reviewed": False,
+                    "source_rights_verified": False},
+                   ensure_ascii=False, indent=2), encoding="utf-8")
     return {"kind":kind,"folder":made.name,"source_id":roleid,
             "actions":info["actions"],"frames":info["images"],
             "downloaded_for_user_only":True,"built_into_app":False,
