@@ -361,7 +361,8 @@ def _assistant_package_smoke():
         assert not needs_first_run(temp)
     welcome = FirstRunRoleDialog(Path(os.getcwd()) / "res" / "role", current_role="Kitty")
     report["first_run_guide_verified"] = (
-        welcome.roles.count() >= 2 and welcome.selected_id() in
+        welcome.roles.count() >= 1 and not welcome.showDemos.isChecked() and
+        welcome.selected_id() in
         [welcome.roles.item(i).data(Qt.ItemDataRole.UserRole)
          for i in range(welcome.roles.count())])
     welcome.close()
@@ -446,8 +447,10 @@ def _assistant_package_smoke():
         try:
             selector.show()
             app.processEvents()
-            if not selector.isVisible() or selector.results.count()!=125:
-                raise RuntimeError("Frozen searchable character catalog is missing")
+            if (not selector.isVisible() or selector.results.count()!=0 or
+                    selector.statusFilter.currentData()!="personal"):
+                raise RuntimeError("Low-fidelity demos unexpectedly recommended")
+            selector.statusFilter.setCurrentIndex(selector.statusFilter.findData("all"))
             selector.searchBox.setText("Lisa")
             app.processEvents()
             if (selector.results.count()!=1 or
