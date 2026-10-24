@@ -85,7 +85,7 @@ class RemoteMascotInstallTests(unittest.TestCase):
         self.assertIn("_installCreatorMascot",methods)
         self.assertIn("self.__showMessageBox(",methods["_installCreatorMascot"])
         self.assertIn("ChibiImportThread(",methods["_installCreatorMascot"])
-        self.assertIn('mode="creator_source"',methods["_installCreatorMascot"])
+        self.assertIn("mode='creator_source'",methods["_installCreatorMascot"])
         self.assertIn("install_creator_mascot(",methods["run"])
         self.assertIn("confirmed=True",methods["run"])
 
