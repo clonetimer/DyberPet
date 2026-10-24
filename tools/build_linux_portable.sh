@@ -71,6 +71,7 @@ mkdir -p "$package/data"
 cp docs/pet_assistant.md "$package/ASSISTANT_GUIDE.md"
 cp docs/character_fidelity.md "$package/CHARACTER_FIDELITY.md"
 cp docs/personal_character_install.md "$package/PERSONAL_CHARACTER_GUIDE.md"
+cp docs/guga_doro_personal_install.md "$package/GUGA_DORO_GUIDE.md"
 cp docs/original_chibi_starter.md "$package/ORIGINAL_MASCOT_GUIDE.md"
 cp docs/linux_acceptance.md "$package/LINUX_ACCEPTANCE.md"
 
