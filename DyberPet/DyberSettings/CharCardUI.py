@@ -375,10 +375,16 @@ class CharInterface(ScrollArea):
             return False, None
         if selected == default_choice:
             return True, None
-        if selected not in options:
-            self.__showSystemNote(self.tr("请选择下拉列表中的角色模板。"), 2)
+        if selected in options:
+            return True, options[selected]
+        # Editable Qt input is a practical search field with 122 presets.
+        # Resolve exact Chinese/English names or an unambiguous prefix.
+        from tools.chibi_profiles import match_chibi_profile
+        try:
+            return True, match_chibi_profile(selected)
+        except ValueError as exc:
+            self.__showSystemNote(self.tr(str(exc)), 2)
             return False, None
-        return True, options[selected]
 
     def _importOriginalDemo(self):
         """Provide a real animated starter role for users with no art assets."""
