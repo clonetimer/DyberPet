@@ -27,6 +27,8 @@ python -m PyInstaller --noconfirm --clean --onedir \
   --hidden-import tools.personal_role_import \
   --hidden-import tools.create_original_mascot \
   --hidden-import tools.linux_gui_smoke \
+  --collect-submodules backports \
+  --hidden-import backports.tarfile \
   --collect-submodules pyttsx3.drivers \
   --collect-all vosk \
   --hidden-import pynput.mouse._xorg \
