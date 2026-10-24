@@ -27,8 +27,8 @@ def verify_portable_character_importer():
     profiles = len(CHIBI_PROFILES)
     candidates = len(registry()["candidates"])
     genshin_profile_count = sum(k.startswith("genshin_") for k in CHIBI_PROFILES)
-    if genshin_profile_count != 122 or "genshin_vodyanitsa" not in CHIBI_PROFILES:
-        raise RuntimeError(f"Full 7.1 character roster missing: {genshin_profile_count}/122")
+    if genshin_profile_count != 123 or "genshin_vodyanitsa" not in CHIBI_PROFILES:
+        raise RuntimeError(f"Full 7.1 character roster missing: {genshin_profile_count}/123")
     if not profiles or "chibi" not in CHIBI_PROFILES:
         raise RuntimeError("Bundled Q-style character profiles are unavailable")
 
