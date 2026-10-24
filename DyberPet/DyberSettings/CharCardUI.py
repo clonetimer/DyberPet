@@ -76,6 +76,8 @@ class CharInterface(ScrollArea):
         self.addButton = PushButton(self.tr("Add Characters"), self, FIF.ADD)
         self.addButton.setSizePolicy(QSizePolicy.Maximum, self.addButton.sizePolicy().verticalPolicy())
         self.addButton.setToolTip("支持 DyberPet 模组、Codex Pets 图集和透明 GIF/PNG 动画文件夹")
+        self.quickStartButton = PushButton(self.tr("快速选桌宠"), self, FIF.HEART)
+        self.quickStartButton.setToolTip(self.tr("搜索本机可播放角色、预览动作并立即切换"))
         self.catalogButton = PushButton(self.tr("全部角色库"), self, FIF.SEARCH)
         self.catalogButton.setToolTip(
             self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
@@ -94,6 +96,7 @@ class CharInterface(ScrollArea):
         self.headerLayout.setSpacing(0)
 
         self.headerLayout.addWidget(self.addButton, Qt.AlignLeft | Qt.AlignVCenter)
+        self.headerLayout.addWidget(self.quickStartButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.catalogButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.mascotButton, Qt.AlignLeft | Qt.AlignVCenter)
         spacerItem1 = QSpacerItem(10, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
@@ -182,6 +185,7 @@ class CharInterface(ScrollArea):
                 self.CharCardList[i].card.deleteClicked.connect(self.__onDeleteClicked)
 
         self.addButton.clicked.connect(self.__onAddClicked)
+        self.quickStartButton.clicked.connect(self._showQuickStartGuide)
         self.catalogButton.clicked.connect(self._showAllCharacterCatalog)
         self.mascotButton.clicked.connect(self._showMascotLibrary)
         self.panelHelp.clicked.connect(self.__onShowInstruction)
@@ -189,15 +193,21 @@ class CharInterface(ScrollArea):
     def __onLaunchClicked(self, petname):
         # Ignore if it's current char
         if settings.petname == petname:
-            return
+            settings.default_pet = petname
+            settings.save_settings()
+            return True
         # Confirm
         title = self.tr('Switch to ') + petname + "?"
         content = self.tr("Might take some time, just wait a moment <3")
         if not self.__showMessageBox(title, content):
-            return
+            return False
 
         self._launchStateTooltip()
         self.change_pet.emit(petname)
+        # Switching in the GUI should survive restart.
+        settings.default_pet = petname
+        settings.save_settings()
+        return True
 
     def _launchStateTooltip(self):
         self.launchTooltip = StateToolTip(
@@ -482,6 +492,14 @@ class CharInterface(ScrollArea):
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在本机获取并校验角色作者发布的图集，然后转换动画。"),1)
+
+    def _showQuickStartGuide(self):
+        from DyberPet.assistant.first_run_dialog import FirstRunRoleDialog
+        dialog = FirstRunRoleDialog(
+            Path(basedir) / "res" / "role",
+            current_role=settings.petname, parent=self)
+        if dialog.exec() and dialog.selected_role:
+            self.__onLaunchClicked(dialog.selected_role)
 
     def _showAllCharacterCatalog(self):
         """Search all families using the same local evidence and preview engine."""
