@@ -229,6 +229,11 @@ jobs:
               receipt=json.loads((target/"PERSONAL_IMPORT.json").read_text("utf-8"))
               assert receipt["selected_profile"]==source[2]
               assert receipt["likeness_manually_reviewed"] is False
+              geometry=json.loads((target/"IMPORT_REPORT.json").read_text("utf-8"))
+              assert geometry["style"]=="classic",(key,geometry["style"])
+              assert geometry["preserve_source_frames"] is True,key
+              assert geometry["source_pixel_integrity_verified"] is True,key
+              assert geometry["aligned_frames_per_action"]=={},key
               print("REAL_ART_PIXELS_VALIDATED",key,report)
           PY
       # No artifact upload: author-created character images are temporary CI input.
