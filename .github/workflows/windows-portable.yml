@@ -164,13 +164,7 @@ jobs:
           try {
             $unexpected = @($zip.Entries | Where-Object { $_.FullName -match 'BUILTIN_(CHIBI|MASCOT)_DEMO' })
             if ($unexpected.Count -gt 0) { throw "Published Windows ZIP contains low-fidelity demo art" }
-            if (-not ($zip.Entries | Where-Object { $_.FullName -match 'res/role/Kitty/pet_conf.json
-        with:
-          name: DyberPet-Windows-Personal-PR5
-          path: DyberPet-Windows-Personal-PR5.zip
-          if-no-files-found: error
-          retention-days: 14
- })) {
+            if (-not ($zip.Entries | Where-Object { $_.FullName -match 'res/role/Kitty/pet_conf.json$' })) {
               throw "Published Windows ZIP missing Kitty starter"
             }
           } finally { $zip.Dispose() }
