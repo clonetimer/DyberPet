@@ -33,7 +33,7 @@ class CharacterCoverageTests(unittest.TestCase):
                             and not x["physical_desktop_qa_verified"]
                             for x in info["characters"]))
 
-    def test_local_sample_distinguishes_7_action_genshin_from_10_action_mascots(self):
+    def test_local_sample_equal_native_actions_distinct_character_bodies(self):
         generate_demo_roles(self.root,["genshin_lisa","genshin_xiao"])
         generate_mascot_demos(self.root)
         before={x.relative_to(self.root):x.read_bytes() for x in self.root.rglob("*")
@@ -47,10 +47,10 @@ class CharacterCoverageTests(unittest.TestCase):
         self.assertEqual(s["native_preview_ready"],4)
         self.assertEqual(s["missing_native_animation"],121)
         self.assertEqual(s["personal_art_structurally_installed"],0)
-        self.assertEqual(s["genshin_demo_actions"],[7])
+        self.assertEqual(s["genshin_demo_actions"],[10])
         self.assertEqual(s["mascot_demo_actions"],[10])
         rows={v["id"]:v for v in result["characters"]}
-        self.assertEqual(rows["genshin_lisa"]["demo_frames"],46)
+        self.assertEqual(rows["genshin_lisa"]["demo_frames"],66)
         self.assertEqual(rows["mascot_doro"]["demo_frames"],66)
         self.assertEqual(rows["mascot_guga"]["demo_actions"],10)
         self.assertFalse(any(v["creator_art_and_likeness_verified"]
