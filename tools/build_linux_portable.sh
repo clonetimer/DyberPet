@@ -37,6 +37,8 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.install_creator_mascots \
   --hidden-import tools.role_action_preview \
   --hidden-import tools.character_progress \
+  --hidden-import tools.character_catalog_search \
+  --hidden-import DyberPet.DyberSettings.character_catalog_dialog \
   --hidden-import DyberPet.DyberSettings.mascot_preview_dialog \
   --hidden-import tools.linux_gui_smoke \
   --collect-submodules backports \
