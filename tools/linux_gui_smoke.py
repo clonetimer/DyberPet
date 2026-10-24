@@ -57,6 +57,43 @@ def verify_linux_gui():
             window._showGenshinLibrary()
             if not select.called:
                 raise RuntimeError("Character collection dialog did not open")
+        # Real X11 widget preview with moving native PNG frames. In source
+        # mode use disposable original art; the bundled ELF uses built-in art.
+        from DyberPet.DyberSettings.mascot_preview_dialog import MascotActionPreview
+        from tools.generate_mascot_demos import generate_mascot_demos
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory(prefix="dyberpet-x11-preview-") as demo_temp:
+            demo_root = (Path(settings.BASEDIR) / "res" / "role"
+                         if getattr(sys, "frozen", False) else
+                         Path(demo_temp) / "roles")
+            if not getattr(sys, "frozen", False):
+                generate_mascot_demos(demo_root, ["doro"])
+            preview = MascotActionPreview(
+                demo_root / "DemoMascotDoro", original_demo=True, parent=window)
+            try:
+                preview.show()
+                app.processEvents()
+                if not preview.isVisible() or preview.frame.pixmap().isNull():
+                    raise RuntimeError("Native Doro animation preview did not render in X11")
+                index = preview.actions.findData("left_walk")
+                if index < 0:
+                    raise RuntimeError("Doro four-leg action absent from Qt preview")
+                preview.actions.setCurrentIndex(index)
+                app.processEvents()
+                preview._advance()
+                if preview.frame_index != 1 or preview.frame.pixmap().isNull():
+                    raise RuntimeError("X11 Doro walking animation failed to advance")
+                preview._toggle()
+                if preview.timer.isActive():
+                    raise RuntimeError("Qt play/pause did not pause")
+                preview._toggle()
+                if not preview.timer.isActive():
+                    raise RuntimeError("Qt play/pause did not resume")
+            finally:
+                preview.close()
+                app.processEvents()
+            if preview.timer.isActive():
+                raise RuntimeError("Qt animation timer survived closed preview")
         local_catalog = scan_genshin_library(Path(settings.BASEDIR) / "res" / "role")
         mascot_catalog = scan_mascot_library(Path(settings.BASEDIR) / "res" / "role")
         if local_catalog["summary"]["template_count"] != 123:
@@ -77,6 +114,9 @@ def verify_linux_gui():
             "mascot_original_demo_count": mascot_catalog["summary"]["original_demo_count"],
             "mascot_creator_art_count": mascot_catalog["summary"]["imported_creator_art_count"],
             "mascot_dialog_opened": True,
+            "mascot_live_preview_visible": True,
+            "mascot_live_walk_advanced": True,
+            "mascot_live_preview_timer_stopped": True,
             "local_profile_count": local_catalog["summary"]["installed_profile_count"],
             "original_demo_profile_count": local_catalog["summary"]["original_demo_profile_count"],
             "personal_art_profile_count": local_catalog["summary"]["personal_art_profile_count"],
