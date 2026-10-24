@@ -14,13 +14,20 @@ SAVEFILES = ['settings.json', 'pet_data.json', 'version', 'task_data.json', 'act
 
 
 def CopySave(source_folder, target_folder):
+    """Legacy save export: report missing files or IO errors instead of crashing."""
     for filename in SAVEFILES:
         srcFile = os.path.join(source_folder, filename)
         dstFile = os.path.join(target_folder, filename)
-        copyfile(srcFile, dstFile)
-
-    status_code = checkFolderMD5(source_folder, target_folder)
-    return status_code
+        if not os.path.isfile(srcFile):
+            return 1
+        try:
+            copyfile(srcFile, dstFile)
+        except OSError:
+            return 2
+    try:
+        return checkFolderMD5(source_folder, target_folder)
+    except OSError:
+        return 2
 
 
 

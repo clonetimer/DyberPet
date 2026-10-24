@@ -30,6 +30,9 @@ on:
       - "tools/linux_gui_smoke.py"
       - "tests/test_linux_portable_paths.py"
       - "DyberPet/assistant/portable.py"
+      - "DyberPet/assistant/save_snapshot.py"
+      - "DyberPet/DyberSettings/GameSaveUI.py"
+      - "tests/test_save_snapshot.py"
       - "DyberPet/settings.py"
       - "DyberPet/conf.py"
       - "run_DyberPet.py"
@@ -183,6 +186,7 @@ jobs:
           assistant=json.loads((temp/"linux-frozen-assistant.json").read_text())
           gui=json.loads((temp/"linux-frozen-gui.json").read_text())
           assert assistant["assets"]["ok"] and assistant["assistant_dialog"],assistant
+          assert assistant["backup_snapshot_verified"],assistant
           importer=assistant["character_importer"]
           assert importer["genshin_profile_count"]==123 and importer["library_template_count"]==123,importer
           assert importer["legacy_binding_verified"] and importer["legacy_unbind_preserved_original"],importer
