@@ -2,7 +2,8 @@
 import os
 import json
 from datetime import datetime
-from shutil import copytree
+from shutil import copytree, rmtree
+from pathlib import Path
 import subprocess
 
 from qfluentwidgets import (ScrollArea, ExpandLayout, SettingCardGroup, InfoBar, FlowLayout,
@@ -14,7 +15,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QStandardPaths, QSize
 from PySide6.QtGui import QDesktopServices, QIcon, QFont
-from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QSizePolicy, QHBoxLayout, QSpacerItem
+from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QSizePolicy, QHBoxLayout, QSpacerItem
 
 from .custom_utils import CharCard, CharCardGroup, CharLine
 from DyberPet.conf import CheckCharFiles
@@ -35,6 +36,7 @@ class CharInterface(ScrollArea):
         self.setObjectName("CharInterface")
         self.newPetFolder = None
         self.thread = None
+        self.chibiThread = None
         self.stateTooltip = None
         self.launchTooltip = None
         self.sizeHintDyber = (sizeHintDyber[0]-100, sizeHintDyber[1])
@@ -73,6 +75,7 @@ class CharInterface(ScrollArea):
         # Button to add chars from local file
         self.addButton = PushButton(self.tr("Add Characters"), self, FIF.ADD)
         self.addButton.setSizePolicy(QSizePolicy.Maximum, self.addButton.sizePolicy().verticalPolicy())
+        self.addButton.setToolTip("支持 DyberPet 模组、Codex Pets 图集和透明 GIF/PNG 动画文件夹")
 
         # Button to show instructions on how to manually add chars
         #self.instructButton = TransparentPushButton(self.tr("Add Chars Manually"), self, FIF.QUESTION)
@@ -253,10 +256,29 @@ class CharInterface(ScrollArea):
         if not self.__showMessageBox(title, content):
             return
 
-        # FileDialogue to select folder
+        # Keep existing role management layout: one compact choice determines
+        # whether user selects an unpacked role folder or a native MOD ZIP.
+        options = ["选择角色文件夹（含原生、Codex、Q版动作素材）", "选择原生角色 ZIP 压缩包"]
+        choice, accepted = QInputDialog.getItem(
+            self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
+            options, 0, False
+        )
+        if not accepted:
+            return
+        docs = QStandardPaths.locate(
+            QStandardPaths.DocumentsLocation, '',
+            QStandardPaths.LocateDirectory
+        )
+        if choice == options[1]:
+            archive, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择 DyberPet 原生角色 ZIP"), docs,
+                "ZIP Archive (*.zip)"
+            )
+            if archive:
+                self._importNativeZip(archive)
+            return
         folder = QFileDialog.getExistingDirectory(
-            self, self.tr("Please select the character folder"), 
-            QStandardPaths.locate(QStandardPaths.DocumentsLocation, '', QStandardPaths.LocateDirectory))
+            self, self.tr("Please select the character folder"), docs)
 
         # If no file selected
         if not folder:
@@ -264,6 +286,30 @@ class CharInterface(ScrollArea):
         else:
             print(folder)
             #return
+
+        # Codex Pets folders can be imported with the same button; no layout changes.
+        # Only folders containing a Codex manifest (not standard DyberPet config)
+        # are passed through the optional sprite converter.
+        if (os.path.isfile(os.path.join(folder, "pet.json")) and
+                not os.path.isfile(os.path.join(folder, "pet_conf.json"))):
+            self._importCodexCharacter(folder)
+            return
+
+        # Generic local animations are handled through the same button. We
+        # only select folders with a recognizable idle animation, not arbitrary
+        # user documents; existing DyberPet modules keep their current path.
+        local_files = set(os.listdir(folder))
+        has_idle_animation = (
+            any(item.lower() in {"idle.gif", "idle.png", "idle.webp",
+                                 "stand.gif", "stand.png", "stand.webp"}
+                for item in local_files) or
+            any(item.lower().startswith(("idle_", "stand_")) and
+                item.lower().endswith((".png", ".gif", ".webp"))
+                for item in local_files)
+        )
+        if has_idle_animation and not os.path.isfile(os.path.join(folder, "pet_conf.json")):
+            self._importLocalChibi(folder, mode="animations")
+            return
 
         # Check files integrity
         statCode, errorList = CheckCharFiles(os.path.abspath(folder))
@@ -290,6 +336,100 @@ class CharInterface(ScrollArea):
         #    return
         #return
 
+
+    def _chooseChibiProfile(self):
+        """Small modal selector, without adding permanent page controls."""
+        from tools.chibi_profiles import CHIBI_PROFILES
+
+        default_choice = "保留素材名称（Q版自动缩放）"
+        choices = [default_choice] + [
+            f"{data['franchise']} · {data['name']} [{key}]"
+            for key, data in CHIBI_PROFILES.items()
+        ]
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("Q版角色模板"),
+            self.tr("请选择显示与对话模板；请确认素材确实对应所选人物："),
+            choices, 0, False
+        )
+        if not accepted:
+            return False, None
+        profile = None if selected == default_choice else selected.rsplit("[", 1)[1][:-1]
+        return True, profile
+
+    def _importNativeZip(self, archivePath):
+        """Install existing native role ZIP without changing existing roles."""
+        if self.chibiThread is not None:
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            archivePath, os.path.join(basedir, "res", "role"),
+            mode="native_zip", profile=None, preset=None, folder=None
+        )
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(self.tr("正在验证并安装原生角色 ZIP。"), 1)
+
+    def _importCodexCharacter(self, sourceFolder):
+        self._importLocalChibi(sourceFolder, mode="codex")
+
+    def _importLocalChibi(self, sourceFolder, mode):
+        """Convert user artwork on a worker; keep the Qt main thread responsive."""
+        if self.chibiThread is not None:
+            return
+        from tools.chibi_profiles import available_role_folder
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted:
+            return
+        # Use a distinct ASCII folder for each named template. The previewed
+        # artwork remains entirely user-supplied, not bundled or downloaded.
+        folder_name = "".join(word.capitalize() for word in profile.split("_")) if profile else None
+        preset = None
+        if mode == "codex" and profile is None:
+            try:
+                manifest = json.loads(
+                    (Path(sourceFolder) / "pet.json").read_text(encoding="utf-8"))
+                preset = {"guga--circus": "guga",
+                          "doro--lingxiaotian": "doro"}.get(manifest.get("id"))
+            except (ValueError, OSError) as exc:
+                self.__showSystemNote("Invalid Codex pet.json: " + str(exc), 2)
+                return
+
+        # The exact source name may be Chinese or collide with an installed
+        # role; allocate a new safe folder instead of overwriting existing art.
+        if folder_name is None:
+            folder_name = (preset.title() if preset else Path(sourceFolder).name)
+        folder_name = available_role_folder(
+            Path(basedir) / "res" / "role", folder_name
+        )
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            sourceFolder, os.path.join(basedir, "res", "role"),
+            mode=mode, profile=profile, preset=preset, folder=folder_name
+        )
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(self.tr("正在转换Q版角色，导入期间可继续查看其他页面。"), 1)
+
+    def _onChibiImportComplete(self, role_name, error):
+        if error:
+            self.__showMessageBox(self.tr("Adding Failed"), error)
+            return
+        self.newPetFolder = role_name
+        self.__onAddClickedContinue()
+        preview = Path(basedir) / "res" / "role" / role_name / "ANIMATION_PREVIEW.png"
+        if preview.is_file() and self.__showMessageBox(
+                self.tr("Q版角色动作预览"),
+                self.tr("角色已导入。是否打开生成的动作帧预览图，检查动画素材？")):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
+
+    def _onChibiThreadFinished(self):
+        self.addButton.setEnabled(True)
+        thread = self.chibiThread
+        self.chibiThread = None
+        if thread is not None:
+            thread.deleteLater()
 
     def _importChar(self, sourceFolder, destinationFolder):
 
@@ -490,3 +630,51 @@ class FileCopyThread(QThread):
 
         # Emitting progress and done signals as an example
         self.done.emit(True)
+
+
+class ChibiImportThread(QThread):
+    """Converts local assets and runs DyberPet config preflight off the UI thread."""
+    done = Signal(str, str)
+
+    def __init__(self, source, output_root, *, mode, profile, preset, folder):
+        super().__init__()
+        self.source = Path(source)
+        self.output_root = Path(output_root)
+        self.mode = mode
+        self.profile = profile
+        self.preset = preset
+        self.folder = folder
+
+    def run(self):
+        new_folder = None
+        try:
+            if self.mode == "native_zip":
+                from tools.install_native_role import install_native_role
+                new_folder = install_native_role(self.source, self.output_root)
+            elif self.mode == "codex":
+                from tools.import_codex_pet import convert
+                new_folder = convert(
+                    self.source, self.output_root, preset=self.preset,
+                    profile=self.profile, style="chibi", folder=self.folder
+                )
+            else:
+                from tools.import_chibi_animations import convert_animation_folder
+                new_folder = convert_animation_folder(
+                    self.source, self.output_root, profile=self.profile,
+                    folder=self.folder,
+                )
+            status, problem = CheckCharFiles(str(new_folder))
+            if status:
+                # Never keep a role that may crash the game.
+                rmtree(new_folder)
+                new_folder = None
+                raise ValueError(
+                    f"Character validation failed (code {status}): {problem}"
+                )
+            self.done.emit(new_folder.name, "")
+        except Exception as exc:
+            # Clean up only the role directory created in this execution.
+            # Existing roles cannot be overwritten by either importer.
+            if new_folder is not None and new_folder.exists():
+                rmtree(new_folder, ignore_errors=True)
+            self.done.emit("", str(exc))
