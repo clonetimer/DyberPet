@@ -1,6 +1,7 @@
 """Side-effect-free, local-only first-launch detection and usable role discovery."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 
@@ -38,10 +39,24 @@ def installed_playable_roles(root):
                       if p.is_file() and not p.is_symlink()), None)
         if image is None:
             continue
-        demo = (folder / "BUILTIN_CHIBI_DEMO.json").is_file() or (
-            folder / "BUILTIN_MASCOT_DEMO.json").is_file()
+        marker = folder / "BUILTIN_CHIBI_DEMO.json"
+        demo = marker.is_file() or (folder / "BUILTIN_MASCOT_DEMO.json").is_file()
+        # First-party roster demos carry Chinese display names. Read only a
+        # bounded local manifest; untrusted/invalid metadata uses the folder ID.
+        display = folder.name
+        for metadata in (marker, folder / "info" / "info.json"):
+            try:
+                if metadata.is_symlink() or not metadata.is_file() or metadata.stat().st_size > 16384:
+                    continue
+                value = json.loads(metadata.read_text(encoding="utf-8")).get("name")
+                if isinstance(value, str) and 1 <= len(value.strip()) <= 80:
+                    display = value.strip()
+                    break
+            except (OSError, UnicodeError, ValueError, AttributeError):
+                continue
         result.append({
             "folder": folder.name,
+            "display": display,
             "preview": str(image),
             "demo": bool(demo),
         })
