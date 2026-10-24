@@ -96,7 +96,7 @@ class FirstRunTests(unittest.TestCase):
         card = next(n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)
                     and n.name == "CharLine")
         method = next(n for n in card.body if isinstance(n, ast.FunctionDef)
-                      and n.name == "_CharLine__init_InfoList")
+                      and n.name == "__init_InfoList")
         body = ast.unparse(method)
         self.assertIn("PERSONAL_IMPORT.json", body)
         self.assertIn("display_name", body)
