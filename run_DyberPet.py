@@ -340,6 +340,8 @@ def _assistant_package_smoke():
         if viewer.timer.isActive():
             raise RuntimeError("Frozen Genshin preview leaked timer")
         report["genshin_native_preview_verified"] = True
+        report["genshin_original_demo_actions_each"] = 10
+        report["genshin_original_demo_frames_each"] = 66
         report["character_templates"] = coverage["summary"]["template_total"]
         report["character_native_preview_ready"] = coverage["summary"]["native_preview_ready"]
         report["genshin_demo_actions"] = coverage["summary"]["genshin_demo_actions"]
