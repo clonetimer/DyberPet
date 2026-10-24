@@ -36,7 +36,9 @@ class FirstRunTests(unittest.TestCase):
         self.assertFalse(needs_first_run(self.root))
 
     def test_list_only_installed_playable_local_roles(self):
-        self._role("DemoG_lisa", demo=True)
+        lisa = self._role("DemoG_lisa", demo=True)
+        (lisa / "BUILTIN_CHIBI_DEMO.json").write_text(
+            '{"name":"丽莎","profile":"genshin_lisa"}', encoding="utf8")
         self._role("Kitty")
         self._role("template_only", frame=False)
         (self.roles / "sys").mkdir()
@@ -48,6 +50,7 @@ class FirstRunTests(unittest.TestCase):
         self.assertEqual([x["folder"] for x in result], ["Kitty", "DemoG_lisa"])
         self.assertFalse(result[0]["demo"])
         self.assertTrue(result[1]["demo"])
+        self.assertEqual(result[1]["display"], "丽莎")
         after = {
             p.relative_to(self.root): p.read_bytes()
             for p in self.root.rglob("*") if p.is_file()
