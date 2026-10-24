@@ -312,9 +312,9 @@ def _assistant_package_smoke():
             Path(os.getcwd()) / "res" / "role" / "DemoG_lisa",
             original_demo=True)
         try:
-            if (len(viewer.plan["actions"]) != 7 or
-                    viewer.plan["total_frames"] != 46):
-                raise RuntimeError("Shared character viewer lost Genshin 7/46 playback")
+            if (len(viewer.plan["actions"]) != 10 or
+                    viewer.plan["total_frames"] != 66):
+                raise RuntimeError("Shared character viewer lost Genshin 10/66 playback")
             viewer.show()
             app.processEvents()
             if not viewer.isVisible() or viewer.frame.pixmap().isNull():
@@ -326,6 +326,14 @@ def _assistant_package_smoke():
             viewer._advance()
             if viewer.frame_index != 1 or viewer.frame.pixmap().isNull():
                 raise RuntimeError("Genshin walking preview did not advance")
+            for special in ("run", "failed", "lookaround"):
+                idx = viewer.actions.findData(special)
+                if idx < 0:
+                    raise RuntimeError("Frozen Genshin missing "+special)
+                viewer.actions.setCurrentIndex(idx)
+                viewer._advance()
+                if viewer.frame_index != 1 or viewer.frame.pixmap().isNull():
+                    raise RuntimeError("Frozen Genshin special animation cannot advance "+special)
         finally:
             viewer.close()
             app.processEvents()
