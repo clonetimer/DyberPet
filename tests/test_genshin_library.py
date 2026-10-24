@@ -118,5 +118,26 @@ class LocalGenshinLibraryTests(unittest.TestCase):
                          "requests", "urlopen"}.isdisjoint(call_names))
 
 
+    def test_native_zip_and_folder_attach_explicit_profile(self):
+        path = (Path(__file__).resolve().parents[1] / "DyberPet" /
+                "DyberSettings" / "CharCardUI.py")
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        interface = next(n for n in tree.body
+                         if isinstance(n, ast.ClassDef) and n.name == "CharInterface")
+        for name in ("_importNativeZip", "_importNativeFolder"):
+            method = next(m for m in interface.body
+                          if isinstance(m, ast.FunctionDef) and m.name == name)
+            self.assertIn("_chooseChibiProfile", ast.unparse(method))
+            self.assertIn("profile=profile", ast.unparse(method))
+        thread = next(n for n in tree.body if isinstance(n, ast.ClassDef)
+                      and n.name == "ChibiImportThread")
+        run = next(m for m in thread.body if isinstance(m, ast.FunctionDef)
+                   and m.name == "run")
+        body = ast.unparse(run)
+        self.assertIn("personal_install", body)
+        self.assertIn("confirm_local_only=True", body)
+
+
+
 if __name__ == "__main__":
     unittest.main()
