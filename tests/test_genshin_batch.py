@@ -19,9 +19,9 @@ from tools.audit_character_sources import check_catalog
 
 
 class GenshinRosterTests(unittest.TestCase):
-    def test_fourteen_distinct_role_templates_in_existing_gui_registry(self):
-        self.assertEqual(len(GENSHIN_ROSTER), 14)
-        self.assertEqual(len({x["name"] for x in GENSHIN_ROSTER.values()}), 14)
+    def test_twenty_six_distinct_role_templates_in_existing_gui_registry(self):
+        self.assertEqual(len(GENSHIN_ROSTER), 26)
+        self.assertEqual(len({x["name"] for x in GENSHIN_ROSTER.values()}), 26)
         for key, row in GENSHIN_ROSTER.items():
             with self.subTest(key=key):
                 profile_id = "genshin_" + key
@@ -41,6 +41,23 @@ class GenshinRosterTests(unittest.TestCase):
                 self.assertTrue(all(item["start_audio"] is None
                                     and item["end_audio"] is None
                                     for item in bubble.values()))
+
+    def test_new_wave_is_distinct_and_unlicensed_by_default(self):
+        wave = ("diluc", "jean", "mona", "albedo", "eula", "nilou",
+                "alhaitham", "kaveh", "lyney", "lynette", "clorinde",
+                "wriothesley")
+        for key in wave:
+            with self.subTest(key=key):
+                role = GENSHIN_ROSTER[key]
+                record = catalogue()["genshin_" + key]
+                self.assertEqual(record["status"], "research_needed")
+                self.assertEqual(record["asset_url"], "")
+                self.assertEqual(record["creator"], "")
+                self.assertFalse(role["original_art_included"])
+                self.assertFalse(role["original_voice_included"])
+                self.assertFalse(role["publishable"])
+                self.assertEqual(record["kind_suggestion"], "frames")
+                self.assertEqual(record["rights_status"], "unknown")
 
     def test_wanderer_is_floating_and_existing_profiles_remain(self):
         self.assertEqual(get_profile("genshin_wanderer")["ground_mode"], "floating")
@@ -93,7 +110,7 @@ class GenshinBatchTests(unittest.TestCase):
 
     def test_seed_all_creates_isolated_unapproved_cases_and_checklists(self):
         result = seed(self.root, tuple(GENSHIN_ROSTER))
-        self.assertEqual(result["created"], 14)
+        self.assertEqual(result["created"], 26)
         for row in result["cases"]:
             with self.subTest(id=row["id"]):
                 path = record_path(self.root, row["id"])
