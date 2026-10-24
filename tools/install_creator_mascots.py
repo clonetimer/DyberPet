@@ -95,7 +95,8 @@ def install_creator_mascot(kind, output_root, *, confirmed=False,
                 manifest.get("spritesheetPath")!="spritesheet.webp" or
                 manifest.get("spriteVersionNumber",1)!=1):
             raise ValueError("Remote Codex character ID/layout does not match pinned record")
-        made=convert(source,root,preset=kind,folder=folder,style="chibi",
+        made=convert(source,root,preset=kind,folder=folder,style="classic",
+                     preserve_source_frames=True,
                      source_url=f"https://github.com/{REPO}/tree/{PINNED_REVISION}/pets/{roleid}",
                      license_name=selected["license"])
     info=validate_native_role(made)
