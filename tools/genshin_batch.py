@@ -87,6 +87,10 @@ def plan(workspace, keys):
 
 def seed(workspace, keys, *, dry_run=False):
     workspace = Path(workspace).expanduser().resolve()
+    # The workspace can be user-controlled. Do not follow a linked
+    # cases/reviews directory when emitting evidence files.
+    if (workspace / "cases").is_symlink() or (workspace / "reviews").is_symlink():
+        raise PipelineError("Linked cases/reviews directory is not permitted")
     result = plan(workspace, keys)
     # Avoid partially creating a batch when any candidate ID already exists.
     # Also inspect all sidecars BEFORE writing anything.
