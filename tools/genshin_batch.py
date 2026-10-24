@@ -17,12 +17,14 @@ if __package__:
     from .genshin_roster import GENSHIN_ROSTER
     from .character_pipeline import (DEFAULT_WORKSPACE, PipelineError,
                                       dump_json, init_case, record_path, registry,
-                                      load_case, inspect_case, identify_local)
+                                      load_case, inspect_case, identify_local,
+                                      fingerprint)
 else:
     from genshin_roster import GENSHIN_ROSTER
     from character_pipeline import (DEFAULT_WORKSPACE, PipelineError,
                                     dump_json, init_case, record_path, registry,
-                                    load_case, inspect_case, identify_local)
+                                    load_case, inspect_case, identify_local,
+                                      fingerprint)
 
 
 def catalogue():
@@ -203,11 +205,21 @@ def status(workspace, keys):
             local_blockers = [issue for issue in audit["blockers"]
                               if "redistribution" not in issue]
             built_role = case["build"].get("role") or ""
+            # Use the same role digest recorded at QA. Stale QA flags
+            # alone must never imply a still-intact, approved build.
+            role_dir = Path(built_role) if built_role else None
+            build_root = (workspace.resolve() / "build" / case["id"]).resolve()
+            safe_role = bool(
+                role_dir and not role_dir.is_symlink() and
+                role_dir.resolve().is_relative_to(build_root) and
+                role_dir.is_dir())
+            role_matches_qa = bool(
+                safe_role and case["qa"].get("asset_sha256") and
+                fingerprint(role_dir) == case["qa"]["asset_sha256"])
             row["playable_role_verified"] = bool(
                 case["status"] in ("qa_reviewed", "packaged") and
                 case["qa"]["visual_pass"] and case["qa"]["runtime_pass"] and
-                built_role and Path(built_role).is_dir() and
-                not local_blockers)
+                role_matches_qa and not local_blockers)
             # This flag only reflects *recorded* human review, not an
             # independent legal assessment or permission to redistribute.
             row["redistribution_verified"] = bool(
@@ -249,8 +261,11 @@ def probe_asset(asset):
                 "frames": check["validation"]["images"],
                 "file_count": len(check["files"])}
     elif kind == "native_zip":
-        with zipfile.ZipFile(source) as archive:
-            files, prefix = inspect_zip(archive)
+        try:
+            with zipfile.ZipFile(source) as archive:
+                files, prefix = inspect_zip(archive)
+        except (zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+            raise PipelineError("Invalid or unsupported native role ZIP") from exc
         info = {"contained_role_folder": prefix.name,
                 "file_count": len(files)}
     else:
