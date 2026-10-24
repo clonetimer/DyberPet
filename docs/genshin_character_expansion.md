@@ -172,3 +172,21 @@ python tools/genshin_library.py --role-root res/role --only pending
 ```
 
 报告只暴露本机目录**文件夹名**和动作/帧数量，不包含绝对路径、原始图片或个人秘密。角色导入后若想让盘点按人物归类，应在导入原始 GIF/PNG 或 Codex 素材时选择对应 Q 版人物模板；原生 ZIP / 已解压原生角色文件夹现在也会提示选择**可选的 Q 版人物模板**：选择后仅记录 `PERSONAL_IMPORT.json` 中的本地关联，不会篡改原始美术或认证原设。保持默认选项则仍以未关联状态安装，绝不自动按文件名猜测是哪位原神角色。
+
+## 旧角色免重装关联（只改本机数据）
+
+对于早期已经安装在 `res/role` 下，但没有人物收据的角色，不需要重新导入 GIF/PNG，也不需要覆盖原来的 MOD。进入 **系统 → 角色管理 → 原神角色库 →【管理】关联一个已安装但未归类的本地角色**，选择该角色文件夹，再手动选择对应人物（支持中文、英文名搜索），最后确认即可。
+
+软件只创建 `data/genshin_role_bindings.json`，记录**本地文件夹名、用户指定的模板 ID 和原生配置摘要 SHA-256**。不会修改 `res/role` 的角色图像、声音、脚本或配置，也不会联网核验、自动下载或宣称有版权授权。若原生配置发生变化，原关联会自动转为 **过期关联**，不得作为已安装且匹配的证据。
+
+关联错了，进入 **原神角色库 →【管理】解除旧关联**。软件只更新本地映射文件，绝不删除角色和资源。若希望换一个人物，先解除旧关联，再重新执行关联。原本已带 `PERSONAL_IMPORT.json` 或 `IMPORT_REPORT.json` 身份收据的安装项不允许被额外映射覆盖，避免产生互相冲突的身份记录。
+
+仅对开发者的命令行等价操作：
+
+```powershell
+python tools/genshin_role_bindings.py link --folder LegacyLisa --character 丽莎 --confirm-local
+python tools/genshin_role_bindings.py unlink --folder LegacyLisa --confirm-local
+python tools/genshin_library.py --only installed
+```
+
+本机扫描**只能证明文件结构符合 DyberPet 动作加载要求**；它不能证明人物外观与游戏原设一致，也不能替代真实 Windows 桌面动作和音频验收。
