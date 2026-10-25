@@ -36,7 +36,7 @@ class IndependentPublisherProbeTests(unittest.TestCase):
                 return (b"fake-zip", manifest["sources"][key])
 
             def parse(path):
-                return {"manifest": {"id": "gi-" + path.stem}}
+                return {"manifest": {"id": path.stem}}
 
             def install(key, root, **kwargs):
                 folder = Path(root) / ("SourcePetDb" + key.title())
