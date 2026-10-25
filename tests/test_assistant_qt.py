@@ -47,6 +47,49 @@ class AssistantQtTests(unittest.TestCase):
             self.assertIn("只读", display.call_args.args[2])
         self.assertIsNone(self.dialog._job)
 
+    def test_role_interaction_export_is_explicit_and_never_claims_human_qa(self):
+        import json
+        from tools import character_interaction_coverage
+        file_path = Path(self.tmp.name) / "role_interaction_audit.json"
+        result = {
+            "role": "咕嘎", "status": "imported_artist_claim_not_verified",
+            "on_disk_action_names": ["wave"],
+            "installed_action_categories": ["greet"],
+            "currently_unlocked_categories": ["greet"],
+            "missing_categories": ["sleep"],
+            "art_likeness_qa_passed": False,
+        }
+        self.dialog.set_actions(["wave"])
+        with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
+                          return_value=result) as checker, \
+             patch("DyberPet.assistant.ui.QFileDialog.getSaveFileName",
+                   return_value=("", "")) as picker:
+            self.dialog.interaction_export_button.click()
+            self.assertEqual(checker.call_count, 1)
+            self.assertEqual(checker.call_args.kwargs["unlocked_actions"], {"wave"})
+            self.assertEqual(picker.call_count, 1)
+            self.assertFalse(file_path.exists())
+
+        with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
+                          return_value=result), \
+             patch("DyberPet.assistant.ui.QFileDialog.getSaveFileName",
+                   return_value=(str(file_path), "JSON Files (*.json)")):
+            self.dialog.interaction_export_button.click()
+        saved = json.loads(file_path.read_text("utf-8"))
+        self.assertEqual(saved["role"], "咕嘎")
+        self.assertEqual(saved["currently_unlocked_categories"], ["greet"])
+        self.assertFalse(saved["human_original_likeness_verified"])
+        self.assertFalse(saved["manual_playback_verified"])
+        self.assertIn("未", self.dialog.status.text())
+        self.dialog.set_character("Doro")
+        with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
+                          return_value={**result, "role": "Doro"}) as checker, \
+             patch("DyberPet.assistant.ui.QFileDialog.getSaveFileName",
+                   return_value=(str(file_path.with_suffix(".txt")), "Text")):
+            self.dialog.interaction_export_button.click()
+            self.assertEqual(checker.call_args.args[1], "Doro")
+            self.assertFalse(file_path.with_suffix(".txt").exists())
+
     def test_exact_persona_changes_with_imported_role_identity(self):
         import json
         root = Path(self.tmp.name) / "personal_roles"
