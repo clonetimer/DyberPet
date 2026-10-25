@@ -399,13 +399,15 @@ def _assistant_package_smoke():
     from tools.install_creator_mascots import UPSTREAM as mascot_art
     from tools.character_source_coverage import source_coverage
     from tools.install_nanopet_shimeji import source_manifest as nano_manifest
+    from tools.install_external_codex import source_manifest as external_manifest
     creator = source_coverage()["summary"]
     report["public_art_sources_ready"] = (
         len(original_genshin) == 3 and len(codex_art) == 15
         and len(source_manifest()["roles"]) == 8
         and creator["template_count"] == 123
         and len(nano_manifest()["roles"]) == 17
-        and creator["characters_with_pinned_sources"] == 27
+        and len(external_manifest()["sources"]) == 3
+        and creator["characters_with_pinned_sources"] == 28
         and {"guga", "doro"}.issubset(mascot_art))
     if not report["public_art_sources_ready"]:
         raise RuntimeError("Pinned original-art installers missing from executable")
