@@ -155,11 +155,21 @@ def verify_linux_gui():
         try:
             search_dialog.show()
             app.processEvents()
-            if (not search_dialog.isVisible() or search_dialog.results.count()!=0 or
-                    search_dialog.statusFilter.currentData()!="personal"):
-                raise RuntimeError("Low-fidelity demos unexpectedly offered as finished roles")
+            if (not search_dialog.isVisible() or search_dialog.results.count()!=30 or
+                    search_dialog.statusFilter.currentData()!="source"):
+                raise RuntimeError("X11 default catalog must show 30 real-art source candidates")
+            if any("作者来源" not in search_dialog.results.item(i).text()
+                   for i in range(search_dialog.results.count())):
+                raise RuntimeError("X11 source catalog lacks creator provenance")
+            search_dialog.statusFilter.setCurrentIndex(
+                search_dialog.statusFilter.findData("personal"))
+            app.processEvents()
+            if search_dialog.results.count()!=0:
+                raise RuntimeError("X11 falsely reported uninstalled creator art as installed")
             search_dialog.statusFilter.setCurrentIndex(
                 search_dialog.statusFilter.findData("all"))
+            search_dialog.familyFilter.setCurrentIndex(
+                search_dialog.familyFilter.findData("all"))
             search_dialog.searchBox.setText("Lisa")
             app.processEvents()
             if (search_dialog.results.count()!=1 or
