@@ -15,7 +15,7 @@ from tools.install_native_role import validate_native_role
 
 
 class ExternalCreatorSourcesTests(unittest.TestCase):
-    def test_pinned_sources_and_55_character_coverage(self):
+    def test_pinned_sources_and_59_character_coverage(self):
         source = source_manifest()
         self.assertEqual(set(source["sources"]), {"linnea","hu_tao_pixel","nahida_mini","sandrone","sandrone_marionette","keqing_chibi","keqing_classic","klee_fan","yoimiya_fan","furina_fan","sayu_cozy"})
         self.assertEqual(source["sources"]["linnea"]["profile"], "genshin_linnea")
@@ -33,9 +33,9 @@ class ExternalCreatorSourcesTests(unittest.TestCase):
                 self.assertGreater(row[key]["size"], 100)
         catalog = source_coverage()
         self.assertEqual(catalog["summary"]["template_count"], 123)
-        self.assertEqual(catalog["summary"]["pinned_source_options"], 78)
-        self.assertEqual(catalog["summary"]["characters_with_pinned_sources"], 55)
-        self.assertEqual(catalog["summary"]["characters_without_pinned_sources"], 68)
+        self.assertEqual(catalog["summary"]["pinned_source_options"], 82)
+        self.assertEqual(catalog["summary"]["characters_with_pinned_sources"], 59)
+        self.assertEqual(catalog["summary"]["characters_without_pinned_sources"], 64)
         sayu = next(x for x in catalog["characters"] if x["id"]=="genshin_sayu")
         self.assertTrue(sayu["source_found"])
         self.assertEqual(sayu["source_candidate_count"], 1)
