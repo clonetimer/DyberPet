@@ -357,10 +357,16 @@ class PetAssistantDialog(QDialog):
         }.get(report["status"], "来源状态未知")
         good = report["currently_unlocked_categories"]
         still_missing = report["missing_categories"]
+        configured_but_missing = report.get("configured_but_unplayable_actions", [])
+        installed_but_locked = sorted(
+            set(report["installed_action_categories"]) - set(good))
         lines = [
             "当前桌宠：" + self.character_name,
             "素材状态：" + status,
             "安装的动作名称：" + ("、".join(report["on_disk_action_names"]) or "无"),
+            "仅有配置、缺少 PNG 帧：" + ("、".join(configured_but_missing) or "无"),
+            "有素材但当前未解锁：" + (
+                "、".join(titles.get(k, k) for k in installed_but_locked) or "无"),
             "可触发的互动类别：" + (
                 "、".join(titles.get(k, k) for k in good) or "无"),
             "尚无对应真实动作的类别：" + (
