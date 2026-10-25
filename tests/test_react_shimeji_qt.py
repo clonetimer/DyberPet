@@ -32,11 +32,11 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
         self.dialog.familyFilter.setCurrentIndex(
             self.dialog.familyFilter.findData("genshin"))
 
-    def test_new_unverified_lead_filter_has_15_distinct_missing_profiles(self):
+    def test_new_unverified_lead_filter_has_7_distinct_missing_profiles(self):
         self.dialog.statusFilter.setCurrentIndex(
             self.dialog.statusFilter.findData("lead"))
-        self.assertEqual(self.dialog.results.count(), 11)
-        self.assertIn("11 / 125", self.dialog.countLabel.text())
+        self.assertEqual(self.dialog.results.count(), 7)
+        self.assertIn("7 / 125", self.dialog.countLabel.text())
         names = [self.dialog.results.item(i).data(0x0100)
                  for i in range(self.dialog.results.count())]
         self.assertEqual(len(names), len(set(names)))
