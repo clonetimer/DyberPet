@@ -36,8 +36,8 @@ def listed_packages(path=REGISTRY):
     entries = listing.get("sources")
     if listing.get("schema") != 1 or listing.get("provider") != "CodexPetDB":
         raise ValueError("Unknown pinned creator package registry")
-    if not isinstance(entries, dict) or not 24 <= len(entries) <= 123:
-        raise ValueError("Pinned package registry requires at least 24 and at most 123 reviewed listings")
+    if not isinstance(entries, dict) or not 28 <= len(entries) <= 123:
+        raise ValueError("Pinned package registry requires at least 28 and at most 123 reviewed listings")
     seen_profiles = set()
     for key, item in entries.items():
         if not re.fullmatch(r"[a-z_]{3,32}", key):
