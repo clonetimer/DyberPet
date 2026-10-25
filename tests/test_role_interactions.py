@@ -44,6 +44,24 @@ class RoleInteractionTests(unittest.TestCase):
         self.assertIsNone(requested_action(stripped, "pet"))
         self.assertIsNone(requested_action(stripped, "climb"))
 
+    def test_climbing_crawling_and_sitting_are_distinct_real_actions(self):
+        original = ["default", "idle", "walk", "climb", "crawl", "sit"]
+        plan = available_interactions(original)
+        self.assertEqual(requested_action(plan, "climb"), "climb")
+        self.assertEqual(requested_action(plan, "crawl"), "crawl")
+        self.assertEqual(requested_action(plan, "sit"), "sit")
+        self.assertEqual(requested_action(plan, "rest"), "idle")
+        self.assertNotEqual(requested_action(plan, "climb"),
+                            requested_action(plan, "crawl"))
+        self.assertEqual([x["label"] for x in plan if x["id"] in ("climb", "crawl")],
+                         ["攀爬", "匍匐爬行"])
+        no_extra_frames = available_interactions(["walk", "idle", "climb"])
+        self.assertIsNone(requested_action(no_extra_frames, "crawl"))
+        self.assertIsNone(requested_action(no_extra_frames, "sit"))
+        no_climb = available_interactions(["crawl", "sit"])
+        self.assertIsNone(requested_action(no_climb, "climb"))
+        self.assertIsNone(requested_action(no_climb, "rest"))
+
     def test_no_unrelated_or_unlocked_action_is_invented(self):
         for actions in ([], ["attack", "eat", "fake_patpat"], ["wave_effect", "fake_wave"],
                         ["walk_disabled"], [None, 123, "", " jump "]):
