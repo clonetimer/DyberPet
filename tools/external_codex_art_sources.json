@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "Ten pinned independent Genshin Codex art sources (including three new alternatives); real artist artwork only, no generated placeholders; human appearance and rights QA remain pending",
+  "note": "Eleven pinned independent Genshin Codex art sources; Sayu is a new distinct character. Human likeness and rights review pending.",
   "sources": {
     "linnea": {
       "repository": "Alchuang22-dev/Linnea-Codex-Pet",
@@ -160,6 +160,22 @@
       "sprites": {
         "size": 2199566,
         "sha": "7b0dd26db2c4351d1c8c588811133d09c0697d4b"
+      }
+    },
+    "sayu_cozy": {
+      "repository": "mn8821236/petscodex",
+      "revision": "a4e3532b15da80e73845f1c431a44e55b5b894fb",
+      "directory": "cozy-sayu",
+      "manifest_id": "cozy-sayu",
+      "profile": "genshin_sayu",
+      "name": "早柚 · Cozy 作者动画（外观待审）",
+      "pet": {
+        "size": 467,
+        "sha": "625d83dc3eacea82d0b08d699a0d4c6a139d5c37"
+      },
+      "sprites": {
+        "size": 1554794,
+        "sha": "6aaefa1074a2e72d73333a171575b4ff8b9693e7"
       }
     }
   }
