@@ -406,7 +406,7 @@ def _assistant_package_smoke():
         and len(source_manifest()["roles"]) == 8
         and creator["template_count"] == 123
         and len(nano_manifest()["roles"]) == 17
-        and len(external_manifest()["sources"]) == 7
+        and len(external_manifest()["sources"]) == 10
         and creator["characters_with_pinned_sources"] == 30
         and {"guga", "doro"}.issubset(mascot_art))
     if not report["public_art_sources_ready"]:
