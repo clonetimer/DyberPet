@@ -84,9 +84,11 @@ def inspect_codex_zip(source):
             atlas_path = Path(td) / sheet_name
             atlas_path.write_bytes(sheet)
             _, version = read_atlas(atlas_path, manifest)
+        with path.open("rb") as archive_file:
+            digest = hashlib.file_digest(archive_file, "sha256").hexdigest()
         return {"manifest": manifest, "manifest_bytes": raw, "sheet": sheet,
                 "sheet_name": sheet_name, "version": version,
-                "package_sha256": hashlib.file_digest(path.open("rb"), "sha256").hexdigest()}
+                "package_sha256": digest}
 
 
 def install_personal_codex_zip(source, output_root, *, profile, confirmed=False):
