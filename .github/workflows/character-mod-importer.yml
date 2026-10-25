@@ -53,6 +53,8 @@ on:
       - "tools/install_nanopet_shimeji.py"
       - "tools/install_personal_shimeji_zip.py"
       - "tools/artist_animation_audit.py"
+      - "tools/install_pinned_codexpetdb.py"
+      - "tools/codexpetdb_pinned_zip_leads.json"
       - "tools/artist_visual_review.py"
       - "tools/install_personal_codex_zip.py"
       - "tools/community_codex_leads.py"
@@ -65,6 +67,7 @@ on:
       - "tests/test_nanopet_shimeji_sources.py"
       - "tests/test_personal_shimeji_zip.py"
       - "tests/test_artist_animation_audit.py"
+      - "tests/test_pinned_codexpetdb.py"
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
@@ -148,6 +151,8 @@ on:
       - "tools/install_nanopet_shimeji.py"
       - "tools/install_personal_shimeji_zip.py"
       - "tools/artist_animation_audit.py"
+      - "tools/install_pinned_codexpetdb.py"
+      - "tools/codexpetdb_pinned_zip_leads.json"
       - "tools/artist_visual_review.py"
       - "tools/install_personal_codex_zip.py"
       - "tools/community_codex_leads.py"
@@ -160,6 +165,7 @@ on:
       - "tests/test_nanopet_shimeji_sources.py"
       - "tests/test_personal_shimeji_zip.py"
       - "tests/test_artist_animation_audit.py"
+      - "tests/test_pinned_codexpetdb.py"
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
@@ -251,6 +257,7 @@ jobs:
           python -m unittest discover -s tests -p "test_nanopet_shimeji_sources.py" -v
           python -m unittest discover -s tests -p "test_personal_shimeji_zip.py" -v
           python -m unittest discover -s tests -p "test_artist_animation_audit.py" -v
+          python -m unittest discover -s tests -p "test_pinned_codexpetdb.py" -v
           python -m unittest discover -s tests -p "test_personal_codex_zip.py" -v
           python -m unittest discover -s tests -p "test_community_codex_leads.py" -v
           python -m unittest discover -s tests -p "test_react_shimeji_leads.py" -v
