@@ -522,8 +522,10 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在本机获取并校验角色作者发布的图集，然后转换动画。"),1)
 
-    def _installArtistGenshin(self):
-        """Opt-in to existing published animation artwork, never redraw it."""
+    def _installArtistGenshin(self, only_profile=None):
+        """Select genuine source art for one chosen role; never redraw it."""
+        if not isinstance(only_profile, str) or not only_profile.startswith("genshin_"):
+            only_profile = None
         if self.chibiThread is not None:
             self.__showSystemNote("其他角色安装仍在进行。", 1)
             return
@@ -545,6 +547,27 @@ class CharInterface(ScrollArea):
                        for key, row in nano["roles"].items()})
         labels.update({f"独立画师 Codex 图集 · {row['name']} · {key}":("artist_external_codex", key)
                        for key, row in external["sources"].items()})
+        if only_profile:
+            def mapped_profile(source):
+                mode, key = source
+                if mode == "artist_genshin":
+                    return ROLES[key][1]
+                if mode == "artist_codex":
+                    return SOURCES[key][2]
+                if mode == "artist_shimeji":
+                    return shimeji["roles"][key]["profile"]
+                if mode == "artist_nano":
+                    return nano["roles"][key]["profile"]
+                return external["sources"][key]["profile"]
+            labels = {name: source for name, source in labels.items()
+                      if mapped_profile(source) == only_profile}
+        if not labels:
+            self.__showMessageBox(
+                "该角色暂缺原画资源",
+                "目前尚未找到并固定校验属于此人物的公开作者动画。"
+                "不会用简笔画、同名其他游戏角色或通用换色素材代替。"
+                "此人物继续列入待补充清单。")
+            return
         selected, ok = QInputDialog.getItem(
             self, "安装真实来源的桌宠美术",
             "选择已有作者制作的桌宠动画；完整原生动画包可能较大，"
@@ -609,7 +632,10 @@ class CharInterface(ScrollArea):
             return
         selected=dialog.selection
         if selected=="__install_artist__":
-            self._installArtistGenshin()
+            highlighted = dialog.selected_character_id()
+            self._installArtistGenshin(
+                highlighted if highlighted and highlighted.startswith("genshin_")
+                else None)
             return
         if selected=="__manage_genshin__":
             self._showGenshinLibrary()
