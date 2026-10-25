@@ -57,6 +57,7 @@ on:
       - "tools/discover_new_codexpetdb_pins.py"
       - "tools/codexpetdb_next_zip_probe.json"
       - "tools/codexpetdb_batch3_zip_probe.json"
+      - "tools/codexpetdb_batch4_zip_probe.json"
       - "tools/codexpetdb_pending_zip_leads.json"
       - "tools/verify_pending_codexpetdb.py"
       - "tools/codexpetdb_pinned_zip_leads.json"
@@ -161,6 +162,7 @@ on:
       - "tools/discover_new_codexpetdb_pins.py"
       - "tools/codexpetdb_next_zip_probe.json"
       - "tools/codexpetdb_batch3_zip_probe.json"
+      - "tools/codexpetdb_batch4_zip_probe.json"
       - "tools/codexpetdb_pending_zip_leads.json"
       - "tools/verify_pending_codexpetdb.py"
       - "tools/codexpetdb_pinned_zip_leads.json"
@@ -574,4 +576,4 @@ jobs:
         run: python -m pip install "Pillow>=10,<13"
       - name: Verify four genuinely missing characters, never redistribute art
         timeout-minutes: 8
-        run: python tools/verify_pending_codexpetdb.py --candidate-file tools/codexpetdb_batch3_zip_probe.json
+        run: python tools/verify_pending_codexpetdb.py --candidate-file tools/codexpetdb_batch4_zip_probe.json
