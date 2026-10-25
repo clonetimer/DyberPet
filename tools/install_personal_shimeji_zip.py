@@ -80,11 +80,16 @@ def inspect_shimeji_zip(source):
     return images
 
 
-def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=False):
+def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=False,
+                                 verified_react_sha=None):
     if not confirmed:
         raise ValueError("Personal import requires explicit user confirmation")
     if profile not in CHIBI_PROFILES or not profile.startswith("genshin_"):
         raise ValueError("Select the exact Genshin identity; never infer from filename")
+    if verified_react_sha is not None and (
+            not isinstance(verified_react_sha, str) or
+            re.fullmatch(r"[a-f0-9]{64}", verified_react_sha) is None):
+        raise ValueError("Verified React-Shimeji module SHA-256 must be 64 lowercase hex characters")
     source = Path(source).expanduser()
     original = inspect_shimeji_zip(source)
     root = Path(output_root).expanduser()
@@ -154,7 +159,7 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
             (stage / filename).write_text(
                 json.dumps(obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         validation = validate_native_role(stage)
-        (stage / "PERSONAL_IMPORT.json").write_text(json.dumps({
+        receipt = {
             "mode": "personal_local_only",
             "source_kind": "user_selected_shimeji_zip",
             "selected_profile": profile,
@@ -167,7 +172,22 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
             "real_windows_qa_verified": False,
             "redistribution_allowed_by_tool": False,
             "validation": validation,
-        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        }
+        if verified_react_sha is not None:
+            receipt.update({
+                "source_kind": "pinned_react_shimeji_lfs_local_only",
+                "source_module_sha256": verified_react_sha,
+                "upstream_lfs_revision_verified": True,
+                "original_png_atlas_frame_pixels_preserved": True,
+                "source_author_likeness_qa_passed": False,
+                "real_desktop_playback_qa_passed": False,
+                "redistribution_allowed_by_tool": False,
+            })
+        # Attestation is committed with the role atomically: a failed write
+        # must never leave a playable role with an incomplete source receipt.
+        (stage / "PERSONAL_IMPORT.json").write_text(
+            json.dumps(receipt, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
         create_native_art_review(stage)
         if destination.exists() or destination.is_symlink():
             raise FileExistsError("Concurrent character install; refusing overwrite")
