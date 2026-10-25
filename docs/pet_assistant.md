@@ -70,7 +70,7 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 
 在桌宠上右键打开「桌宠助手」，点击 **本机功能自检（无联网／录音）**。这个按钮只读：
 - 检查可选的 `pyttsx3`、`vosk`、`sounddevice` 依赖是否能够在当前 Python 环境被发现；
-- 检查 Vosk 模型路径是否是一个实际存在的目录，提示未选取或已移动；
+- 检查 Vosk 模型路径是否包含 `am/final.mdl` 与 `conf/model.conf` 等基本目录结构，空文件夹不再误报为就绪；
 - 检查 LM Studio 的模型 ID 是否填写，以及 URL 是否是显式端口的本机 HTTP 地址；
 - 若用户启用了 PPL，检查 PPL URL 是否仍是有效的本机 HTTP 地址。
 
