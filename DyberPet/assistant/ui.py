@@ -21,6 +21,7 @@ from .persona import (
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
 from .readiness import inspect_readiness, readiness_text
+from .role_personas import persona_for_local_role
 from .role_interactions import available_interactions, requested_action
 from .guga_audio import record_local_clip, play_local_clip, load_local_clip
 from .character_fidelity import (
@@ -83,6 +84,7 @@ class PetAssistantDialog(QDialog):
             self._prefs_error = str(exc)
         self._build_ui()
         self._apply_preferences()
+        self._set_curated_role_persona()
         self._sync_guga_controls()
         if self._prefs_error:
             self.status.setText("旧配置未加载（未覆盖原文件）：" + self._prefs_error)
@@ -247,6 +249,20 @@ class PetAssistantDialog(QDialog):
         except (OSError, ValueError, ImportError) as exc:
             self._job_error("本机功能自检失败：" + str(exc))
 
+    def _set_curated_role_persona(self):
+        """Load a role's own offline persona, but keep explicit user overrides."""
+        current = self.character_name
+        special = resolve_profile(current)
+        if special and special.key in PERSONAS:
+            default = special.key
+        else:
+            default = persona_for_local_role(current, self.role_root) or "companion"
+        selected = self._prefs["personas"].get(current, default)
+        if selected not in PERSONAS:
+            selected = default
+        index = self.persona.findData(selected)
+        self.persona.setCurrentIndex(max(0, index))
+
     def set_character(self, name: str):
         if self.character_name == name:
             return
@@ -254,13 +270,8 @@ class PetAssistantDialog(QDialog):
         self.character_name = name
         self.setWindowTitle("桌宠助手 · " + name)
         self._sync_guga_controls()
-        profile = resolve_profile(name)
-        persona = profile.key if profile and profile.key in PERSONAS else "companion"
-        self.persona.setCurrentIndex(max(0, self.persona.findData(persona)))
+        self._set_curated_role_persona()
         self.chat_log.appendPlainText("已切换当前桌宠：" + name)
-        saved = self._prefs["personas"].get(name)
-        if saved in PERSONAS:
-            self.persona.setCurrentIndex(self.persona.findData(saved))
         self._last_reply = ""
         self._ppl_snapshot = ""  # Persona snapshots belong to the previous character
         self.set_actions([])  # No stale unlocked actions from previous character.
