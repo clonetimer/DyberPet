@@ -563,9 +563,11 @@ class CharInterface(ScrollArea):
         from tools.install_artist_shimeji import source_manifest
         from tools.install_nanopet_shimeji import source_manifest as nano_manifest
         from tools.install_external_codex import source_manifest as external_manifest
+        from tools.install_pinned_codexpetdb import listed_packages, fixed_archive_url
         shimeji = source_manifest()
         nano = nano_manifest()
         external = external_manifest()
+        petdb = listed_packages()["sources"]
         labels = {f"① 精细Q版优先 · 完整原生动画 · {title}":("artist_genshin", key)
                   for key, (_, _, title) in ROLES.items()}
         labels.update({f"② 作者图集待视觉核对 · {row[1]} · {key}":("artist_codex", key)
@@ -576,6 +578,10 @@ class CharInterface(ScrollArea):
                        for key, row in nano["roles"].items()})
         labels.update({f"② 独立画师图集待视觉核对 · {row['name']} · {key}":("artist_external_codex", key)
                        for key, row in external["sources"].items()})
+        labels.update({
+            f"② 已核验 SHA-256 的原画 ZIP · {row['slug']} · {key}": ("pinned_codexpetdb", key)
+            for key, row in petdb.items()
+        })
         if only_profile:
             def mapped_profile(source):
                 mode, key = source
@@ -587,6 +593,8 @@ class CharInterface(ScrollArea):
                     return shimeji["roles"][key]["profile"]
                 if mode == "artist_nano":
                     return nano["roles"][key]["profile"]
+                if mode == "pinned_codexpetdb":
+                    return petdb[key]["profile"]
                 return external["sources"][key]["profile"]
             labels = {name: source for name, source in labels.items()
                       if mapped_profile(source) == only_profile}
@@ -613,6 +621,8 @@ class CharInterface(ScrollArea):
             source = ("https://github.com/" + shimeji["repository"]
                       + "/tree/" + shimeji["revision"]
                       + "/public/assets/" + kind)
+        elif mode == "pinned_codexpetdb":
+            source = fixed_archive_url(petdb[kind])
         elif mode == "artist_nano":
             source = ("https://github.com/" + nano["repository"]
                       + "/tree/" + nano["revision"] + "/" + nano["asset_root"]
@@ -1184,12 +1194,12 @@ class CharInterface(ScrollArea):
         preview = Path(basedir) / "res" / "role" / role_name / "ANIMATION_PREVIEW.png"
         source_mode = self.chibiThread.mode if self.chibiThread is not None else ""
         title = ("作者真实动作帧核对（非人工验收通过）"
-                 if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "creator_source")
+                 if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "react_shimeji_lfs", "creator_source")
                  else "角色动作帧预览")
         message = ("安装成功。是否打开由原作者 PNG 原始帧直接拼成的核对图？"
                    "请检查脸部、发饰、服装和动作是否确实属于所选角色。"
                    "预览不等于自动完成形象验收。"
-                   if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "creator_source")
+                   if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "react_shimeji_lfs", "creator_source")
                    else "角色已导入。是否打开动作帧预览图，检查动画素材？")
         if preview.is_file() and self.__showMessageBox(title, message):
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
