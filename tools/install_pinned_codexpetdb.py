@@ -36,7 +36,7 @@ def listed_packages(path=REGISTRY):
     entries = listing.get("sources")
     if listing.get("schema") != 1 or listing.get("provider") != "CodexPetDB":
         raise ValueError("Unknown pinned creator package registry")
-    if not isinstance(entries, dict) or len(entries) != 4:
+    if not isinstance(entries, dict) or len(entries) != 8:
         raise ValueError("Pinned package registry requires exactly four checked listings")
     seen_profiles = set()
     for key, item in entries.items():
