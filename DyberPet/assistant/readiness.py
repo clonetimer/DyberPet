@@ -23,6 +23,13 @@ def _local_http(url):
         return False
 
 
+def _vosk_layout_present(path):
+    """Read-only plausibility check for standard unpacked Vosk model layout."""
+    folder = Path(path).expanduser()
+    return (folder.is_dir() and (folder / "am" / "final.mdl").is_file()
+            and (folder / "conf" / "model.conf").is_file())
+
+
 def inspect_readiness(*, voice_model="", llm_endpoint="", llm_model="",
                       ppl_enabled=False, ppl_endpoint="", dependency_lookup=None,
                       directory_check=None):
@@ -42,10 +49,10 @@ def inspect_readiness(*, voice_model="", llm_endpoint="", llm_model="",
 
     dependencies = bool(lookup("vosk")) and bool(lookup("sounddevice"))
     directory = str(voice_model).strip()
-    model_ok = bool(directory) and bool(is_directory(directory))
+    model_ok = bool(directory) and bool(is_directory(directory)) and _vosk_layout_present(directory)
     emit("离线语音识别", dependencies and model_ok,
-         "已找到 Vosk、sounddevice 和模型目录；尚未访问麦克风" if dependencies and model_ok
-         else "请安装 vosk、sounddevice 并选取有效的 Vosk 模型目录；不会自动录音")
+         "找到离线识别依赖和模型基本结构；未读取模型内容、未访问麦克风" if dependencies and model_ok
+         else "请安装 vosk、sounddevice，并选择包含 am/final.mdl 与 conf/model.conf 的完整 Vosk 模型目录；不会自动录音")
 
     chat_ok = _local_http(llm_endpoint) and bool(str(llm_model).strip())
     emit("本地 AI 对话", chat_ok,
