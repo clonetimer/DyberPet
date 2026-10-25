@@ -48,6 +48,10 @@ on:
       - "tools/install_creator_mascots.py"
       - "tools/install_artist_genshin.py"
       - "tools/install_artist_codex.py"
+      - "tools/install_artist_shimeji.py"
+      - "tools/artist_shimeji_sources.json"
+      - "tools/character_source_coverage.py"
+      - "tests/test_artist_shimeji_sources.py"
       - "tests/test_artist_codex_install.py"
       - "tests/test_artist_genshin_install.py"
       - "tests/test_creator_mascot_fetch.py"
@@ -117,6 +121,10 @@ on:
       - "tools/install_creator_mascots.py"
       - "tools/install_artist_genshin.py"
       - "tools/install_artist_codex.py"
+      - "tools/install_artist_shimeji.py"
+      - "tools/artist_shimeji_sources.json"
+      - "tools/character_source_coverage.py"
+      - "tests/test_artist_shimeji_sources.py"
       - "tests/test_artist_codex_install.py"
       - "tests/test_artist_genshin_install.py"
       - "tests/test_creator_mascot_fetch.py"
@@ -189,6 +197,11 @@ jobs:
         run: python tools/render_chibi_blender.py --help
       - name: Check lightweight creator spritesheet source CLI
         run: python tools/install_artist_codex.py --help
+      - name: Review pinned Shimeji source definitions
+        run: |
+          python tools/install_artist_shimeji.py --help
+          python tools/character_source_coverage.py --missing-only > missing-creator-sources.json
+          python -m unittest discover -s tests -p "test_artist_shimeji_sources.py" -v
       - name: Test Git-pinned 6-role Codex source registry
         run: python -m unittest discover -s tests -p "test_artist_codex_install.py" -v
       - name: Check artist-source personal installer CLI
