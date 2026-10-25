@@ -18,11 +18,13 @@ try:
     from .install_artist_codex import _download_pinned
     from .import_codex_pet import convert
     from .install_native_role import validate_native_role
+    from .artist_visual_review import create_native_art_review
 except ImportError:
     from chibi_profiles import CHIBI_PROFILES
     from install_artist_codex import _download_pinned
     from import_codex_pet import convert
     from install_native_role import validate_native_role
+    from artist_visual_review import create_native_art_review
 
 REGISTRY = Path(__file__).with_name("external_codex_art_sources.json")
 
@@ -89,6 +91,7 @@ def install_external_codex(kind, output_root, *, confirmed=False, downloader=_do
                 item["repository"], item["revision"], item["directory"])),
             license_name="Creator work; local personal use only; rights not reviewed")
         report = validate_native_role(imported)
+        visual = create_native_art_review(imported)
         (imported/"PERSONAL_IMPORT.json").write_text(json.dumps({
             "selected_profile": item["profile"],
             "display_name": item["name"],
