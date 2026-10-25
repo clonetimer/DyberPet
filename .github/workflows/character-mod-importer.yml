@@ -60,6 +60,7 @@ on:
       - "tools/codexpetdb_batch4_zip_probe.json"
       - "tools/codexpetdb_pending_zip_leads.json"
       - "tools/verify_pending_codexpetdb.py"
+      - "tests/test_pending_source_probes.py"
       - "tools/codexpetdb_pinned_zip_leads.json"
       - "tools/artist_visual_review.py"
       - "tools/install_personal_codex_zip.py"
@@ -165,6 +166,7 @@ on:
       - "tools/codexpetdb_batch4_zip_probe.json"
       - "tools/codexpetdb_pending_zip_leads.json"
       - "tools/verify_pending_codexpetdb.py"
+      - "tests/test_pending_source_probes.py"
       - "tools/codexpetdb_pinned_zip_leads.json"
       - "tools/artist_visual_review.py"
       - "tools/install_personal_codex_zip.py"
@@ -272,6 +274,7 @@ jobs:
           python -m unittest discover -s tests -p "test_personal_shimeji_zip.py" -v
           python -m unittest discover -s tests -p "test_artist_animation_audit.py" -v
           python -m unittest discover -s tests -p "test_pinned_codexpetdb.py" -v
+          python -m unittest discover -s tests -p "test_pending_source_probes.py" -v
           python -m unittest discover -s tests -p "test_pinned_gui_dispatch.py" -v
           python -m unittest discover -s tests -p "test_personal_codex_zip.py" -v
           python -m unittest discover -s tests -p "test_community_codex_leads.py" -v
