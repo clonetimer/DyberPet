@@ -18,10 +18,12 @@ try:
     from .chibi_profiles import CHIBI_PROFILES
     from .install_artist_shimeji import _download_png, MAX_PNG_BYTES
     from .install_native_role import validate_native_role
+    from .artist_visual_review import create_native_art_review
 except ImportError:
     from chibi_profiles import CHIBI_PROFILES
     from install_artist_shimeji import _download_png, MAX_PNG_BYTES
     from install_native_role import validate_native_role
+    from artist_visual_review import create_native_art_review
 
 REGISTRY = Path(__file__).with_name("nanopet_shimeji_sources.json")
 GROUPS = {
@@ -169,6 +171,7 @@ def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_d
             "redistribution_allowed_by_tool": False,
             "validation": checked,
         }, ensure_ascii=False, indent=2)+"\n", encoding="utf-8")
+        visual = create_native_art_review(stage)
         if destination.exists() or destination.is_symlink():
             raise FileExistsError("Source role was concurrently installed; no overwrite")
         stage.rename(destination)
