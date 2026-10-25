@@ -29,7 +29,7 @@ REGISTRY = Path(__file__).with_name("external_codex_art_sources.json")
 
 def source_manifest(path=REGISTRY):
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    if data.get("schema") != 1 or len(data.get("sources", {})) != 3:
+    if data.get("schema") != 1 or len(data.get("sources", {})) != 5:
         raise ValueError("Unknown pinned external artist registry")
     for kind, rec in data["sources"].items():
         if not re.fullmatch(r"[a-z][a-z_]{1,39}", kind):
