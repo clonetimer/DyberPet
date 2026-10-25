@@ -2,7 +2,7 @@
   "schema": 1,
   "provider": "CodexPetDB",
   "status": "catalog_metadata_only_not_verified",
-  "note": "Next four previously missing roles; source catalog SHA/byte metadata is not yet independently ZIP verified. Only promote to pinned manifest after actual download, id/atlas validation, native role and pixel audit all pass.",
+  "note": "Charlotte and Columbina were independently ZIP/native-install verified in CI 40202206664. Emilie r1 returned HTTP 404 and is NOT promoted. Replace Emilie with Iansan for a new four-source probe; Gaming remains unverified until this probe passes.",
   "sources": {
     "charlotte": {
       "profile": "genshin_charlotte",
@@ -22,15 +22,6 @@
       "max_bytes": 3000000,
       "listing_url": "https://codexpetdb.com/en/pets/gi-columbina/download"
     },
-    "emilie": {
-      "profile": "genshin_emilie",
-      "slug": "gi-emilie",
-      "revision": "019f8c76-ff78-7273-98a1-f31ca37e5d1b",
-      "sha256": "8b74e58be3eaf6e1103fb2b0c1af2e28bd4bbe80626510d6ce45d8aedf376444",
-      "verified_bytes": 715013,
-      "max_bytes": 3000000,
-      "listing_url": "https://codexpetdb.com/en/pets/gi-emilie/download"
-    },
     "gaming": {
       "profile": "genshin_gaming",
       "slug": "gi-gaming",
@@ -39,6 +30,15 @@
       "verified_bytes": 1141319,
       "max_bytes": 3000000,
       "listing_url": "https://codexpetdb.com/en/pets/gi-gaming/download"
+    },
+    "iansan": {
+      "profile": "genshin_iansan",
+      "slug": "gi-iansan",
+      "revision": "019f8c78-23ec-72cd-abf0-fa9d370c3c58",
+      "sha256": "b1a7ae810d7226581882e23de180e2725e15038360caca7e0624e9043411e5c6",
+      "verified_bytes": 783798,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-iansan/download"
     }
   }
 }
