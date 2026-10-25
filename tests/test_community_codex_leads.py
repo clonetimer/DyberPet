@@ -16,7 +16,7 @@ class CommunityRoleLeadsTests(unittest.TestCase):
         self.assertEqual(summary["public_entries_in_collection"], 35)
         self.assertEqual(summary["entries_mapped_to_roster"], 33)
         self.assertEqual(summary["excluded_nonroster_variants"], 2)
-        self.assertEqual(summary["new_leads_for_previously_missing_characters"], 29)
+        self.assertEqual(summary["new_leads_for_previously_missing_characters"], 25)
         self.assertTrue(summary["pinned_source_coverage_is_unchanged"])
         self.assertEqual(summary["art_likeness_approved"], 0)
         self.assertEqual(summary["added_to_installed_roles"], 0)
@@ -27,9 +27,9 @@ class CommunityRoleLeadsTests(unittest.TestCase):
             self.assertFalse(row["distributable"])
             self.assertTrue(row["candidate_url"].startswith("https://codexpetdb.com/en/pets/"))
         pinned = source_coverage()["summary"]
-        self.assertEqual(pinned["characters_with_pinned_sources"], 31)
-        self.assertEqual(pinned["characters_without_pinned_sources"], 92)
-        self.assertEqual(pinned["pinned_source_options"], 54)
+        self.assertEqual(pinned["characters_with_pinned_sources"], 35)
+        self.assertEqual(pinned["characters_without_pinned_sources"], 88)
+        self.assertEqual(pinned["pinned_source_options"], 58)
 
     def test_names_are_correct_and_nonroster_manekina_is_excluded(self):
         self.assertEqual(PROFILE_TO_SLUG["genshin_kaveh"], "gi-kaveh")
