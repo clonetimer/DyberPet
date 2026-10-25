@@ -490,9 +490,19 @@ def _assistant_package_smoke():
         try:
             selector.show()
             app.processEvents()
-            if (not selector.isVisible() or selector.results.count()!=0 or
-                    selector.statusFilter.currentData()!="personal"):
-                raise RuntimeError("Low-fidelity demos unexpectedly recommended")
+            if (not selector.isVisible() or selector.results.count()!=30 or
+                    selector.statusFilter.currentData()!="source"):
+                raise RuntimeError("Default catalog must show 30 authentic-art SOURCE CANDIDATES")
+            if any("作者来源" not in selector.results.item(i).text()
+                   for i in range(selector.results.count())):
+                raise RuntimeError("Source filter exposed an unverified demo without author provenance")
+            # A creator source must NOT be confused with the installed role:
+            # an untouched portable build has 125 temporary QA demos only.
+            selector.statusFilter.setCurrentIndex(
+                selector.statusFilter.findData("personal"))
+            app.processEvents()
+            if selector.results.count()!=0:
+                raise RuntimeError("Uninstalled creator candidates falsely marked as installed")
             selector.statusFilter.setCurrentIndex(selector.statusFilter.findData("all"))
             selector.searchBox.setText("Lisa")
             app.processEvents()
