@@ -11,7 +11,7 @@ from tools.character_source_coverage import source_coverage
 
 
 class ReactShimejiLeadTests(unittest.TestCase):
-    def test_six_profiles_retain_lfs_leads_two_now_have_new_verified_zip_alternatives(self):
+    def test_lfs_leads_and_four_now_have_verified_zip_alternatives(self):
         report = react_shimeji_lead_report()
         self.assertEqual(report["summary"]["repo_character_packages"], 2224)
         self.assertEqual(report["summary"]["matched_distinct_genshin_personas"], 6)
@@ -25,7 +25,7 @@ class ReactShimejiLeadTests(unittest.TestCase):
         for entry in report["characters"]:
             self.assertEqual(
                 entry["existing_fixed_source"],
-                entry["id"] in {"genshin_alhaitham", "genshin_kaveh", "genshin_freminet"})
+                entry["id"] in {"genshin_alhaitham", "genshin_kaveh", "genshin_freminet", "genshin_columbina"})
             self.assertEqual(entry["status"], "lfs_pointer_verified_art_uninspected")
             self.assertFalse(entry["native_role_installed"])
             self.assertFalse(entry["full_lfs_art_downloaded_and_hashed"])
