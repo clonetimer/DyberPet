@@ -484,39 +484,41 @@ jobs:
           python-version: "3.11"
       - name: Prepare PNG atlas verifier
         run: python -m pip install Pillow
-      - name: Verify provider bytes and original atlas without installing them
+      - name: Download each SHA-pinned creator ZIP once, then install from verified local cache
         timeout-minutes: 5
         run: |
-          python tools/install_pinned_codexpetdb.py kaveh --verify-only
-          python tools/install_pinned_codexpetdb.py kinich --verify-only
-          python tools/install_pinned_codexpetdb.py kirara --verify-only
-          python tools/install_pinned_codexpetdb.py alhaitham --verify-only
-      - name: Convert four genuine CDN art ZIPs to local-only DyberPet roles
-        timeout-minutes: 5
-        run: |
-          ROOT="$RUNNER_TEMP/petdb-creator-qa"
-          python tools/install_pinned_codexpetdb.py kaveh --role-root "$ROOT" --accept-personal-use
-          python tools/install_pinned_codexpetdb.py kinich --role-root "$ROOT" --accept-personal-use
-          python tools/install_pinned_codexpetdb.py kirara --role-root "$ROOT" --accept-personal-use
-          python tools/install_pinned_codexpetdb.py alhaitham --role-root "$ROOT" --accept-personal-use
-          ROOT="$ROOT" python - <<'PY'
-          import os, json
+          python - <<'PY'
+          import json
+          import os
           from pathlib import Path
-          root = Path(os.environ["ROOT"])
-          roles = [x for x in root.iterdir() if x.is_dir() and not x.name.startswith(".")]
-          assert len(roles) == 4, [p.name for p in roles]
-          original = set()
-          for folder in roles:
-              receipt = json.loads((folder / "PERSONAL_IMPORT.json").read_text("utf-8"))
-              report = json.loads((folder / "ACTION_PIXEL_AUDIT.json").read_text("utf-8"))
-              assert receipt["source_zip_sha256_verified"]
-              assert (folder / "ANIMATION_PREVIEW.png").exists()
+          from tools.install_pinned_codexpetdb import (
+              get_verified_package, inspect_codex_zip, install_pinned_codexpetdb
+          )
+          tmp = Path(os.environ["RUNNER_TEMP"])
+          root = tmp / "petdb-creator-qa"
+          cache = tmp / "petdb-one-download-only"
+          cache.mkdir(parents=True, exist_ok=True)
+          installed = []
+          for key in ("kaveh", "kinich", "kirara", "alhaitham"):
+              payload, record = get_verified_package(key)
+              local = cache / (record["slug"] + ".zip")
+              local.write_bytes(payload)  # Already matched exact SHA-256 and file length.
+              bundle = inspect_codex_zip(local)
+              assert bundle["manifest"]["id"] == record["slug"]
+              role = install_pinned_codexpetdb(
+                  key, root, confirmed=True, archive=local)
+              installed.append(role)
+              receipt = json.loads((role / "PERSONAL_IMPORT.json").read_text("utf-8"))
+              report = json.loads((role / "ACTION_PIXEL_AUDIT.json").read_text("utf-8"))
+              assert receipt["source_zip_sha256_verified"] == record["sha256"]
+              assert (role / "ANIMATION_PREVIEW.png").exists()
               assert not report["summary"]["character_visual_likeness_verified"]
               assert report["summary"]["original_frames_inspected"] > 0
-              original.add(receipt["selected_profile"])
-              print("ORIGINAL_ATLAS_IMPORTED", folder.name, report["summary"])
-          assert original == {
+              print("VERIFIED_SOURCE_AND_NATIVE_IMPORT", key, len(payload), report["summary"])
+          assert len(installed) == 4
+          assert {json.loads((r / "PERSONAL_IMPORT.json").read_text("utf-8"))[
+              "selected_profile"] for r in installed} == {
               "genshin_kaveh", "genshin_kinich",
               "genshin_kirara", "genshin_alhaitham"
-          }, original
+          }
           PY
