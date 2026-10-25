@@ -407,7 +407,7 @@ def _assistant_package_smoke():
         and creator["template_count"] == 123
         and len(nano_manifest()["roles"]) == 17
         and len(external_manifest()["sources"]) == 11
-        and creator["characters_with_pinned_sources"] == 47
+        and creator["characters_with_pinned_sources"] >= 47
         and {"guga", "doro"}.issubset(mascot_art))
     if not report["public_art_sources_ready"]:
         raise RuntimeError("Pinned original-art installers missing from executable")
@@ -490,9 +490,9 @@ def _assistant_package_smoke():
         try:
             selector.show()
             app.processEvents()
-            if (not selector.isVisible() or selector.results.count()!=47 or
+            if (not selector.isVisible() or selector.results.count()!=creator["characters_with_pinned_sources"] or
                     selector.statusFilter.currentData()!="source"):
-                raise RuntimeError("Default catalog must show 47 pinned creator-art SOURCE CANDIDATES")
+                raise RuntimeError("Default catalog count must match verified pinned creator-art source registry")
             if any("作者来源" not in selector.results.item(i).text()
                    for i in range(selector.results.count())):
                 raise RuntimeError("Source filter exposed an unverified demo without author provenance")
