@@ -64,6 +64,7 @@ on:
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
+      - "tests/test_react_shimeji_qt.py"
       - "tools/character_source_coverage.py"
       - "tools/creator_art_preference.py"
       - "tests/test_creator_art_preferences.py"
@@ -153,6 +154,7 @@ on:
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
+      - "tests/test_react_shimeji_qt.py"
       - "tools/character_source_coverage.py"
       - "tools/creator_art_preference.py"
       - "tests/test_creator_art_preferences.py"
@@ -400,7 +402,9 @@ jobs:
       - name: Exercise real QPixmap and PetConfig role loader
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests -p "test_qt_character_loader.py" -v
+        run: |
+          python -m unittest discover -s tests -p "test_qt_character_loader.py" -v
+          python -m unittest discover -s tests -p "test_react_shimeji_qt.py" -v
 
   package-original-role:
     name: downloadable-original-role
