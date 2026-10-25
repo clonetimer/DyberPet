@@ -68,6 +68,7 @@ on:
       - "tests/test_personal_shimeji_zip.py"
       - "tests/test_artist_animation_audit.py"
       - "tests/test_pinned_codexpetdb.py"
+      - "tests/test_pinned_gui_dispatch.py"
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
@@ -166,6 +167,7 @@ on:
       - "tests/test_personal_shimeji_zip.py"
       - "tests/test_artist_animation_audit.py"
       - "tests/test_pinned_codexpetdb.py"
+      - "tests/test_pinned_gui_dispatch.py"
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
@@ -258,6 +260,7 @@ jobs:
           python -m unittest discover -s tests -p "test_personal_shimeji_zip.py" -v
           python -m unittest discover -s tests -p "test_artist_animation_audit.py" -v
           python -m unittest discover -s tests -p "test_pinned_codexpetdb.py" -v
+          python -m unittest discover -s tests -p "test_pinned_gui_dispatch.py" -v
           python -m unittest discover -s tests -p "test_personal_codex_zip.py" -v
           python -m unittest discover -s tests -p "test_community_codex_leads.py" -v
           python -m unittest discover -s tests -p "test_react_shimeji_leads.py" -v
