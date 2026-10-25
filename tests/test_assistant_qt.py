@@ -82,7 +82,7 @@ class AssistantQtTests(unittest.TestCase):
             "art_likeness_qa_passed": False,
         }
         with patch("tools.character_interaction_coverage.inspect_selected_role_interactions",
-                   return_value=report) as inspector, \\
+                   return_value=report) as inspector, \
              patch.object(QMessageBox, "information") as message:
             self.dialog.interaction_audit_button.click()
             self.assertEqual(inspector.call_count, 1)
