@@ -84,8 +84,14 @@ def inspect_codex_zip(source):
             atlas_path = Path(td) / sheet_name
             atlas_path.write_bytes(sheet)
             _, version = read_atlas(atlas_path, manifest)
+        hasher = hashlib.sha256()
         with path.open("rb") as archive_file:
-            digest = hashlib.file_digest(archive_file, "sha256").hexdigest()
+            while True:
+                chunk = archive_file.read(1024 * 1024)
+                if not chunk:
+                    break
+                hasher.update(chunk)
+        digest = hasher.hexdigest()
         return {"manifest": manifest, "manifest_bytes": raw, "sheet": sheet,
                 "sheet_name": sheet_name, "version": version,
                 "package_sha256": digest}
