@@ -10,6 +10,8 @@ on:
       - "DyberPet/assistant/native_bridge.py"
       - "DyberPet/assistant/character_fidelity.py"
       - "tests/test_rust_creator_art_parity.py"
+      - "tests/test_rust_qt_runtime.py"
+      - "tools/benchmark_qt_creator_runtime.py"
       - "tools/build_windows_portable.ps1"
       - "run_DyberPet.py"
       - ".github/workflows/windows-rust-optional.yml"
@@ -19,6 +21,8 @@ on:
       - "DyberPet/assistant/native_bridge.py"
       - "DyberPet/assistant/character_fidelity.py"
       - "tests/test_rust_creator_art_parity.py"
+      - "tests/test_rust_qt_runtime.py"
+      - "tools/benchmark_qt_creator_runtime.py"
       - "tools/build_windows_portable.ps1"
       - "run_DyberPet.py"
       - ".github/workflows/windows-rust-optional.yml"
@@ -45,6 +49,23 @@ jobs:
           maturin build --release --manifest-path rust/pet_core/Cargo.toml --interpreter python --out wheelhouse
           python -m pip install --no-index --find-links wheelhouse dyberpet-native-core
           python -c "import dyberpet_native; assert dyberpet_native.engine_version() == '0.1.0'"
+      - name: R7 compare real artist QPixmap, PetConfig and offscreen repaint
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $ErrorActionPreference = "Stop"
+          $assetRoot = Join-Path $env:RUNNER_TEMP "r7-qt/res/role"
+          python tools/install_artist_codex.py nahida --role-root $assetRoot --accept-personal-use | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Cannot load pinned Nahida art for Qt benchmark" }
+          python tools/install_artist_codex.py paimon --role-root $assetRoot --accept-personal-use | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Cannot load pinned Paimon art for Qt benchmark" }
+          python tools/benchmark_qt_creator_runtime.py --role-root $assetRoot --kind nahida --blocks 2 --ticks 96
+          if ($LASTEXITCODE -ne 0) { throw "Rust/Python actual Qt creator parity failed (Nahida)" }
+          python tools/benchmark_qt_creator_runtime.py --role-root $assetRoot --kind paimon --blocks 2 --ticks 96
+          if ($LASTEXITCODE -ne 0) { throw "Rust/Python actual Qt creator parity failed (Paimon)" }
+          # Qt was offscreen. This is NOT monitor FPS or a physical Windows test.
+          Write-Output "R7_QT_CREATOR_OFFSCREEN_PARITY_VALID"
       - name: Build isolated Windows Rust opt-in archive with temporary test-only frames
         shell: pwsh
         env:
