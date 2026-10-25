@@ -151,6 +151,14 @@ class PetAssistantDialog(QDialog):
         action_row.addWidget(self.interaction_menu, 1)
         action_row.addWidget(self.interaction_button)
         form.addRow("主动互动（仅已解锁原生动作）", action_row)
+        inspect_row = QHBoxLayout()
+        self.interaction_audit_button = QPushButton("检查本角色互动缺口", self)
+        self.interaction_audit_button.clicked.connect(self.show_interaction_audit)
+        self.action_preview_button = QPushButton("预览已安装的真实动画帧", self)
+        self.action_preview_button.clicked.connect(self.preview_installed_actions)
+        inspect_row.addWidget(self.interaction_audit_button)
+        inspect_row.addWidget(self.action_preview_button)
+        form.addRow(inspect_row)
         self.set_actions([])
         self.save_pref_button = QPushButton("保存助手设置（不保存聊天记录与人设快照）")
         self.save_pref_button.clicked.connect(self.save_preferences)
@@ -328,6 +336,53 @@ class PetAssistantDialog(QDialog):
             self.status.setText("已请求当前桌宠执行原有动作：" + selected)
         else:
             self.status.setText("该角色尚无可用的对应动画；未执行任何动作。")
+
+    def show_interaction_audit(self):
+        """Read only current role's action registry, never fabricate assets."""
+        from tools.character_interaction_coverage import inspect_selected_role_interactions
+        from .role_interactions import INTERACTION_CATEGORIES
+        try:
+            report = inspect_selected_role_interactions(
+                self.role_root, self.character_name,
+                unlocked_actions=self._unlocked_actions)
+        except (OSError, ValueError) as exc:
+            self._job_error("互动素材检查失败：" + str(exc))
+            return
+        titles = {key: label for key, label, _aliases in INTERACTION_CATEGORIES}
+        status = {
+            "not_installed": "当前目录没有安装本角色的动画文件",
+            "builtin_demo_not_original_art": "程序演示角色，不属于原设作者素材",
+            "imported_artist_claim_not_verified": "本机有导入收据，来源与人物外观尚未人工核验",
+            "unverified_local_role": "本机角色来源身份未明确核验",
+        }.get(report["status"], "来源状态未知")
+        good = report["currently_unlocked_categories"]
+        still_missing = report["missing_categories"]
+        lines = [
+            "当前桌宠：" + self.character_name,
+            "素材状态：" + status,
+            "安装的动作名称：" + ("、".join(report["on_disk_action_names"]) or "无"),
+            "可触发的互动类别：" + (
+                "、".join(titles.get(k, k) for k in good) or "无"),
+            "尚无对应真实动作的类别：" + (
+                "、".join(titles.get(k, k) for k in still_missing) or "无"),
+            "注意：动作配置可用不代表已完成原画身份、人设声音或真机连续播放验收。",
+            "演示素材及仅有角色名称的模板不计作原设美术完成。",
+        ]
+        QMessageBox.information(self, "当前角色互动覆盖 · 只读检查", "\n".join(lines))
+
+    def preview_installed_actions(self):
+        """Preview actual installed frames; do not generate surrogate sprites."""
+        try:
+            path = self._role_path()
+            if path.is_symlink() or not path.is_dir():
+                raise ValueError("当前人物尚无可预览的本地角色目录")
+            from DyberPet.DyberSettings.mascot_preview_dialog import MascotActionPreview
+            demo = ((path / "BUILTIN_CHIBI_DEMO.json").is_file() or
+                    (path / "BUILTIN_MASCOT_DEMO.json").is_file())
+            preview = MascotActionPreview(path, original_demo=demo, parent=self)
+            preview.exec()
+        except (OSError, ValueError) as exc:
+            self._job_error("角色动画预览失败：" + str(exc))
 
     def _emit_selected_animation(self):
         action = self.action_menu.currentData()
