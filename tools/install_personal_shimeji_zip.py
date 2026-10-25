@@ -20,11 +20,13 @@ try:
     from .chibi_profiles import CHIBI_PROFILES, available_role_folder
     from .install_native_role import validate_native_role
     from .artist_visual_review import create_native_art_review
+    from .artist_animation_audit import audit_native_character
     from .install_nanopet_shimeji import GROUPS
 except ImportError:
     from chibi_profiles import CHIBI_PROFILES, available_role_folder
     from install_native_role import validate_native_role
     from artist_visual_review import create_native_art_review
+    from artist_animation_audit import audit_native_character
     from install_nanopet_shimeji import GROUPS
 
 MAX_ENTRIES = 1200
@@ -201,6 +203,10 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
             json.dumps(receipt, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8")
         create_native_art_review(stage)
+        audit = audit_native_character(stage)
+        (stage / "ACTION_PIXEL_AUDIT.json").write_text(
+            json.dumps(audit, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
         if destination.exists() or destination.is_symlink():
             raise FileExistsError("Concurrent character install; refusing overwrite")
         stage.rename(destination)
