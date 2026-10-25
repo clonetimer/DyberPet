@@ -134,3 +134,9 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 现在统一支持 12 类**可匹配动作**；并不声称 125 位角色都真实拥有这 12 类素材。对应 `tests/test_role_interactions.py` 新增防混淆场景，确保明确拒绝 `run→walk`、`idle→rest`、`happy→jump`、`climb↔crawl` 的错误映射。
 
 角色专属文本人设不会赋予不存在的物理动作，也不能由助手对话绕过用户手动确认。
+
+## 2026-10-25 本轮：导出当前角色的真实互动缺口 JSON
+
+桌宠助手新增 **「导出当前角色互动缺口 JSON」**，只在用户明确点击保存后读取当前已安装角色的动作配置与实际首帧，以及这一次运行中 PetWidget 实际解锁的动作。与「检查本角色互动缺口」共用同一只读检查器，能够区分 **有素材且已解锁 / 有素材但尚未解锁 / 配置中有动作但缺真实帧 / 完全没有对应动画**。切换角色时重新查询当前人物，不复用旧角色动作权限。
+
+导出的 JSON 包含角色目录名、动作名称、缺口和三个明确的限制：`human_original_likeness_verified=false`、`manual_playback_verified=false`、`art_likeness_qa_passed=false`；**导出成功不代表角色已经通过人工外观验收**。取消保存不会创建文件；只写入用户选择的普通 JSON 文件，避免把任何大模型回答当作文件操作授权。PySide6 Qt 实际点击、保存、取消、跨角色切换和错误扩展名均纳入 `tests/test_assistant_qt.py`。
