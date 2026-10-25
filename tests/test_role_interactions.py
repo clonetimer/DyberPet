@@ -45,7 +45,7 @@ class RoleInteractionTests(unittest.TestCase):
         self.assertIsNone(requested_action(stripped, "climb"))
 
     def test_no_unrelated_or_unlocked_action_is_invented(self):
-        for actions in ([], ["attack", "eat", "patpat"], ["wave_effect", "fake_wave"],
+        for actions in ([], ["attack", "eat", "fake_patpat"], ["wave_effect", "fake_wave"],
                         ["walk_disabled"], [None, 123, "", " jump "]):
             plan = available_interactions(actions)
             self.assertTrue(all(not p["available"] for p in plan))
