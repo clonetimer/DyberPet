@@ -325,6 +325,8 @@ jobs:
         run: |
           python tools/install_external_codex.py linnea --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
           python tools/install_external_codex.py sandrone --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python tools/install_external_codex.py keqing_chibi --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python tools/install_external_codex.py keqing_classic --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
           python - <<'PY'
           import json,os
           from pathlib import Path
@@ -350,6 +352,16 @@ jobs:
           checked=validate_native_role(sandrone)
           assert checked["images"]>=6 and checked["actions"]>=2,checked
           print("REAL_SANDRONE_AUTHOR_FRAMES_OK",checked)
+          for kind in ("KeqingChibi", "KeqingClassic"):
+              keqing=Path(os.environ["RUNNER_TEMP"])/"external-art-qa"/("SourceExternal"+kind)
+              receipt=json.loads((keqing/"PERSONAL_IMPORT.json").read_text("utf-8"))
+              assert receipt["selected_profile"]=="genshin_keqing",receipt
+              assert receipt["source_pixel_integrity_verified"]
+              assert not receipt["likeness_manually_reviewed"]
+              q=validate_native_role(keqing)
+              assert q["actions"]>=2 and q["images"]>=6,q
+              assert (keqing/"ANIMATION_PREVIEW.png").is_file()
+              print("REAL_AUTHOR_KEQING_OK",kind,q)
           PY
       # No artifact upload: author-created character images are temporary CI input.
 
