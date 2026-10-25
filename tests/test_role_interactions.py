@@ -64,7 +64,7 @@ class RoleInteractionTests(unittest.TestCase):
         self.assertEqual(requested_action(plan, "climb"), "climb")
         self.assertEqual(requested_action(plan, "crawl"), "crawl")
         self.assertEqual(requested_action(plan, "sit"), "sit")
-        self.assertEqual(requested_action(plan, "rest"), "idle")
+        self.assertIsNone(requested_action(plan, "rest"))  # idle is not a seated/resting animation
         self.assertNotEqual(requested_action(plan, "climb"),
                             requested_action(plan, "crawl"))
         self.assertEqual([x["label"] for x in plan if x["id"] in ("climb", "crawl")],
