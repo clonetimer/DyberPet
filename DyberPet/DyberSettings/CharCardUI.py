@@ -309,7 +309,8 @@ class CharInterface(ScrollArea):
         # whether user selects an unpacked role folder or a native MOD ZIP.
         options = ["个人本地导入：角色文件夹 / Codex / GIF / PNG", "个人本地导入：原生角色 ZIP",
                    "生成原创 Q 版示例角色（不需下载素材）",
-                   "浏览角色合集来源（网页手动获取，不自动下载）"]
+                   "浏览角色合集来源（网页手动获取，不自动下载）",
+                    "个人本地导入：Shimeji 原画 ZIP（仅提取图片）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -330,6 +331,13 @@ class CharInterface(ScrollArea):
             return
         if choice == options[2]:
             self._importOriginalDemo()
+            return
+        if choice == options[4]:
+            archive, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择本人已下载的标准 Shimeji ZIP"), docs,
+                "Shimeji ZIP (*.zip)")
+            if archive:
+                self._importShimejiZip(archive)
             return
         if choice == options[3]:
             QDesktopServices.openUrl(QUrl(
@@ -960,6 +968,27 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在生成原创 Q 版星芽动画，不会覆盖已有角色。"), 1)
 
+    def _importShimejiZip(self, archivePath):
+        """Import personal original Shimeji PNGs without launching archive programs."""
+        if self.chibiThread is not None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted:
+            return
+        if profile is None or not profile.startswith("genshin_"):
+            self.__showSystemNote(
+                self.tr("Shimeji 原画需要明确选择对应的原神角色，不能自动猜测人物身份。"), 2)
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            archivePath, os.path.join(basedir, "res", "role"),
+            mode="shimeji_zip", profile=profile, preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(
+            self.tr("正在安全读取 Shimeji PNG 帧，不执行 ZIP 内任何程序。"), 1)
+
     def _importNativeZip(self, archivePath):
         """Import native ZIP with optional, explicit *local* profile association."""
         if self.chibiThread is not None:
@@ -1321,6 +1350,11 @@ class ChibiImportThread(QThread):
                 installed = install_creator_mascot(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
+            elif self.mode == "shimeji_zip":
+                from tools.install_personal_shimeji_zip import install_personal_shimeji_zip
+                new_folder = install_personal_shimeji_zip(
+                    self.source, self.output_root,
+                    profile=self.profile, confirmed=True)
             elif self.mode in ("native_zip", "native_folder"):
                 if self.profile:
                     # Attach only the user-selected display identity; never
