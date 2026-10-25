@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "provider": "CodexPetDB",
-  "note": "All eight entries were downloaded, their full ZIP SHA-256 and observed byte length independently checked, source pet.json ID and PNG/WebP atlas validated, and native DyberPet import smoke-tested in GitHub Actions on 2026-10-25. Original game character visual likeness and rights are not verified.",
+  "note": "All twelve ZIPs were independently downloaded, full ZIP SHA-256 and byte length verified, matched pet.json ID and PNG/WebP atlas validated, and installed as native DyberPet roles in GitHub Actions on 2026-10-25. Character likeness and rights are not manually verified.",
   "sources": {
     "kaveh": {
       "profile": "genshin_kaveh",
@@ -74,6 +74,42 @@
       "verified_bytes": 977903,
       "max_bytes": 3000000,
       "listing_url": "https://codexpetdb.com/en/pets/gi-layla/download"
+    },
+    "chiori": {
+      "profile": "genshin_chiori",
+      "slug": "gi-chiori",
+      "revision": "019f8c75-47f1-731a-804f-3435e50bcb83",
+      "sha256": "b33e8b3fca0f9bc0bebd31f6bfb5638f8aca50a280aa1dd747d0649329474391",
+      "verified_bytes": 1035836,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-chiori/download"
+    },
+    "cyno": {
+      "profile": "genshin_cyno",
+      "slug": "gi-cyno",
+      "revision": "019f8c75-da05-72a9-b339-55c0082a77d4",
+      "sha256": "935d270c453885c4719b36ba2423fe3e404bfd325b74019d5a04af40121c8ec4",
+      "verified_bytes": 1331811,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-cyno/download"
+    },
+    "dehya": {
+      "profile": "genshin_dehya",
+      "slug": "gi-dehya",
+      "revision": "019f8c76-6ccf-7535-8521-306b9bc0b6dd",
+      "sha256": "0dca6ffe41c7d547d014b576c81ff1131239676f7d18264664d181f8d5a5713c",
+      "verified_bytes": 715617,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-dehya/download"
+    },
+    "freminet": {
+      "profile": "genshin_freminet",
+      "slug": "gi-freminet",
+      "revision": "019f8c77-904d-76c3-94df-2c266f692749",
+      "sha256": "a832d1ab9417f622bd5324dd406f6576f1b6c0930092b409099e16f65156d5b0",
+      "verified_bytes": 688367,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-freminet/download"
     }
   }
 }
