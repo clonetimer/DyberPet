@@ -108,7 +108,7 @@ class HashPinnedPackageTests(unittest.TestCase):
         listing = self.configure(package)
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "roles"
-            bad = b"corrupted-data"
+            bad = package[:-1] + bytes([package[-1] ^ 1])  # same length, altered SHA
             with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
                 install_pinned_codexpetdb(
                     "kaveh", root, confirmed=True, manifest=listing,
