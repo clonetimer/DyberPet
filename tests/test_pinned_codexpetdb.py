@@ -48,6 +48,7 @@ class HashPinnedPackageTests(unittest.TestCase):
         entry = copy.deepcopy(listed_packages())
         rec = entry["sources"]["kaveh"]
         rec["sha256"] = hashlib.sha256(package).hexdigest()
+        rec["verified_bytes"] = len(package)
         rec["max_bytes"] = MAX_ARCHIVE_BYTES
         return entry
 
@@ -58,6 +59,7 @@ class HashPinnedPackageTests(unittest.TestCase):
                          {"kaveh", "kinich", "kirara", "alhaitham"})
         for key, record in manifest["sources"].items():
             self.assertEqual(len(record["sha256"]), 64)
+            self.assertGreater(record["verified_bytes"], 100)
             url = fixed_archive_url(record)
             self.assertTrue(url.startswith("https://cdn.codexpetdb.com/revisions/"))
             self.assertTrue(url.endswith("/" + record["slug"] + ".zip"))
