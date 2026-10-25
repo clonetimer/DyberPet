@@ -327,6 +327,7 @@ jobs:
           python tools/install_external_codex.py sandrone --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
           python tools/install_external_codex.py keqing_chibi --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
           python tools/install_external_codex.py keqing_classic --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python tools/install_external_codex.py sayu_cozy --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
           python - <<'PY'
           import json,os
           from pathlib import Path
