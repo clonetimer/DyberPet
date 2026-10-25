@@ -32,20 +32,20 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             source_style("wrong_character")
 
-    def test_29_creator_sources_and_94_honest_gaps(self):
+    def test_31_creator_sources_and_92_honest_gaps(self):
         result = source_coverage()
         summary = result["summary"]
         self.assertEqual(summary["template_count"], 123)
-        self.assertEqual(summary["characters_with_pinned_sources"], 30)
-        self.assertEqual(summary["characters_without_pinned_sources"], 93)
-        self.assertEqual(summary["pinned_source_options"], 53)
+        self.assertEqual(summary["characters_with_pinned_sources"], 31)
+        self.assertEqual(summary["characters_without_pinned_sources"], 92)
+        self.assertEqual(summary["pinned_source_options"], 54)
         self.assertEqual(summary["style_priority_detailed_native_count"], 3)
         self.assertEqual(summary["user_visible_style_grades_approved"], 0)
         total = sum(summary[x] for x in (
             "style_priority_detailed_native_count",
             "style_priority_atlas_pending_count",
             "style_priority_shimeji_candidate_count"))
-        self.assertEqual(total, 30)
+        self.assertEqual(total, 31)
         refs = {row["id"]: row for row in result["characters"]}
         for key in ("genshin_nahida", "genshin_xiao", "genshin_wanderer"):
             self.assertEqual(refs[key]["recommended_source"]["provider"], "native")
@@ -54,6 +54,7 @@ class CreatorArtPreferenceTests(unittest.TestCase):
             self.assertEqual(refs[key]["style_preference_group"], "small_candidate")
         self.assertEqual(refs["genshin_keqing"]["source_candidate_count"], 2)
         self.assertEqual(refs["genshin_lisa"]["source_candidate_count"], 0)
+        self.assertEqual(refs["genshin_sayu"]["source_candidate_count"], 1)
         self.assertIsNone(refs["genshin_lisa"]["recommended_source"])
         for row in result["characters"]:
             self.assertIsNone(row["visual_grade"])
@@ -73,8 +74,8 @@ class CreatorArtPreferenceTests(unittest.TestCase):
                                           status="source", source_lookup=lookup)
         missing = query_character_catalog(progress, family="genshin",
                                           status="source_missing", source_lookup=lookup)
-        self.assertEqual(len(visible), 30)
-        self.assertEqual(len(missing), 93)
+        self.assertEqual(len(visible), 31)
+        self.assertEqual(len(missing), 92)
         self.assertEqual(len(query_character_catalog(progress, family="genshin")), 123)
         self.assertEqual(query_character_catalog(progress, status="personal"), [])
         self.assertEqual(visible[0]["id"] in ("genshin_nahida", "genshin_xiao", "genshin_wanderer"), True)
