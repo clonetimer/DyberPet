@@ -242,3 +242,18 @@ python tools/install_external_codex.py furina_fan --role-root res/role --accept-
 四份来源均已录入 `tools/codexpetdb_pinned_zip_leads.json`，GUI 可对指定人物选择个人在线或离线 SHA-256 安装。新来源固定覆盖 **66→70 套、43→47 位不同人物**，剩余 **76 位**缺少此级来源验证。**9 类动作**只表明该图集转换器具备对应原始帧和动作配置，不意味着每位人物有自己独特的高还原摸头/语音等专属动作。
 
 与用户要求保持一致：角色外观是否符合原设，需要逐人看源图与游戏人物服装/配色/道具/辨识度；当前未执行这四人的人眼原设对照，不批准 A/B/C。Windows 本人设备与 GitHub Actions 是不同的验收环境，仍需单独检查。
+
+## 2026-10-25 · 持续覆盖到 51 / 123：爱诺、达莉娅、菲林斯、蓝砚
+
+本轮从独立官方公开目录发现的待核验项目中，新增四位**原神人物专属发布 ZIP**，并在 GitHub Actions [run 40206859844](https://github.com/clonetimer/DyberPet/actions/runs/40206859844) 的「Next four Genshin ZIP byte and animation verification」真实下载安装、比对完整 SHA-256、`pet.json.id`、PNG/WebP 图集，并转换成每人 **9 类原生动作 / 57 帧**。四人原画 ZIP 内容及原生转换检查全部成功，均有本机临时工作区的动作像素结构报告；源图集未复制进 Git 仓库，也没有发布到发行介质。
+
+| 人物 | SHA-256 | ZIP 字节数 | 结论 |
+| --- | --- | ---: | --- |
+| 爱诺（Aino） | `37b16a5d7d002b8d702de543782ba71a54397006d02676cea304c109a6233b11` | 1,245,895 | ZIP+动作结构通过 |
+| 达莉娅（Dahlia） | `67184f9eafc466af27baf82c475b598cb79085ce9d8acd947330dd219ec7566f` | 720,705 | ZIP+动作结构通过 |
+| 菲林斯（Flins） | `860561c7accdcda2a970fa8e3b20264a1079492ad87fae136a2ef29ae029ecda` | 733,245 | ZIP+动作结构通过 |
+| 蓝砚（Lan Yan） | `f821e89ebb1eecbb9ef3d3f7b879577c6cfe0177381997dce930f4f06a3b32cb` | 882,508 | ZIP+动作结构通过 |
+
+固定可校验作者来源由 **70 → 74 套、47 → 51 位不同人物、缺口 76 → 72 位**。其中 CodexPetDB 已精确固定 20 个 ZIP；其余来源来自既有独立画师/原生或 Shimeji 资源。上述结果证明素材文件一致、人物 ID 映射和结构性动作安装成功，但**绝不等同于原作美术相似度、授权许可、声优原声或 Windows 实际屏幕播放通过**。这些人仍需逐帧人工与原设对照，不可盖章「形象完善」。
+
+新增 4 位所用验证候选保存在 `tools/codexpetdb_next_zip_probe.json`，通过后纳入 `tools/codexpetdb_pinned_zip_leads.json`；测试矩阵同步要求 **74 / 51 / 72**。后续新角色需要独立验证新的 ZIP，不应将已固定的候选反复下载来增加计数。
