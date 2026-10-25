@@ -55,15 +55,27 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           $ErrorActionPreference = "Stop"
+          python -m pip install psutil==6.1.1
+          if ($LASTEXITCODE -ne 0) { throw "RSS sampler cannot be installed" }
           $assetRoot = Join-Path $env:RUNNER_TEMP "r7-qt/res/role"
           python tools/install_artist_codex.py nahida --role-root $assetRoot --accept-personal-use | Out-Null
           if ($LASTEXITCODE -ne 0) { throw "Cannot load pinned Nahida art for Qt benchmark" }
           python tools/install_artist_codex.py paimon --role-root $assetRoot --accept-personal-use | Out-Null
           if ($LASTEXITCODE -ne 0) { throw "Cannot load pinned Paimon art for Qt benchmark" }
-          python tools/benchmark_qt_creator_runtime.py --role-root $assetRoot --kind nahida --blocks 2 --ticks 96
+          $nahidaRaw = python tools/benchmark_qt_creator_runtime.py --role-root $assetRoot --kind nahida --blocks 2 --ticks 96
           if ($LASTEXITCODE -ne 0) { throw "Rust/Python actual Qt creator parity failed (Nahida)" }
-          python tools/benchmark_qt_creator_runtime.py --role-root $assetRoot --kind paimon --blocks 2 --ticks 96
+          $nahida = $nahidaRaw | Out-String | ConvertFrom-Json
+          $paimonRaw = python tools/benchmark_qt_creator_runtime.py --role-root $assetRoot --kind paimon --blocks 2 --ticks 96
           if ($LASTEXITCODE -ne 0) { throw "Rust/Python actual Qt creator parity failed (Paimon)" }
+          $paimon = $paimonRaw | Out-String | ConvertFrom-Json
+          foreach ($measurement in @($nahida, $paimon)) {
+            if (-not $measurement.qt_pixel_parity -or
+                -not $measurement.backends.python.rss_snapshot_median_bytes -or
+                -not $measurement.backends.rust.rss_snapshot_median_bytes) {
+              throw "Missing Qt pixel parity or measured RSS (do not claim memory improvements)"
+            }
+            $measurement | ConvertTo-Json -Depth 5
+          }
           # Qt was offscreen. This is NOT monitor FPS or a physical Windows test.
           Write-Output "R7_QT_CREATOR_OFFSCREEN_PARITY_VALID"
       - name: Build isolated Windows Rust opt-in archive with temporary test-only frames
