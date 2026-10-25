@@ -35,3 +35,16 @@
 | 基尼奇 `genshin_kinich` | [Kinich Shimeji](https://shimejishop.com/free/kinich-shimeji/)，页面署名 **shimejimascot** | **注意**：分类页写 Free，但详情页只提供 Buy 按钮 | 不当成可免费直接下载；需确认真实资源渠道与作者授权后再转入固定来源 |
 
 候选页面包含“下载软件/运行 .exe/.jar”的文案。安全导入仅应提取经核验的 **图片和角色配置**，不能自动运行任意来源的 EXE、JAR、批处理或脚本。任何公开预览不等于真正取得合法、完整、可用的帧序列。所有这些资源的原设人物相似度亦未验收。
+
+## 2026-10-25：两套 Shimeji 公开压缩包直链（下载入口已核实，素材未验收）
+
+在源站实际点击下载按钮，得到以下压缩包地址，而不只是介绍页面：
+
+| 角色 | 公开介绍/作者署名 | 用户本机压缩包获取地址 | 状态 |
+| --- | --- | --- | --- |
+| 荒泷一斗 | [ShimejiShop/Ookami](https://shimejishop.com/free/arataki-itto-shimeji/) | https://shimejishop.com/free/wp-content/uploads/2026/09/50036.zip | `candidate_archive_unverified` |
+| 卡维 | [ShimejiShop/ilewdha](https://shimejishop.com/free/kaveh-shimeji/) | https://shimejishop.com/free/wp-content/uploads/2025/09/628.zip | `candidate_archive_unverified` |
+
+本轮尚不能从运行环境取得 ZIP 字节，所以**没有谎称计算了 SHA-256、验证了 ZIP 内动画帧、安装成功或人工确认了角色外观**。这两个 ZIP 不能计入已固定校验的 31 人，也不能直接让程序执行包内的任何 EXE、JAR 或脚本。下一步在用户本机安全扫描后只提取真实 PNG/XML 等素材，再经独立角色绑定与原设视觉核验。不要把网页的“100% safe”宣传当作实际安全审计结果。
+
+这些直链仅便于私人本机下载安装包；DyberPet 代码和公开 Release 仍不重新发布该动画包。
