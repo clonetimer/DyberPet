@@ -1028,7 +1028,7 @@ class CharInterface(ScrollArea):
                 return
         confirmation = QMessageBox.question(
             self, self.tr("个人本地导入确认" if local_archive else "个人本地下载确认"),
-            self.tr("将校验本人已下载的原画 ZIP" if local_archive
+            self.tr("将校验本人已下载的原画 ZIP，文件长度与 SHA-256 必须完全匹配；" if local_archive
                     else "将从 CodexPetDB 下载第三方原画 ZIP，先验证完整 SHA-256，")
             + self.tr("然后仅解压宠物元数据与 PNG/WebP 图集。"
                     "来源原设形象尚未人工验收；不执行 ZIP 内脚本，也不覆盖已有角色。继续吗？"),
@@ -1046,7 +1046,9 @@ class CharInterface(ScrollArea):
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
         self.__showSystemNote(
-            self.tr("正在下载并核验固定 SHA-256 原画包；安装成功前不会更改现有角色。"), 1)
+            self.tr("正在校验已下载的原画 ZIP；只有匹配 SHA-256 后才会安装。"
+                    if local_archive else
+                    "正在下载并核验固定 SHA-256 原画包；安装成功前不会更改现有角色。"), 1)
 
     def _importReactShimeji(self, modulePath):
         """Require an explicit one of six exact pinned identities."""
