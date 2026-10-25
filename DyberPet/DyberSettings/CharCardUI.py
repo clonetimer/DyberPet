@@ -15,7 +15,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QStandardPaths, QSize
 from PySide6.QtGui import QDesktopServices, QIcon, QFont
-from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QCheckBox, QSizePolicy, QHBoxLayout, QSpacerItem
+from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QCheckBox, QSizePolicy, QHBoxLayout, QSpacerItem, QMessageBox
 
 from .custom_utils import CharCard, CharCardGroup, CharLine
 from DyberPet.conf import CheckCharFiles
@@ -312,7 +312,8 @@ class CharInterface(ScrollArea):
                    "浏览角色合集来源（网页手动获取，不自动下载）",
                     "个人本地导入：Shimeji 原画 ZIP（仅提取图片）",
                     "个人本地导入：Codex 动画 ZIP（仅提取图集）",
-                     "个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）"]
+                     "个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）",
+                     "个人使用：下载 SHA-256 固定的四位原神角色原画 ZIP"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -333,6 +334,9 @@ class CharInterface(ScrollArea):
             return
         if choice == options[2]:
             self._importOriginalDemo()
+            return
+        if choice == options[7]:
+            self._importPinnedPetDb()
             return
         if choice == options[6]:
             module, _ = QFileDialog.getOpenFileName(
@@ -984,6 +988,41 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在生成原创 Q 版星芽动画，不会覆盖已有角色。"), 1)
 
+    def _importPinnedPetDb(self):
+        """Explicit opt-in for the four hash-pinned community archives."""
+        if self.chibiThread is not None:
+            return
+        from tools.install_pinned_codexpetdb import listed_packages
+        from tools.chibi_profiles import CHIBI_PROFILES
+        options = {
+            CHIBI_PROFILES[item["profile"]]["name"] + " [" + item["slug"] + "]": key
+            for key, item in sorted(listed_packages()["sources"].items())
+        }
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("选择需要安装的原画角色"),
+            self.tr("仅显示具有公开下载地址及固定 ZIP SHA-256 的四位人物："),
+            list(options), 0, False)
+        if not accepted or selected not in options:
+            return
+        confirmation = QMessageBox.question(
+            self, self.tr("个人本地下载确认"),
+            self.tr("将从 CodexPetDB 下载第三方原画 ZIP，先验证完整 SHA-256，"
+                    "然后仅解压宠物元数据与 PNG/WebP 图集。"
+                    "来源原设形象尚未人工验收；不执行 ZIP 内脚本，也不覆盖已有角色。继续吗？"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if confirmation != QMessageBox.StandardButton.Yes:
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            options[selected], os.path.join(basedir, "res", "role"),
+            mode="pinned_codexpetdb", profile=None, preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(
+            self.tr("正在下载并核验固定 SHA-256 原画包；安装成功前不会更改现有角色。"), 1)
+
     def _importReactShimeji(self, modulePath):
         """Require an explicit one of six exact pinned identities."""
         if self.chibiThread is not None:
@@ -1414,6 +1453,10 @@ class ChibiImportThread(QThread):
                 installed = install_creator_mascot(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
+            elif self.mode == "pinned_codexpetdb":
+                from tools.install_pinned_codexpetdb import install_pinned_codexpetdb
+                new_folder = install_pinned_codexpetdb(
+                    self.source, self.output_root, confirmed=True)
             elif self.mode == "react_shimeji_lfs":
                 from tools.install_pinned_react_shimeji import install_pinned_react_shimeji
                 new_folder = install_pinned_react_shimeji(
