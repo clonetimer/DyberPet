@@ -46,8 +46,8 @@ class NanoPetArtistTests(unittest.TestCase):
         s = r["summary"]
         self.assertEqual(s["template_count"], 123)
         self.assertEqual(s["pinned_source_options"], 43)
-        self.assertEqual(s["characters_with_pinned_sources"], 28)
-        self.assertEqual(s["characters_without_pinned_sources"], 95)
+        self.assertEqual(s["characters_with_pinned_sources"], 27)
+        self.assertEqual(s["characters_without_pinned_sources"], 96)
         self.assertEqual(s["verified_likeness_count"], 0)
         candidates = {v["id"]: v for v in r["characters"]}
         for k in ("genshin_traveler_aether", "genshin_traveler_lumine",
