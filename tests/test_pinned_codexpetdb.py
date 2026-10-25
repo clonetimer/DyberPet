@@ -54,9 +54,9 @@ class HashPinnedPackageTests(unittest.TestCase):
 
     def test_exact_public_listing_sources_are_unique(self):
         manifest = listed_packages()
-        self.assertEqual(len(manifest["sources"]), 16)
+        self.assertEqual(len(manifest["sources"]), 20)
         self.assertEqual(set(manifest["sources"]),
-                         {"kaveh", "kinich", "kirara", "alhaitham", "baizhu", "candace", "chevreuse", "layla", "chiori", "cyno", "dehya", "freminet", "charlotte", "columbina", "gaming", "iansan"})
+                         {"kaveh", "kinich", "kirara", "alhaitham", "baizhu", "candace", "chevreuse", "layla", "chiori", "cyno", "dehya", "freminet", "charlotte", "columbina", "gaming", "iansan", "aino", "dahlia", "flins", "lan_yan"})
         for key, record in manifest["sources"].items():
             self.assertEqual(len(record["sha256"]), 64)
             self.assertGreater(record["verified_bytes"], 100)
