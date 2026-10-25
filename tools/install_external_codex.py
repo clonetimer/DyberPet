@@ -31,7 +31,7 @@ REGISTRY = Path(__file__).with_name("external_codex_art_sources.json")
 
 def source_manifest(path=REGISTRY):
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    if data.get("schema") != 1 or len(data.get("sources", {})) != 7:
+    if data.get("schema") != 1 or len(data.get("sources", {})) != 10:
         raise ValueError("Unknown pinned external artist registry")
     for kind, rec in data["sources"].items():
         if not re.fullmatch(r"[a-z][a-z_]{1,39}", kind):
@@ -40,7 +40,7 @@ def source_manifest(path=REGISTRY):
             raise ValueError("Unrecognized creator GitHub repository name")
         if not re.fullmatch(r"[0-9a-f]{40}", rec.get("revision", "")):
             raise ValueError("External creator version must be immutable")
-        if not re.fullmatch(r"[A-Za-z0-9_/-]+", rec.get("directory", "")):
+        if not re.fullmatch(r"[\w/-]+", rec.get("directory", "")):
             raise ValueError("Unsafe external creator path")
         if rec.get("directory", "").startswith("/") or ".." in rec["directory"].split("/"):
             raise ValueError("Unsafe source directory")
