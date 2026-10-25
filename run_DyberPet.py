@@ -395,9 +395,15 @@ def _assistant_package_smoke():
     # the *frozen* EXE/ELF; this does not download art or publish images.
     from tools.install_artist_genshin import ROLES as original_genshin
     from tools.install_artist_codex import SOURCES as codex_art
+    from tools.install_artist_shimeji import source_manifest
     from tools.install_creator_mascots import UPSTREAM as mascot_art
+    from tools.character_source_coverage import source_coverage
+    creator = source_coverage()["summary"]
     report["public_art_sources_ready"] = (
-        len(original_genshin) == 3 and len(codex_art) == 12
+        len(original_genshin) == 3 and len(codex_art) == 15
+        and len(source_manifest()["roles"]) == 8
+        and creator["template_count"] == 123
+        and creator["characters_with_pinned_sources"] == 20
         and {"guga", "doro"}.issubset(mascot_art))
     if not report["public_art_sources_ready"]:
         raise RuntimeError("Pinned original-art installers missing from executable")
