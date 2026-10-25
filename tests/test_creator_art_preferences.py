@@ -115,7 +115,8 @@ class CreatorArtPreferenceTests(unittest.TestCase):
             "genshin_chevreuse", "genshin_layla", "genshin_chiori",
             "genshin_charlotte", "genshin_columbina", "genshin_gaming",
             "genshin_iansan",
-            "genshin_cyno", "genshin_dehya", "genshin_freminet"
+            "genshin_cyno", "genshin_dehya", "genshin_freminet",
+            "genshin_aino", "genshin_dahlia", "genshin_flins", "genshin_lan_yan"
         })
         self.assertEqual(len({fixed_archive_url(v) for v in packages.values()}), 20)
 
