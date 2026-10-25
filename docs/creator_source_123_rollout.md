@@ -139,3 +139,13 @@ python tools/install_external_codex.py furina_fan --role-root res/role --accept-
 对应模块 `tools/community_codex_leads.py` 可执行 `--new-leads-only --output unreviewed-leads.json` 查看 29 个待审线索，并与精确哈希来源统计 `tools/character_source_coverage.py` **完全隔离**。双重测试 `tests/test_personal_codex_zip.py`、`tests/test_community_codex_leads.py` 验证打包安全、像素完整性、角色绑定、缺口计数和 GUI 明确点击，纳入 GitHub Actions。
 
 **覆盖分母与结论不变：当前精确版本来源 54 套、31/123 个人物；29 位仅新增网络候选，不是 31→60 已验收。** 即使本机安装成功，还要比较游戏人物外形、作者署名、声音/动作质量后才能标为完成。
+
+## 2026-10-25 本轮补充：React-Shimeji 作者候选及独立检索界面
+
+- 从 [CarbonNeuron/react-shimeji](https://github.com/CarbonNeuron/react-shimeji/tree/35b507062be71e8b9dbea6d20b77a9901dfe9114) 的 2,224 套公开角色包中，核对 **艾尔海森、安柏、哥伦比娅、菲谢尔、菲米尼、卡维** 6 位此前没有固定来源的角色。各自 `package.json` 标明角色名；`index.ts` 采用 **Git LFS** 储存，已固定上游 commit、pointer Git blob SHA、实际大文件要求的 SHA-256 和声明大小；其中 4 位带可打开的 `preview.png`。详情见 `tools/react_shimeji_source_leads.py`。
+- **重要边界：** 当前通过 GitHub API 只能获取 LFS **指针**，无法访问其 0.7–1.2 MB 原始动画文件字节并检查人物/帧的真实质量。这是 6 条**候选线索**，绝不作为已固定可安装的创作者原画、人工原设一致性验收或画师再发布授权。此处的 MIT package 标记不能替代游戏角色美术的授权证明。
+- 此前登记的 [CodexPetDB 原神目录](https://codexpetdb.com/en/collections/genshin-impact) 29 位未覆盖人物线索与本轮 6 位去重后，有 **31 位不同的未覆盖人物**具有至少一条待核验网络线索：新增的两个独立人选是安柏和菲谢尔。仍有 **61 位**缺少本项目已登记的这两类候选线索（92-31）；以上候选绝不冒充已固定素材来源。
+- 「全部角色库」新增筛选 **「有社区候选、待核验真实性」**，显示 31 位候选人物并保留当前角色 ID。选中人物后点击「浏览本人物公开候选（待核验）」：若该人物对应多个来源，由用户明确选择浏览；**不后台下载、不运行 npm、Git LFS TypeScript 或 Shimeji 代码、不导入未经审核的画风**。直接查看已有 `preview.png` 也不能充当动态动画完整验收。
+- 独立测试 `tests/test_react_shimeji_leads.py` 核对 6 位、LFS SHA-256、31/123 固定来源不变；实际 Qt 测试 `tests/test_react_shimeji_qt.py` 核对“31 位来源候选”界面筛选、无触发时不联网、安柏单一来源直达和卡维双来源取消/确认分支。所有 CI 门禁按同一 SHA 验收。
+
+**新的真实来源冻结计数仍是 54 个版本 / 31 个不同角色 / 92 人缺固定素材。** 工作目标是把已检索的候选逐人补上真实帧、视觉对照、可复现安装和动作验收，直到 123 人全部完善；只增长候选数不是项目完成度。
