@@ -149,3 +149,14 @@ python tools/install_external_codex.py furina_fan --role-root res/role --accept-
 - 独立测试 `tests/test_react_shimeji_leads.py` 核对 6 位、LFS SHA-256、31/123 固定来源不变；实际 Qt 测试 `tests/test_react_shimeji_qt.py` 核对“31 位来源候选”界面筛选、无触发时不联网、安柏单一来源直达和卡维双来源取消/确认分支。所有 CI 门禁按同一 SHA 验收。
 
 **新的真实来源冻结计数仍是 54 个版本 / 31 个不同角色 / 92 人缺固定素材。** 工作目标是把已检索的候选逐人补上真实帧、视觉对照、可复现安装和动作验收，直到 123 人全部完善；只增长候选数不是项目完成度。
+
+## React-Shimeji LFS 动画的安全本地转换（2026-10-25 追加）
+
+此前六份候选仅有 GitHub LFS 指针；本轮进一步实现 `tools/install_pinned_react_shimeji.py`，支持**用户亲自下载完整的上游 `index.ts` 后**转换为可供 DyberPet 使用的真实像素动画，绝不执行 JS/TS 或安装第三方 npm 包。
+
+- 入口：角色管理 → 添加角色 → **「个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）」** → 选择本机完整 `.ts` → 选对应六位人物 ID。支持艾尔海森、安柏、哥伦比娅、菲谢尔、菲米尼、卡维；其余人物不允许猜测匹配。
+- 若拿到的还是 `version https://git-lfs.github.com/spec/v1` 开头的**指针**，程序将明确拒绝，不当成动画。只允许该人物固定 LFS OID 的 SHA-256 和文件字节长度都匹配的实际大文件。
+- 源文件仅解析上游脚本生成器的 **JSON 字面量字段**（`id`、`spritesheet`、`sprites`、`actions`、`behaviors`），只读取嵌入的 PNG base64 数据和原始帧坐标。校验图集大小、坐标边界以及必须存在的真实待机和两种不同走路帧。
+- 程序把图集的原始像素裁切成临时 `shimeN.png` 图片，由现有 `install_personal_shimeji_zip.py` 的安全原生角色安装器复用动作映射、失败回退、文件不覆盖和本机收据；作者图集不在 GitHub 仓库中重新分发。
+- 新增 `tests/test_pinned_react_shimeji.py`：通过离线合成的小型 PNG 图集测试**真实坐标裁切**、SHA 拒绝、LFS 指针拒绝、错误人物拒绝、坏矩形拒绝、不执行恶意脚本文本以及重复安装不覆盖旧角色；纳入角色导入 CI。
+- **注意：** 这使符合上游规范的实际 LFS 大文件有了可审计的安装途径，但当前环境无法获取六份实际图集字节，所以尚未完成它们的真实包端到端验证、原设画风验收或声音测试；因此固定来源仍为 **54 版本/31 人**，6 位仍为待验收的网络候选。CI 使用人造测试图检验转换安全和功能，不将其当作任何原神角色的原设形象。
