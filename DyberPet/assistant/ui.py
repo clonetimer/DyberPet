@@ -21,6 +21,7 @@ from .persona import (
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
 from .readiness import inspect_readiness, readiness_text
+from .role_interactions import available_interactions, requested_action
 from .guga_audio import record_local_clip, play_local_clip, load_local_clip
 from .character_fidelity import (
     inspect_guga_role, inspect_character_role, inspect_mini_character_role,
@@ -72,6 +73,8 @@ class PetAssistantDialog(QDialog):
         self.voice_engine_ready.connect(self._on_voice_engine_ready)
         self._ppl_snapshot = ""
         self._session_generation = 0
+        self._unlocked_actions = set()
+        self._interaction_plan = []
         try:
             self._prefs = load_preferences()
             self._prefs_error = ""
@@ -136,6 +139,16 @@ class PetAssistantDialog(QDialog):
         form.addRow(self.auto_speak)
         form.addRow(self.motion_enabled)
         form.addRow("交互成功时播放已解锁动作", self.action_menu)
+        # Manual character-specific interactions, separate from model replies.
+        self.interaction_menu = QComboBox(self)
+        self.interaction_button = QPushButton("让当前桌宠执行", self)
+        self.interaction_button.clicked.connect(self.play_manual_interaction)
+        self.interaction_menu.currentIndexChanged.connect(self._refresh_interaction_button)
+        action_row = QHBoxLayout()
+        action_row.addWidget(self.interaction_menu, 1)
+        action_row.addWidget(self.interaction_button)
+        form.addRow("主动互动（仅已解锁原生动作）", action_row)
+        self.set_actions([])
         self.save_pref_button = QPushButton("保存助手设置（不保存聊天记录与人设快照）")
         self.save_pref_button.clicked.connect(self.save_preferences)
         form.addRow(self.save_pref_button)
@@ -250,6 +263,7 @@ class PetAssistantDialog(QDialog):
             self.persona.setCurrentIndex(self.persona.findData(saved))
         self._last_reply = ""
         self._ppl_snapshot = ""  # Persona snapshots belong to the previous character
+        self.set_actions([])  # No stale unlocked actions from previous character.
 
     def set_actions(self, names):
         """Only accept actual currently-unlocked animations from PetWidget."""
@@ -260,6 +274,41 @@ class PetAssistantDialog(QDialog):
             self.action_menu.addItem(name, name)
         matched = self.action_menu.findData(previous)
         self.action_menu.setCurrentIndex(max(0, matched))
+        self._unlocked_actions = set(self.action_menu.itemData(i)
+            for i in range(1, self.action_menu.count()))
+        previous_kind = self.interaction_menu.currentData()
+        self._interaction_plan = available_interactions(self._unlocked_actions)
+        self.interaction_menu.blockSignals(True)
+        self.interaction_menu.clear()
+        for entry in self._interaction_plan:
+            suffix = " · " + entry["action"] if entry["available"] else " · 本角色暂无此动作"
+            self.interaction_menu.addItem(entry["label"] + suffix, entry["id"])
+        desired = self.interaction_menu.findData(previous_kind)
+        if desired < 0 or not self._interaction_plan[desired]["available"]:
+            desired = next((i for i, entry in enumerate(self._interaction_plan)
+                            if entry["available"]), 0)
+        self.interaction_menu.setCurrentIndex(desired)
+        self.interaction_menu.blockSignals(False)
+        self._refresh_interaction_button()
+
+    def _refresh_interaction_button(self, *_):
+        selected = requested_action(self._interaction_plan,
+                                   self.interaction_menu.currentData())
+        self.interaction_button.setEnabled(selected in self._unlocked_actions
+                                           if selected else False)
+        self.interaction_button.setToolTip(
+            "只播放当前角色已解锁的真实动作，不会补造不存在的动画" if selected
+            else "当前角色没有这种动作；请导入更完整的原作者动画素材")
+
+    def play_manual_interaction(self):
+        """Only real user clicks emit an action; PetWidget validates it again."""
+        selected = requested_action(self._interaction_plan,
+                                   self.interaction_menu.currentData())
+        if selected is not None and selected in self._unlocked_actions:
+            self.action_requested.emit(selected)
+            self.status.setText("已请求当前桌宠执行原有动作：" + selected)
+        else:
+            self.status.setText("该角色尚无可用的对应动画；未执行任何动作。")
 
     def _emit_selected_animation(self):
         action = self.action_menu.currentData()
