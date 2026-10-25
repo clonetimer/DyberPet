@@ -23,7 +23,8 @@ def _source_frames(folder, names):
 from tools.character_interaction_coverage import interaction_coverage, inspect_selected_role_interactions
 
 from DyberPet.assistant.role_interactions import (
-    available_interactions, requested_action, INTERACTION_CATEGORIES)
+    available_interactions, requested_action, INTERACTION_CATEGORIES,
+    choose_random_real_action)
 
 
 class RoleInteractionTests(unittest.TestCase):
@@ -75,6 +76,24 @@ class RoleInteractionTests(unittest.TestCase):
         no_climb = available_interactions(["crawl", "sit"])
         self.assertIsNone(requested_action(no_climb, "climb"))
         self.assertIsNone(requested_action(no_climb, "rest"))
+
+    def test_random_interaction_never_repeats_when_another_real_action_exists(self):
+        plan = available_interactions(["wave", "jump", "idle"])
+        self.assertEqual(
+            choose_random_real_action(plan, previous="wave", pick=lambda items: items[0]),
+            "jump")
+        self.assertEqual(
+            choose_random_real_action(plan, previous="jump", pick=lambda items: items[0]),
+            "wave")
+        one = available_interactions(["climb", "idle"])
+        self.assertEqual(choose_random_real_action(
+            one, previous="climb", pick=lambda items: items[0]), "climb")
+        self.assertIsNone(choose_random_real_action(
+            available_interactions(["idle", "default"])))
+        self.assertIsNone(choose_random_real_action(
+            plan, pick=lambda items: "fabricated-action"))
+        self.assertIsNone(choose_random_real_action(
+            plan, previous="wave", pick=lambda items: "wave"))
 
     def test_no_unrelated_or_unlocked_action_is_invented(self):
         for actions in ([], ["attack", "eat", "fake_patpat"], ["wave_effect", "fake_wave"],
