@@ -15,12 +15,13 @@ from tools.install_native_role import validate_native_role
 
 
 class ExternalCreatorSourcesTests(unittest.TestCase):
-    def test_three_exact_source_ids_and_28_character_coverage(self):
+    def test_five_exact_source_ids_and_29_character_coverage(self):
         source = source_manifest()
-        self.assertEqual(set(source["sources"]), {"linnea","hu_tao_pixel","nahida_mini"})
+        self.assertEqual(set(source["sources"]), {"linnea","hu_tao_pixel","nahida_mini","sandrone","sandrone_marionette"})
         self.assertEqual(source["sources"]["linnea"]["profile"], "genshin_linnea")
         self.assertEqual(source["sources"]["hu_tao_pixel"]["profile"], "genshin_hu_tao")
         self.assertEqual(source["sources"]["nahida_mini"]["profile"], "genshin_nahida")
+        self.assertEqual(source["sources"]["sandrone"]["profile"], "genshin_sandrone")
         for row in source["sources"].values():
             self.assertEqual(len(row["revision"]), 40)
             for key in ("pet","sprites"):
@@ -28,9 +29,9 @@ class ExternalCreatorSourcesTests(unittest.TestCase):
                 self.assertGreater(row[key]["size"], 100)
         catalog = source_coverage()
         self.assertEqual(catalog["summary"]["template_count"], 123)
-        self.assertEqual(catalog["summary"]["pinned_source_options"], 46)
-        self.assertEqual(catalog["summary"]["characters_with_pinned_sources"], 28)
-        self.assertEqual(catalog["summary"]["characters_without_pinned_sources"], 95)
+        self.assertEqual(catalog["summary"]["pinned_source_options"], 48)
+        self.assertEqual(catalog["summary"]["characters_with_pinned_sources"], 29)
+        self.assertEqual(catalog["summary"]["characters_without_pinned_sources"], 94)
         linnea = next(x for x in catalog["characters"] if x["id"]=="genshin_linnea")
         self.assertTrue(linnea["source_found"])
         self.assertFalse(linnea["installed"])
