@@ -9,11 +9,12 @@ from __future__ import annotations
 # legacy DyberPet Chinese action-group names. All matches are full exact names.
 INTERACTION_CATEGORIES = (
     ("greet", "打招呼", ("打招呼", "招手", "挥手", "wave", "hello", "greet")),
-    ("jump", "蹦一蹦", ("蹦一蹦", "跳跃", "跳一跳", "jump", "happy", "bounce")),
+    ("jump", "蹦一蹦", ("蹦一蹦", "跳跃", "跳一跳", "jump", "bounce")),
     ("observe", "观察周围", ("认真观察", "左顾右盼", "观察", "lookaround", "review", "focus")),
-    ("rest", "休息一下", ("休息", "等待", "稍作休息", "wait", "rest", "idle")),
+    ("rest", "休息一下", ("休息", "等待", "稍作休息", "wait", "rest")),
     ("sit", "坐下来", ("坐下", "坐着", "sit", "sitting", "seated")),
-    ("walk", "散步", ("左右散步", "散步", "行走", "walk", "right_walk", "left_walk", "run")),
+    ("walk", "散步", ("左右散步", "散步", "行走", "walk", "right_walk", "left_walk")),
+    ("run", "跑起来", ("奔跑", "跑步", "run", "running", "dash")),
     ("talk", "说话动作", ("说话", "口型", "对话", "talk", "speak")),
     ("sleep", "睡觉", ("睡觉", "睡眠", "sleep", "nap")),
     ("pet", "摸摸头", ("抚摸", "摸头", "拍拍", "patpat", "pat", "pet")),
