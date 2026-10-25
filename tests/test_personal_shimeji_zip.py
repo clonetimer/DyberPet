@@ -23,12 +23,14 @@ class PersonalShimejiZipTests(unittest.TestCase):
         Image.new("RGBA", (40, 55), color).save(out, format="PNG")
         return out.getvalue()
 
-    def make_zip(self, directory, *, sparse=False, duplicate=False):
+    def make_zip(self, directory, *, sparse=False, duplicate=False, without_clone=False):
         archive = Path(directory) / "kaveh-untrusted.zip"
         ids = (38, 1, 2, 3, 5, 6, 7, 4, 18, 19, 20, 21,
                12, 13, 14, 31, 32, 33)
         if sparse:
             ids = (38,)
+        if without_clone:
+            ids = tuple(n for n in ids if n != 38)
         with zipfile.ZipFile(archive, "w") as z:
             z.writestr("Shimeji.exe", b"never execute this")
             z.writestr("libs/SomeRuntime.jar", b"do not extract this")
@@ -89,6 +91,20 @@ class PersonalShimejiZipTests(unittest.TestCase):
             source = self.make_zip(tmp, duplicate=True)
             with self.assertRaisesRegex(ValueError, "Duplicate"):
                 inspect_shimeji_zip(source)
+
+    def test_standard_idle_and_walk_work_even_without_clone_frame38(self):
+        with tempfile.TemporaryDirectory() as td:
+            archive = self.make_zip(td, without_clone=True)
+            frames = inspect_shimeji_zip(archive)
+            self.assertIn(1, frames)
+            self.assertNotIn(38, frames)
+            role = install_personal_shimeji_zip(
+                archive, Path(td) / "roles", profile="genshin_kaveh",
+                confirmed=True)
+            self.assertEqual((role / "action" / "stand_0.png").read_bytes(), frames[1])
+            act = json.loads((role / "act_conf.json").read_text("utf-8"))
+            self.assertNotIn("patpat", act)
+            self.assertIn("rest", act)
 
     def test_wrong_profile_and_nonzip_are_not_silently_accepted(self):
         with tempfile.TemporaryDirectory() as tmp:
