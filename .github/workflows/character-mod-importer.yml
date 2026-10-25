@@ -249,6 +249,30 @@ jobs:
               assert geometry["aligned_frames_per_action"]=={},key
               print("REAL_ART_PIXELS_VALIDATED",key,report)
           PY
+      - name: Download genuine Shimeji frames and exercise native actions
+        shell: bash
+        run: |
+          for role in albedo venti; do
+            python tools/install_artist_shimeji.py "$role" --role-root "$RUNNER_TEMP/shimeji-source-qa" --accept-personal-use
+          done
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from tools.install_native_role import validate_native_role
+          from PIL import Image
+          root=Path(os.environ["RUNNER_TEMP"])/"shimeji-source-qa"
+          for kind in ("albedo", "venti"):
+              role=root/("SourceShimeji"+kind.title())
+              report=validate_native_role(role)
+              assert report["images"]>=10 and report["actions"]>=5,(kind,report)
+              receipt=json.loads((role/"PERSONAL_IMPORT.json").read_text("utf-8"))
+              assert receipt["source_kind"]=="creator_shimeji_frames"
+              assert receipt["likeness_manually_reviewed"] is False
+              for name in ("stand_0.png","drag_0.png","fall_0.png","walk_0.png"):
+                  with Image.open(role/"action"/name) as img:
+                      img.verify()
+              print("REAL_SHIMEJI_FRAMES_VALIDATED",kind,report)
+          PY
       # No artifact upload: author-created character images are temporary CI input.
 
   qt-loader-smoke:
