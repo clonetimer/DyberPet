@@ -155,9 +155,9 @@ def verify_linux_gui():
         try:
             search_dialog.show()
             app.processEvents()
-            if (not search_dialog.isVisible() or search_dialog.results.count()!=47 or
+            if (not search_dialog.isVisible() or search_dialog.results.count()!=51 or
                     search_dialog.statusFilter.currentData()!="source"):
-                raise RuntimeError("X11 default catalog must show 47 real-art source candidates")
+                raise RuntimeError("X11 default catalog must show 51 real-art source candidates")
             if any("作者来源" not in search_dialog.results.item(i).text()
                    for i in range(search_dialog.results.count())):
                 raise RuntimeError("X11 source catalog lacks creator provenance")
