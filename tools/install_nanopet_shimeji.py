@@ -50,7 +50,7 @@ def source_manifest(path=REGISTRY):
     if "genshin-impact-xiao-catboy-by-uuteki" not in data.get("excluded", []):
         raise ValueError("Noncanon alternate must remain excluded")
     for kind, row in data["roles"].items():
-        if not re.fullmatch(r"[a-z_]+(?:-by-[a-z0-9-]+)?", kind):
+        if not re.fullmatch(r"[a-z]+(?:-[a-z]+)*(?:-by-[a-z0-9-]+)", kind):
             raise ValueError("Invalid Genshin artist-source key: " + kind)
         if row.get("profile") not in CHIBI_PROFILES:
             raise ValueError("Shimeji character is not in Genshin roster")
