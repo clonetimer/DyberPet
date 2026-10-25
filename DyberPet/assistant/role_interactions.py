@@ -5,6 +5,8 @@ This is a *manual* interaction convenience, never a model/tool side effect.
 """
 from __future__ import annotations
 
+from secrets import choice as secure_choice
+
 # Friendly choices for artist-imported Codex sprites, Shimeji conversions and
 # legacy DyberPet Chinese action-group names. All matches are full exact names.
 INTERACTION_CATEGORIES = (
@@ -47,3 +49,23 @@ def requested_action(interactions, category):
         if entry["id"] == category:
             return entry["action"] if entry["available"] else None
     return None
+
+
+def choose_random_real_action(interactions, *, previous=None, pick=None):
+    """Choose only a currently available genuine action, avoiding repeats.
+
+    No default idle, no synthetic gesture and no cross-role queue. The caller
+    must still check that the returned action remains unlocked on dispatch.
+    pick is injectable strictly for deterministic tests.
+    """
+    allowed = list(dict.fromkeys(
+        entry["action"] for entry in interactions
+        if entry.get("available") and isinstance(entry.get("action"), str)
+        and entry["action"]
+    ))
+    if len(allowed) > 1 and previous in allowed:
+        allowed.remove(previous)
+    if not allowed:
+        return None
+    chosen = (pick or secure_choice)(allowed)
+    return chosen if chosen in allowed else None
