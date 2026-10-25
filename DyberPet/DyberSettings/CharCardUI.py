@@ -88,7 +88,7 @@ class CharInterface(ScrollArea):
             self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
         self.artistSourceButton = PushButton(self.tr("安装作者原画角色"), self, FIF.DOWNLOAD)
         self.artistSourceButton.setToolTip(
-            self.tr("本机下载已有原作者逐帧动画：纳西妲／魈／流浪者，不再生成替代造型"))
+            self.tr("从公开作者作品本机安装原有逐帧动画、Codex 图集和 Shimeji 动作，不生成替代造型"))
         self.mascotButton = PushButton(self.tr("咕嘎 / Doro"), self, FIF.HEART)
         self.mascotButton.setToolTip(
             self.tr("查看企鹅/四足演示角色以及个人导入的对应素材；不冒充作者原设美术"))
@@ -529,10 +529,14 @@ class CharInterface(ScrollArea):
             return
         from tools.install_artist_genshin import ROLES, SOURCE_URL
         from tools.install_artist_codex import SOURCES, ROOT
+        from tools.install_artist_shimeji import source_manifest
+        shimeji = source_manifest()
         labels = {f"完整原生动画 · {title}":("artist_genshin", key)
                   for key, (_, _, title) in ROLES.items()}
-        labels.update({f"轻量创作者图集 · {row[1]}":("artist_codex", key)
+        labels.update({f"轻量创作者图集 · {row[1]} · {key}":("artist_codex", key)
                        for key, row in SOURCES.items()})
+        labels.update({f"创作者 Shimeji 动作 · {row['name']} · {key}":("artist_shimeji", key)
+                       for key, row in shimeji["roles"].items()})
         selected, ok = QInputDialog.getItem(
             self, "安装真实来源的桌宠美术",
             "选择已有作者制作的桌宠动画；完整原生动画包可能较大，"
@@ -541,8 +545,14 @@ class CharInterface(ScrollArea):
         if not ok or selected not in labels:
             return
         mode, kind = labels[selected]
-        source = (SOURCE_URL + ROLES[kind][0] if mode == "artist_genshin"
-                  else ROOT + "/" + SOURCES[kind][0])
+        if mode == "artist_genshin":
+            source = SOURCE_URL + ROLES[kind][0]
+        elif mode == "artist_codex":
+            source = ROOT + "/" + SOURCES[kind][0]
+        else:
+            source = ("https://github.com/" + shimeji["repository"]
+                      + "/tree/" + shimeji["revision"]
+                      + "/public/assets/" + kind)
         if not self.__showMessageBox(
                 "本机安装公开作者动画",
                 f"来源：{source}\\n"
@@ -1246,6 +1256,11 @@ class ChibiImportThread(QThread):
             elif self.mode == "artist_codex":
                 from tools.install_artist_codex import install_artist_codex
                 installed = install_artist_codex(
+                    self.preset, self.output_root, confirmed=True)
+                new_folder = self.output_root / installed["folder"]
+            elif self.mode == "artist_shimeji":
+                from tools.install_artist_shimeji import install_artist_shimeji
+                installed = install_artist_shimeji(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
             elif self.mode == "creator_source":
