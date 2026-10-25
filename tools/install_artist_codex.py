@@ -27,6 +27,15 @@ MAX_FILE_BYTES = 5 * 1024 * 1024
 # Git blob SHA-1 is the content address from the immutable source tree.
 # The exact size and hash are both checked before any conversion.
 SOURCES = {
+    "citlali": ("citlali--zaytsevzy", "茜特菈莉", "genshin_citlali",
+                (196, "e2e8c302092d606c68c76d6e011b371452a846d7"),
+                (2149902, "0a89665f02a3fb804981d7406de07224b84b47ba")),
+    "klee_desk": ("klee-desk--ayanxu56-boop", "可莉（书桌版）", "genshin_klee",
+                  (259, "49c19327da5de592305cac89e91af6a99f9aca37"),
+                  (2786608, "aa5e1852a8e822506ff59167367b8917f9b57639")),
+    "paimon_companion": ("paimon-best-companion--makashibata", "派蒙（伙伴版）", "genshin_paimon",
+                         (245, "6c9ec5dfd43671bcbfbaf057bdae65caaafec285"),
+                         (2324392, "2a12d37f200008c8527ee8a85d9665053399bdec")),
     "furina": ("furina--lingxiaotian", "芙宁娜", "genshin_furina",
                (348, "b43626c1ba535dab702d95e590e3a970b0a6716b"),
                (1932404, "32db5ba1a20c6fca02476ecbfe5d746be0a5827b")),
