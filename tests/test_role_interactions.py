@@ -2,6 +2,11 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
+import json
+from pathlib import Path
+
+from tools.character_interaction_coverage import interaction_coverage
 
 from DyberPet.assistant.role_interactions import (
     available_interactions, requested_action, INTERACTION_CATEGORIES)
@@ -41,6 +46,50 @@ class RoleInteractionTests(unittest.TestCase):
         y = available_interactions(["left_walk", "idle", "hello", "wave"])
         self.assertEqual(x, y)
         self.assertEqual(requested_action(x, "greet"), "wave")
+
+
+class InteractionCoverageTests(unittest.TestCase):
+    def test_only_personal_original_art_counts_not_123_generated_demos(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "DemoSayu").mkdir()
+            (root / "CreatorSayu").mkdir()
+            (root / "DemoSayu" / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            (root / "CreatorSayu" / "act_conf.json").write_text(
+                json.dumps({"jump": {"images": "jump"}, "idle": {"images": "idle"}}),
+                encoding="utf-8")
+            gen = {"characters": [{"profile": "genshin_sayu", "name": "早柚",
+                   "installed_folders": [
+                       {"folder": "DemoSayu", "is_original_demo": True},
+                       {"folder": "CreatorSayu", "is_original_demo": False}]}]}
+            masc = {"mascots": [
+                {"key": "guga", "display_name": "咕嘎", "imported_creator_art": []},
+                {"key": "doro", "display_name": "Doro", "imported_creator_art": []}]}
+            result = interaction_coverage(root, genshin_snapshot=gen,
+                                          mascot_snapshot=masc)
+        self.assertEqual(result["summary"]["template_total"], 3)
+        self.assertEqual(result["summary"]["roles_with_creator_art"], 1)
+        row = result["characters"][0]
+        self.assertEqual(row["actual_action_names"], ["idle", "jump"])
+        self.assertIn("jump", row["action_categories_present_in_art"])
+        self.assertIn("greet", row["action_categories_missing_in_art"])
+        self.assertFalse(row["runtime_unlock_qa_verified"])
+        self.assertFalse(row["character_likeness_qa_verified"])
+        self.assertFalse(result["characters"][1]["original_creator_art_present"])
+
+    def test_missing_or_unsafe_config_is_reported_not_counted_as_animation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "Broken").mkdir()
+            gen = {"characters": [{"profile": "genshin_sayu", "name": "早柚",
+                   "installed_folders": [{"folder": "Broken",
+                                          "is_original_demo": False}]}]}
+            result = interaction_coverage(root, genshin_snapshot=gen,
+                                          mascot_snapshot={"mascots": []})
+        self.assertEqual(result["summary"]["roles_with_read_errors"], 1)
+        self.assertEqual(result["summary"]["roles_with_at_least_one_interaction"], 0)
+        self.assertFalse(result["characters"][0]["action_categories_present_in_art"])
 
 
 if __name__ == "__main__":
