@@ -54,6 +54,7 @@ on:
       - "tools/install_personal_shimeji_zip.py"
       - "tools/artist_animation_audit.py"
       - "tools/install_pinned_codexpetdb.py"
+      - "tools/discover_new_codexpetdb_pins.py"
       - "tools/codexpetdb_pinned_zip_leads.json"
       - "tools/artist_visual_review.py"
       - "tools/install_personal_codex_zip.py"
@@ -153,6 +154,7 @@ on:
       - "tools/install_personal_shimeji_zip.py"
       - "tools/artist_animation_audit.py"
       - "tools/install_pinned_codexpetdb.py"
+      - "tools/discover_new_codexpetdb_pins.py"
       - "tools/codexpetdb_pinned_zip_leads.json"
       - "tools/artist_visual_review.py"
       - "tools/install_personal_codex_zip.py"
@@ -487,6 +489,10 @@ jobs:
           python-version: "3.11"
       - name: Prepare PNG atlas verifier
         run: python -m pip install Pillow
+      - name: Discover unpinned genuine Genshin role revisions (no art installed)
+        continue-on-error: true
+        timeout-minutes: 2
+        run: python tools/discover_new_codexpetdb_pins.py --limit 25
       - name: Download each SHA-pinned creator ZIP once, then install from verified local cache
         timeout-minutes: 5
         run: |
