@@ -9,20 +9,57 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 
 from DyberPet.assistant.role_interactions import available_interactions
 
 MAX_ACTION_CONFIG_BYTES = 512 * 1024
 
 
-def _original_art_action_names(root, folder):
+def _action_inventory(root, folder):
+    """Only a safe installed first PNG frame can establish an action exists.
+
+    A declared action in act_conf is NOT playable when its original files are
+    missing. This cheap check intentionally does not prove pixels, uniqueness,
+    sprite identity or runtime unlock; those require deeper visual testing.
+    """
     target = root / folder / "act_conf.json"
-    if target.is_symlink() or not target.is_file() or target.stat().st_size > MAX_ACTION_CONFIG_BYTES:
+    if (target.is_symlink() or not target.is_file() or
+            target.stat().st_size > MAX_ACTION_CONFIG_BYTES):
         raise ValueError("Unsafe or missing action configuration")
     data = json.loads(target.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise ValueError("Action map must be an object")
-    return [name for name in data if isinstance(name, str)]
+    if not isinstance(data, dict) or len(data) > 128:
+        raise ValueError("Action map must be a bounded JSON object")
+    art = root / folder / "action"
+    if art.is_symlink() or not art.is_dir():
+        raise ValueError("Role has no trusted action PNG directory")
+    valid, unusable = [], []
+    for name, entry in data.items():
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_\u4e00-\u9fff-]{1,80}", name):
+            unusable.append(str(name)[:80])
+            continue
+        prefix = entry.get("images") if isinstance(entry, dict) else None
+        if not isinstance(prefix, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", prefix):
+            unusable.append(name)
+            continue
+        original_frame = art / (prefix + "_0.png")
+        if (original_frame.is_symlink() or not original_frame.is_file() or
+                not 32 <= original_frame.stat().st_size <= 8 * 1024 * 1024):
+            unusable.append(name)
+            continue
+        with original_frame.open("rb") as image_file:
+            if image_file.read(8) != b"\x89PNG\r\n\x1a\n":
+                unusable.append(name)
+                continue
+        valid.append(name)
+    return valid, unusable
+
+
+def _original_art_action_names(root, folder):
+    valid, broken = _action_inventory(root, folder)
+    if not valid:
+        raise ValueError("No configured action has an installed, valid PNG first frame")
+    return valid
 
 
 def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=None):
@@ -111,7 +148,7 @@ def inspect_selected_role_interactions(role_root, role_name, *, unlocked_actions
     if not folder.is_dir():
         return {
             "role": role_name, "status": "not_installed",
-            "on_disk_action_names": [], "installed_action_categories": [],
+            "on_disk_action_names": [], "configured_but_unplayable_actions": [], "installed_action_categories": [],
             "currently_unlocked_categories": [], "missing_categories": [
                 x["id"] for x in available_interactions([])],
             "art_likeness_qa_passed": False, "physical_desktop_qa_passed": False,
@@ -127,7 +164,7 @@ def inspect_selected_role_interactions(role_root, role_name, *, unlocked_actions
     status = ("builtin_demo_not_original_art" if demo else
               "imported_artist_claim_not_verified" if imported else
               "unverified_local_role")
-    action_names = _original_art_action_names(root, role_name)
+    action_names, invalid = _action_inventory(root, role_name)
     on_disk = available_interactions(action_names)
     now_unlocked = set(x for x in unlocked_actions if isinstance(x, str))
     live = available_interactions(
@@ -136,6 +173,7 @@ def inspect_selected_role_interactions(role_root, role_name, *, unlocked_actions
         "role": role_name,
         "status": status,
         "on_disk_action_names": sorted(action_names),
+        "configured_but_unplayable_actions": sorted(invalid),
         "installed_action_categories": [x["id"] for x in on_disk if x["available"]],
         "currently_unlocked_categories": [x["id"] for x in live if x["available"]],
         "missing_categories": [x["id"] for x in on_disk if not x["available"]],
