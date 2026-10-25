@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "Three independent creators' original source PNG-based Codex Pet atlases, immutable Git blobs; provenance is not permissions/likeness QA",
+  "note": "Five independently pinned artist-created Genshin Codex Pet atlases; not official character licensing or visual QA",
   "sources": {
     "linnea": {
       "repository": "Alchuang22-dev/Linnea-Codex-Pet",
@@ -48,6 +48,38 @@
       "sprites": {
         "size": 1811498,
         "sha": "342746252b5a4b61f2bedfe01a7f858b5297e3a9"
+      }
+    },
+    "sandrone": {
+      "repository": "crema-lida/genshin-codex-pets",
+      "revision": "52c50711ef2d47fe28deddf69fbb36618ffa0de2",
+      "directory": "Sandrone/sandrone",
+      "manifest_id": "sandrone",
+      "profile": "genshin_sandrone",
+      "name": "桑多涅（独立作者）",
+      "pet": {
+        "size": 168,
+        "sha": "f5f0a86cec2cbfcf14c4d5a51c0a7e429e1fcc04"
+      },
+      "sprites": {
+        "size": 1657010,
+        "sha": "57d4185d5a75b41077a4ff7de7660eaca6fe6b70"
+      }
+    },
+    "sandrone_marionette": {
+      "repository": "sqybi/codex-fan-pets-gi",
+      "revision": "7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff",
+      "directory": "pets/sandrone-marionette",
+      "manifest_id": "sandrone桑多涅-marionette木偶",
+      "profile": "genshin_sandrone",
+      "name": "桑多涅（木偶版）",
+      "pet": {
+        "size": 205,
+        "sha": "baa89bdfedae76ef8ba649c8547d03879df13783"
+      },
+      "sprites": {
+        "size": 1877016,
+        "sha": "d077b882c2d302be8d3e6bef32d2b630d02a2905"
       }
     }
   }
