@@ -95,6 +95,7 @@ class NanoPetArtistTests(unittest.TestCase):
             role = path / result["folder"]
             self.assertEqual((role/"action"/"stand_0.png").read_bytes(), source)
             self.assertEqual((role/"source_frames"/"shime38.png").read_bytes(), source)
+            self.assertTrue((role/"ANIMATION_PREVIEW.png").is_file())
             self.assertEqual(result["source_original_frames"], len(used))
             self.assertGreaterEqual(validate_native_role(role)["actions"], 8)
             meta = json.loads((role/"PERSONAL_IMPORT.json").read_text("utf-8"))
