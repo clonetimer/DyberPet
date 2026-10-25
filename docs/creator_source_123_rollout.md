@@ -160,3 +160,15 @@ python tools/install_external_codex.py furina_fan --role-root res/role --accept-
 - 程序把图集的原始像素裁切成临时 `shimeN.png` 图片，由现有 `install_personal_shimeji_zip.py` 的安全原生角色安装器复用动作映射、失败回退、文件不覆盖和本机收据；作者图集不在 GitHub 仓库中重新分发。
 - 新增 `tests/test_pinned_react_shimeji.py`：通过离线合成的小型 PNG 图集测试**真实坐标裁切**、SHA 拒绝、LFS 指针拒绝、错误人物拒绝、坏矩形拒绝、不执行恶意脚本文本以及重复安装不覆盖旧角色；纳入角色导入 CI。
 - **注意：** 这使符合上游规范的实际 LFS 大文件有了可审计的安装途径，但当前环境无法获取六份实际图集字节，所以尚未完成它们的真实包端到端验证、原设画风验收或声音测试；因此固定来源仍为 **54 版本/31 人**，6 位仍为待验收的网络候选。CI 使用人造测试图检验转换安全和功能，不将其当作任何原神角色的原设形象。
+
+## 工程纠错：标准 Shimeji 编号动作语义修复（2026-10-25）
+
+对照 [Shimeji-ee 原版 `conf/actions.xml`](https://github.com/logany20/shimeji-ee/blob/master/conf/actions.xml) 和 [Shimeji-Desktop 同规范](https://github.com/DalekCraft2/Shimeji-Desktop/blob/main/conf/actions.xml)，发现原先复用 `tools/install_nanopet_shimeji.py::GROUPS` 的**通用**编号映射有误：
+
+- 原先 `stand=(38,)`，但标准站立 `Stand` 使用 `shime1.png`，标准行走 `Walk` 使用 `shime1/2/1/3`。第 38 张为克隆/拉起同伴姿态，不应映射为通用站立。已统一改为 `stand=(1,)`，取 1 帧尺寸，而非错误的 38 帧尺寸。
+- 原先 `pat=(31,32,33)`，实际上这些是窗沿坐姿；**标准包并不保证存在单独的抚摸响应动画**。已从通用动作映射中删除该伪造的 `patpat` 来源，`pet_conf` 的触摸反馈暂回退到原有待机姿势，界面不会称作作者真正的抚摸特技。
+- 更明确地将 `shime11` 归类为坐下/休息，`shime21` 归类为躺下，`shime20` 为匍匐，`shime18/19` 为落地缓冲，`shime12–14` 为攀爬。原始 PNG 全部保留，未进行 AI 伪造或重复复制。
+- 通用个人 ZIP 不再把第 38 帧设为强制必要条件；测试加入**不含 38 但有 1/2/3**的标准合法包，并确保仍能转换，单元测试同时确认没有凭空生成 `patpat` 动作。
+- 修复覆盖固定 NanoPet 作者素材、Shimeji ZIP 个人导入及 React-Shimeji 图集 LFS 导入。旧本机已导入的目录需要用户选择原作者版本重新导入，以更新已有动作，代码不会自动覆盖或删除旧角色。
+
+**验收边界：** 此项是标准编号资源的动作语义纠错，不能证明每位画师都严格遵循同一动作排布。若源角色具有**独立自定义的 `actions.xml` 映射**，后续应优先读取该特定作者定义，而不是无条件假定所有动画都一样；原设画质仍须真人看真实帧。
