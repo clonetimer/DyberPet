@@ -70,6 +70,46 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(self.dialog.persona.currentData(), "companion")
         self.assertEqual(self.dialog.persona.findData("genshin_kirara"), -1)
 
+    def test_current_role_gap_button_reads_only_selected_role_and_zeroes_stale_actions(self):
+        self.assertIn("互动缺口", self.dialog.interaction_audit_button.text())
+        self.dialog.set_actions(["wave"])
+        report = {
+            "role": "咕嘎", "status": "imported_artist_claim_not_verified",
+            "on_disk_action_names": ["wave"],
+            "installed_action_categories": ["greet"],
+            "currently_unlocked_categories": ["greet"],
+            "missing_categories": ["sleep"],
+            "art_likeness_qa_passed": False,
+        }
+        with patch("tools.character_interaction_coverage.inspect_selected_role_interactions",
+                   return_value=report) as inspector, \\
+             patch.object(QMessageBox, "information") as message:
+            self.dialog.interaction_audit_button.click()
+            self.assertEqual(inspector.call_count, 1)
+            self.assertEqual(inspector.call_args.args[1], "咕嘎")
+            self.assertEqual(inspector.call_args.kwargs["unlocked_actions"], {"wave"})
+            self.assertIn("打招呼", message.call_args.args[2])
+            self.assertIn("未人工核验", message.call_args.args[2])
+            self.dialog.set_character("Doro")
+            self.dialog.interaction_audit_button.click()
+            self.assertEqual(inspector.call_args.args[1], "Doro")
+            self.assertEqual(inspector.call_args.kwargs["unlocked_actions"], set())
+
+    def test_preview_reuses_actual_local_role_frames_and_marks_demo_as_demo(self):
+        root = Path(self.tmp.name) / "pet_roles"
+        folder = root / "咕嘎"
+        folder.mkdir(parents=True)
+        self.dialog.role_root = root
+        with patch("DyberPet.DyberSettings.mascot_preview_dialog.MascotActionPreview") as preview:
+            self.dialog.action_preview_button.click()
+            self.assertEqual(preview.call_count, 1)
+            self.assertEqual(preview.call_args.args[0], folder)
+            self.assertFalse(preview.call_args.kwargs["original_demo"])
+            preview.return_value.exec.assert_called_once()
+            (folder / "BUILTIN_MASCOT_DEMO.json").write_text("{}", encoding="utf-8")
+            self.dialog.action_preview_button.click()
+            self.assertTrue(preview.call_args.kwargs["original_demo"])
+
     def test_character_specific_manual_actions_use_only_unlocked_animation(self):
         requests = []
         self.dialog.action_requested.connect(requests.append)
