@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "provider": "CodexPetDB",
+  "note": "Public r1 ZIP metadata recorded from provider pages on 2026-10-25. Contents are not verified locally until a SHA256 check and native import succeeds. Visual likeness and rights always pending.",
+  "sources": {
+    "kaveh": {
+      "profile": "genshin_kaveh",
+      "slug": "gi-kaveh",
+      "revision": "019f8c79-1fd9-71eb-9425-7b39ef9d28d2",
+      "sha256": "5d1d0ca4ec073d547947b18cecc4c659b363664eaf8a866b248130c4920e1065",
+      "listing_url": "https://codexpetdb.com/en/pets/gi-kaveh/download",
+      "max_bytes": 3000000
+    },
+    "kinich": {
+      "profile": "genshin_kinich",
+      "slug": "gi-kinich",
+      "revision": "019f8c79-6be7-7426-a862-835e127b5bd4",
+      "sha256": "fdda86a6f1e9cdad9eb967385ed05a5ec561730f45350ee2661046adef2a177f",
+      "listing_url": "https://codexpetdb.com/en/pets/gi-kinich/download",
+      "max_bytes": 3000000
+    },
+    "kirara": {
+      "profile": "genshin_kirara",
+      "slug": "gi-kirara",
+      "revision": "019f8c79-b4bd-7228-8af4-b0c04806138d",
+      "sha256": "5bf7fe02a4cbfd93587e0d33e0b56b5ca44e9f77a9de31e742a33435dd87d21a",
+      "listing_url": "https://codexpetdb.com/en/pets/gi-kirara/download",
+      "max_bytes": 3000000
+    },
+    "alhaitham": {
+      "profile": "genshin_alhaitham",
+      "slug": "gi-alhaitham",
+      "revision": "019f8c73-6cb1-761c-9821-d2e1dd7ad9b1",
+      "sha256": "90e3b8427f80616b8ec48d2fa5c1c2ac8c1f6c7389dab5aa4874dd4729f6162b",
+      "listing_url": "https://codexpetdb.com/en/pets/gi-alhaitham/download",
+      "max_bytes": 3000000
+    }
+  }
+}
