@@ -45,6 +45,7 @@ class CharacterCatalogDialog(QDialog):
         for label, value in (("有公开作者素材可获取（未必已安装）", "source"),
                              ("已安装真实来源素材", "personal"),
                              ("仍缺公开作者素材（待补齐）", "source_missing"),
+                             ("有社区候选、待核验真实性", "lead"),
                              ("全部角色（含低保真演示）", "all"),
                              ("程序绘制演示（非原设）", "demo"),
                              ("待安装素材", "missing")):
@@ -95,10 +96,16 @@ class CharacterCatalogDialog(QDialog):
     def _refresh(self, *_):
         old = self.selected_character_id()
         self.results.clear()
+        show_leads = self.statusFilter.currentData() == "lead"
         rows = query_character_catalog(
             self._entries, self.searchBox.text(),
-            self.familyFilter.currentData(), self.statusFilter.currentData(),
+            self.familyFilter.currentData(),
+            "all" if show_leads else self.statusFilter.currentData(),
             source_lookup=self._source_by_id)
+        if show_leads:
+            candidates = set(PROFILE_TO_SLUG) | set(REACT_CANDIDATES)
+            rows = [row for row in rows if row["id"] in candidates and
+                    not self._source_by_id.get(row["id"], {}).get("source_found", False)]
         for row in rows:
             status = describe_character_status(row)
             prefix = "原神" if row["family"] == "genshin" else "吉祥物"
