@@ -319,6 +319,7 @@ jobs:
         shell: bash
         run: |
           python tools/install_external_codex.py linnea --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python tools/install_external_codex.py sandrone --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
           python - <<'PY'
           import json,os
           from pathlib import Path
@@ -336,6 +337,14 @@ jobs:
           for file in list((root/"action").glob("*.png"))[:5]:
               with Image.open(file) as im: im.verify()
           print("REAL_INDEPENDENT_LINNEA_FRAMES_OK",role)
+          sandrone=Path(os.environ["RUNNER_TEMP"])/"external-art-qa"/"SourceExternalSandrone"
+          info=json.loads((sandrone/"PERSONAL_IMPORT.json").read_text("utf-8"))
+          assert info["selected_profile"]=="genshin_sandrone"
+          assert info["source_pixel_integrity_verified"] is True
+          assert not info["likeness_manually_reviewed"]
+          checked=validate_native_role(sandrone)
+          assert checked["images"]>=6 and checked["actions"]>=2,checked
+          print("REAL_SANDRONE_AUTHOR_FRAMES_OK",checked)
           PY
       # No artifact upload: author-created character images are temporary CI input.
 
