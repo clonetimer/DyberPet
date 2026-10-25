@@ -12,11 +12,13 @@ try:
     from .install_artist_codex import SOURCES as CODEX, REVISION as CODEX_REV, REPO as CODEX_REPO
     from .install_artist_genshin import ROLES as NATIVE, REVISION as NATIVE_REV, REPOSITORY as NATIVE_REPO
     from .install_artist_shimeji import source_manifest
+    from .install_nanopet_shimeji import source_manifest as nano_manifest
 except ImportError:
     from chibi_profiles import CHIBI_PROFILES
     from install_artist_codex import SOURCES as CODEX, REVISION as CODEX_REV, REPO as CODEX_REPO
     from install_artist_genshin import ROLES as NATIVE, REVISION as NATIVE_REV, REPOSITORY as NATIVE_REPO
     from install_artist_shimeji import source_manifest
+    from install_nanopet_shimeji import source_manifest as nano_manifest
 
 
 def source_coverage():
@@ -48,6 +50,10 @@ def source_coverage():
     for kind, asset in src["roles"].items():
         record(asset["profile"], "shimeji", kind,
                f"https://github.com/{src['repository']}/tree/{src['revision']}/public/assets/{kind}")
+    nano = nano_manifest()
+    for kind, asset in nano["roles"].items():
+        record(asset["profile"], "nano_shimeji", kind,
+               f"https://github.com/{nano['repository']}/tree/{nano['revision']}/{nano['asset_root']}/{asset['upstream_dir']}/img")
     available = [v for v in rows.values() if v["source_found"]]
     return {
         "scope": "pinned_source_discovery_only",
