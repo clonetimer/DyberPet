@@ -5,7 +5,11 @@ Tests enforce: pinned provenance != installed art != human visual acceptance.
 from __future__ import annotations
 
 import ast
+import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import unittest
 
 from tools.character_source_coverage import source_coverage
@@ -16,6 +20,16 @@ from tools.character_progress import character_progress
 
 
 class CreatorArtPreferenceTests(unittest.TestCase):
+
+    def test_source_ledger_utf8_prints_even_when_windows_console_uses_cp1252(self):
+        repo = Path(__file__).resolve().parents[1]
+        env = dict(os.environ, PYTHONIOENCODING="cp1252")
+        result = subprocess.run(
+            [sys.executable, str(repo / "tools/character_source_coverage.py")],
+            cwd=repo, env=env, capture_output=True, check=True)
+        ledger = json.loads(result.stdout.decode("utf-8"))
+        self.assertEqual(ledger["summary"]["characters_with_pinned_sources"], 55)
+        self.assertTrue(any(x["name"] == "菈乌玛" for x in ledger["characters"]))
 
     def test_style_labels_are_not_unearned_quality_grades(self):
         self.assertEqual(install_preference("artist_genshin"), 0)
@@ -33,7 +47,7 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             source_style("wrong_character")
 
-    def test_47_creator_sources_and_76_honest_gaps(self):
+    def test_55_creator_sources_and_68_honest_gaps(self):
         result = source_coverage()
         summary = result["summary"]
         self.assertEqual(summary["template_count"], 123)
