@@ -25,20 +25,30 @@ def _keywords(entry):
     return " ".join(names).casefold()
 
 
-def query_character_catalog(entries, text="", family="all", status="all"):
+def query_character_catalog(entries, text="", family="all", status="all", source_lookup=None):
     """Rank personal art before demo art; filter locally with no side effects.
 
     family: all / genshin / mascot
-    status: all / personal / demo / missing
+    status: all / personal / demo / missing / source / source_missing
+    source_lookup: an explicit read-only map of pinned provenance entries; never
+    conflate candidates with installed or visually verified art.
     """
     if family not in ("all", "genshin", "mascot"):
         raise ValueError("Unknown character family filter")
-    if status not in ("all", "personal", "demo", "missing"):
+    if status not in ("all", "personal", "demo", "missing", "source", "source_missing"):
         raise ValueError("Unknown character status filter")
+    if status in ("source", "source_missing") and source_lookup is None:
+        raise ValueError("Creator-source filter needs the verified source registry")
+    source_lookup = source_lookup or {}
     words = str(text or "").strip().casefold().split()
     found = []
     for row in entries:
         if family != "all" and row["family"] != family:
+            continue
+        source = source_lookup.get(row["id"], {})
+        if status == "source" and not source.get("source_found", False):
+            continue
+        if status == "source_missing" and (row["family"] != "genshin" or source.get("source_found", False)):
             continue
         if status == "personal" and not row["personal_art_structurally_installed"]:
             continue
@@ -52,7 +62,10 @@ def query_character_catalog(entries, text="", family="all", status="all"):
         found.append(row)
     return sorted(found, key=lambda r: (
         0 if r["personal_art_structurally_installed"] else
-        1 if r["native_original_demo"] else 2,
+        1 if source_lookup.get(r["id"], {}).get("source_found") else
+        2 if r["native_original_demo"] else 3,
+        source_lookup.get(r["id"], {}).get("recommended_source", {}).get("preference_order", 3)
+        if source_lookup.get(r["id"], {}).get("recommended_source") else 3,
         r["family"] != "genshin", str(r["name"]).casefold(), str(r["id"])))
 
 
