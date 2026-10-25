@@ -6,7 +6,7 @@ import tempfile
 import json
 from pathlib import Path
 
-from tools.character_interaction_coverage import interaction_coverage
+from tools.character_interaction_coverage import interaction_coverage, inspect_selected_role_interactions
 
 from DyberPet.assistant.role_interactions import (
     available_interactions, requested_action, INTERACTION_CATEGORIES)
@@ -100,6 +100,50 @@ class InteractionCoverageTests(unittest.TestCase):
         self.assertEqual(result["summary"]["roles_with_read_errors"], 1)
         self.assertEqual(result["summary"]["roles_with_at_least_one_interaction"], 0)
         self.assertFalse(result["characters"][0]["action_categories_present_in_art"])
+
+class CurrentRoleGapTests(unittest.TestCase):
+    def test_current_character_only_reads_install_and_currently_unlocked_actions(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            folder = root / "PersonalKaveh"
+            folder.mkdir()
+            (folder / "PERSONAL_IMPORT.json").write_text(
+                json.dumps({"selected_profile": "genshin_kaveh"}), encoding="utf-8")
+            (folder / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"},
+                            "jump": {"images": "jump"},
+                            "patpat": {"images": "patpat"}}), encoding="utf-8")
+            report = inspect_selected_role_interactions(
+                root, "PersonalKaveh", unlocked_actions=["wave", "madeup"])
+            self.assertEqual(report["status"], "imported_artist_claim_not_verified")
+            self.assertIn("greet", report["installed_action_categories"])
+            self.assertIn("pet", report["installed_action_categories"])
+            self.assertEqual(report["currently_unlocked_categories"], ["greet"])
+            self.assertIn("sleep", report["missing_categories"])
+            self.assertFalse(report["art_likeness_qa_passed"])
+            self.assertFalse(report["physical_desktop_qa_passed"])
+            (folder / "BUILTIN_CHIBI_DEMO.json").write_text("{}", encoding="utf-8")
+            demo = inspect_selected_role_interactions(
+                root, "PersonalKaveh", unlocked_actions=["wave"])
+            self.assertEqual(demo["status"], "builtin_demo_not_original_art")
+
+    def test_absent_or_unsafe_paths_cannot_be_mistaken_for_imported_art(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            empty = inspect_selected_role_interactions(root, "Missing")
+            self.assertEqual(empty["status"], "not_installed")
+            self.assertFalse(empty["art_likeness_qa_passed"])
+            for name in ("..", "../roles", "Foo/Bar", "Foo" + chr(92) + "Bar",
+                         "Null" + chr(0), ""):
+                with self.assertRaises(ValueError):
+                    inspect_selected_role_interactions(root, name)
+            (root / "Unknown").mkdir()
+            (root / "Unknown" / "act_conf.json").write_text(
+                json.dumps({"idle": {}}), encoding="utf-8")
+            unknown = inspect_selected_role_interactions(root, "Unknown")
+            self.assertEqual(unknown["status"], "unverified_local_role")
+            self.assertFalse(unknown["art_likeness_qa_passed"])
+
 
 
 if __name__ == "__main__":
