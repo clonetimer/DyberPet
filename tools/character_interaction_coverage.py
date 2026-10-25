@@ -97,7 +97,7 @@ def inspect_selected_role_interactions(role_root, role_name, *, unlocked_actions
         raise ValueError("Unsafe installed role root")
     if (not isinstance(role_name, str) or not role_name or
             len(role_name) > 120 or role_name in (".", "..") or
-            "/" in role_name or "\\\\" in role_name or "\\x00" in role_name):
+            "/" in role_name or chr(92) in role_name or chr(0) in role_name):
         raise ValueError("Invalid role folder name")
     folder = root / role_name
     if folder.is_symlink():
