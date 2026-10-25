@@ -60,6 +60,10 @@ def listed_packages(path=REGISTRY):
         if not (type(item.get("max_bytes")) is int and
                 0 < item["max_bytes"] <= MAX_ARCHIVE_BYTES):
             raise ValueError("Unsafe compressed package size bound")
+        if (type(item.get("verified_bytes")) is not int or
+                item["verified_bytes"] <= 0 or
+                item["verified_bytes"] > item["max_bytes"]):
+            raise ValueError("Missing provider ZIP byte count from actual independent verification")
         if item.get("listing_url") != "https://codexpetdb.com/en/pets/" + item["slug"] + "/download":
             raise ValueError("Package landing page is not from allowlisted origin")
     return listing
@@ -96,6 +100,8 @@ def get_verified_package(key, *, archive=None, downloader=_download_bytes,
         payload = path.read_bytes()
     if len(payload) > record["max_bytes"]:
         raise ValueError("Creator ZIP is larger than pinned source limit")
+    if len(payload) != record["verified_bytes"]:
+        raise ValueError("Creator archive length differs from independently verified package")
     if hashlib.sha256(payload).hexdigest() != record["sha256"]:
         raise ValueError("Creator archive SHA-256 mismatch; source not installed")
     return payload, record
