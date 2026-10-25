@@ -52,6 +52,8 @@ on:
       - "tools/artist_shimeji_sources.json"
       - "tools/install_nanopet_shimeji.py"
       - "tools/install_personal_shimeji_zip.py"
+      - "tools/artist_animation_audit.py"
+      - "tools/artist_visual_review.py"
       - "tools/install_personal_codex_zip.py"
       - "tools/community_codex_leads.py"
       - "tools/react_shimeji_source_leads.py"
@@ -62,6 +64,7 @@ on:
       - "tests/test_external_codex_sources.py"
       - "tests/test_nanopet_shimeji_sources.py"
       - "tests/test_personal_shimeji_zip.py"
+      - "tests/test_artist_animation_audit.py"
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
@@ -144,6 +147,8 @@ on:
       - "tools/artist_shimeji_sources.json"
       - "tools/install_nanopet_shimeji.py"
       - "tools/install_personal_shimeji_zip.py"
+      - "tools/artist_animation_audit.py"
+      - "tools/artist_visual_review.py"
       - "tools/install_personal_codex_zip.py"
       - "tools/community_codex_leads.py"
       - "tools/react_shimeji_source_leads.py"
@@ -154,6 +159,7 @@ on:
       - "tests/test_external_codex_sources.py"
       - "tests/test_nanopet_shimeji_sources.py"
       - "tests/test_personal_shimeji_zip.py"
+      - "tests/test_artist_animation_audit.py"
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
@@ -244,6 +250,7 @@ jobs:
           python tools/character_source_coverage.py --missing-only > missing-creator-sources.json
           python -m unittest discover -s tests -p "test_nanopet_shimeji_sources.py" -v
           python -m unittest discover -s tests -p "test_personal_shimeji_zip.py" -v
+          python -m unittest discover -s tests -p "test_artist_animation_audit.py" -v
           python -m unittest discover -s tests -p "test_personal_codex_zip.py" -v
           python -m unittest discover -s tests -p "test_community_codex_leads.py" -v
           python -m unittest discover -s tests -p "test_react_shimeji_leads.py" -v
