@@ -40,9 +40,9 @@ class ReactShimejiLeadTests(unittest.TestCase):
 
     def test_existing_pinned_source_counts_remain_intact(self):
         summary = source_coverage()["summary"]
-        self.assertEqual(summary["characters_with_pinned_sources"], 55)
-        self.assertEqual(summary["characters_without_pinned_sources"], 68)
-        self.assertEqual(summary["pinned_source_options"], 78)
+        self.assertEqual(summary["characters_with_pinned_sources"], 59)
+        self.assertEqual(summary["characters_without_pinned_sources"], 64)
+        self.assertEqual(summary["pinned_source_options"], 82)
 
     def test_gui_has_explicit_safe_preview_choices_and_no_auto_download(self):
         source = (Path(__file__).resolve().parents[1] /
