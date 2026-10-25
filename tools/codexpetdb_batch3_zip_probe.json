@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "provider": "CodexPetDB",
+  "status": "catalog_metadata_only_not_verified",
+  "note": "Batch 3 (Durin, Ineffa, Jahoda, Lauma) is catalog metadata ONLY; verify independently via non-gating CI before promoting coverage. No art/voice/rights visual QA.",
+  "sources": {
+    "durin": {
+      "profile": "genshin_durin",
+      "slug": "gi-durin",
+      "revision": "019f8c96-7691-70fc-8e39-f56cebe823b9",
+      "sha256": "8fc8bfa96092c3f060ba51ea6765f3847bc5a0b740929c3b3b97b430aba4c1bc",
+      "verified_bytes": 1008717,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-durin/download"
+    },
+    "ineffa": {
+      "profile": "genshin_ineffa",
+      "slug": "gi-ineffa",
+      "revision": "019f8c95-0fb6-7419-9272-df9ab6530c5a",
+      "sha256": "c278705518a21cf959ec164d4f5e349af64079326e302a9bc31c87f4e4e4664f",
+      "verified_bytes": 844872,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-ineffa/download"
+    },
+    "jahoda": {
+      "profile": "genshin_jahoda",
+      "slug": "gi-jahoda",
+      "revision": "019f8c78-d806-70e9-ac77-9e56cd1957a6",
+      "sha256": "e9ecf6019e672519fcbbe8347193f4e4e483be4bd448348408f68fbe31bd41b8",
+      "verified_bytes": 827665,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-jahoda/download"
+    },
+    "lauma": {
+      "profile": "genshin_lauma",
+      "slug": "gi-lauma",
+      "revision": "019f8c93-7090-7462-be9b-f84cda6220b8",
+      "sha256": "e52b9873ff3bd8085239c6454fdacadf2551db12671f8f1a1ec369789c7408ec",
+      "verified_bytes": 869915,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-lauma/download"
+    }
+  }
+}
