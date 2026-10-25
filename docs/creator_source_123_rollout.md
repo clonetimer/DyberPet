@@ -128,3 +128,14 @@ python tools/install_external_codex.py furina_fan --role-root res/role --accept-
 - 例如此前找到的 [荒泷一斗](https://shimejishop.com/free/wp-content/uploads/2026/09/50036.zip)、[卡维](https://shimejishop.com/free/wp-content/uploads/2025/09/628.zip) ZIP，目前仍需要实际下载、检查其内部帧约定、检查和原设的相似度。不能因为有 ZIP 下载按钮就宣称已安装。
 
 命令行也可使用：`python tools/install_personal_shimeji_zip.py --archive your.zip --profile genshin_kaveh --personal-use`。优先使用图形界面，不要求普通用户配置命令行。
+
+## 社区 Codex ZIP 来源检索与本机导入（2026-10-25）
+
+本轮扩展了两个对非程序员有实际帮助的功能：
+
+1. **社区候选预览**：在「全部角色库」先切换「仍缺公开作者素材（待补齐）」，选中对应人物，点击「浏览本人物公开候选（待核验）」，只打开可信指定域名的 [CodexPetDB 原神角色合集](https://codexpetdb.com/en/collections/genshin-impact) 中该人物的预览页。该合集当日列出 **35** 个素材条目，其中 **33** 个有精确人物 ID 对应，2 个 Manekina 变体不属于本项目 123 个原神角色模板；与已固定版本来源去重后，得到 **29 个以前缺来源人物的新检索线索**。下载素材真实性、美术相似度、许可、哈希均未审查，不能算来源已固定的角色。
+2. **安全的个人 ZIP 导入**：用户从可信页面手动下载 Codex ZIP 后，在「系统 → 角色管理 → 添加角色 → 个人本地导入：Codex 动画 ZIP（仅提取图集）」选择压缩包，并手动绑定原神人物。只处理同一目录内的 `pet.json` 与 `spritesheet.webp` 或 PNG；校验格式、图集尺寸、压缩大小与 ZIP 路径、资源 SHA-256；绝不执行或解压外部程序和脚本。导入时完整保留作者图集原始动作像素，另生成原生桌宠动作与本机收据，且不会覆盖已有角色。CLI 同等入口：`python tools/install_personal_codex_zip.py --archive "pet.zip" --profile genshin_kaveh --personal-use`。
+
+对应模块 `tools/community_codex_leads.py` 可执行 `--new-leads-only --output unreviewed-leads.json` 查看 29 个待审线索，并与精确哈希来源统计 `tools/character_source_coverage.py` **完全隔离**。双重测试 `tests/test_personal_codex_zip.py`、`tests/test_community_codex_leads.py` 验证打包安全、像素完整性、角色绑定、缺口计数和 GUI 明确点击，纳入 GitHub Actions。
+
+**覆盖分母与结论不变：当前精确版本来源 54 套、31/123 个人物；29 位仅新增网络候选，不是 31→60 已验收。** 即使本机安装成功，还要比较游戏人物外形、作者署名、声音/动作质量后才能标为完成。
