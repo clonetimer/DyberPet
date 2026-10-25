@@ -26,15 +26,19 @@ except ImportError:
     from artist_visual_review import create_native_art_review
 
 REGISTRY = Path(__file__).with_name("nanopet_shimeji_sources.json")
+# Source Shimeji-ee conf/actions.xml: Stand uses shime1, walking uses
+# shime1/2/3. shime38 is a cloning pose, NOT an idle pose; shime31-33 are
+# edge-sitting poses, NOT petting frames. Never forge a petting interaction.
 GROUPS = {
-    "stand": (38,),
-    "stand_alt": (11,),
+    "stand": (1,),
+    "sit": (11,),
     "walk": (1, 2, 3),
     "drag": (5, 6, 7, 8, 9, 10),
     "fall": (4,),
-    "onfloor": (18, 19, 20, 21),
+    "onfloor": (21,),
+    "crawl": (20,),
+    "landing": (18, 19),
     "climb": (12, 13, 14),
-    "pat": (31, 32, 33),
 }
 MAX_ROLE_BYTES = 14 * 1024 * 1024
 
@@ -134,17 +138,18 @@ def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_d
             "fall": action("fall"),
             "on_floor": action("onfloor"),
             "climb": action("climb"),
-            "patpat": action("pat"),
-            "stand_alt": action("stand_alt"),
+            "crawl": action("crawl"),
+            "landing": action("landing"),
+            "rest": action("sit"),
         })
-        dims = struct.unpack(">II", source_data[38][16:24])
+        dims = struct.unpack(">II", source_data[1][16:24])
         pet = {
             "width": dims[0], "height": dims[1], "scale": 1.0, "refresh": 5,
             "interact_speed": 0.02, "default": "default",
             "up": "default", "down": "default",
             "left": "left_walk", "right": "right_walk",
             "drag": "drag", "fall": "fall", "on_floor": "on_floor",
-            "patpat": "patpat",
+            "patpat": "default",  # no source-guaranteed pat animation in standard Shimeji
             "random_act": [
                 {"name": "待机", "act_list": ["default"], "act_prob": 1.0, "act_type": [2, 0]},
                 {"name": "行走", "act_list": ["left_walk", "right_walk", "default"],
