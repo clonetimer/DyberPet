@@ -15,6 +15,7 @@ on:
       - "DyberPet/conf.py"
       - "tests/test_assistant_*.py"
       - "tests/test_role_interactions.py"
+      - "tools/character_interaction_coverage.py"
       - "tests/test_save_snapshot.py"
       - "tests/test_offline_restore.py"
       - "docs/pet_assistant.md"
@@ -31,6 +32,7 @@ on:
       - "DyberPet/conf.py"
       - "tests/test_assistant_*.py"
       - "tests/test_role_interactions.py"
+      - "tools/character_interaction_coverage.py"
       - "tests/test_save_snapshot.py"
       - "tests/test_offline_restore.py"
       - ".github/workflows/pet-assistant.yml"
@@ -52,7 +54,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Compile assistant and main entry
-        run: python -m compileall -q DyberPet/assistant DyberPet/DyberPet.py DyberPet/Accessory.py DyberPet/modules.py DyberPet/conf.py
+        run: python -m compileall -q DyberPet/assistant DyberPet/DyberPet.py DyberPet/Accessory.py DyberPet/modules.py DyberPet/conf.py tools/character_interaction_coverage.py
       - name: Check Guga local fidelity CLI
         run: python tools/audit_guga.py --help
       - name: Check all-character fidelity CLI
