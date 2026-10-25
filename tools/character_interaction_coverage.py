@@ -85,6 +85,61 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
     }
 
 
+
+def inspect_selected_role_interactions(role_root, role_name, *, unlocked_actions=()):
+    """Inspect one active role without scanning all 125 character directories.
+
+    A locally created receipt cannot prove official art provenance or likeness;
+    imported and built-in demonstration assets are deliberately distinguished.
+    """
+    root = Path(role_root).expanduser()
+    if root.is_symlink() or (root.exists() and not root.is_dir()):
+        raise ValueError("Unsafe installed role root")
+    if (not isinstance(role_name, str) or not role_name or
+            len(role_name) > 120 or role_name in (".", "..") or
+            "/" in role_name or "\\\\" in role_name or "\\x00" in role_name):
+        raise ValueError("Invalid role folder name")
+    folder = root / role_name
+    if folder.is_symlink():
+        raise ValueError("Linked role folder refused")
+    if not folder.is_dir():
+        return {
+            "role": role_name, "status": "not_installed",
+            "on_disk_action_names": [], "installed_action_categories": [],
+            "currently_unlocked_categories": [], "missing_categories": [
+                x["id"] for x in available_interactions([])],
+            "art_likeness_qa_passed": False, "physical_desktop_qa_passed": False,
+        }
+    for receipt in ("PERSONAL_IMPORT.json", "IMPORT_REPORT.json",
+                    "BUILTIN_CHIBI_DEMO.json", "BUILTIN_MASCOT_DEMO.json"):
+        if (folder / receipt).is_symlink():
+            raise ValueError("Linked role receipt refused")
+    demo = ((folder / "BUILTIN_CHIBI_DEMO.json").is_file() or
+            (folder / "BUILTIN_MASCOT_DEMO.json").is_file())
+    imported = ((folder / "PERSONAL_IMPORT.json").is_file() or
+                (folder / "IMPORT_REPORT.json").is_file())
+    status = ("builtin_demo_not_original_art" if demo else
+              "imported_artist_claim_not_verified" if imported else
+              "unverified_local_role")
+    action_names = _original_art_action_names(root, role_name)
+    on_disk = available_interactions(action_names)
+    now_unlocked = set(x for x in unlocked_actions if isinstance(x, str))
+    live = available_interactions(
+        [name for name in action_names if name in now_unlocked])
+    return {
+        "role": role_name,
+        "status": status,
+        "on_disk_action_names": sorted(action_names),
+        "installed_action_categories": [x["id"] for x in on_disk if x["available"]],
+        "currently_unlocked_categories": [x["id"] for x in live if x["available"]],
+        "missing_categories": [x["id"] for x in on_disk if not x["available"]],
+        "art_likeness_qa_passed": False,
+        "physical_desktop_qa_passed": False,
+        "note": ("These are installed action-name hints only; source art, "
+                 "real playback, animation uniqueness and rights await visual review."),
+    }
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--role-root", type=Path,
