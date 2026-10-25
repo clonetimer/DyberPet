@@ -25,7 +25,7 @@ class PersonalShimejiZipTests(unittest.TestCase):
 
     def make_zip(self, directory, *, sparse=False, duplicate=False, without_clone=False):
         archive = Path(directory) / "kaveh-untrusted.zip"
-        ids = (38, 1, 2, 3, 5, 6, 7, 4, 18, 19, 20, 21,
+        ids = (38, 1, 2, 3, 5, 6, 7, 4, 11, 18, 19, 20, 21,
                12, 13, 14, 31, 32, 33)
         if sparse:
             ids = (38,)
