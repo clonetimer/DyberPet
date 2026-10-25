@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "Seven pinned independent Genshin Codex art sources; priority is real detailed Q (as user requested) and Shimeji when needed; human likeness/rights QA pending",
+  "note": "Ten pinned independent Genshin Codex art sources (including three new alternatives); real artist artwork only, no generated placeholders; human appearance and rights QA remain pending",
   "sources": {
     "linnea": {
       "repository": "Alchuang22-dev/Linnea-Codex-Pet",
@@ -112,6 +112,54 @@
       "sprites": {
         "size": 2045822,
         "sha": "883426f35f7d8e7447284e2e66a22b18d1d77b9b"
+      }
+    },
+    "klee_fan": {
+      "repository": "rullerzhou-afk/codex-fan-pets",
+      "revision": "7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff",
+      "directory": "pets/klee",
+      "manifest_id": "klee",
+      "profile": "genshin_klee",
+      "name": "可莉（另一作者图集）",
+      "pet": {
+        "size": 141,
+        "sha": "989410aee2bbaf2215a55943ee7e940b9887bac8"
+      },
+      "sprites": {
+        "size": 2117626,
+        "sha": "43cb4c76279829705f3178a4cb80b9c6f41a7024"
+      }
+    },
+    "yoimiya_fan": {
+      "repository": "rullerzhou-afk/codex-fan-pets",
+      "revision": "7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff",
+      "directory": "pets/yoimiya宵宫",
+      "manifest_id": "yoimiya宵宫",
+      "profile": "genshin_yoimiya",
+      "name": "宵宫（另一作者图集）",
+      "pet": {
+        "size": 201,
+        "sha": "d05ee0337114ab602893810d6b2d03e39c9cf30b"
+      },
+      "sprites": {
+        "size": 2404750,
+        "sha": "cdfb34fb418a0facb36ec9908cc3fb87f101760a"
+      }
+    },
+    "furina_fan": {
+      "repository": "rullerzhou-afk/codex-fan-pets",
+      "revision": "7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff",
+      "directory": "pets/furina芙宁娜",
+      "manifest_id": "furina芙宁娜",
+      "profile": "genshin_furina",
+      "name": "芙宁娜（另一作者图集）",
+      "pet": {
+        "size": 187,
+        "sha": "99de7b619322db8a33cf2afae9744a9f51a0170f"
+      },
+      "sprites": {
+        "size": 2199566,
+        "sha": "7b0dd26db2c4351d1c8c588811133d09c0697d4b"
       }
     }
   }
