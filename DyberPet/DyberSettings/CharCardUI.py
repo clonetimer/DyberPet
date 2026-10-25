@@ -1196,6 +1196,22 @@ class CharInterface(ScrollArea):
     def _onChibiImportComplete(self, role_name, error):
         if error:
             if (self.chibiThread is not None and
+                    self.chibiThread.mode in ("pinned_codexpetdb", "pinned_codexpetdb_local")):
+                if ("429" in error or "Too Many Requests" in error):
+                    error = (
+                        "原画来源站点暂时限制下载请求（HTTP 429）。"
+                        "您可以从作者页面下载对应 ZIP 后，使用「添加角色 → "
+                        "已下载的 SHA-256 固定原画 ZIP（断网可用）」导入。"
+                        "只有固定哈希完全匹配的原件才会被安装，已有角色不受影响。"
+                    )
+                elif ("SHA-256" in error or "length differs" in error or
+                      "pet.json.id" in error):
+                    error = (
+                        "原画安装被安全校验拒绝：" + error[:260] +
+                        "。请检查所选人物和 ZIP 是否与固定发布版本完全一致。"
+                        "不要关闭校验或用其他人物的素材替代。"
+                    )
+            if (self.chibiThread is not None and
                     self.chibiThread.mode == "creator_source"):
                 error = (self.tr("未能安装作者动画素材：") + error[:360] +
                          self.tr("\n内置原创咕嘎 / Doro 演示版仍可正常使用。"
