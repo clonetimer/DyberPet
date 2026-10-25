@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from urllib.parse import quote
 import re
 import tempfile
 
@@ -72,7 +73,7 @@ def install_external_codex(kind, output_root, *, confirmed=False, downloader=_do
         raise FileExistsError("Cannot overwrite existing artist-created character")
     root.mkdir(parents=True, exist_ok=True)
     source_url = "https://raw.githubusercontent.com/{}/{}/{}/".format(
-        item["repository"], item["revision"], item["directory"])
+        item["repository"], item["revision"], quote(item["directory"], safe="/"))
     with tempfile.TemporaryDirectory(prefix=".external-codex-", dir=root) as tmp:
         local = Path(tmp) / "original"
         local.mkdir()
