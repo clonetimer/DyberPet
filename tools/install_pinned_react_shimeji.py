@@ -119,9 +119,9 @@ def decode_pinned_frames(ts_path, *, profile):
             out = BytesIO()
             atlas.crop((x, y, x + w, y + h)).save(out, format="PNG")
             frames[n] = out.getvalue()
-    if 38 not in frames or len(set(hashlib.sha256(frames[n]).digest()
+    if 1 not in frames or len(set(hashlib.sha256(frames[n]).digest()
                                     for n in (1, 2, 3) if n in frames)) < 2:
-        raise ValueError("Source lacks distinct Shimeji walk frames and standard idle 38")
+        raise ValueError("Source lacks distinct Shimeji walk frames and standard stand 1")
     return frames, digest
 
 
