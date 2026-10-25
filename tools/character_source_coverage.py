@@ -70,7 +70,7 @@ def source_coverage():
     # This is *source integrity* coverage, never human character likeness.
     petdb = json.loads(Path(__file__).with_name(
         "codexpetdb_pinned_zip_leads.json").read_text(encoding="utf-8"))
-    if petdb.get("schema") != 1 or not 24 <= len(petdb.get("sources", {})) <= 123:
+    if petdb.get("schema") != 1 or not 28 <= len(petdb.get("sources", {})) <= 123:
         raise ValueError("Invalid SHA-256-verified community art source registry")
     for key, asset in sorted(petdb["sources"].items()):
         if asset["profile"] not in rows or len(asset["sha256"]) != 64:
