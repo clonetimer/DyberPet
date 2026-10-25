@@ -10,10 +10,13 @@ Audit time is not animation FPS, latency, or end-to-end application startup.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import statistics
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from tools.install_artist_codex import REVISION, REPO, SOURCES
 from tools.profile_role_backends import _run_process
