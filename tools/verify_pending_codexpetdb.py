@@ -8,6 +8,7 @@ role plus original-frame audit. No artwork is uploaded or redistributed.
 """
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 import tempfile
@@ -25,8 +26,8 @@ except ImportError:
 PENDING = Path(__file__).with_name("codexpetdb_pending_zip_leads.json")
 
 
-def verify_new_sources():
-    entries = json.loads(PENDING.read_text(encoding="utf-8"))
+def verify_new_sources(candidate_file=PENDING):
+    entries = json.loads(Path(candidate_file).read_text(encoding="utf-8"))
     if (entries.get("status") != "catalog_metadata_only_not_verified" or
             entries.get("schema") != 1 or
             len(entries.get("sources", {})) != 4):
@@ -71,4 +72,7 @@ def verify_new_sources():
 
 
 if __name__ == "__main__":
-    verify_new_sources()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--candidate-file", type=Path, default=PENDING)
+    args = parser.parse_args()
+    verify_new_sources(args.candidate_file)
