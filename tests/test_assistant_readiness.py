@@ -25,6 +25,10 @@ class ReadinessTests(unittest.TestCase):
 
     def test_configured_features_do_not_claim_actual_device_tests(self):
         with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "am").mkdir()
+            (Path(d) / "conf").mkdir()
+            (Path(d) / "am" / "final.mdl").write_bytes(b"local test model bytes")
+            (Path(d) / "conf" / "model.conf").write_text("test")
             report = inspect_readiness(voice_model=d,
                                        llm_endpoint="http://127.0.0.1:1234",
                                        llm_model="local-model",
@@ -36,6 +40,7 @@ class ReadinessTests(unittest.TestCase):
         self.assertIn("不联网、不录音", wording)
         self.assertIn("未连接验证", wording)
         self.assertIn("未访问麦克风", wording)
+        self.assertIn("未读取模型内容", wording)
 
     def test_remote_or_url_confusion_not_claimed_loopback(self):
         for endpoint in ("http://example.com:1234", "https://127.0.0.1:1234",
@@ -44,6 +49,17 @@ class ReadinessTests(unittest.TestCase):
                          "file:///tmp/ppl", ""):
             self.assertFalse(_local_http(endpoint), endpoint)
         self.assertTrue(_local_http("http://[::1]:8790"))
+
+    def test_empty_folder_and_incomplete_vosk_layout_not_reported_ready(self):
+        with tempfile.TemporaryDirectory() as d:
+            kw = {"voice_model": d, "dependency_lookup": lambda x: True}
+            self.assertEqual(inspect_readiness(**kw)["checks"][1]["status"], "needs_setup")
+            (Path(d) / "am").mkdir()
+            (Path(d) / "am" / "final.mdl").write_bytes(b"minimal placeholder")
+            self.assertEqual(inspect_readiness(**kw)["checks"][1]["status"], "needs_setup")
+            (Path(d) / "conf").mkdir()
+            (Path(d) / "conf" / "model.conf").write_text("model layout")
+            self.assertEqual(inspect_readiness(**kw)["checks"][1]["status"], "configured")
 
     def test_empty_model_folder_and_missing_tts_are_non_fatal(self):
         report = inspect_readiness(voice_model="", llm_endpoint="http://127.0.0.1:1234",
