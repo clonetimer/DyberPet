@@ -25,3 +25,13 @@
 **禁止:** 自动以演示几何图生成所谓正式人物；把图集来源等同原作外观验收；未经素材权利核实将其他作者图包上传公开 GitHub Release。前端应显示真实状态而非虚假的“123 人已内置”。
 
 本阶段的新增发现来自各上游公开 README，并非逐帧视觉核验结果。
+
+## 2026-10-25：额外公开 Shimeji 资源候选（不计入固定来源）
+
+| 角色（原先未覆盖） | 公开页面 / 署名 | 实际发现 | 计数与下一步 |
+| --- | --- | --- | --- |
+| 荒泷一斗 `genshin_arataki_itto` | [Arataki Itto Shimeji](https://shimejishop.com/free/arataki-itto-shimeji/)，页面署名 **Ookami** | 页面展示预览及下载入口，且称可运行 Windows/Mac/Linux | 尚未核实原始动画文件来源、内容安全、SHA 和角色真实帧，先不计数 |
+| 卡维 `genshin_kaveh` | [Kaveh Shimeji](https://shimejishop.com/free/kaveh-shimeji/)，页面署名 **ilewdha** | 有角色动作预览与下载入口 | 尚未核实原始 PNG/XML 下载包与哈希，先不计数 |
+| 基尼奇 `genshin_kinich` | [Kinich Shimeji](https://shimejishop.com/free/kinich-shimeji/)，页面署名 **shimejimascot** | **注意**：分类页写 Free，但详情页只提供 Buy 按钮 | 不当成可免费直接下载；需确认真实资源渠道与作者授权后再转入固定来源 |
+
+候选页面包含“下载软件/运行 .exe/.jar”的文案。安全导入仅应提取经核验的 **图片和角色配置**，不能自动运行任意来源的 EXE、JAR、批处理或脚本。任何公开预览不等于真正取得合法、完整、可用的帧序列。所有这些资源的原设人物相似度亦未验收。
