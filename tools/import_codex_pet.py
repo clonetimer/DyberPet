@@ -152,7 +152,8 @@ def build_configs(available: set[str], version: int, name: str,
         "left": use("left_walk"), "right": use("right_walk"),
         "drag": use("jump"), "prefall": use("jump"),
         "fall": use("jump"), "on_floor": use("jump"),
-        "focus": use("review"), "patpat": use("wave"),
+        "focus": use("review"),
+        "patpat": "idle",  # No author-defined pat action in Codex V1/V2; do not mislabel waving.
         "random_act": random_act,
     }
     info = {
