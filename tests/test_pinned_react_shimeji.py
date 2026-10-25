@@ -73,6 +73,10 @@ class ReactShimejiImportTests(unittest.TestCase):
                 self.assertFalse(receipt["redistribution_allowed_by_tool"])
                 self.assertEqual((output / "source_frames" / "shime38.png").read_bytes(),
                                  frames[38])
+                self.assertEqual((output / "action" / "stand_0.png").read_bytes(),
+                                 frames[1])
+                self.assertNotIn("patpat", json.loads(
+                    (output / "act_conf.json").read_text("utf-8")))
                 second = install_pinned_react_shimeji(
                     source, roles, profile="genshin_kaveh", confirmed=True)
                 self.assertNotEqual(output, second)
