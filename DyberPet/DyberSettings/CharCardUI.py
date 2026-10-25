@@ -313,7 +313,7 @@ class CharInterface(ScrollArea):
                     "个人本地导入：Shimeji 原画 ZIP（仅提取图片）",
                     "个人本地导入：Codex 动画 ZIP（仅提取图集）",
                      "个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）",
-                     "个人使用：下载 SHA-256 固定的四位原神角色原画 ZIP",
+                     "个人使用：下载 SHA-256 固定的八位原神角色原画 ZIP",
                      "个人本地导入：已下载的 SHA-256 固定原画 ZIP（断网可用）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
