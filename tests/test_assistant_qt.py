@@ -80,7 +80,7 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(saved["currently_unlocked_categories"], ["greet"])
         self.assertFalse(saved["human_original_likeness_verified"])
         self.assertFalse(saved["manual_playback_verified"])
-        self.assertIn("未", self.dialog.status.text())
+        self.assertIn("不代表人工原设验收", self.dialog.status.text())
         self.dialog.set_character("Doro")
         with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
                           return_value={**result, "role": "Doro"}) as checker, \
