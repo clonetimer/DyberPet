@@ -53,12 +53,12 @@ class PersonalShimejiZipTests(unittest.TestCase):
                 archive, root, profile="genshin_kaveh", confirmed=True)
             self.assertEqual((dest/"source_frames"/"shime38.png").read_bytes(),
                              origin[38])
-            self.assertEqual((dest/"action"/"stand_0.png").read_bytes(), origin[38])
+            self.assertEqual((dest/"action"/"stand_0.png").read_bytes(), origin[1])
             self.assertFalse((dest/"Shimeji.exe").exists())
             self.assertFalse((dest/"libs").exists())
             self.assertFalse((Path(tmp)/"path-traversal.txt").exists())
             validation = validate_native_role(dest)
-            self.assertGreaterEqual(validation["actions"], 5)
+            self.assertGreaterEqual(validation["actions"], 5)\n            act_conf = json.loads((dest/"act_conf.json").read_text("utf-8"))\n            self.assertNotIn("patpat", act_conf)\n            self.assertIn("rest", act_conf)
             self.assertTrue((dest/"ANIMATION_PREVIEW.png").is_file())
             receipt = json.loads((dest/"PERSONAL_IMPORT.json").read_text("utf-8"))
             self.assertEqual(receipt["selected_profile"], "genshin_kaveh")
@@ -83,7 +83,7 @@ class PersonalShimejiZipTests(unittest.TestCase):
     def test_missing_required_frames_and_duplicate_names_blocked(self):
         with tempfile.TemporaryDirectory() as tmp:
             source = self.make_zip(tmp, sparse=True)
-            with self.assertRaisesRegex(ValueError, "requires idle"):
+            with self.assertRaisesRegex(ValueError, "requires stand 1"):
                 inspect_shimeji_zip(source)
         with tempfile.TemporaryDirectory() as tmp:
             source = self.make_zip(tmp, duplicate=True)
