@@ -7,7 +7,7 @@
 ## 本阶段实测可追溯信息（不是 123 人完工声明）
 
 - 人物/伙伴模板：**123**，与 GUI 名录一致；另有咕嘎和 Doro 两个独立吉祥物，不计入 123。
-- 固定来源候选：**50 个动画来源选项，对应 30 个不同原神人物**；其中含同一人物的多个作者版本。
+- 固定来源候选：**53 个动画来源选项，对应 30 个不同原神人物**；其中含同一人物的多个作者版本。
 - **93 个角色尚无本项目固定校验的创作者素材来源**；后续需要按角色逐一检索并确认是该角色，不得凭文件名或艺术风格推断。
 - 逐帧像素来源/下载安全/原生格式自动测试 ≠ 游戏原设像貌人工验收。**当前不宣称任何一个人物已完成形象人工验收、全部原作动作验收或 Windows 实机验收。**
 - 所有新增素材均从公开资源**经用户确认后下载到本机**，仓库不直接提交、再发布未确认权利的二创图集。
@@ -93,3 +93,17 @@ python tools/install_external_codex.py keqing_classic --role-root res/role --acc
 ## 下阶段继续补齐 93 人
 
 统一角色清单为唯一工作台：每项至少登记可信素材候选、是否真实可下载、创作者署名、固定 Git/文件哈希、角色识别线索、真人预览结论。优先筛查人物误匹配风险；确实找不到适当来源时保留 `missing_source`，不能为了做满 123 而造假。对外默认角色选择器应继续隐藏程序演示图，展示“待获取真实资源”而不是错误的“已完成”。
+
+## 本轮追加：3 个固定原作者备选图集（2026-10-25）
+
+已确认 [rullerzhou-afk/codex-fan-pets](https://github.com/rullerzhou-afk/codex-fan-pets) 固定版本 `7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff` 的 **可莉、宵宫、芙宁娜** 三组 `pet.json` 与 `spritesheet.webp`。三组文件均登记精确 Git blob SHA 和字节长度，并在外部 Codex 安装器中绑定对应原神模板，扩展为 **53 个固定来源选项、30 名角色、93 名待补来源**。
+
+三组属于**既有角色的新作者版本**，不能计作新增已覆盖人物、真人美术验收或 Windows 实机安装完成。源目录含中文，安装器严格允许 Unicode 字母和数字及安全路径分隔符，仍拒绝目录穿越。个人安装示例：
+
+```bash
+python tools/install_external_codex.py klee_fan --role-root res/role --accept-personal-use
+python tools/install_external_codex.py yoimiya_fan --role-root res/role --accept-personal-use
+python tools/install_external_codex.py furina_fan --role-root res/role --accept-personal-use
+```
+
+新来源需要逐帧评估 Q 版人物辨识度，再决定是否在界面中优先推荐；现阶段仍只算来源候选。
