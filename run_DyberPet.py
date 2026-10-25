@@ -406,8 +406,8 @@ def _assistant_package_smoke():
         and len(source_manifest()["roles"]) == 8
         and creator["template_count"] == 123
         and len(nano_manifest()["roles"]) == 17
-        and len(external_manifest()["sources"]) == 3
-        and creator["characters_with_pinned_sources"] == 28
+        and len(external_manifest()["sources"]) == 5
+        and creator["characters_with_pinned_sources"] == 29
         and {"guga", "doro"}.issubset(mascot_art))
     if not report["public_art_sources_ready"]:
         raise RuntimeError("Pinned original-art installers missing from executable")
