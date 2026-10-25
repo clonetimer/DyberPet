@@ -144,7 +144,7 @@ class HashPinnedPackageTests(unittest.TestCase):
         path = Path(__file__).resolve().parents[1] / "DyberPet/DyberSettings/CharCardUI.py"
         source = path.read_text("utf-8")
         ast.parse(source)
-        self.assertIn("个人使用：下载 SHA-256 固定的四位原神角色原画 ZIP", source)
+        self.assertIn("个人使用：下载 SHA-256 固定的八位原神角色原画 ZIP", source)
         self.assertIn('"pinned_codexpetdb_local" if local_archive else "pinned_codexpetdb"', source)
         self.assertIn('elif self.mode in ("pinned_codexpetdb", "pinned_codexpetdb_local"):', source)
         self.assertIn("QMessageBox.StandardButton.Yes", source)
