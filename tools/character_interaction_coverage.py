@@ -11,8 +11,6 @@ import json
 from pathlib import Path
 
 from DyberPet.assistant.role_interactions import available_interactions
-from tools.genshin_library import scan_genshin_library
-from tools.mascot_library import scan_mascot_library
 
 MAX_ACTION_CONFIG_BYTES = 512 * 1024
 
@@ -31,8 +29,16 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
     root = Path(role_root).expanduser()
     if root.is_symlink():
         raise ValueError("Linked role directory refused")
-    genshin = genshin_snapshot if genshin_snapshot is not None else scan_genshin_library(root)
-    mascots = mascot_snapshot if mascot_snapshot is not None else scan_mascot_library(root)
+    if genshin_snapshot is None:
+        from tools.genshin_library import scan_genshin_library
+        genshin = scan_genshin_library(root)
+    else:
+        genshin = genshin_snapshot
+    if mascot_snapshot is None:
+        from tools.mascot_library import scan_mascot_library
+        mascots = scan_mascot_library(root)
+    else:
+        mascots = mascot_snapshot
     rows = []
 
     def record(profile, name, family, folders):
