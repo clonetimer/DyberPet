@@ -47,6 +47,31 @@ class AssistantQtTests(unittest.TestCase):
             self.assertIn("只读", display.call_args.args[2])
         self.assertIsNone(self.dialog._job)
 
+    def test_character_specific_manual_actions_use_only_unlocked_animation(self):
+        requests = []
+        self.dialog.action_requested.connect(requests.append)
+        self.dialog.set_actions(["wave", "jump", "idle", "lookaround"])
+        self.assertTrue(self.dialog.interaction_button.isEnabled())
+        self.assertEqual(self.dialog.interaction_menu.currentData(), "greet")
+        self.dialog.interaction_button.click()
+        self.assertEqual(requests, ["wave"])
+        idx = self.dialog.interaction_menu.findData("talk")
+        self.assertGreaterEqual(idx, 0)
+        self.dialog.interaction_menu.setCurrentIndex(idx)
+        self.assertFalse(self.dialog.interaction_button.isEnabled())
+        self.dialog.play_manual_interaction()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_character("Doro")
+        self.assertFalse(self.dialog.interaction_button.isEnabled())
+        self.dialog.play_manual_interaction()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_actions(["左右散步", "打招呼"])
+        self.assertTrue(self.dialog.interaction_button.isEnabled())
+        self.dialog.interaction_menu.setCurrentIndex(
+            self.dialog.interaction_menu.findData("walk"))
+        self.dialog.interaction_button.click()
+        self.assertEqual(requests, ["wave", "左右散步"])
+
     def test_bubble_signals_and_stale_character_responses(self):
         replies, notices = [], []
         self.dialog.reply_ready.connect(replies.append)
