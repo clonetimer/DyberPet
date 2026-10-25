@@ -21,6 +21,7 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         self.assertEqual(install_preference("artist_genshin"), 0)
         self.assertEqual(install_preference("artist_codex"), 1)
         self.assertEqual(install_preference("artist_external_codex"), 1)
+        self.assertEqual(install_preference("pinned_codexpetdb"), 1)
         self.assertEqual(install_preference("artist_shimeji"), 2)
         self.assertEqual(install_preference("artist_nano"), 2)
         for kind in ("native", "codex", "independent_codex", "codexpetdb_zip", "shimeji", "nano_shimeji"):
@@ -97,6 +98,22 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         self.assertIn("source_lookup=self._source_by_id", d)
         self.assertIn("① 精细Q版优先", c)
         self.assertIn("③ 可接受小型 Shimeji", c)
+        # A fixed-source character must be selectable *from that character's
+        # own "install artist art" action, not only the generic Add menu.
+        self.assertIn('from tools.install_pinned_codexpetdb import listed_packages, fixed_archive_url', c)
+        self.assertIn('for key, row in petdb.items()', c)
+        self.assertIn('("pinned_codexpetdb", key)', c)
+        self.assertIn('if mode == "pinned_codexpetdb":', c)
+        self.assertIn('return petdb[key]["profile"]', c)
+        self.assertIn('source = fixed_archive_url(petdb[kind])', c)
+        self.assertIn('"pinned_codexpetdb", "react_shimeji_lfs", "creator_source"', c)
+        from tools.install_pinned_codexpetdb import listed_packages, fixed_archive_url
+        packages = listed_packages()["sources"]
+        self.assertEqual({v["profile"] for v in packages.values()}, {
+            "genshin_kaveh", "genshin_kinich",
+            "genshin_kirara", "genshin_alhaitham"
+        })
+        self.assertEqual(len({fixed_archive_url(v) for v in packages.values()}), 4)
 
 
 if __name__ == "__main__":
