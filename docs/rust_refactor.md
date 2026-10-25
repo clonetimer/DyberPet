@@ -1,3 +1,20 @@
+## R6：真实作者素材、交叉顺序基准（2026-10-25）
+
+前一阶段在合成 PNG 和独立子进程下验证了 Rust/Python 等价，但仍无法判断经过原作者 PNG 图集转换后是否有可重复的资源审计收益。本阶段新增 `tools/benchmark_creator_asset_backends.py`，只读取**本地**已通过 `install_artist_codex.py` 固定提交与逐帧像素校验的安装结果，不下载、不修改、不上传角色资源。
+
+在 Windows/Linux Python 3.11 的 Rust CI 中，临时下载固定 Git 提交的 **纳西妲 / 派蒙** 作者图集并执行安全转换，随后按 ABBA、BAAB 交叉顺序逐项启动**全新子进程**。每个进程先预热，再执行相同次数的完整角色审计，统计各进程中位数、导入时间、进程运行时间、RSS 快照、Python 堆追踪峰值。**8 次独立进程、每种后端 4 次采样**；若 Rust 未激活、任意报表 SHA-256 不一致、检测中资产发生变动，整轮基准直接失败，不产生“加速成功”的错误结论。测试只在 stdout 输出公开角色标识、数值、哈希和说明，不包含原始图片、路径、角色配置明文或用户私有数据，CI 不保存作者素材为附件。
+
+本地命令（须先以项目提供的安装器安装本人可使用的公开作者源，且安装 Rust wheel）：
+
+```powershell
+python tools/install_artist_codex.py nahida --role-root "D:\\DyberPet-Rust-QA" --accept-personal-use
+python tools/benchmark_creator_asset_backends.py --role-root "D:\\DyberPet-Rust-QA" --kind nahida --blocks 2 --rounds 3 --warmup 1
+```
+
+报告中的 `measured_speedup` = Python 审计耗时中位数 / Rust 耗时中位数，**不设置阈值、不作为合并依据、不推算 GUI 帧率**。RSS 是进程某一时刻的快照；Python 的 tracemalloc 不统计 Rust 堆；两者不能直接用于得出“Rust 内存更少”。若真实艺术资源负载下 Rust 提速无显著且可重复的价值，保持 Python 默认、停止盲目 Rust 化。
+
+---
+
 ## R5：同步当前 Python 主干与作者原画（2026-10-24）
 
 现有 Rust Draft PR #3 已通过双父提交与最新 main 合流：**保留原 Rust 研究历史，同时以当前 Python main 的首次使用引导、完整数据备份/停机恢复、15 项真实来源素材安装、低保真占位图剔除、像素保真整改为基线**。目标 PR 已改为 main，且仍为 Draft，不会自动替代 Python 版本。
