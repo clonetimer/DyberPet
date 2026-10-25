@@ -20,9 +20,9 @@ class RolePersonaTests(unittest.TestCase):
                             PERSONAS["genshin_kirara"].style)
         for key in keys:
             prompt = make_system_prompt(key)
-            self.assertIn("不能直接", prompt + "不能直接")  # safety boundaries in make_system_prompt
+            self.assertIn("文件创建、删除或恢复只能通过桌宠界面", prompt)
             self.assertIn("不", PERSONAS[key].boundaries)
-            self.assertIn("Q版", PERSONAS[key].name)
+            self.assertIn("非官方", PERSONAS[key].name)
 
     def test_receipt_based_role_resolution_and_no_filename_guessing(self):
         with tempfile.TemporaryDirectory() as td:
