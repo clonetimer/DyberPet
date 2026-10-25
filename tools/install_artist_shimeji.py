@@ -18,9 +18,11 @@ from urllib.request import Request, urlopen
 
 try:
     from .install_native_role import validate_native_role
+    from .artist_visual_review import create_native_art_review
     from .chibi_profiles import CHIBI_PROFILES
 except ImportError:
     from install_native_role import validate_native_role
+    from artist_visual_review import create_native_art_review
     from chibi_profiles import CHIBI_PROFILES
 
 MANIFEST = Path(__file__).with_name("artist_shimeji_sources.json")
@@ -174,6 +176,7 @@ def install_artist_shimeji(kind, output_root, *, confirmed=False,
             "original_pixel_frames": sum(map(len, groups.values())),
             "validation": checked,
         }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        visual = create_native_art_review(stage)
         if target.exists() or target.is_symlink():
             raise FileExistsError("Target installed concurrently; no overwrite")
         stage.rename(target)
