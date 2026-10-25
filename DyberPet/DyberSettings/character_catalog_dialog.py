@@ -4,7 +4,8 @@ No network, disk mutation or source-art verification occurs in this UI.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget,
     QListWidgetItem, QPushButton, QVBoxLayout,
@@ -14,6 +15,7 @@ from tools.character_catalog_search import (
     describe_character_status, query_character_catalog,
 )
 from tools.character_source_coverage import source_coverage
+from tools.community_codex_leads import PROFILE_TO_SLUG
 
 
 class CharacterCatalogDialog(QDialog):
@@ -53,6 +55,7 @@ class CharacterCatalogDialog(QDialog):
         self.results = QListWidget(self)
         self.results.setAlternatingRowColors(True)
         self.results.itemDoubleClicked.connect(lambda _item: self._select())
+        self.results.currentItemChanged.connect(self._refresh_candidate_button)
         layout.addWidget(self.results)
 
         self.countLabel = QLabel(self)
@@ -67,6 +70,8 @@ class CharacterCatalogDialog(QDialog):
         buttons = QHBoxLayout()
         self.installArtistButton = QPushButton("安装真实作者素材", self)
         self.installArtistButton.clicked.connect(self._install_artist)
+        self.communityButton = QPushButton("浏览本人物公开候选（待核验）", self)
+        self.communityButton.clicked.connect(self._open_community_candidate)
         self.manageButton = QPushButton("管理原神素材关联", self)
         self.manageButton.clicked.connect(self._open_manage)
         self.openButton = QPushButton("查看角色 / 预览动作", self)
@@ -74,6 +79,7 @@ class CharacterCatalogDialog(QDialog):
         close = QPushButton("关闭", self)
         close.clicked.connect(self.reject)
         buttons.addWidget(self.installArtistButton)
+        buttons.addWidget(self.communityButton)
         buttons.addWidget(self.manageButton)
         buttons.addStretch(1)
         buttons.addWidget(self.openButton)
@@ -100,7 +106,10 @@ class CharacterCatalogDialog(QDialog):
                             f" · {source['style_preference_text']}"
                             if source is not None and source["source_found"] else
                             " · 暂无固定版本的作者素材" if row["family"] == "genshin" else "")
-            title = f"【{prefix}】{row['name']} · {status}{creator_info}"
+            lead = (" · 社区图集候选（未审核）"
+                    if row["id"] in PROFILE_TO_SLUG and
+                    (source is None or not source["source_found"]) else "")
+            title = f"【{prefix}】{row['name']} · {status}{creator_info}{lead}"
             item = QListWidgetItem(title)
             item.setToolTip(
                 f"{row['id']} · 演示动作 {row['demo_actions']} 类 / "
@@ -116,10 +125,26 @@ class CharacterCatalogDialog(QDialog):
             f"当前筛选 {self.results.count()} / {len(self._entries)} 个角色。"
             "先选人物再点「安装真实作者素材」：只显示该人物对应的来源，精细版优先。")
         self.openButton.setEnabled(self.results.count() > 0)
+        self._refresh_candidate_button()
 
     def selected_character_id(self):
         current = self.results.currentItem()
         return current.data(Qt.ItemDataRole.UserRole) if current else None
+
+    def _refresh_candidate_button(self, *_):
+        profile = self.selected_character_id()
+        has_lead = profile in PROFILE_TO_SLUG
+        self.communityButton.setEnabled(has_lead)
+        self.communityButton.setToolTip(
+            "只打开外部来源的图集预览，需逐帧核验后自行下载并导入；不视为已安装或原设验收"
+            if has_lead else "该人物目前没有登记可查看的 CodexPetDB 社区候选")
+
+    def _open_community_candidate(self):
+        # Only an explicit user click opens the allowlisted public preview URL.
+        profile = self.selected_character_id()
+        if profile in PROFILE_TO_SLUG:
+            slug = PROFILE_TO_SLUG[profile]
+            QDesktopServices.openUrl(QUrl("https://codexpetdb.com/en/pets/" + slug))
 
     def _select(self):
         selected = self.selected_character_id()
