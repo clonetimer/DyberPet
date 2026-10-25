@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "Five independently pinned artist-created Genshin Codex Pet atlases; not official character licensing or visual QA",
+  "note": "Seven pinned independent Genshin Codex art sources; priority is real detailed Q (as user requested) and Shimeji when needed; human likeness/rights QA pending",
   "sources": {
     "linnea": {
       "repository": "Alchuang22-dev/Linnea-Codex-Pet",
@@ -80,6 +80,38 @@
       "sprites": {
         "size": 1877016,
         "sha": "d077b882c2d302be8d3e6bef32d2b630d02a2905"
+      }
+    },
+    "keqing_chibi": {
+      "repository": "PengZirong/keqing-codex-pet",
+      "revision": "f8c45f36164accbed15c46084bce2b274ca82d8b",
+      "directory": "variants/chibi",
+      "manifest_id": "keqing-chibi",
+      "profile": "genshin_keqing",
+      "name": "刻晴 · 精细 Q 版（优先预览）",
+      "pet": {
+        "size": 218,
+        "sha": "71f72eb99d69b9071cf117d1976f02724f54030f"
+      },
+      "sprites": {
+        "size": 3320422,
+        "sha": "1e71a04a3d1d730580505f7191de56248825c337"
+      }
+    },
+    "keqing_classic": {
+      "repository": "PengZirong/keqing-codex-pet",
+      "revision": "f8c45f36164accbed15c46084bce2b274ca82d8b",
+      "directory": "variants/classic",
+      "manifest_id": "keqing",
+      "profile": "genshin_keqing",
+      "name": "刻晴 · 经典比例原画版",
+      "pet": {
+        "size": 182,
+        "sha": "1332b59038e446f4386cbb2dd69048223172a18c"
+      },
+      "sprites": {
+        "size": 2045822,
+        "sha": "883426f35f7d8e7447284e2e66a22b18d1d77b9b"
       }
     }
   }
