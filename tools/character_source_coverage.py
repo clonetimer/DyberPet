@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 try:
     from .chibi_profiles import CHIBI_PROFILES
+    from .creator_art_preference import source_style, candidate_character_style
     from .install_artist_codex import SOURCES as CODEX, REVISION as CODEX_REV, REPO as CODEX_REPO
     from .install_artist_genshin import ROLES as NATIVE, REVISION as NATIVE_REV, REPOSITORY as NATIVE_REPO
     from .install_artist_shimeji import source_manifest
@@ -16,6 +17,7 @@ try:
     from .install_external_codex import source_manifest as external_manifest
 except ImportError:
     from chibi_profiles import CHIBI_PROFILES
+    from creator_art_preference import source_style, candidate_character_style
     from install_artist_codex import SOURCES as CODEX, REVISION as CODEX_REV, REPO as CODEX_REPO
     from install_artist_genshin import ROLES as NATIVE, REVISION as NATIVE_REV, REPOSITORY as NATIVE_REPO
     from install_artist_shimeji import source_manifest
@@ -29,7 +31,8 @@ def source_coverage():
     rows = {k: {"id": k, "name": label, "source_candidates": [],
                 "source_found": False, "installed": False,
                 "visual_likeness_qa_passed": False, "rights_verified": False,
-                "windows_desktop_qa_passed": False}
+                "windows_desktop_qa_passed": False,
+                "visual_grade": None}
             for k, label in sorted(names.items())}
 
     def record(profile, provider, key, url):
@@ -39,6 +42,7 @@ def source_coverage():
             "provider": provider, "source_key": key,
             "url": url, "asset_is_bundled": False,
             "needs_manual_likeness_and_rights_review": True,
+            **source_style(provider),
         })
         rows[profile]["source_found"] = True
 
@@ -60,6 +64,11 @@ def source_coverage():
     for kind, asset in external["sources"].items():
         record(asset["profile"], "independent_codex", kind,
                f"https://github.com/{asset['repository']}/tree/{asset['revision']}/{asset['directory']}")
+    for item in rows.values():
+        item["source_candidates"].sort(key=lambda c: (c["preference_order"], c["provider"], c["source_key"]))
+        item["recommended_source"] = item["source_candidates"][0] if item["source_candidates"] else None
+        item["style_preference_text"], item["style_preference_group"] = candidate_character_style(item["source_candidates"])
+        item["source_candidate_count"] = len(item["source_candidates"])
     available = [v for v in rows.values() if v["source_found"]]
     return {
         "scope": "pinned_source_discovery_only",
@@ -68,6 +77,10 @@ def source_coverage():
             "pinned_source_options": sum(len(v["source_candidates"]) for v in rows.values()),
             "characters_with_pinned_sources": len(available),
             "characters_without_pinned_sources": len(rows) - len(available),
+            "style_priority_detailed_native_count": sum(v["style_preference_group"] == "detailed_candidate" for v in available),
+            "style_priority_atlas_pending_count": sum(v["style_preference_group"] == "atlas_review" for v in available),
+            "style_priority_shimeji_candidate_count": sum(v["style_preference_group"] == "small_candidate" for v in available),
+            "user_visible_style_grades_approved": 0,
             "verified_likeness_count": 0,
             "installed_by_this_report": 0,
             "rights_verified_count": 0,
@@ -75,7 +88,8 @@ def source_coverage():
         },
         "note": ("Public accessibility or checksum pinning does not certify copyright permissions, "
                  "original-game appearance, correct animation, install success or visual acceptance. "
-                 "Missing characters MUST NOT be replaced by generic simplified art."),
+                 "Missing characters MUST NOT be replaced by generic simplified art. "
+                 "P1/P2 style sorting is not an A/B/C likeness grade; all visual reviews remain pending."),
         "characters": list(rows.values()),
     }
 
