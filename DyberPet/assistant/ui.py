@@ -6,6 +6,7 @@ permissions or triggers filesystem actions. No network calls on the Qt thread.
 from __future__ import annotations
 
 import uuid
+import json
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
@@ -159,6 +160,9 @@ class PetAssistantDialog(QDialog):
         inspect_row.addWidget(self.interaction_audit_button)
         inspect_row.addWidget(self.action_preview_button)
         form.addRow(inspect_row)
+        self.interaction_export_button = QPushButton("导出当前角色互动缺口 JSON", self)
+        self.interaction_export_button.clicked.connect(self.export_interaction_audit)
+        form.addRow(self.interaction_export_button)
         self.set_actions([])
         self.save_pref_button = QPushButton("保存助手设置（不保存聊天记录与人设快照）")
         self.save_pref_button.clicked.connect(self.save_preferences)
@@ -375,6 +379,41 @@ class PetAssistantDialog(QDialog):
             "演示素材及仅有角色名称的模板不计作原设美术完成。",
         ]
         QMessageBox.information(self, "当前角色互动覆盖 · 只读检查", "\n".join(lines))
+
+    def export_interaction_audit(self):
+        """Save an honest read-only snapshot for per-character manual QA."""
+        from tools.character_interaction_coverage import inspect_selected_role_interactions
+        try:
+            # Gather before opening the save dialog; do not create a success file
+            # when the current role is missing or its action config is unsafe.
+            report = inspect_selected_role_interactions(
+                self.role_root, self.character_name,
+                unlocked_actions=self._unlocked_actions)
+        except (OSError, ValueError) as exc:
+            self._job_error("角色互动报告无法生成：" + str(exc))
+            return
+        report["inspection_scope"] = "current_role_on_disk_plus_runtime_unlocked"
+        report["human_original_likeness_verified"] = False
+        report["manual_playback_verified"] = False
+        # The chosen character remains the only source of truth. No model text
+        # or remote script can write or approve this record.
+        destination, _ = QFileDialog.getSaveFileName(
+            self, "导出当前角色互动缺口", "role_interaction_audit.json",
+            "JSON Files (*.json)")
+        if not destination:
+            return
+        path = Path(destination).expanduser()
+        if path.suffix.lower() != ".json" or path.is_symlink():
+            self._job_error("只允许保存到普通的 JSON 报告文件")
+            return
+        try:
+            path.write_text(
+                json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8")
+        except OSError as exc:
+            self._job_error("保存角色互动报告失败：" + str(exc))
+            return
+        self.status.setText("已导出当前角色互动缺口（不代表人工原设验收）：" + path.name)
 
     def preview_installed_actions(self):
         """Preview actual installed frames; do not generate surrogate sprites."""
