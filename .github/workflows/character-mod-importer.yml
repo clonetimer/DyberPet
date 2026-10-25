@@ -469,3 +469,25 @@ jobs:
           path: StarSprout-Original-Role.zip
           if-no-files-found: error
           retention-days: 14
+
+  provider-zip-integrity:
+    name: Public CodexPetDB r1 ZIP integrity (non-gating candidate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Prepare PNG atlas verifier
+        run: python -m pip install Pillow
+      - name: Verify provider bytes and original atlas without installing them
+        timeout-minutes: 5
+        run: |
+          python tools/install_pinned_codexpetdb.py kaveh --verify-only
+          python tools/install_pinned_codexpetdb.py kinich --verify-only
+          python tools/install_pinned_codexpetdb.py kirara --verify-only
+          python tools/install_pinned_codexpetdb.py alhaitham --verify-only
