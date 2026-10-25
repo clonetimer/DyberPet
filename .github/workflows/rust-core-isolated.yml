@@ -13,10 +13,13 @@ on:
       - "tests/test_rust_bridge.py"
       - "tests/test_rust_frame_index.py"
       - "tests/test_rust_creator_art_parity.py"
+      - "tests/test_rust_creator_benchmark.py"
       - "tests/test_rust_runtime_profile.py"
       - "tools/benchmark_rust_core.py"
       - "tools/benchmark_frame_index.py"
       - "tools/profile_role_backends.py"
+      - "tools/benchmark_creator_asset_backends.py"
+      - "tools/install_artist_codex.py"
       - ".github/workflows/rust-core-isolated.yml"
   pull_request:
     paths:
@@ -28,10 +31,13 @@ on:
       - "tests/test_rust_bridge.py"
       - "tests/test_rust_frame_index.py"
       - "tests/test_rust_creator_art_parity.py"
+      - "tests/test_rust_creator_benchmark.py"
       - "tests/test_rust_runtime_profile.py"
       - "tools/benchmark_rust_core.py"
       - "tools/benchmark_frame_index.py"
       - "tools/profile_role_backends.py"
+      - "tools/benchmark_creator_asset_backends.py"
+      - "tools/install_artist_codex.py"
       - ".github/workflows/rust-core-isolated.yml"
   workflow_dispatch:
 
@@ -85,3 +91,16 @@ jobs:
         run: python -m pip install psutil==6.1.1
       - name: Profile cold process cost and memory without exporting user assets
         run: python tools/profile_role_backends.py --synthetic-frames 100 --rounds 5 --require-rust
+      # Draws on EXACT source-version artist PNGs, but uploads only aggregate
+      # metadata and audit hashes. No image or frame is added to artifacts.
+      - name: Benchmark pinned creator artwork with paired ABBA/BAAB subprocesses
+        if: matrix.python == '3.11'
+        shell: bash
+        env:
+          DYBERPET_R6_ROOT: ${{ runner.temp }}/dyberpet-r6-artist
+        run: |
+          python tools/install_artist_codex.py nahida --role-root "$DYBERPET_R6_ROOT" --accept-personal-use > /dev/null
+          python tools/install_artist_codex.py paimon --role-root "$DYBERPET_R6_ROOT" --accept-personal-use > /dev/null
+          python tools/benchmark_creator_asset_backends.py --role-root "$DYBERPET_R6_ROOT" --kind nahida --blocks 2 --rounds 3 --warmup 1
+          python tools/benchmark_creator_asset_backends.py --role-root "$DYBERPET_R6_ROOT" --kind paimon --blocks 2 --rounds 3 --warmup 1
+          # Pinned artist source files remain only in the temporary CI runner.
