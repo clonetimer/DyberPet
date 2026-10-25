@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "note": "Three independent creators' original source PNG-based Codex Pet atlases, immutable Git blobs; provenance is not permissions/likeness QA",
+  "sources": {
+    "linnea": {
+      "repository": "Alchuang22-dev/Linnea-Codex-Pet",
+      "revision": "57a95bd88bdd773448863d7049b8db1d8aec6f39",
+      "directory": "pet",
+      "manifest_id": "linnea",
+      "profile": "genshin_linnea",
+      "name": "莉奈娅",
+      "pet": {
+        "size": 228,
+        "sha": "1703dacb7d0ad726f9073ceffa12162dd5f62fa6"
+      },
+      "sprites": {
+        "size": 3382396,
+        "sha": "cdb855f05defd3ec08ccc6511a2d8a25d1ab6727"
+      }
+    },
+    "hu_tao_pixel": {
+      "repository": "ZaytsevZY/genshin-pets",
+      "revision": "88cc8fe7de174eab62a6eafb417c1a1ea8b4bf95",
+      "directory": "pets/hutao",
+      "manifest_id": "hutao",
+      "profile": "genshin_hu_tao",
+      "name": "胡桃（独立像素版本）",
+      "pet": {
+        "size": 170,
+        "sha": "fe67e520fe99a381d2be676afd69def6186bb587"
+      },
+      "sprites": {
+        "size": 1815520,
+        "sha": "7f24c8872ec41ab1b76fa50e868115e8bc2c41db"
+      }
+    },
+    "nahida_mini": {
+      "repository": "Rukkhadevata-Karrenay/nahida-mini-codex-pet",
+      "revision": "3b0c593fb8c93544ebb3cb28f55f97c82ed0e6d1",
+      "directory": "dist",
+      "manifest_id": "nahida-mini-codex-pet-v1",
+      "profile": "genshin_nahida",
+      "name": "纳西妲（Mini 像素版）",
+      "pet": {
+        "size": 174,
+        "sha": "bba10c54ff1cb29113174f08da94a059fef69022"
+      },
+      "sprites": {
+        "size": 1811498,
+        "sha": "342746252b5a4b61f2bedfe01a7f858b5297e3a9"
+      }
+    }
+  }
+}
