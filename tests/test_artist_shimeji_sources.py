@@ -40,7 +40,14 @@ class CreatorSourcesTests(unittest.TestCase):
             self.assertFalse(item["visual_likeness_qa_passed"])
             self.assertFalse(item["rights_verified"])
             for x in item["source_candidates"]:
-                self.assertTrue(x["url"].startswith("https://github.com/"))
+                if x["provider"] == "codexpetdb_zip":
+                    self.assertTrue(x["url"].startswith(
+                        "https://cdn.codexpetdb.com/revisions/"))
+                    self.assertEqual(len(x["archive_sha256"]), 64)
+                    self.assertTrue(x["byte_integrity_tested_in_ci"])
+                    self.assertFalse(x["artist_character_likeness_verified"])
+                else:
+                    self.assertTrue(x["url"].startswith("https://github.com/"))
                 self.assertFalse(x["asset_is_bundled"])
 
     def test_all_eight_shimeji_roles_have_immutable_frame_pins(self):
