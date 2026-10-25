@@ -18,6 +18,7 @@ INSTALL_MODE_PROVIDER = {
     "artist_genshin": "native",
     "artist_codex": "codex",
     "artist_external_codex": "independent_codex",
+    "pinned_codexpetdb": "codexpetdb_zip",
     "artist_shimeji": "shimeji",
     "artist_nano": "nano_shimeji",
 }
