@@ -491,3 +491,32 @@ jobs:
           python tools/install_pinned_codexpetdb.py kinich --verify-only
           python tools/install_pinned_codexpetdb.py kirara --verify-only
           python tools/install_pinned_codexpetdb.py alhaitham --verify-only
+      - name: Convert four genuine CDN art ZIPs to local-only DyberPet roles
+        timeout-minutes: 5
+        run: |
+          ROOT="$RUNNER_TEMP/petdb-creator-qa"
+          python tools/install_pinned_codexpetdb.py kaveh --role-root "$ROOT" --accept-personal-use
+          python tools/install_pinned_codexpetdb.py kinich --role-root "$ROOT" --accept-personal-use
+          python tools/install_pinned_codexpetdb.py kirara --role-root "$ROOT" --accept-personal-use
+          python tools/install_pinned_codexpetdb.py alhaitham --role-root "$ROOT" --accept-personal-use
+          ROOT="$ROOT" python - <<'PY'
+          import os, json
+          from pathlib import Path
+          root = Path(os.environ["ROOT"])
+          roles = [x for x in root.iterdir() if x.is_dir() and not x.name.startswith(".")]
+          assert len(roles) == 4, [p.name for p in roles]
+          original = set()
+          for folder in roles:
+              receipt = json.loads((folder / "PERSONAL_IMPORT.json").read_text("utf-8"))
+              report = json.loads((folder / "ACTION_PIXEL_AUDIT.json").read_text("utf-8"))
+              assert receipt["source_zip_sha256_verified"]
+              assert (folder / "ANIMATION_PREVIEW.png").exists()
+              assert not report["summary"]["character_visual_likeness_verified"]
+              assert report["summary"]["original_frames_inspected"] > 0
+              original.add(receipt["selected_profile"])
+              print("ORIGINAL_ATLAS_IMPORTED", folder.name, report["summary"])
+          assert original == {
+              "genshin_kaveh", "genshin_kinich",
+              "genshin_kirara", "genshin_alhaitham"
+          }, original
+          PY
