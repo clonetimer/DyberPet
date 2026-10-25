@@ -77,3 +77,11 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 **自检不会打开麦克风、试听扬声器、连接 LM Studio/PPL、持久化聊天或更改任何本地文件。** 显示「已配置」仅代表准备条件满足，不代表实际设备和模型服务已经验收。之后用户仍需分别手工点击「录音识别」「朗读上一条回复」「检测模型」完成对应的真实测试。声音原设相似度与 123 个角色图集视觉 QA 不由自检宣告通过。
 
 实现为 `DyberPet/assistant/readiness.py`（无 GUI 依赖），离线用例在 `tests/test_assistant_readiness.py`；Qt 集成覆盖于 `tests/test_assistant_qt.py`。
+
+## 所有角色的主动互动快捷动作（本轮追加）
+
+桌宠助手新增 **「主动互动（仅已解锁原生动作）」**：根据当前主桌宠已安装并解锁的动画，动态展示「打招呼、蹦一蹦、观察周围、休息一下、散步、说话动作、睡觉」。用户选择后点击「让当前桌宠执行」，只通过原有 `action_requested` 信号调用运行时，运行时再次检查当前人物的 `unlocked` 状态，故不会由语言模型的文本或普通语音识别结果自动触发。
+
+同一类互动可以使用原画 Codex（如 `wave`, `jump`, `lookaround`）或原生 DyberPet 中文动作组（如「打招呼」「左右散步」），**严格全名匹配**，不会把「attack_wave_effect」之类不相关的动作猜作招手。缺对应动作时禁用按钮并提示用户导入更完整的原作者素材；不使用占位图、不重复一帧冒充多种动作，当前角色切换后立刻清空原角色动作授权并重新同步。
+
+该功能对**全部 123 位原神模板和咕嘎/Doro 两位独立角色**采用统一运行时接口，但**只有真实安装且解锁的动作才可执行**。实现 `DyberPet/assistant/role_interactions.py`，单元测试 `tests/test_role_interactions.py`，Qt 行为测试 `tests/test_assistant_qt.py`。这是可靠的交互入口，不等于 125 个角色原设动作素材已经齐全。
