@@ -504,6 +504,7 @@ def _assistant_package_smoke():
             if selector.results.count()!=0:
                 raise RuntimeError("Uninstalled creator candidates falsely marked as installed")
             selector.statusFilter.setCurrentIndex(selector.statusFilter.findData("all"))
+            selector.familyFilter.setCurrentIndex(selector.familyFilter.findData("all"))
             selector.searchBox.setText("Lisa")
             app.processEvents()
             if (selector.results.count()!=1 or
