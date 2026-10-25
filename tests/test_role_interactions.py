@@ -35,7 +35,7 @@ class RoleInteractionTests(unittest.TestCase):
         self.assertEqual(by_id["greet"]["action"], "wave")
         self.assertEqual(by_id["jump"]["action"], "jump")
         self.assertEqual(by_id["observe"]["action"], "review")
-        self.assertEqual(by_id["rest"]["action"], "idle")
+        self.assertFalse(by_id["rest"]["available"])  # idle is not a rest animation
         self.assertEqual(by_id["walk"]["action"], "right_walk")
         self.assertFalse(by_id["talk"]["available"])
         self.assertFalse(by_id["sleep"]["available"])
@@ -82,6 +82,23 @@ class RoleInteractionTests(unittest.TestCase):
             plan = available_interactions(actions)
             self.assertTrue(all(not p["available"] for p in plan))
             self.assertTrue(all(p["action"] is None for p in plan))
+
+    def test_run_walk_and_explicit_rest_never_swap_motion_semantics(self):
+        actions = available_interactions(["run", "idle", "happy", "climb", "crawl"])
+        by_id = {x["id"]: x for x in actions}
+        self.assertEqual(by_id["run"]["action"], "run")
+        self.assertFalse(by_id["walk"]["available"])
+        self.assertFalse(by_id["rest"]["available"])
+        self.assertFalse(by_id["jump"]["available"])
+        self.assertEqual(by_id["climb"]["action"], "climb")
+        self.assertEqual(by_id["crawl"]["action"], "crawl")
+        self.assertNotEqual(by_id["climb"]["action"], by_id["crawl"]["action"])
+        actions2 = available_interactions(["right_walk", "rest", "sit", "jump"])
+        self.assertTrue({k: v["available"] for k, v in
+                        ((x["id"], x) for x in actions2)}["sit"])
+        self.assertEqual(requested_action(actions2, "walk"), "right_walk")
+        self.assertEqual(requested_action(actions2, "rest"), "rest")
+        self.assertIsNone(requested_action(actions2, "run"))
 
     def test_deterministic_without_duplicate_matches(self):
         x = available_interactions(["wave", "hello", "idle", "wave", "left_walk"])
