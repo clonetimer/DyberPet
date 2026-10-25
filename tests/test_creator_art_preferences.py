@@ -106,7 +106,7 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         self.assertIn('if mode == "pinned_codexpetdb":', c)
         self.assertIn('return petdb[key]["profile"]', c)
         self.assertIn('source = fixed_archive_url(petdb[kind])', c)
-        self.assertIn('"pinned_codexpetdb", "react_shimeji_lfs", "creator_source"', c)
+        self.assertIn('"pinned_codexpetdb", "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source"', c)
         from tools.install_pinned_codexpetdb import listed_packages, fixed_archive_url
         packages = listed_packages()["sources"]
         self.assertEqual({v["profile"] for v in packages.values()}, {
