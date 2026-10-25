@@ -81,8 +81,9 @@ class AssistantQtTests(unittest.TestCase):
             "missing_categories": ["sleep"],
             "art_likeness_qa_passed": False,
         }
-        with patch("tools.character_interaction_coverage.inspect_selected_role_interactions",
-                   return_value=report) as inspector, \
+        from tools import character_interaction_coverage  # ensure lazy-loaded module exists
+        with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
+                          return_value=report) as inspector, \
              patch.object(QMessageBox, "information") as message:
             self.dialog.interaction_audit_button.click()
             self.assertEqual(inspector.call_count, 1)
@@ -103,7 +104,7 @@ class AssistantQtTests(unittest.TestCase):
         with patch("DyberPet.DyberSettings.mascot_preview_dialog.MascotActionPreview") as preview:
             self.dialog.action_preview_button.click()
             self.assertEqual(preview.call_count, 1)
-            self.assertEqual(preview.call_args.args[0], folder)
+            self.assertEqual(preview.call_args.args[0].resolve(), folder.resolve())
             self.assertFalse(preview.call_args.kwargs["original_demo"])
             preview.return_value.exec.assert_called_once()
             (folder / "BUILTIN_MASCOT_DEMO.json").write_text("{}", encoding="utf-8")
