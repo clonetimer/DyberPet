@@ -100,6 +100,22 @@ def main():
     others.append(("Kitty | bundled",base_pet("Kitty","stand_0.png")))
     others.append(("ChrisKitty | bundled",base_pet("ChrisKitty","stand_0.png")))
     announce("MASCOTS_NATIVE_BASE",contact_sheet(others,3))
+    # Compare three entirely independent public Doro artists against the
+    # quadrupedal Internet meme reference before selecting a default.
+    doro_specs = (
+        ("doro--godxxy1229",702066,"c8aeb0bfe877371f25d660b3d95a9e7e58191daf"),
+        ("doro--lingxiaotian",2382142,"daaee2d9e75d16d94d71cd93a13d087cfbf49f2c"),
+        ("doro--vaevie",2589654,"6b12f498f7db4e62e4f68a5b703a4af2ed9c56f9"),
+    )
+    options=[]
+    for source_id,size,sha in doro_specs:
+        payload=raw(f"{CODEX_ROOT}/{source_id}/spritesheet.webp")
+        if len(payload)!=size or git_sha(payload)!=sha:
+            raise ValueError("Doro alternate does not match pinned Git tree: "+source_id)
+        for i,row in enumerate((0,1,2)):
+            options.append((source_id+" / row "+str(row),original_cell(payload,8*row)))
+        print("DORO_ALT_VERIFIED",source_id,size,flush=True)
+    announce("DORO_ALTERNATIVES",contact_sheet(options,3))
     print("VISUAL_AUDIT_COMPLETE",len(gs)+len(others),flush=True)
 
 if __name__=="__main__":
