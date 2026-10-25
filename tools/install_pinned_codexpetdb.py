@@ -160,10 +160,28 @@ def main(argv=None):
     parser.add_argument("--role-root", type=Path,
                         default=Path(__file__).resolve().parents[1] / "res" / "role")
     parser.add_argument("--accept-personal-use", action="store_true")
+    parser.add_argument("--verify-only", action="store_true",
+                        help="Check actual provider ZIP hash, ID and sprite atlas; do not install")
     a = parser.parse_args(argv)
-    print(install_pinned_codexpetdb(
-        a.source, a.role_root, confirmed=a.accept_personal_use,
-        archive=a.archive))
+    if a.verify_only:
+        payload, record = get_verified_package(a.source, archive=a.archive)
+        with tempfile.TemporaryDirectory(prefix="petdb-verify-only-") as temp:
+            path = Path(temp) / "source.zip"
+            path.write_bytes(payload)
+            inspected = inspect_codex_zip(path)
+            if inspected["manifest"]["id"] != record["slug"]:
+                raise ValueError("Verified source has the wrong persona id")
+        print(json.dumps({
+            "source": a.source, "status": "verified_compressed_bytes_and_atlas",
+            "sha256": record["sha256"], "byte_length": len(payload),
+            "source_package_id": record["slug"],
+            "character_art_likeness_verified": False,
+            "role_installed": False,
+        }, ensure_ascii=False))
+    else:
+        print(install_pinned_codexpetdb(
+            a.source, a.role_root, confirmed=a.accept_personal_use,
+            archive=a.archive))
     return 0
 
 
