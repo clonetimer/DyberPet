@@ -1,0 +1,27 @@
+name: Visual inspection pinned creator art (manual audit)
+
+on:
+  push:
+    branches:
+      - "audit/role-visual-inspection-20261025"
+    paths:
+      - "tools/visual_inspection_contact_sheets.py"
+      - ".github/workflows/visual-inspection-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-source-art-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install image inspection dependency
+        run: python -m pip install "pillow>=10,<13"
+      - name: Inspect all 19 source image identities and emit ephemeral manual review contacts
+        run: python tools/visual_inspection_contact_sheets.py
