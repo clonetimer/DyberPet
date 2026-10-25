@@ -52,6 +52,9 @@ on:
       - "tools/artist_shimeji_sources.json"
       - "tools/install_nanopet_shimeji.py"
       - "tools/nanopet_shimeji_sources.json"
+      - "tools/external_codex_art_sources.json"
+      - "tools/install_external_codex.py"
+      - "tests/test_external_codex_sources.py"
       - "tests/test_nanopet_shimeji_sources.py"
       - "tools/character_source_coverage.py"
       - "tests/test_artist_shimeji_sources.py"
@@ -128,6 +131,9 @@ on:
       - "tools/artist_shimeji_sources.json"
       - "tools/install_nanopet_shimeji.py"
       - "tools/nanopet_shimeji_sources.json"
+      - "tools/external_codex_art_sources.json"
+      - "tools/install_external_codex.py"
+      - "tests/test_external_codex_sources.py"
       - "tests/test_nanopet_shimeji_sources.py"
       - "tools/character_source_coverage.py"
       - "tests/test_artist_shimeji_sources.py"
@@ -207,6 +213,8 @@ jobs:
         run: |
           python tools/install_artist_shimeji.py --help
           python tools/install_nanopet_shimeji.py --help
+          python tools/install_external_codex.py --help
+          python -m unittest discover -s tests -p "test_external_codex_sources.py" -v
           python tools/character_source_coverage.py --missing-only > missing-creator-sources.json
           python -m unittest discover -s tests -p "test_nanopet_shimeji_sources.py" -v
           python -m unittest discover -s tests -p "test_artist_shimeji_sources.py" -v
@@ -306,6 +314,28 @@ jobs:
               for file in ("stand_0.png","walk_0.png","drag_0.png","fall_0.png"):
                   with Image.open(role/"action"/file) as im: im.verify()
               print("REAL_NANOPET_AUTHOR_FRAMES_OK",source)
+          PY
+      - name: Download independent Linnea creator sprite atlas; verify native Qt compatible frames
+        shell: bash
+        run: |
+          python tools/install_external_codex.py linnea --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from PIL import Image
+          from tools.install_native_role import validate_native_role
+          root=Path(os.environ["RUNNER_TEMP"])/"external-art-qa"/"SourceExternalLinnea"
+          meta=json.loads((root/"PERSONAL_IMPORT.json").read_text("utf-8"))
+          assert meta["selected_profile"]=="genshin_linnea",meta
+          assert meta["source_pixel_integrity_verified"] is True
+          assert not meta["likeness_manually_reviewed"]
+          role=validate_native_role(root)
+          assert role["images"]>=6 and role["actions"]>=2,role
+          for fn in ("pet_conf.json","act_conf.json","IMPORT_REPORT.json"):
+              assert (root/fn).is_file(),fn
+          for file in list((root/"action").glob("*.png"))[:5]:
+              with Image.open(file) as im: im.verify()
+          print("REAL_INDEPENDENT_LINNEA_FRAMES_OK",role)
           PY
       # No artifact upload: author-created character images are temporary CI input.
 
