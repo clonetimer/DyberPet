@@ -36,16 +36,16 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         result = source_coverage()
         summary = result["summary"]
         self.assertEqual(summary["template_count"], 123)
-        self.assertEqual(summary["characters_with_pinned_sources"], 31)
-        self.assertEqual(summary["characters_without_pinned_sources"], 92)
-        self.assertEqual(summary["pinned_source_options"], 54)
+        self.assertEqual(summary["characters_with_pinned_sources"], 35)
+        self.assertEqual(summary["characters_without_pinned_sources"], 88)
+        self.assertEqual(summary["pinned_source_options"], 58)
         self.assertEqual(summary["style_priority_detailed_native_count"], 3)
         self.assertEqual(summary["user_visible_style_grades_approved"], 0)
         total = sum(summary[x] for x in (
             "style_priority_detailed_native_count",
             "style_priority_atlas_pending_count",
             "style_priority_shimeji_candidate_count"))
-        self.assertEqual(total, 31)
+        self.assertEqual(total, 35)
         refs = {row["id"]: row for row in result["characters"]}
         for key in ("genshin_nahida", "genshin_xiao", "genshin_wanderer"):
             self.assertEqual(refs[key]["recommended_source"]["provider"], "native")
@@ -74,8 +74,8 @@ class CreatorArtPreferenceTests(unittest.TestCase):
                                           status="source", source_lookup=lookup)
         missing = query_character_catalog(progress, family="genshin",
                                           status="source_missing", source_lookup=lookup)
-        self.assertEqual(len(visible), 31)
-        self.assertEqual(len(missing), 92)
+        self.assertEqual(len(visible), 35)
+        self.assertEqual(len(missing), 88)
         self.assertEqual(len(query_character_catalog(progress, family="genshin")), 123)
         self.assertEqual(query_character_catalog(progress, status="personal"), [])
         self.assertEqual(visible[0]["id"] in ("genshin_nahida", "genshin_xiao", "genshin_wanderer"), True)
