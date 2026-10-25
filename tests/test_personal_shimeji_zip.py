@@ -1,6 +1,7 @@
 """End-to-end standard Shimeji ZIP personal import without executing vendor code."""
 from __future__ import annotations
 
+import ast
 import io
 import json
 from pathlib import Path
@@ -69,6 +70,15 @@ class PersonalShimejiZipTests(unittest.TestCase):
                 archive, root, profile="genshin_kaveh", confirmed=True)
             self.assertNotEqual(second, dest)
             self.assertTrue(dest.exists())
+
+    def test_actual_gui_has_explicit_png_only_zip_route(self):
+        gui_path = Path(__file__).resolve().parents[1] / "DyberPet" / "DyberSettings" / "CharCardUI.py"
+        source = gui_path.read_text("utf-8")
+        ast.parse(source)
+        self.assertIn("个人本地导入：Shimeji 原画 ZIP（仅提取图片）", source)
+        self.assertIn("mode=\"shimeji_zip\"", source)
+        self.assertIn('elif self.mode == "shimeji_zip":', source)
+        self.assertIn("install_personal_shimeji_zip(", source)
 
     def test_missing_required_frames_and_duplicate_names_blocked(self):
         with tempfile.TemporaryDirectory() as tmp:
