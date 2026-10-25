@@ -2,43 +2,43 @@
   "schema": 1,
   "provider": "CodexPetDB",
   "status": "catalog_metadata_only_not_verified",
-  "note": "Third batch: canonical catalog metadata obtained from GitHub CI on 2026-10-25; these four are NOT source-count eligible until a new independent real ZIP and native import test passes.",
+  "note": "Next four previously missing roles; source catalog SHA/byte metadata is not yet independently ZIP verified. Only promote to pinned manifest after actual download, id/atlas validation, native role and pixel audit all pass.",
   "sources": {
-    "chiori": {
-      "profile": "genshin_chiori",
-      "slug": "gi-chiori",
-      "revision": "019f8c75-47f1-731a-804f-3435e50bcb83",
-      "sha256": "b33e8b3fca0f9bc0bebd31f6bfb5638f8aca50a280aa1dd747d0649329474391",
-      "verified_bytes": 1035836,
+    "charlotte": {
+      "profile": "genshin_charlotte",
+      "slug": "gi-charlotte",
+      "revision": "019f8c74-b91e-72ca-8048-23e161ad33f0",
+      "sha256": "92d97b0006ccc445ba3a5152ba47cd9043be4131fec79f135d27a4808031ac2c",
+      "verified_bytes": 835499,
       "max_bytes": 3000000,
-      "listing_url": "https://codexpetdb.com/en/pets/gi-chiori/download"
+      "listing_url": "https://codexpetdb.com/en/pets/gi-charlotte/download"
     },
-    "cyno": {
-      "profile": "genshin_cyno",
-      "slug": "gi-cyno",
-      "revision": "019f8c75-da05-72a9-b339-55c0082a77d4",
-      "sha256": "935d270c453885c4719b36ba2423fe3e404bfd325b74019d5a04af40121c8ec4",
-      "verified_bytes": 1331811,
+    "columbina": {
+      "profile": "genshin_columbina",
+      "slug": "gi-columbina",
+      "revision": "019f8c75-9128-72bb-9e32-4bf8ccb14a1c",
+      "sha256": "de19c4e905396dbfa927b73c9f547308b4c9da8276d4d0e8ab6b3e1e2e5dfed1",
+      "verified_bytes": 1212976,
       "max_bytes": 3000000,
-      "listing_url": "https://codexpetdb.com/en/pets/gi-cyno/download"
+      "listing_url": "https://codexpetdb.com/en/pets/gi-columbina/download"
     },
-    "dehya": {
-      "profile": "genshin_dehya",
-      "slug": "gi-dehya",
-      "revision": "019f8c76-6ccf-7535-8521-306b9bc0b6dd",
-      "sha256": "0dca6ffe41c7d547d014b576c81ff1131239676f7d18264664d181f8d5a5713c",
-      "verified_bytes": 715617,
+    "emilie": {
+      "profile": "genshin_emilie",
+      "slug": "gi-emilie",
+      "revision": "019f8c76-ff78-7273-98a1-f31ca37e5d1b",
+      "sha256": "8b74e58be3eaf6e1103fb2b0c1af2e28bd4bbe80626510d6ce45d8aedf376444",
+      "verified_bytes": 715013,
       "max_bytes": 3000000,
-      "listing_url": "https://codexpetdb.com/en/pets/gi-dehya/download"
+      "listing_url": "https://codexpetdb.com/en/pets/gi-emilie/download"
     },
-    "freminet": {
-      "profile": "genshin_freminet",
-      "slug": "gi-freminet",
-      "revision": "019f8c77-904d-76c3-94df-2c266f692749",
-      "sha256": "a832d1ab9417f622bd5324dd406f6576f1b6c0930092b409099e16f65156d5b0",
-      "verified_bytes": 688367,
+    "gaming": {
+      "profile": "genshin_gaming",
+      "slug": "gi-gaming",
+      "revision": "019f8c77-da6a-771f-bd64-21b7dda6eab5",
+      "sha256": "f00be7bb6d324a870fd6e3cd391500526d34da24e9fbd4e9675314f6187c0826",
+      "verified_bytes": 1141319,
       "max_bytes": 3000000,
-      "listing_url": "https://codexpetdb.com/en/pets/gi-freminet/download"
+      "listing_url": "https://codexpetdb.com/en/pets/gi-gaming/download"
     }
   }
 }
