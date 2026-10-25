@@ -10,7 +10,7 @@ from tools.character_source_coverage import source_coverage
 
 
 class CommunityRoleLeadsTests(unittest.TestCase):
-    def test_35_gallery_entries_yield_only_29_distinct_missing_role_leads(self):
+    def test_35_gallery_entries_yield_only_25_still_unpinned_role_leads(self):
         report = public_candidate_report()
         summary = report["summary"]
         self.assertEqual(summary["public_entries_in_collection"], 35)
