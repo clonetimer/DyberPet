@@ -85,3 +85,11 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 同一类互动可以使用原画 Codex（如 `wave`, `jump`, `lookaround`）或原生 DyberPet 中文动作组（如「打招呼」「左右散步」），**严格全名匹配**，不会把「attack_wave_effect」之类不相关的动作猜作招手。缺对应动作时禁用按钮并提示用户导入更完整的原作者素材；不使用占位图、不重复一帧冒充多种动作，当前角色切换后立刻清空原角色动作授权并重新同步。
 
 该功能对**全部 123 位原神模板和咕嘎/Doro 两位独立角色**采用统一运行时接口，但**只有真实安装且解锁的动作才可执行**。实现 `DyberPet/assistant/role_interactions.py`，单元测试 `tests/test_role_interactions.py`，Qt 行为测试 `tests/test_assistant_qt.py`。这是可靠的交互入口，不等于 125 个角色原设动作素材已经齐全。
+
+## 每位桌宠的真实互动素材审计（不拿演示角色冒充已完成）
+
+`tools/character_interaction_coverage.py` 会扫描 123 位原神人物模板和咕嘎/Doro 独立角色，针对**本机真正安装的创作者素材**记录动作名称、哪些快捷互动有真实帧、哪些尚缺，并输出每角色清单；内置几何 Q 版演示一律不计入艺术作品互动覆盖。
+
+命令：`python tools/character_interaction_coverage.py --output character-interactions.json`。此清单不连接网络、不修改任何角色文件；`runtime_unlock_qa_verified=false`、`character_likeness_qa_verified=false` 直到后续逐角色真实 Qt/外观人工验收。源动作名称存在只说明图集可能支持该类别，不表示游戏状态已解锁，更不代表角色自己的独特姿势或音色已达标。
+
+目标是将每名角色的 **动作素材存在 → 实机能触发 → 动画连续且原设辨识度合格** 三层分别闭环，缺的内容明确列出来，再持续从公开作者来源补真实素材。
