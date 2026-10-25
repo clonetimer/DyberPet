@@ -1,3 +1,26 @@
+## R7：真实创作者图集的 Qt 加载与离屏重绘（2026-10-25）
+
+在 R6 确认 Rust 在角色资源审计上只有毫秒内收益后，R7 优先测试用户感知流程的邻近环节，**但不预先假设 Rust 会优化 PySide6 图形栈**。新增 `tools/benchmark_qt_creator_runtime.py`，Windows Rust 实验 CI 使用固定版本的纳西妲与派蒙作者图集，在每个独立进程内实际调用：
+
+- `QApplication` 初始化、原始 PNG 经过 `QPixmap` 解码；
+- 产品源码 `DyberPet.conf.PetConfig.init_config()` 加载全部本机动作帧并建立动画配置；
+- `QLabel.setPixmap`、`repaint`、`QApplication.processEvents` 执行固定 96 次离屏图像替换和绘制请求；
+- 对真实 QPixmap 转成标准 RGBA8888 的内容做 SHA-256：Python/Rust 任意一次结果不同即判验收失败；
+- 每组采用 ABBA/BAAB 两个 block，独立子进程、相同固定原画、相同迭代次数，并分别记录 Qt 初始化时间、PNG 加载时间、动作配置时间、离屏替帧时间、进程耗时与可获取的 RSS 快照。
+
+**重要边界：** Windows GitHub runner 的 `QT_QPA_PLATFORM=offscreen` 不具备真实 DWM、显示刷新、图形显卡合成、托盘交互及多显示器场景，因此这不是桌宠 FPS、用户实际启动耗时或设备功耗；不计算或传播虚假的“整体提速百分比”。此外资源审计使用的 Rust PNG 头读取不参与 Qt 解码绘图，故预计 Qt 指标不会有可归因的显著改善。如果 Qt 结果没有实质收益，继续只保留可选 Rust 资源审计，不启动全面 Qt→Rust 重构。
+
+执行方式（在安装 PySide6 / 已构建 Rust wheel 的 Windows 测试环境中；使用单独临时资源目录）：
+
+```powershell
+python tools/install_artist_codex.py nahida --role-root "D:\\DyberPet-R7\\res\\role" --accept-personal-use
+python tools/benchmark_qt_creator_runtime.py --role-root "D:\\DyberPet-R7\\res\\role" --kind nahida --blocks 2 --ticks 96
+```
+
+在实体 Windows 机器上进一步需要录制或采样：首启到可交互时间、实际角色切换到第一帧的延迟、DWM Present/Frame Time、CPU/GPU、内存峰值、不同 DPI 和多屏情况下的连续 8 小时稳定性。**本 CI 阶段不代替现场验收，PR #3 继续 Draft。**
+
+---
+
 ## R6：真实作者素材、交叉顺序基准（2026-10-25）
 
 前一阶段在合成 PNG 和独立子进程下验证了 Rust/Python 等价，但仍无法判断经过原作者 PNG 图集转换后是否有可重复的资源审计收益。本阶段新增 `tools/benchmark_creator_asset_backends.py`，只读取**本地**已通过 `install_artist_codex.py` 固定提交与逐帧像素校验的安装结果，不下载、不修改、不上传角色资源。
