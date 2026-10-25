@@ -47,6 +47,29 @@ class AssistantQtTests(unittest.TestCase):
             self.assertIn("只读", display.call_args.args[2])
         self.assertIsNone(self.dialog._job)
 
+    def test_exact_persona_changes_with_imported_role_identity(self):
+        import json
+        root = Path(self.tmp.name) / "personal_roles"
+        root.mkdir()
+        for folder, character in (("SourceKaveh", "genshin_kaveh"),
+                                  ("SourceKirara", "genshin_kirara")):
+            d = root / folder
+            d.mkdir()
+            (d / "PERSONAL_IMPORT.json").write_text(
+                json.dumps({"selected_profile": character}), encoding="utf-8")
+        self.dialog.role_root = root
+        self.dialog._prefs["personas"].pop("SourceKaveh", None)
+        self.dialog._prefs["personas"].pop("SourceKirara", None)
+        self.dialog.set_character("SourceKaveh")
+        self.assertEqual(self.dialog.persona.currentData(), "genshin_kaveh")
+        self.dialog.set_character("SourceKirara")
+        self.assertEqual(self.dialog.persona.currentData(), "genshin_kirara")
+        self.assertLessEqual(self.dialog.persona.count(), 10)
+        self.assertEqual(self.dialog.persona.findData("genshin_kaveh"), -1)
+        self.dialog.set_character("UnmappedCharacter")
+        self.assertEqual(self.dialog.persona.currentData(), "companion")
+        self.assertEqual(self.dialog.persona.findData("genshin_kirara"), -1)
+
     def test_character_specific_manual_actions_use_only_unlocked_animation(self):
         requests = []
         self.dialog.action_requested.connect(requests.append)
