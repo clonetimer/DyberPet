@@ -21,7 +21,7 @@ except ImportError:
 
 CATALOG_URL = "https://cdn.codexpetdb.com/catalogs/v1/pets.json"
 MAX_CATALOG_BYTES = 10 * 1024 * 1024
-REVISION = re.compile(r"^[0-9a-f]{8}-(?:[0-9a-f]{4}-){2}7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+REVISION = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 SHA = re.compile(r"^[0-9a-f]{64}$")
 
 
