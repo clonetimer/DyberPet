@@ -82,6 +82,19 @@ class ReactShimejiImportTests(unittest.TestCase):
                 self.assertNotEqual(output, second)
                 self.assertTrue(output.exists())
 
+    def test_review_generation_failure_keeps_provenance_and_role_uncommitted(self):
+        with tempfile.TemporaryDirectory() as td:
+            source, pin = self.setup_fixture(td)
+            roles = Path(td) / "roles"
+            with patch.dict(CANDIDATES, {"genshin_kaveh": pin}), \
+                    patch("tools.install_personal_shimeji_zip.create_native_art_review",
+                          side_effect=RuntimeError("cannot build preview")):
+                with self.assertRaisesRegex(RuntimeError, "cannot build preview"):
+                    install_pinned_react_shimeji(
+                        source, roles, profile="genshin_kaveh", confirmed=True)
+            self.assertTrue(roles.is_dir())
+            self.assertEqual(list(roles.iterdir()), [])
+
     def test_reject_pointer_bad_hash_wrong_id_or_other_characters(self):
         with tempfile.TemporaryDirectory() as td:
             source, good = self.setup_fixture(td)
