@@ -32,17 +32,17 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
         self.dialog.familyFilter.setCurrentIndex(
             self.dialog.familyFilter.findData("genshin"))
 
-    def test_new_unverified_lead_filter_has_31_distinct_missing_profiles(self):
+    def test_new_unverified_lead_filter_has_27_distinct_missing_profiles(self):
         self.dialog.statusFilter.setCurrentIndex(
             self.dialog.statusFilter.findData("lead"))
-        self.assertEqual(self.dialog.results.count(), 31)
-        self.assertIn("31 / 125", self.dialog.countLabel.text())
+        self.assertEqual(self.dialog.results.count(), 27)
+        self.assertIn("27 / 125", self.dialog.countLabel.text())
         names = [self.dialog.results.item(i).data(0x0100)
                  for i in range(self.dialog.results.count())]
         self.assertEqual(len(names), len(set(names)))
         self.assertIn("genshin_amber", names)
         self.assertIn("genshin_fischl", names)
-        self.assertIn("genshin_kaveh", names)
+        self.assertNotIn("genshin_kaveh", names)
         self.assertNotIn("genshin_citlali", names)
         self.assertTrue(self.dialog.communityButton.isEnabled())
 
@@ -56,7 +56,7 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
             self.assertEqual(desktop.openUrl.call_count, 1)
             self.assertIn("character-amber-ef95b4",
                           desktop.openUrl.call_args.args[0].toString())
-        self.dialog.searchBox.setText("genshin_kaveh")
+        self.dialog.searchBox.setText("genshin_columbina")
         self.assertEqual(self.dialog.results.count(), 1)
         with patch("DyberPet.DyberSettings.character_catalog_dialog.QInputDialog") as prompt, \
              patch("DyberPet.DyberSettings.character_catalog_dialog.QDesktopServices") as desktop:
@@ -68,7 +68,7 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
                 "React-Shimeji Git LFS 来源（动画文件尚待下载）", True)
             self.dialog._open_community_candidate()
             self.assertEqual(desktop.openUrl.call_count, 1)
-            self.assertIn("character-kaveh-2f46f2",
+            self.assertIn("character-columbina-f9104f",
                           desktop.openUrl.call_args.args[0].toString())
 
 
