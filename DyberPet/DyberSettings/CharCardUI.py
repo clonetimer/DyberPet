@@ -310,7 +310,8 @@ class CharInterface(ScrollArea):
         options = ["个人本地导入：角色文件夹 / Codex / GIF / PNG", "个人本地导入：原生角色 ZIP",
                    "生成原创 Q 版示例角色（不需下载素材）",
                    "浏览角色合集来源（网页手动获取，不自动下载）",
-                    "个人本地导入：Shimeji 原画 ZIP（仅提取图片）"]
+                    "个人本地导入：Shimeji 原画 ZIP（仅提取图片）",
+                    "个人本地导入：Codex 动画 ZIP（仅提取图集）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -331,6 +332,13 @@ class CharInterface(ScrollArea):
             return
         if choice == options[2]:
             self._importOriginalDemo()
+            return
+        if choice == options[5]:
+            archive, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择本人已下载的 Codex 动画 ZIP"), docs,
+                "Codex Pet ZIP (*.zip)")
+            if archive:
+                self._importCodexZip(archive)
             return
         if choice == options[4]:
             archive, _ = QFileDialog.getOpenFileName(
@@ -968,6 +976,27 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在生成原创 Q 版星芽动画，不会覆盖已有角色。"), 1)
 
+    def _importCodexZip(self, archivePath):
+        """Convert a community Codex ZIP without unpacking executable payloads."""
+        if self.chibiThread is not None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted:
+            return
+        if profile is None or not profile.startswith("genshin_"):
+            self.__showSystemNote(
+                self.tr("Codex ZIP 必须明确选择目标原神人物，不能凭文件名自动猜测。"), 2)
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            archivePath, os.path.join(basedir, "res", "role"),
+            mode="codex_zip", profile=profile, preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(
+            self.tr("正在校验并导入 Codex 原始精灵图集（不执行压缩包内程序）。"), 1)
+
     def _importShimejiZip(self, archivePath):
         """Import personal original Shimeji PNGs without launching archive programs."""
         if self.chibiThread is not None:
@@ -1350,6 +1379,11 @@ class ChibiImportThread(QThread):
                 installed = install_creator_mascot(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
+            elif self.mode == "codex_zip":
+                from tools.install_personal_codex_zip import install_personal_codex_zip
+                new_folder = install_personal_codex_zip(
+                    self.source, self.output_root,
+                    profile=self.profile, confirmed=True)
             elif self.mode == "shimeji_zip":
                 from tools.install_personal_shimeji_zip import install_personal_shimeji_zip
                 new_folder = install_personal_shimeji_zip(
