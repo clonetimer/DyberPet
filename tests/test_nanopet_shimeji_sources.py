@@ -17,6 +17,17 @@ from tools.install_native_role import validate_native_role
 
 
 class NanoPetArtistTests(unittest.TestCase):
+    def test_standard_shimeji_action_semantics_do_not_fabricate_petting(self):
+        # Canonical Shimeji-ee actions.xml uses shime1 for Stand;
+        # 38 is clone and 31-33 are edge-sitting, not user patting.
+        self.assertEqual(GROUPS["stand"], (1,))
+        self.assertEqual(GROUPS["walk"], (1, 2, 3))
+        self.assertEqual(GROUPS["sit"], (11,))
+        self.assertEqual(GROUPS["landing"], (18, 19))
+        self.assertEqual(GROUPS["onfloor"], (21,))
+        self.assertNotIn("pat", GROUPS)
+        self.assertTrue(all(n not in GROUPS["stand"] for n in (31, 32, 33, 38)))
+
     def test_archived_genshin_character_sources_are_real_frames(self):
         r = source_manifest()
         self.assertEqual(len(r["roles"]), 17)
