@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Honest 123-character source coverage: references are NOT installed or QA approved."""
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from urllib.parse import quote
+
+try:
+    from .chibi_profiles import CHIBI_PROFILES
+    from .install_artist_codex import SOURCES as CODEX, REVISION as CODEX_REV, REPO as CODEX_REPO
+    from .install_artist_genshin import ROLES as NATIVE, REVISION as NATIVE_REV, REPOSITORY as NATIVE_REPO
+    from .install_artist_shimeji import source_manifest
+except ImportError:
+    from chibi_profiles import CHIBI_PROFILES
+    from install_artist_codex import SOURCES as CODEX, REVISION as CODEX_REV, REPO as CODEX_REPO
+    from install_artist_genshin import ROLES as NATIVE, REVISION as NATIVE_REV, REPOSITORY as NATIVE_REPO
+    from install_artist_shimeji import source_manifest
+
+
+def source_coverage():
+    names = {k: v["name"] for k, v in CHIBI_PROFILES.items()
+             if k.startswith("genshin_")}
+    rows = {k: {"id": k, "name": label, "source_candidates": [],
+                "source_found": False, "installed": False,
+                "visual_likeness_qa_passed": False, "rights_verified": False,
+                "windows_desktop_qa_passed": False}
+            for k, label in sorted(names.items())}
+
+    def record(profile, provider, key, url):
+        if profile not in rows:
+            raise ValueError("Pinned creator asset maps to unknown character: " + profile)
+        rows[profile]["source_candidates"].append({
+            "provider": provider, "source_key": key,
+            "url": url, "asset_is_bundled": False,
+            "needs_manual_likeness_and_rights_review": True,
+        })
+        rows[profile]["source_found"] = True
+
+    for kind, (pet_id, _label, profile, *_hashes) in CODEX.items():
+        record(profile, "codex", kind,
+               f"https://github.com/{CODEX_REPO}/tree/{CODEX_REV}/pets/{pet_id}")
+    for kind, (folder, profile, _label) in NATIVE.items():
+        record(profile, "native", kind,
+               f"https://github.com/{NATIVE_REPO}/tree/{NATIVE_REV}/res/role/{quote(folder)}")
+    src = source_manifest()
+    for kind, asset in src["roles"].items():
+        record(asset["profile"], "shimeji", kind,
+               f"https://github.com/{src['repository']}/tree/{src['revision']}/public/assets/{kind}")
+    available = [v for v in rows.values() if v["source_found"]]
+    return {
+        "scope": "pinned_source_discovery_only",
+        "summary": {
+            "template_count": len(rows),
+            "pinned_source_options": sum(len(v["source_candidates"]) for v in rows.values()),
+            "characters_with_pinned_sources": len(available),
+            "characters_without_pinned_sources": len(rows) - len(available),
+            "verified_likeness_count": 0,
+            "installed_by_this_report": 0,
+            "rights_verified_count": 0,
+            "physical_windows_qa_count": 0,
+        },
+        "note": ("Public accessibility or checksum pinning does not certify copyright permissions, "
+                 "original-game appearance, correct animation, install success or visual acceptance. "
+                 "Missing characters MUST NOT be replaced by generic simplified art."),
+        "characters": list(rows.values()),
+    }
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--missing-only", action="store_true")
+    p.add_argument("--output", type=Path, help="Optional UTF-8 JSON report")
+    args = p.parse_args(argv)
+    result = source_coverage()
+    if args.missing_only:
+        result["characters"] = [r for r in result["characters"] if not r["source_found"]]
+    output = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+    if args.output is not None:
+        args.output.write_text(output, encoding="utf-8")
+    else:
+        print(output, end="")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
