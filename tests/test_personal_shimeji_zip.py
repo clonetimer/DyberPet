@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -12,7 +13,7 @@ import zipfile
 from PIL import Image
 
 from tools.install_personal_shimeji_zip import (
-    inspect_shimeji_zip, install_personal_shimeji_zip)
+    inspect_shimeji_zip, install_personal_shimeji_zip, MAX_ARCHIVE_BYTES)
 from tools.install_native_role import validate_native_role
 
 
@@ -127,6 +128,25 @@ class PersonalShimejiZipTests(unittest.TestCase):
             act = json.loads((role / "act_conf.json").read_text("utf-8"))
             self.assertNotIn("patpat", act)
             self.assertIn("rest", act)
+
+    def test_oversize_compressed_archive_rejected_before_loading(self):
+        with tempfile.TemporaryDirectory() as td:
+            huge = Path(td) / "oversized.zip"
+            with huge.open("wb") as stream:
+                stream.truncate(MAX_ARCHIVE_BYTES + 1)
+            with self.assertRaisesRegex(ValueError, "compressed archive size"):
+                inspect_shimeji_zip(huge)
+            self.assertFalse((Path(td) / "roles").exists())
+
+    def test_saved_archive_hash_matches_original_local_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            source = self.make_zip(td)
+            installed = install_personal_shimeji_zip(
+                source, Path(td) / "roles", profile="genshin_kaveh",
+                confirmed=True)
+            receipt = json.loads((installed / "PERSONAL_IMPORT.json").read_text("utf-8"))
+            self.assertEqual(receipt["source_archive_sha256"],
+                             hashlib.sha256(source.read_bytes()).hexdigest())
 
     def test_wrong_profile_and_nonzip_are_not_silently_accepted(self):
         with tempfile.TemporaryDirectory() as tmp:
