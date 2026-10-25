@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Opt-in personal install from four SHA-pinned CodexPetDB ZIP listings.
+"""Opt-in personal install from eight SHA-pinned CodexPetDB ZIP listings.
 
 A public download page is only a *lead*. The actual compressed ZIP must pass
 its advertised SHA-256 and the package's pet.json/atlas must be validated
@@ -37,7 +37,7 @@ def listed_packages(path=REGISTRY):
     if listing.get("schema") != 1 or listing.get("provider") != "CodexPetDB":
         raise ValueError("Unknown pinned creator package registry")
     if not isinstance(entries, dict) or len(entries) != 8:
-        raise ValueError("Pinned package registry requires exactly four checked listings")
+        raise ValueError("Pinned package registry requires exactly eight checked listings")
     seen_profiles = set()
     for key, item in entries.items():
         if not re.fullmatch(r"[a-z_]{3,32}", key):
