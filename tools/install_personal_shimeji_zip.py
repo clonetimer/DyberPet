@@ -28,6 +28,7 @@ except ImportError:
     from install_nanopet_shimeji import GROUPS
 
 MAX_ENTRIES = 1200
+MAX_ARCHIVE_BYTES = 96 * 1024 * 1024
 MAX_UNCOMPRESSED = 64 * 1024 * 1024
 MAX_SINGLE_PNG = 6 * 1024 * 1024
 MAX_SIDE = 2048
@@ -49,6 +50,8 @@ def inspect_shimeji_zip(source):
     source = Path(source).expanduser()
     if source.is_symlink() or not source.is_file():
         raise ValueError("Select a local regular Shimeji ZIP")
+    if source.stat().st_size > MAX_ARCHIVE_BYTES:
+        raise ValueError("Shimeji ZIP exceeds compressed archive size limit")
     images = {}
     with zipfile.ZipFile(source) as archive:
         members = archive.infolist()
@@ -78,6 +81,15 @@ def inspect_shimeji_zip(source):
     if len({hashlib.sha256(images[n]).digest() for n in (1, 2, 3) if n in images}) < 2:
         raise ValueError("Walk frames are identical; no genuine motion to import")
     return images
+
+
+def _sha256_file(path):
+    """Hash the untrusted archive in bounded chunks, not with read_bytes()."""
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=False,
@@ -163,7 +175,7 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
             "mode": "personal_local_only",
             "source_kind": "user_selected_shimeji_zip",
             "selected_profile": profile,
-            "source_archive_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+            "source_archive_sha256": _sha256_file(source),
             "all_original_frames_preserved": len(original),
             "mapped_original_frame_groups": sorted(groups),
             "source_upstream_identity_verified": False,
