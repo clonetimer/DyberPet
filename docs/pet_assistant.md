@@ -140,3 +140,14 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 桌宠助手新增 **「导出当前角色互动缺口 JSON」**，只在用户明确点击保存后读取当前已安装角色的动作配置与实际首帧，以及这一次运行中 PetWidget 实际解锁的动作。与「检查本角色互动缺口」共用同一只读检查器，能够区分 **有素材且已解锁 / 有素材但尚未解锁 / 配置中有动作但缺真实帧 / 完全没有对应动画**。切换角色时重新查询当前人物，不复用旧角色动作权限。
 
 导出的 JSON 包含角色目录名、动作名称、缺口和三个明确的限制：`human_original_likeness_verified=false`、`manual_playback_verified=false`、`art_likeness_qa_passed=false`；**导出成功不代表角色已经通过人工外观验收**。取消保存不会创建文件；只写入用户选择的普通 JSON 文件，避免把任何大模型回答当作文件操作授权。PySide6 Qt 实际点击、保存、取消、跨角色切换和错误扩展名均纳入 `tests/test_assistant_qt.py`。
+
+## 单击「随机真实互动」：按当前角色原作者动画执行（2026-10-25）
+
+12 类角色互动的原有下拉框旁新增 **「随机真实互动」**，只响应用户主动点击，不参与自动聊天、语音转命令或模型工具执行。按钮只能从**当前桌宠已解锁的真实动画**中选择，不播放通用演示、不把「待机」冒充独立动作，也不请求角色不存在的抚摸、爬行或说话动画。
+
+- 有多个不同真实动作时，不连续播放同一种动作；某个人物实际只有一种独立已解锁动作，则仅使用这一种，不从其他角色借用。
+- 切换角色立即清空上一个角色的随机历史和动作权限；重新同步当前角色已解锁的原画动画后才允许点击。
+- 没有可执行动作时按钮禁用；若用户强制调用处理函数，也不会发出任何动画请求。
+- 即使按钮已发出 `action_requested`，实际 `PetWidget` 仍对当下人物动作是否可执行执行二次验证。此功能不证明原设画风、语音或所有动画质量已人工验收。
+
+代码 `DyberPet/assistant/role_interactions.py::choose_random_real_action` 和 `DyberPet/assistant/ui.py::play_random_interaction`；纯逻辑回归 `tests/test_role_interactions.py` 和真实 Qt 点击回归 `tests/test_assistant_qt.py`。
