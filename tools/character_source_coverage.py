@@ -64,6 +64,26 @@ def source_coverage():
     for kind, asset in external["sources"].items():
         record(asset["profile"], "independent_codex", kind,
                f"https://github.com/{asset['repository']}/tree/{asset['revision']}/{asset['directory']}")
+    # These four r1 packages were independently downloaded and SHA-256
+    # verified against source bytes in the CI provider-zip-integrity job.
+    # This is *source integrity* coverage, never human character likeness.
+    petdb = json.loads(Path(__file__).with_name(
+        "codexpetdb_pinned_zip_leads.json").read_text(encoding="utf-8"))
+    if petdb.get("schema") != 1 or len(petdb.get("sources", {})) != 4:
+        raise ValueError("Invalid SHA-256-verified community art source registry")
+    for key, asset in sorted(petdb["sources"].items()):
+        if asset["profile"] not in rows or len(asset["sha256"]) != 64:
+            raise ValueError("New community art source references unknown character")
+        url = ("https://cdn.codexpetdb.com/revisions/" +
+               asset["revision"] + "/" + asset["slug"] + ".zip")
+        record(asset["profile"], "codexpetdb_zip", key, url)
+        rows[asset["profile"]]["source_candidates"][-1].update({
+            "archive_sha256": asset["sha256"],
+            "byte_integrity_tested_in_ci": True,
+            "contains_original_atlas_verified": True,
+            "artist_character_likeness_verified": False,
+            "native_role_installed_by_report": False,
+        })
     for item in rows.values():
         item["source_candidates"].sort(key=lambda c: (c["preference_order"], c["provider"], c["source_key"]))
         item["recommended_source"] = item["source_candidates"][0] if item["source_candidates"] else None
