@@ -72,8 +72,8 @@ def inspect_shimeji_zip(source):
                 raise ValueError("ZIP PNG length mismatch")
             _png_size(raw)
             images[index] = raw
-    if 38 not in images or sum(n in images for n in (1, 2, 3)) < 2:
-        raise ValueError("Not a compatible standard Shimeji archive (requires idle 38 and walk frames)")
+    if 1 not in images or sum(n in images for n in (2, 3)) < 2:
+        raise ValueError("Not a compatible standard Shimeji archive (requires stand 1 and walk 2/3)")
     # A single sketch copied to multiple numbered files must not count as motion.
     if len({hashlib.sha256(images[n]).digest() for n in (1, 2, 3) if n in images}) < 2:
         raise ValueError("Walk frames are identical; no genuine motion to import")
@@ -129,11 +129,12 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
         }
         for key, group in (("drag", "drag"), ("fall", "fall"),
                            ("on_floor", "onfloor"), ("climb", "climb"),
-                           ("patpat", "pat"), ("stand_alt", "stand_alt")):
+                           ("rest", "sit"), ("crawl", "crawl"),
+                           ("landing", "landing")):
             if group in groups:
                 act[key] = action(group)
 
-        width, height = _png_size(original[38])
+        width, height = _png_size(original[1])
         pet = {
             "width": width, "height": height, "scale": 1.0, "refresh": 5,
             "interact_speed": 0.02, "default": "default", "up": "default",
@@ -141,7 +142,7 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
             "drag": "drag" if "drag" in act else "default",
             "fall": "fall" if "fall" in act else "default",
             "on_floor": "on_floor" if "on_floor" in act else "default",
-            "patpat": "patpat" if "patpat" in act else "default",
+            "patpat": "default",  # standard Shimeji does not define a real pat gesture
             "random_act": [
                 {"name": "待机", "act_list": ["default"],
                  "act_prob": 1.0, "act_type": [2, 0]},
