@@ -15,6 +15,8 @@ INTERACTION_CATEGORIES = (
     ("walk", "散步", ("左右散步", "散步", "行走", "walk", "right_walk", "left_walk", "run")),
     ("talk", "说话动作", ("说话", "口型", "对话", "talk", "speak")),
     ("sleep", "睡觉", ("睡觉", "睡眠", "sleep", "nap")),
+    ("pet", "摸摸头", ("抚摸", "摸头", "拍拍", "patpat", "pat", "pet")),
+    ("climb", "爬行", ("攀爬", "爬墙", "climb", "climbing")),
 )
 
 
