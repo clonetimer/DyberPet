@@ -7,7 +7,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget,
+    QComboBox, QDialog, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QListWidget,
     QListWidgetItem, QPushButton, QVBoxLayout,
 )
 
@@ -16,6 +16,7 @@ from tools.character_catalog_search import (
 )
 from tools.character_source_coverage import source_coverage
 from tools.community_codex_leads import PROFILE_TO_SLUG
+from tools.react_shimeji_source_leads import CANDIDATES as REACT_CANDIDATES, REPOSITORY as REACT_REPO, REVISION as REACT_REV
 
 
 class CharacterCatalogDialog(QDialog):
@@ -109,6 +110,8 @@ class CharacterCatalogDialog(QDialog):
             lead = (" · 社区图集候选（未审核）"
                     if row["id"] in PROFILE_TO_SLUG and
                     (source is None or not source["source_found"]) else "")
+            if row["id"] in REACT_CANDIDATES and (source is None or not source["source_found"]):
+                lead += " · Git LFS 动画候选（原文件待核验）"
             title = f"【{prefix}】{row['name']} · {status}{creator_info}{lead}"
             item = QListWidgetItem(title)
             item.setToolTip(
@@ -133,18 +136,36 @@ class CharacterCatalogDialog(QDialog):
 
     def _refresh_candidate_button(self, *_):
         profile = self.selected_character_id()
-        has_lead = profile in PROFILE_TO_SLUG
+        has_lead = profile in PROFILE_TO_SLUG or profile in REACT_CANDIDATES
         self.communityButton.setEnabled(has_lead)
         self.communityButton.setToolTip(
             "只打开外部来源的图集预览，需逐帧核验后自行下载并导入；不视为已安装或原设验收"
-            if has_lead else "该人物目前没有登记可查看的 CodexPetDB 社区候选")
+            if has_lead else "该人物目前没有登记可查看的社区素材候选")
 
     def _open_community_candidate(self):
-        # Only an explicit user click opens the allowlisted public preview URL.
+        """Open an allowlisted preview only after an explicit user selection."""
         profile = self.selected_character_id()
+        candidates = {}
         if profile in PROFILE_TO_SLUG:
-            slug = PROFILE_TO_SLUG[profile]
-            QDesktopServices.openUrl(QUrl("https://codexpetdb.com/en/pets/" + slug))
+            candidates["CodexPetDB 社区图集（未校验原画）"] = (
+                "https://codexpetdb.com/en/pets/" + PROFILE_TO_SLUG[profile])
+        if profile in REACT_CANDIDATES:
+            slug = REACT_CANDIDATES[profile][0]
+            candidates["React-Shimeji Git LFS 来源（动画文件尚待下载）"] = (
+                f"https://github.com/{REACT_REPO}/tree/{REACT_REV}/"
+                + "packages/character-" + slug)
+        if not candidates:
+            return
+        if len(candidates) == 1:
+            url = next(iter(candidates.values()))
+        else:
+            label, accepted = QInputDialog.getItem(
+                self, "选择公开候选来源", "以下仅为线索，不代表已通过原设验收：",
+                list(candidates), 0, False)
+            if not accepted or label not in candidates:
+                return
+            url = candidates[label]
+        QDesktopServices.openUrl(QUrl(url))
 
     def _select(self):
         selected = self.selected_character_id()
