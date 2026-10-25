@@ -56,13 +56,12 @@ def paired_creator_audit(root: Path, kind: str, *, blocks=2, rounds=3,
                          warmup=1, require_rust=True, runner=_run_process):
     if not (1 <= blocks <= 4 and 1 <= rounds <= 10 and 0 <= warmup <= 5):
         raise ValueError("Blocks 1..4, rounds 1..10 and warmup 0..5 required")
-    role = _validate_creator(Path(root).expanduser(), kind)
-    # The profile is the human-review dossier key, not an automatic claim of
-    # aesthetic similarity. Only supported audit profiles are benchmarked.
+    # Reject unsupported profiles before even touching their local data.
     profile_names = {"nahida": "Nahida", "paimon": "Paimon",
                      "furina": "Furina", "klee": "Klee"}
     if kind not in profile_names:
         raise ValueError("The source has no supported character audit profile")
+    role = _validate_creator(Path(root).expanduser(), kind)
     from DyberPet.assistant.character_profiles import resolve_profile
     name = profile_names[kind]
     if resolve_profile(name) is None:
