@@ -64,3 +64,16 @@ Doro 的原生左右移动动作需在安装的角色中提供**每个方向至�
 
 tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文件隔离、删除恢复、PPL 会话/event 协议、语音输入保护和本地模型通信条件。tests/test_assistant_qt.py 验证 Qt 离屏 GUI 操作。GitHub Actions 提供 Windows/Linux Python3.9/3.11 及 Windows PySide6 冒烟。
 实机麦克风、Vosk 中文准确度、pyttsx3 中文 TTS、真实 LM Studio/PPL 进程及 Windows EXE 安装仍需要独立验收。当前 PPL 连接使用已公开的 Character Governance HTTP API，并未自动启动、改写或内置 PPL 服务。
+
+
+## 一键本机功能自检（个人版候选）
+
+在桌宠上右键打开「桌宠助手」，点击 **本机功能自检（无联网／录音）**。这个按钮只读：
+- 检查可选的 `pyttsx3`、`vosk`、`sounddevice` 依赖是否能够在当前 Python 环境被发现；
+- 检查 Vosk 模型路径是否是一个实际存在的目录，提示未选取或已移动；
+- 检查 LM Studio 的模型 ID 是否填写，以及 URL 是否是显式端口的本机 HTTP 地址；
+- 若用户启用了 PPL，检查 PPL URL 是否仍是有效的本机 HTTP 地址。
+
+**自检不会打开麦克风、试听扬声器、连接 LM Studio/PPL、持久化聊天或更改任何本地文件。** 显示「已配置」仅代表准备条件满足，不代表实际设备和模型服务已经验收。之后用户仍需分别手工点击「录音识别」「朗读上一条回复」「检测模型」完成对应的真实测试。声音原设相似度与 123 个角色图集视觉 QA 不由自检宣告通过。
+
+实现为 `DyberPet/assistant/readiness.py`（无 GUI 依赖），离线用例在 `tests/test_assistant_readiness.py`；Qt 集成覆盖于 `tests/test_assistant_qt.py`。
