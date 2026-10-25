@@ -4,7 +4,21 @@ from __future__ import annotations
 import unittest
 import tempfile
 import json
+import base64
 from pathlib import Path
+
+# A tiny real PNG fixture; original identity remains unreviewed.
+_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg=="
+)
+
+
+def _source_frames(folder, names):
+    art = folder / "action"
+    art.mkdir(exist_ok=True)
+    for name in names:
+        (art / (name + "_0.png")).write_bytes(_PNG)
+
 
 from tools.character_interaction_coverage import interaction_coverage, inspect_selected_role_interactions
 
@@ -87,6 +101,7 @@ class InteractionCoverageTests(unittest.TestCase):
             (root / "CreatorSayu" / "act_conf.json").write_text(
                 json.dumps({"jump": {"images": "jump"}, "idle": {"images": "idle"}}),
                 encoding="utf-8")
+            _source_frames(root / "CreatorSayu", ("jump", "idle"))
             gen = {"characters": [{"profile": "genshin_sayu", "name": "早柚",
                    "installed_folders": [
                        {"folder": "DemoSayu", "is_original_demo": True},
@@ -131,6 +146,7 @@ class CurrentRoleGapTests(unittest.TestCase):
                 json.dumps({"wave": {"images": "wave"},
                             "jump": {"images": "jump"},
                             "patpat": {"images": "patpat"}}), encoding="utf-8")
+            _source_frames(folder, ("wave", "jump", "patpat"))
             report = inspect_selected_role_interactions(
                 root, "PersonalKaveh", unlocked_actions=["wave", "madeup"])
             self.assertEqual(report["status"], "imported_artist_claim_not_verified")
@@ -145,6 +161,27 @@ class CurrentRoleGapTests(unittest.TestCase):
                 root, "PersonalKaveh", unlocked_actions=["wave"])
             self.assertEqual(demo["status"], "builtin_demo_not_original_art")
 
+    def test_config_only_phantom_actions_never_count_as_available(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            folder = root / "UnfinishedKaveh"
+            folder.mkdir()
+            (folder / "act_conf.json").write_text(json.dumps({
+                "wave": {"images": "wave"},
+                "jump": {"images": "jump"},
+                "crawl": {"images": "crawl"},
+            }), encoding="utf-8")
+            _source_frames(folder, ("wave",))
+            result = inspect_selected_role_interactions(
+                root, folder.name,
+                unlocked_actions=["wave", "jump", "crawl"])
+            self.assertEqual(result["on_disk_action_names"], ["wave"])
+            self.assertEqual(result["configured_but_unplayable_actions"],
+                             ["crawl", "jump"])
+            self.assertEqual(result["currently_unlocked_categories"], ["greet"])
+            self.assertNotIn("jump", result["installed_action_categories"])
+            self.assertNotIn("crawl", result["installed_action_categories"])
+
     def test_absent_or_unsafe_paths_cannot_be_mistaken_for_imported_art(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -158,6 +195,7 @@ class CurrentRoleGapTests(unittest.TestCase):
             (root / "Unknown").mkdir()
             (root / "Unknown" / "act_conf.json").write_text(
                 json.dumps({"idle": {}}), encoding="utf-8")
+            _source_frames(root / "Unknown", ("idle",))
             unknown = inspect_selected_role_interactions(root, "Unknown")
             self.assertEqual(unknown["status"], "unverified_local_role")
             self.assertFalse(unknown["art_likeness_qa_passed"])
