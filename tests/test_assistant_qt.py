@@ -179,6 +179,25 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog.interaction_button.click()
         self.assertEqual(requests, ["wave", "左右散步"])
 
+    def test_random_real_interaction_uses_only_current_role_and_avoids_repeats(self):
+        received = []
+        self.dialog.action_requested.connect(received.append)
+        self.assertFalse(self.dialog.random_action_button.isEnabled())
+        self.dialog.set_actions(["wave", "jump", "idle"])
+        self.assertTrue(self.dialog.random_action_button.isEnabled())
+        self.dialog.random_action_button.click()
+        self.dialog.random_action_button.click()
+        self.assertEqual(set(received), {"wave", "jump"})
+        self.assertNotEqual(received[0], received[1])
+        self.dialog.set_character("Doro")
+        self.assertFalse(self.dialog.random_action_button.isEnabled())
+        self.dialog.play_random_interaction()
+        self.assertEqual(len(received), 2)
+        self.dialog.set_actions(["climb"])
+        self.dialog.random_action_button.click()
+        self.assertEqual(received[-1], "climb")
+        self.assertEqual(self.dialog._last_random_action, "climb")
+
     def test_bubble_signals_and_stale_character_responses(self):
         replies, notices = [], []
         self.dialog.reply_ready.connect(replies.append)
