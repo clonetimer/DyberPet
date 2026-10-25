@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "provider": "CodexPetDB",
-  "note": "24 publisher ZIPs independently retrieved with exact SHA-256 and observed size, matching pet.json identity and original atlas; converted to native roles with pixel audits in GitHub Actions on 2026-10-25. Human visual likeness, voice, physical desktop playback and redistribution rights are not certified.",
+  "note": "28 original publisher ZIPs independently downloaded and fully SHA256/size verified, matched pet.json identity, converted to native DyberPet roles with per-frame pixel audit in GitHub Actions 2026-10-25. Character appearance likeness, voice, Windows physical playback and redistribution rights NOT approved.",
   "sources": {
     "kaveh": {
       "profile": "genshin_kaveh",
@@ -218,6 +218,42 @@
       "verified_bytes": 869915,
       "max_bytes": 3000000,
       "listing_url": "https://codexpetdb.com/en/pets/gi-lauma/download"
+    },
+    "alyosha": {
+      "profile": "genshin_alyosha",
+      "slug": "gi-alyosha",
+      "revision": "019f88d3-972e-76ac-8a1d-54de5616f8c6",
+      "sha256": "f13eee03007ced076de7a14ab4925dd0f6747028ad3796b12152f9bb2883dfcf",
+      "verified_bytes": 1063504,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-alyosha/download"
+    },
+    "odette": {
+      "profile": "genshin_odette",
+      "slug": "gi-odette",
+      "revision": "019f88ee-151d-750f-8899-5693cf570446",
+      "sha256": "10f722451c8ed24fac85efbfc77c54cd2e3bdfa85b3cf065c94b4ca1ab1df764",
+      "verified_bytes": 652801,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-odette/download"
+    },
+    "prune": {
+      "profile": "genshin_prune",
+      "slug": "gi-prune",
+      "revision": "019f8c9a-2278-76fa-ac7d-1d44ab7f1d71",
+      "sha256": "8f153a5fa1dedcdb68dfc6191891229953b6eb03bdc66b6226e2218e175fa86e",
+      "verified_bytes": 995099,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-prune/download"
+    },
+    "lohen": {
+      "profile": "genshin_lohen",
+      "slug": "gi-lohen",
+      "revision": "019f8c7a-fe62-76ba-b5f3-c4c9199e6603",
+      "sha256": "a77f0df094ebfd9bcb56d6d1d51347e93c4557db99eb7b0389764039cc8d9f66",
+      "verified_bytes": 829501,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-lohen/download"
     }
   }
 }
