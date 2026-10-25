@@ -115,3 +115,16 @@ python tools/install_external_codex.py furina_fan --role-root res/role --accept-
 - 早柚此前未有固定动画来源，因此候选来源数由 53 → **54**，不同人物覆盖由 30 → **31/123**，尚缺由 93 → **92**。这些都只是固定**素材候选**数量，不是人工视觉合格数。
 - 本机个人安装命令：`python tools/install_external_codex.py sayu_cozy --role-root res/role --accept-personal-use`。原始图集经 Git blob 校验后转换成独立的原生角色，旧角色不会覆盖。
 - **画风与身份人工验收仍未完成**：必须检查早柚的狸猫头饰、衣装、忍者包、尺寸比例、动画连续性；若显著偏离原设，不能标记为正式完成。代码自动化测试不证明人物像貌或分发授权。CI 增加了真实联网下载/转换门禁。
+
+## 本机直接导入第三方标准 Shimeji ZIP（2026-10-25）
+
+新入口：**系统 → 角色管理 → 添加角色 → 个人本地导入：Shimeji 原画 ZIP（仅提取图片）**。适用此前已经手动下载、包含标准 `img/shime1.png`～`shime46.png` 编号图片的 Shimeji ZIP（不保证所有变体兼容）。
+
+- 仅从本机选择 ZIP，用户明确选择与原画对应的原神人物模板；不会根据 ZIP 文件名、网页名称或服饰颜色猜身份。
+- 解析 ZIP 时设置成员数、总解压量、单 PNG 大小及长宽上限，拒绝重号和明显的压缩异常；**不会解压或运行 .exe/.jar/.bat/.py/.sh**，不执行任何外来代码。
+- 要求真有标准 `shime38` 待机、至少两张不同走路姿态帧；源 `shime*.png` 按原始字节存入 `source_frames/`，将真实存在的帧映射为有限的待机、行走、拖拽、跌落、抚摸等动作；缺少的动作不能造帧冒充。
+- 使用临时目录完成原生配置、资源结构检查、逐帧预览；验证失败不创建正式角色，成功后独立目录安装，不覆盖旧角色/存档。
+- 来源收据记录 ZIP SHA-256、用户选的人物 ID、原始帧数量，**明确艺术原设相似度、来源权利和 Windows 实机动画都未人工验收**。该功能本身不增加已核验固定作者来源的 31/123 数字。
+- 例如此前找到的 [荒泷一斗](https://shimejishop.com/free/wp-content/uploads/2026/09/50036.zip)、[卡维](https://shimejishop.com/free/wp-content/uploads/2025/09/628.zip) ZIP，目前仍需要实际下载、检查其内部帧约定、检查和原设的相似度。不能因为有 ZIP 下载按钮就宣称已安装。
+
+命令行也可使用：`python tools/install_personal_shimeji_zip.py --archive your.zip --profile genshin_kaveh --personal-use`。优先使用图形界面，不要求普通用户配置命令行。
