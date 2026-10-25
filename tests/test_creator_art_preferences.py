@@ -110,10 +110,12 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         from tools.install_pinned_codexpetdb import listed_packages, fixed_archive_url
         packages = listed_packages()["sources"]
         self.assertEqual({v["profile"] for v in packages.values()}, {
-            "genshin_kaveh", "genshin_kinich",
-            "genshin_kirara", "genshin_alhaitham"
+            "genshin_kaveh", "genshin_kinich", "genshin_kirara",
+            "genshin_alhaitham", "genshin_baizhu", "genshin_candace",
+            "genshin_chevreuse", "genshin_layla", "genshin_chiori",
+            "genshin_cyno", "genshin_dehya", "genshin_freminet"
         })
-        self.assertEqual(len({fixed_archive_url(v) for v in packages.values()}), 4)
+        self.assertEqual(len({fixed_archive_url(v) for v in packages.values()}), 12)
 
 
 if __name__ == "__main__":
