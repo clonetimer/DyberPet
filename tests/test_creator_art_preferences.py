@@ -23,7 +23,7 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         self.assertEqual(install_preference("artist_external_codex"), 1)
         self.assertEqual(install_preference("artist_shimeji"), 2)
         self.assertEqual(install_preference("artist_nano"), 2)
-        for kind in ("native", "codex", "independent_codex", "shimeji", "nano_shimeji"):
+        for kind in ("native", "codex", "independent_codex", "codexpetdb_zip", "shimeji", "nano_shimeji"):
             result = source_style(kind)
             self.assertIsNone(result["visual_grade"])
             self.assertEqual(result["visual_qa_status"], "pending_human_review")
@@ -32,7 +32,7 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             source_style("wrong_character")
 
-    def test_31_creator_sources_and_92_honest_gaps(self):
+    def test_35_creator_sources_and_88_honest_gaps(self):
         result = source_coverage()
         summary = result["summary"]
         self.assertEqual(summary["template_count"], 123)
