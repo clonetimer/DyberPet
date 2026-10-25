@@ -34,6 +34,16 @@ class RoleInteractionTests(unittest.TestCase):
         self.assertEqual({p["id"] for p in plan if p["available"]},
                          {"greet", "jump", "rest", "walk", "talk"})
 
+    def test_true_shimeji_pat_and_climb_require_original_action_names(self):
+        plan = available_interactions(["default", "walk", "patpat", "climb"])
+        self.assertEqual(requested_action(plan, "pet"), "patpat")
+        self.assertEqual(requested_action(plan, "climb"), "climb")
+        self.assertIsNone(requested_action(plan, "greet"))
+        self.assertIsNone(requested_action(plan, "sleep"))
+        stripped = available_interactions(["default", "walk"])
+        self.assertIsNone(requested_action(stripped, "pet"))
+        self.assertIsNone(requested_action(stripped, "climb"))
+
     def test_no_unrelated_or_unlocked_action_is_invented(self):
         for actions in ([], ["attack", "eat", "patpat"], ["wave_effect", "fake_wave"],
                         ["walk_disabled"], [None, 123, "", " jump "]):
