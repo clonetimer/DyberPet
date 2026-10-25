@@ -103,6 +103,7 @@ class CreatorSourcesTests(unittest.TestCase):
             self.assertTrue(folder.is_dir())
             self.assertEqual((folder / "action" / "stand_0.png").read_bytes(), png)
             self.assertEqual((folder / "action" / "walk_0.png").read_bytes(), png)
+            self.assertTrue((folder / "ANIMATION_PREVIEW.png").is_file())
             self.assertGreaterEqual(validate_native_role(folder)["actions"], 5)
             receipt = json.loads((folder / "PERSONAL_IMPORT.json").read_text("utf-8"))
             self.assertTrue(receipt["verified_exact_source_frame_bytes"])
