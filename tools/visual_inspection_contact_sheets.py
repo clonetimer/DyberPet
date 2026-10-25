@@ -73,6 +73,11 @@ def contact_sheet(data, ncol, w=208,h=240):
     return out
 
 def announce(key,image):
+    # User-facing visual evidence as an ephemeral GitHub Actions artifact.
+    # This is NOT included in source trees or application release archives.
+    folder=ROOT/"visual-review-evidence"
+    folder.mkdir(exist_ok=True)
+    image.save(folder/(key+".png"),format="PNG",optimize=True)
     buf=io.BytesIO()
     image.save(buf,format="PNG",optimize=True)
     coded=base64.b64encode(buf.getvalue()).decode("ascii")
