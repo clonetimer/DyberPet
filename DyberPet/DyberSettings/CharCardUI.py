@@ -311,7 +311,8 @@ class CharInterface(ScrollArea):
                    "生成原创 Q 版示例角色（不需下载素材）",
                    "浏览角色合集来源（网页手动获取，不自动下载）",
                     "个人本地导入：Shimeji 原画 ZIP（仅提取图片）",
-                    "个人本地导入：Codex 动画 ZIP（仅提取图集）"]
+                    "个人本地导入：Codex 动画 ZIP（仅提取图集）",
+                     "个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -332,6 +333,13 @@ class CharInterface(ScrollArea):
             return
         if choice == options[2]:
             self._importOriginalDemo()
+            return
+        if choice == options[6]:
+            module, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择已下载的完整 React-Shimeji LFS 模块"),
+                docs, "React-Shimeji Module (*.ts)")
+            if module:
+                self._importReactShimeji(module)
             return
         if choice == options[5]:
             archive, _ = QFileDialog.getOpenFileName(
@@ -976,6 +984,33 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在生成原创 Q 版星芽动画，不会覆盖已有角色。"), 1)
 
+    def _importReactShimeji(self, modulePath):
+        """Require an explicit one of six exact pinned identities."""
+        if self.chibiThread is not None:
+            return
+        from tools.react_shimeji_source_leads import CANDIDATES
+        from tools.chibi_profiles import CHIBI_PROFILES
+        mapping = {
+            CHIBI_PROFILES[profile]["name"] + " [" + profile + "]": profile
+            for profile in sorted(CANDIDATES)
+        }
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("选择对应原神人物"),
+            self.tr("仅支持六位已固定 LFS SHA-256 的候选来源；仍需人工核对人物画风："),
+            list(mapping), 0, False)
+        if not accepted or selected not in mapping:
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            modulePath, os.path.join(basedir, "res", "role"),
+            mode="react_shimeji_lfs", profile=mapping[selected],
+            preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(
+            self.tr("正在校验真实 LFS 模块 SHA-256 并从 PNG 图集读取原始帧；不执行 TypeScript。"), 1)
+
     def _importCodexZip(self, archivePath):
         """Convert a community Codex ZIP without unpacking executable payloads."""
         if self.chibiThread is not None:
@@ -1379,6 +1414,11 @@ class ChibiImportThread(QThread):
                 installed = install_creator_mascot(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
+            elif self.mode == "react_shimeji_lfs":
+                from tools.install_pinned_react_shimeji import install_pinned_react_shimeji
+                new_folder = install_pinned_react_shimeji(
+                    self.source, self.output_root,
+                    profile=self.profile, confirmed=True)
             elif self.mode == "codex_zip":
                 from tools.install_personal_codex_zip import install_personal_codex_zip
                 new_folder = install_personal_codex_zip(
