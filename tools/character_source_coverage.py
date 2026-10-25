@@ -64,7 +64,7 @@ def source_coverage():
     for kind, asset in external["sources"].items():
         record(asset["profile"], "independent_codex", kind,
                f"https://github.com/{asset['repository']}/tree/{asset['revision']}/{asset['directory']}")
-    # These four r1 packages were independently downloaded and SHA-256
+    # These eight r1 packages were independently downloaded and SHA-256
     # verified against source bytes in the CI provider-zip-integrity job.
     # This is *source integrity* coverage, never human character likeness.
     petdb = json.loads(Path(__file__).with_name(
