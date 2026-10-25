@@ -99,7 +99,8 @@ class PetAssistantDialog(QDialog):
         form = QFormLayout()
         self.persona = QComboBox()
         for key, item in PERSONAS.items():
-            self.persona.addItem(item.name, key)
+            if not key.startswith("genshin_"):
+                self.persona.addItem(item.name, key)
         initial = resolve_profile(self.character_name)
         if initial and initial.key in PERSONAS:
             self.persona.setCurrentIndex(self.persona.findData(initial.key))
@@ -260,6 +261,13 @@ class PetAssistantDialog(QDialog):
         selected = self._prefs["personas"].get(current, default)
         if selected not in PERSONAS:
             selected = default
+        # Keep one current Genshin persona option, not a 123-item menu.
+        for i in range(self.persona.count() - 1, -1, -1):
+            key = self.persona.itemData(i)
+            if isinstance(key, str) and key.startswith("genshin_"):
+                self.persona.removeItem(i)
+        if selected.startswith("genshin_"):
+            self.persona.addItem(PERSONAS[selected].name, selected)
         index = self.persona.findData(selected)
         self.persona.setCurrentIndex(max(0, index))
 
