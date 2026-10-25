@@ -134,22 +134,11 @@ def install_pinned_react_shimeji(ts_path, role_root, *, profile, confirmed=False
         with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as writer:
             for num, png in sorted(frames.items()):
                 writer.writestr("Shimeji/img/shime%d.png" % num, png)
-        installed = install_personal_shimeji_zip(
-            archive, role_root, profile=profile, confirmed=True)
-    # Provenance is the complete TS module (LFS OID), not the temporary ZIP.
-    receipt_path = installed / "PERSONAL_IMPORT.json"
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-    receipt.update({
-        "source_kind": "pinned_react_shimeji_lfs_local_only",
-        "source_module_sha256": digest,
-        "upstream_lfs_revision_verified": True,
-        "original_png_atlas_frame_pixels_preserved": True,
-        "source_author_likeness_qa_passed": False,
-        "real_desktop_playback_qa_passed": False,
-        "redistribution_allowed_by_tool": False,
-    })
-    receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return installed
+        # The source attestation is written inside the installer staging area,
+        # before the native role is renamed into its permanent destination.
+        return install_personal_shimeji_zip(
+            archive, role_root, profile=profile, confirmed=True,
+            verified_react_sha=digest)
 
 
 def main(argv=None):
