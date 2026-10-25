@@ -34,6 +34,108 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog.set_character("Doro")
         self.assertEqual(self.dialog.persona.currentData(), "doro")
 
+    def test_readiness_button_is_read_only_and_does_not_touch_microphone(self):
+        self.assertIn("本机功能自检", self.dialog.readiness_button.text())
+        with patch("DyberPet.assistant.ui.inspect_readiness") as report, \
+             patch.object(QMessageBox, "information") as display:
+            report.return_value = {"checks": [
+                {"feature": "语音播报", "status": "disabled", "detail": "未启用"}]}
+            self.dialog.readiness_button.click()
+            self.assertTrue(display.called)
+            self.assertEqual(report.call_count, 1)
+            self.assertFalse(report.call_args.kwargs["ppl_enabled"])
+            self.assertIn("只读", display.call_args.args[2])
+        self.assertIsNone(self.dialog._job)
+
+    def test_exact_persona_changes_with_imported_role_identity(self):
+        import json
+        root = Path(self.tmp.name) / "personal_roles"
+        root.mkdir()
+        for folder, character in (("SourceKaveh", "genshin_kaveh"),
+                                  ("SourceKirara", "genshin_kirara")):
+            d = root / folder
+            d.mkdir()
+            (d / "PERSONAL_IMPORT.json").write_text(
+                json.dumps({"selected_profile": character}), encoding="utf-8")
+        self.dialog.role_root = root
+        self.dialog._prefs["personas"].pop("SourceKaveh", None)
+        self.dialog._prefs["personas"].pop("SourceKirara", None)
+        self.dialog.set_character("SourceKaveh")
+        self.assertEqual(self.dialog.persona.currentData(), "genshin_kaveh")
+        self.dialog.set_character("SourceKirara")
+        self.assertEqual(self.dialog.persona.currentData(), "genshin_kirara")
+        self.assertLessEqual(self.dialog.persona.count(), 10)
+        self.assertEqual(self.dialog.persona.findData("genshin_kaveh"), -1)
+        self.dialog.set_character("UnmappedCharacter")
+        self.assertEqual(self.dialog.persona.currentData(), "companion")
+        self.assertEqual(self.dialog.persona.findData("genshin_kirara"), -1)
+
+    def test_current_role_gap_button_reads_only_selected_role_and_zeroes_stale_actions(self):
+        self.assertIn("互动缺口", self.dialog.interaction_audit_button.text())
+        self.dialog.set_actions(["wave"])
+        report = {
+            "role": "咕嘎", "status": "imported_artist_claim_not_verified",
+            "on_disk_action_names": ["wave"],
+            "installed_action_categories": ["greet"],
+            "currently_unlocked_categories": ["greet"],
+            "missing_categories": ["sleep"],
+            "art_likeness_qa_passed": False,
+        }
+        from tools import character_interaction_coverage  # ensure lazy-loaded module exists
+        with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
+                          return_value=report) as inspector, \
+             patch.object(QMessageBox, "information") as message:
+            self.dialog.interaction_audit_button.click()
+            self.assertEqual(inspector.call_count, 1)
+            self.assertEqual(inspector.call_args.args[1], "咕嘎")
+            self.assertEqual(inspector.call_args.kwargs["unlocked_actions"], {"wave"})
+            self.assertIn("打招呼", message.call_args.args[2])
+            self.assertIn("未人工核验", message.call_args.args[2])
+            self.dialog.set_character("Doro")
+            self.dialog.interaction_audit_button.click()
+            self.assertEqual(inspector.call_args.args[1], "Doro")
+            self.assertEqual(inspector.call_args.kwargs["unlocked_actions"], set())
+
+    def test_preview_reuses_actual_local_role_frames_and_marks_demo_as_demo(self):
+        root = Path(self.tmp.name) / "pet_roles"
+        folder = root / "咕嘎"
+        folder.mkdir(parents=True)
+        self.dialog.role_root = root
+        with patch("DyberPet.DyberSettings.mascot_preview_dialog.MascotActionPreview") as preview:
+            self.dialog.action_preview_button.click()
+            self.assertEqual(preview.call_count, 1)
+            self.assertEqual(preview.call_args.args[0].resolve(), folder.resolve())
+            self.assertFalse(preview.call_args.kwargs["original_demo"])
+            preview.return_value.exec.assert_called_once()
+            (folder / "BUILTIN_MASCOT_DEMO.json").write_text("{}", encoding="utf-8")
+            self.dialog.action_preview_button.click()
+            self.assertTrue(preview.call_args.kwargs["original_demo"])
+
+    def test_character_specific_manual_actions_use_only_unlocked_animation(self):
+        requests = []
+        self.dialog.action_requested.connect(requests.append)
+        self.dialog.set_actions(["wave", "jump", "idle", "lookaround"])
+        self.assertTrue(self.dialog.interaction_button.isEnabled())
+        self.assertEqual(self.dialog.interaction_menu.currentData(), "greet")
+        self.dialog.interaction_button.click()
+        self.assertEqual(requests, ["wave"])
+        idx = self.dialog.interaction_menu.findData("talk")
+        self.assertGreaterEqual(idx, 0)
+        self.dialog.interaction_menu.setCurrentIndex(idx)
+        self.assertFalse(self.dialog.interaction_button.isEnabled())
+        self.dialog.play_manual_interaction()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_character("Doro")
+        self.assertFalse(self.dialog.interaction_button.isEnabled())
+        self.dialog.play_manual_interaction()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_actions(["左右散步", "打招呼"])
+        self.assertTrue(self.dialog.interaction_button.isEnabled())
+        self.dialog.interaction_menu.setCurrentIndex(
+            self.dialog.interaction_menu.findData("walk"))
+        self.dialog.interaction_button.click()
+        self.assertEqual(requests, ["wave", "左右散步"])
+
     def test_bubble_signals_and_stale_character_responses(self):
         replies, notices = [], []
         self.dialog.reply_ready.connect(replies.append)
