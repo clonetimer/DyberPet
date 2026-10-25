@@ -15,16 +15,16 @@ from tools.install_native_role import validate_native_role
 
 
 class ExternalCreatorSourcesTests(unittest.TestCase):
-    def test_pinned_sources_and_30_character_coverage(self):
+    def test_pinned_sources_and_31_character_coverage(self):
         source = source_manifest()
-        self.assertEqual(set(source["sources"]), {"linnea","hu_tao_pixel","nahida_mini","sandrone","sandrone_marionette","keqing_chibi","keqing_classic","klee_fan","yoimiya_fan","furina_fan"})
+        self.assertEqual(set(source["sources"]), {"linnea","hu_tao_pixel","nahida_mini","sandrone","sandrone_marionette","keqing_chibi","keqing_classic","klee_fan","yoimiya_fan","furina_fan","sayu_cozy"})
         self.assertEqual(source["sources"]["linnea"]["profile"], "genshin_linnea")
         self.assertEqual(source["sources"]["hu_tao_pixel"]["profile"], "genshin_hu_tao")
         self.assertEqual(source["sources"]["nahida_mini"]["profile"], "genshin_nahida")
         self.assertEqual(source["sources"]["sandrone"]["profile"], "genshin_sandrone")
         self.assertEqual(source["sources"]["keqing_chibi"]["profile"], "genshin_keqing")
         self.assertEqual(source["sources"]["keqing_classic"]["profile"], "genshin_keqing")
-        for name, profile in (("klee_fan","genshin_klee"),("yoimiya_fan","genshin_yoimiya"),("furina_fan","genshin_furina")):
+        for name, profile in (("klee_fan","genshin_klee"),("yoimiya_fan","genshin_yoimiya"),("furina_fan","genshin_furina"),("sayu_cozy","genshin_sayu")):
             self.assertEqual(source["sources"][name]["profile"], profile)
         for row in source["sources"].values():
             self.assertEqual(len(row["revision"]), 40)
@@ -33,9 +33,16 @@ class ExternalCreatorSourcesTests(unittest.TestCase):
                 self.assertGreater(row[key]["size"], 100)
         catalog = source_coverage()
         self.assertEqual(catalog["summary"]["template_count"], 123)
-        self.assertEqual(catalog["summary"]["pinned_source_options"], 53)
-        self.assertEqual(catalog["summary"]["characters_with_pinned_sources"], 30)
-        self.assertEqual(catalog["summary"]["characters_without_pinned_sources"], 93)
+        self.assertEqual(catalog["summary"]["pinned_source_options"], 54)
+        self.assertEqual(catalog["summary"]["characters_with_pinned_sources"], 31)
+        self.assertEqual(catalog["summary"]["characters_without_pinned_sources"], 92)
+        sayu = next(x for x in catalog["characters"] if x["id"]=="genshin_sayu")
+        self.assertTrue(sayu["source_found"])
+        self.assertEqual(sayu["source_candidate_count"], 1)
+        self.assertFalse(sayu["visual_likeness_qa_passed"])
+        self.assertFalse(sayu["installed"])
+        self.assertFalse(sayu["rights_verified"])
+        self.assertEqual(source["sources"]["sayu_cozy"]["sprites"]["sha"], "6aaefa1074a2e72d73333a171575b4ff8b9693e7")
         linnea = next(x for x in catalog["characters"] if x["id"]=="genshin_linnea")
         self.assertTrue(linnea["source_found"])
         self.assertFalse(linnea["installed"])
