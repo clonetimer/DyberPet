@@ -95,6 +95,25 @@ class PersonalShimejiZipTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Duplicate"):
                 inspect_shimeji_zip(source)
 
+    def test_invalid_source_attestation_refused_without_creating_role(self):
+        with tempfile.TemporaryDirectory() as td:
+            archive = self.make_zip(td)
+            root = Path(td) / "roles"
+            with self.assertRaisesRegex(ValueError, "Verified React-Shimeji"):
+                install_personal_shimeji_zip(
+                    archive, root, profile="genshin_kaveh", confirmed=True,
+                    verified_react_sha="not-a-real-sha")
+            self.assertFalse(root.exists())
+            installed = install_personal_shimeji_zip(
+                archive, root, profile="genshin_kaveh", confirmed=True,
+                verified_react_sha="a" * 64)
+            receipt = json.loads(
+                (installed / "PERSONAL_IMPORT.json").read_text("utf-8"))
+            self.assertEqual(receipt["source_module_sha256"], "a" * 64)
+            self.assertEqual(receipt["source_kind"],
+                             "pinned_react_shimeji_lfs_local_only")
+            self.assertFalse(receipt["source_author_likeness_qa_passed"])
+
     def test_standard_idle_and_walk_work_even_without_clone_frame38(self):
         with tempfile.TemporaryDirectory() as td:
             archive = self.make_zip(td, without_clone=True)
