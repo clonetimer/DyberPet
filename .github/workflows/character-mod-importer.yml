@@ -55,6 +55,7 @@ on:
       - "tools/install_personal_codex_zip.py"
       - "tools/community_codex_leads.py"
       - "tools/react_shimeji_source_leads.py"
+      - "tools/install_pinned_react_shimeji.py"
       - "tools/nanopet_shimeji_sources.json"
       - "tools/external_codex_art_sources.json"
       - "tools/install_external_codex.py"
@@ -64,6 +65,7 @@ on:
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
+      - "tests/test_pinned_react_shimeji.py"
       - "tests/test_react_shimeji_qt.py"
       - "tools/character_source_coverage.py"
       - "tools/creator_art_preference.py"
@@ -145,6 +147,7 @@ on:
       - "tools/install_personal_codex_zip.py"
       - "tools/community_codex_leads.py"
       - "tools/react_shimeji_source_leads.py"
+      - "tools/install_pinned_react_shimeji.py"
       - "tools/nanopet_shimeji_sources.json"
       - "tools/external_codex_art_sources.json"
       - "tools/install_external_codex.py"
@@ -154,6 +157,7 @@ on:
       - "tests/test_personal_codex_zip.py"
       - "tests/test_community_codex_leads.py"
       - "tests/test_react_shimeji_leads.py"
+      - "tests/test_pinned_react_shimeji.py"
       - "tests/test_react_shimeji_qt.py"
       - "tools/character_source_coverage.py"
       - "tools/creator_art_preference.py"
@@ -243,6 +247,7 @@ jobs:
           python -m unittest discover -s tests -p "test_personal_codex_zip.py" -v
           python -m unittest discover -s tests -p "test_community_codex_leads.py" -v
           python -m unittest discover -s tests -p "test_react_shimeji_leads.py" -v
+          python -m unittest discover -s tests -p "test_pinned_react_shimeji.py" -v
           python -m unittest discover -s tests -p "test_artist_shimeji_sources.py" -v
           python -m unittest discover -s tests -p "test_creator_art_preferences.py" -v
       - name: Test Git-pinned 6-role Codex source registry
