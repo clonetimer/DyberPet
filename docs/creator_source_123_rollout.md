@@ -7,8 +7,8 @@
 ## 本阶段实测可追溯信息（不是 123 人完工声明）
 
 - 人物/伙伴模板：**123**，与 GUI 名录一致；另有咕嘎和 Doro 两个独立吉祥物，不计入 123。
-- 固定来源候选：**46 个动画来源选项，对应 28 个不同原神人物**；其中含同一人物的多个作者版本。
-- **95 个角色尚无本项目固定校验的创作者素材来源**；后续需要按角色逐一检索并确认是该角色，不得凭文件名或艺术风格推断。
+- 固定来源候选：**48 个动画来源选项，对应 29 个不同原神人物**；其中含同一人物的多个作者版本。
+- **94 个角色尚无本项目固定校验的创作者素材来源**；后续需要按角色逐一检索并确认是该角色，不得凭文件名或艺术风格推断。
 - 逐帧像素来源/下载安全/原生格式自动测试 ≠ 游戏原设像貌人工验收。**当前不宣称任何一个人物已完成形象人工验收、全部原作动作验收或 Windows 实机验收。**
 - 所有新增素材均从公开资源**经用户确认后下载到本机**，仓库不直接提交、再发布未确认权利的二创图集。
 
@@ -22,7 +22,7 @@
 
 **特别提示：** 上游开源项目代码的许可证不一定授权包含的美术；素材具体使用条件及每个二创作者的许可需核实。个人本机使用不等于可把素材打进 GitHub Release 发布。素材是否符合游戏原设仍需逐帧对照。
 
-### 2026-10-25 扩增来源：原作者 17 套 Shimeji 与独立 Codex
+### 2026-10-25 扩增来源：原作者 17 套 Shimeji 与五份独立 Codex
 
 | 来源 | 固定提交 | 素材范围与内容 |
 | --- | --- | --- |
@@ -30,10 +30,12 @@
 | [独立 Linnea 桌宠](https://github.com/Alchuang22-dev/Linnea-Codex-Pet) | `57a95bd88bdd773448863d7049b8db1d8aec6f39` | 莉奈娅的创作者 Codex 精灵图集；新增 1 个来源覆盖的人物 |
 | [Genshin Pets](https://github.com/ZaytsevZY/genshin-pets) | `88cc8fe7de174eab62a6eafb417c1a1ea8b4bf95` | 独立像素风胡桃原画版，非新增人物 |
 | [Nahida Mini](https://github.com/Rukkhadevata-Karrenay/nahida-mini-codex-pet) | `3b0c593fb8c93544ebb3cb28f55f97c82ed0e6d1` | 独立 Q 版纳西妲，非新增人物 |
+| [Sandrone 桑多涅](https://github.com/crema-lida/genshin-codex-pets/tree/main/Sandrone/sandrone) | `52c50711ef2d47fe28deddf69fbb36618ffa0de2` | 桑多涅的一套独立像素艺术图集；新增 1 个来源覆盖人物 |
+| [Sandrone 木偶版](https://github.com/sqybi/codex-fan-pets-gi/tree/main/pets/sandrone-marionette) | `7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff` | 桑多涅的另一套独立作者版本，与上项同一人物，不重复计数 |
 
 Nano Pet 中标记为 **Xiao catboy** 的非原设变体已明确排除，不能作为“标准魈”验收凭据。素材导入仅把能确认语义的原始动作帧绑定到运行时，其余源帧仍全部原样保存在 `source_frames/`。个别来源具有特殊文件名或缺帧，按原作者文件逐项固定哈希，绝不填图、造帧或假装完整原设动作。
 
-这一阶段的 28/123 是**角色身份可溯源的候选来源覆盖率**，不是美术相似度已通过率，更不是 28 个 Windows 真机已验收角色。未经来源许可不要将这些美术直接打包再分发。
+这一阶段的 29/123 是**角色身份可溯源的候选来源覆盖率**，不是美术相似度已通过率，更不是 28 个 Windows 真机已验收角色。未经来源许可不要将这些美术直接打包再分发。
 
 ## 用户可直接操作的流程
 
@@ -58,6 +60,7 @@ python tools/install_artist_codex.py citlali --role-root res/role --accept-perso
 python tools/install_artist_genshin.py xiao --role-root res/role --accept-personal-use
 python tools/install_nanopet_shimeji.py zhongli-by-vol-tuna --role-root res/role --accept-personal-use
 python tools/install_external_codex.py linnea --role-root res/role --accept-personal-use
+python tools/install_external_codex.py sandrone --role-root res/role --accept-personal-use
 ```
 
 运行联网安装前阅读对应作者页面的资源条款。离线自动测试不直接从网络下载文件或把真实美术图片提交到测试仓库。
@@ -76,6 +79,6 @@ python tools/install_external_codex.py linnea --role-root res/role --accept-pers
 
 这些条件不可由单独的 GitHub Actions PASS 替代。Rust 分支只消费同一已核对的原始资源，不另行生成“简笔画替代”。
 
-## 下阶段继续补齐 95 人
+## 下阶段继续补齐 94 人
 
 统一角色清单为唯一工作台：每项至少登记可信素材候选、是否真实可下载、创作者署名、固定 Git/文件哈希、角色识别线索、真人预览结论。优先筛查人物误匹配风险；确实找不到适当来源时保留 `missing_source`，不能为了做满 123 而造假。对外默认角色选择器应继续隐藏程序演示图，展示“待获取真实资源”而不是错误的“已完成”。
