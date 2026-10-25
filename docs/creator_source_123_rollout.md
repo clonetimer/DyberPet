@@ -7,8 +7,8 @@
 ## 本阶段实测可追溯信息（不是 123 人完工声明）
 
 - 人物/伙伴模板：**123**，与 GUI 名录一致；另有咕嘎和 Doro 两个独立吉祥物，不计入 123。
-- 固定来源候选：**48 个动画来源选项，对应 29 个不同原神人物**；其中含同一人物的多个作者版本。
-- **94 个角色尚无本项目固定校验的创作者素材来源**；后续需要按角色逐一检索并确认是该角色，不得凭文件名或艺术风格推断。
+- 固定来源候选：**50 个动画来源选项，对应 30 个不同原神人物**；其中含同一人物的多个作者版本。
+- **93 个角色尚无本项目固定校验的创作者素材来源**；后续需要按角色逐一检索并确认是该角色，不得凭文件名或艺术风格推断。
 - 逐帧像素来源/下载安全/原生格式自动测试 ≠ 游戏原设像貌人工验收。**当前不宣称任何一个人物已完成形象人工验收、全部原作动作验收或 Windows 实机验收。**
 - 所有新增素材均从公开资源**经用户确认后下载到本机**，仓库不直接提交、再发布未确认权利的二创图集。
 
@@ -32,10 +32,19 @@
 | [Nahida Mini](https://github.com/Rukkhadevata-Karrenay/nahida-mini-codex-pet) | `3b0c593fb8c93544ebb3cb28f55f97c82ed0e6d1` | 独立 Q 版纳西妲，非新增人物 |
 | [Sandrone 桑多涅](https://github.com/crema-lida/genshin-codex-pets/tree/main/Sandrone/sandrone) | `52c50711ef2d47fe28deddf69fbb36618ffa0de2` | 桑多涅的一套独立像素艺术图集；新增 1 个来源覆盖人物 |
 | [Sandrone 木偶版](https://github.com/sqybi/codex-fan-pets-gi/tree/main/pets/sandrone-marionette) | `7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff` | 桑多涅的另一套独立作者版本，与上项同一人物，不重复计数 |
+| [刻晴双版本](https://github.com/PengZirong/keqing-codex-pet) | `f8c45f36164accbed15c46084bce2b274ca82d8b` | **精细 Q 版与经典比例版**。实看作者待机 GIF 后纳入固定图集，新增刻晴 1 人；原始美术仍未获正式人工验收或分发授权 |
 
 Nano Pet 中标记为 **Xiao catboy** 的非原设变体已明确排除，不能作为“标准魈”验收凭据。素材导入仅把能确认语义的原始动作帧绑定到运行时，其余源帧仍全部原样保存在 `source_frames/`。个别来源具有特殊文件名或缺帧，按原作者文件逐项固定哈希，绝不填图、造帧或假装完整原设动作。
 
-这一阶段的 29/123 是**角色身份可溯源的候选来源覆盖率**，不是美术相似度已通过率，更不是 28 个 Windows 真机已验收角色。未经来源许可不要将这些美术直接打包再分发。
+这一阶段的 30/123 是**角色身份可溯源的候选来源覆盖率**，不是美术相似度已通过率，更不是 30 个 Windows 真机已验收角色。未经来源许可不要将这些美术直接打包再分发。
+
+## 新确定的风格优先级：精细 Q 版先行，Shimeji 作为备选
+
+- **P1：精细 Q 版优先**。已核对过帧形态的老版 DyberPet 纳西妲、魈、流浪者为第一组的视觉风格示例；刻晴作者 Q 版也可优先预览，但不能直接计作人工相似度通过。
+- **P1 待视觉核对：独立作者 / Codex 图集**。部分保留较丰富的服饰、眼睛与头饰，也可能仅有少量像素细节；不能仅凭 WebP 尺寸、作者名称和文件哈希自动评 A。
+- **P2：原作者 Shimeji 小型动画**。只要人物辨识度确实满足要求可以使用，不能把非原设、简笔画、其他游戏同名人物充作合格素材。
+- **人工 A/B/C 结果目前一律待审**。P1/P2 是用户指定的选材及安装排序，而 A/B/C 是逐角色视觉对比后的结果，绝不虚构。
+- **新安装的角色库直接展示已找到来源的 30 位原神角色**；仍缺 93 位可切换“仍缺公开作者素材”筛选；不将“来源发现”混同“安装完成”。GUI 来源选择器优先推荐精细原生版，其次需看图核对的作者图集，最后可接受的 Shimeji。
 
 ## 用户可直接操作的流程
 
@@ -61,6 +70,8 @@ python tools/install_artist_genshin.py xiao --role-root res/role --accept-person
 python tools/install_nanopet_shimeji.py zhongli-by-vol-tuna --role-root res/role --accept-personal-use
 python tools/install_external_codex.py linnea --role-root res/role --accept-personal-use
 python tools/install_external_codex.py sandrone --role-root res/role --accept-personal-use
+python tools/install_external_codex.py keqing_chibi --role-root res/role --accept-personal-use
+python tools/install_external_codex.py keqing_classic --role-root res/role --accept-personal-use
 ```
 
 运行联网安装前阅读对应作者页面的资源条款。离线自动测试不直接从网络下载文件或把真实美术图片提交到测试仓库。
@@ -79,6 +90,6 @@ python tools/install_external_codex.py sandrone --role-root res/role --accept-pe
 
 这些条件不可由单独的 GitHub Actions PASS 替代。Rust 分支只消费同一已核对的原始资源，不另行生成“简笔画替代”。
 
-## 下阶段继续补齐 94 人
+## 下阶段继续补齐 93 人
 
 统一角色清单为唯一工作台：每项至少登记可信素材候选、是否真实可下载、创作者署名、固定 Git/文件哈希、角色识别线索、真人预览结论。优先筛查人物误匹配风险；确实找不到适当来源时保留 `missing_source`，不能为了做满 123 而造假。对外默认角色选择器应继续隐藏程序演示图，展示“待获取真实资源”而不是错误的“已完成”。
