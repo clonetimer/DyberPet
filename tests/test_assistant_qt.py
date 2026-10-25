@@ -34,6 +34,19 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog.set_character("Doro")
         self.assertEqual(self.dialog.persona.currentData(), "doro")
 
+    def test_readiness_button_is_read_only_and_does_not_touch_microphone(self):
+        self.assertIn("本机功能自检", self.dialog.readiness_button.text())
+        with patch("DyberPet.assistant.ui.inspect_readiness") as report, \
+             patch.object(QMessageBox, "information") as display:
+            report.return_value = {"checks": [
+                {"feature": "语音播报", "status": "disabled", "detail": "未启用"}]}
+            self.dialog.readiness_button.click()
+            self.assertTrue(display.called)
+            self.assertEqual(report.call_count, 1)
+            self.assertFalse(report.call_args.kwargs["ppl_enabled"])
+            self.assertIn("只读", display.call_args.args[2])
+        self.assertIsNone(self.dialog._job)
+
     def test_bubble_signals_and_stale_character_responses(self):
         replies, notices = [], []
         self.dialog.reply_ready.connect(replies.append)
