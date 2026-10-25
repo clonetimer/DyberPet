@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from urllib.parse import quote
 
@@ -126,6 +127,10 @@ def main(argv=None):
     if args.output is not None:
         args.output.write_text(output, encoding="utf-8")
     else:
+        # Windows CI/PowerShell may launch the script with cp1252 stdout,
+        # which cannot encode Chinese role names. Produce real UTF-8 JSON.
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="strict")
         print(output, end="")
     return 0
 
