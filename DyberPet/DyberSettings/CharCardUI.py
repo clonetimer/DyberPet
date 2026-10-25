@@ -529,6 +529,7 @@ class CharInterface(ScrollArea):
         if self.chibiThread is not None:
             self.__showSystemNote("其他角色安装仍在进行。", 1)
             return
+        from tools.creator_art_preference import install_preference
         from tools.install_artist_genshin import ROLES, SOURCE_URL
         from tools.install_artist_codex import SOURCES, ROOT
         from tools.install_artist_shimeji import source_manifest
@@ -537,15 +538,15 @@ class CharInterface(ScrollArea):
         shimeji = source_manifest()
         nano = nano_manifest()
         external = external_manifest()
-        labels = {f"完整原生动画 · {title}":("artist_genshin", key)
+        labels = {f"① 精细Q版优先 · 完整原生动画 · {title}":("artist_genshin", key)
                   for key, (_, _, title) in ROLES.items()}
-        labels.update({f"轻量创作者图集 · {row[1]} · {key}":("artist_codex", key)
+        labels.update({f"② 作者图集待视觉核对 · {row[1]} · {key}":("artist_codex", key)
                        for key, row in SOURCES.items()})
-        labels.update({f"创作者 Shimeji 动作 · {row['name']} · {key}":("artist_shimeji", key)
+        labels.update({f"③ 可接受小型 Shimeji · {row['name']} · {key}":("artist_shimeji", key)
                        for key, row in shimeji["roles"].items()})
-        labels.update({f"原生 Shimeji 逐帧素材 · {row['name']} · {row['artist']}":("artist_nano", key)
+        labels.update({f"③ 可接受小型 Shimeji · {row['name']} · {row['artist']}":("artist_nano", key)
                        for key, row in nano["roles"].items()})
-        labels.update({f"独立画师 Codex 图集 · {row['name']} · {key}":("artist_external_codex", key)
+        labels.update({f"② 独立画师图集待视觉核对 · {row['name']} · {key}":("artist_external_codex", key)
                        for key, row in external["sources"].items()})
         if only_profile:
             def mapped_profile(source):
@@ -570,9 +571,9 @@ class CharInterface(ScrollArea):
             return
         selected, ok = QInputDialog.getItem(
             self, "安装真实来源的桌宠美术",
-            "选择已有作者制作的桌宠动画；完整原生动画包可能较大，"
-            "轻量图集通常只有数 MB。不会绘制新的替代形象。",
-            list(labels), 0, False)
+            "第一组精细 Q 版优先；图集需看图复核；第二组 Shimeji 可接受。"
+            "以下只是素材风格优先级，不代表原设相似度验收通过。",
+            sorted(labels, key=lambda name: (install_preference(labels[name][0]), name)), 0, False)
         if not ok or selected not in labels:
             return
         mode, kind = labels[selected]
@@ -594,7 +595,7 @@ class CharInterface(ScrollArea):
                       + "/tree/" + row["revision"] + "/" + row["directory"])
         if not self.__showMessageBox(
                 "本机安装公开作者动画",
-                f"来源：{source}\\n"
+                f"来源：{source}\n"
                 "确认后下载固定版本原始动画，并安装为独立角色。"
                 "不会覆盖现有桌宠或用户存档。"
                 "公开素材与人物形象的人工验收是两回事；安装后请先预览。继续吗？"):
