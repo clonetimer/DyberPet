@@ -20,6 +20,7 @@ from .persona import (
     chat_local, list_local_models, AssistantServiceError,
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
+from .readiness import inspect_readiness, readiness_text
 from .guga_audio import record_local_clip, play_local_clip, load_local_clip
 from .character_fidelity import (
     inspect_guga_role, inspect_character_role, inspect_mini_character_role,
@@ -138,6 +139,9 @@ class PetAssistantDialog(QDialog):
         self.save_pref_button = QPushButton("保存助手设置（不保存聊天记录与人设快照）")
         self.save_pref_button.clicked.connect(self.save_preferences)
         form.addRow(self.save_pref_button)
+        self.readiness_button = QPushButton("本机功能自检（无联网／录音）")
+        self.readiness_button.clicked.connect(self.show_readiness)
+        form.addRow(self.readiness_button)
         body.addLayout(form)
 
         self.chat_log = QPlainTextEdit()
@@ -214,6 +218,21 @@ class PetAssistantDialog(QDialog):
         self.status = QLabel("麦克风默认关闭；所有文件动作均须用户亲自选择。")
         self.status.setWordWrap(True)
         body.addWidget(self.status)
+
+    def show_readiness(self):
+        """Only inspect local configuration and optional packages; never activate devices."""
+        try:
+            report = inspect_readiness(
+                voice_model=self.voice_model.text().strip(),
+                llm_endpoint=self.llm_endpoint.text().strip(),
+                llm_model=self.llm_model.text().strip(),
+                ppl_enabled=self.ppl_enabled.isChecked(),
+                ppl_endpoint=self.ppl_endpoint.text().strip(),
+            )
+            QMessageBox.information(self, "桌宠助手 · 本机功能自检",
+                                    readiness_text(report))
+        except (OSError, ValueError, ImportError) as exc:
+            self._job_error("本机功能自检失败：" + str(exc))
 
     def set_character(self, name: str):
         if self.character_name == name:
