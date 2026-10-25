@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "provider": "CodexPetDB",
+  "status": "catalog_metadata_only_not_verified",
+  "note": "These four immutable r1 ZIP digests appeared in the 2026-10-25 canonical catalog; until CI downloads and installs them they remain untrusted candidates and must not appear in the pinned-source coverage count.",
+  "sources": {
+    "baizhu": {
+      "profile": "genshin_baizhu",
+      "slug": "gi-baizhu",
+      "revision": "019f8c74-259d-721f-9465-e06d5c079bbb",
+      "sha256": "e956335db1c23bfe1776be909cafd65bb16a2f6f9df1a6ec1424fbc8a33ee315",
+      "verified_bytes": 828590,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-baizhu/download"
+    },
+    "candace": {
+      "profile": "genshin_candace",
+      "slug": "gi-candace",
+      "revision": "019f8c74-6f05-71a3-b493-f4e4e923dbc5",
+      "sha256": "a3bd9022ba024b4e4cf9193f4e962f21398cbb67ced1d38e184beb7dac88c004",
+      "verified_bytes": 1030614,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-candace/download"
+    },
+    "chevreuse": {
+      "profile": "genshin_chevreuse",
+      "slug": "gi-chevreuse",
+      "revision": "019f8c75-004d-7711-b2e6-264fe6d28d3e",
+      "sha256": "f3972517521672f1a5fb5d06b4b553200dfdf88e0148f85c881b73dbc9bec7bf",
+      "verified_bytes": 744234,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-chevreuse/download"
+    },
+    "layla": {
+      "profile": "genshin_layla",
+      "slug": "gi-layla",
+      "revision": "019f8c7a-900c-749c-aeb5-a7e694656bff",
+      "sha256": "2098073af5ad526f7a380a5a6b9ebb4d6a07ddd7bbd6c0cd7c314806c00b2934",
+      "verified_bytes": 977903,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-layla/download"
+    }
+  }
+}
