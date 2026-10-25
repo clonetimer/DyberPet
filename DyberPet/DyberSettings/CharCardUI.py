@@ -313,7 +313,8 @@ class CharInterface(ScrollArea):
                     "个人本地导入：Shimeji 原画 ZIP（仅提取图片）",
                     "个人本地导入：Codex 动画 ZIP（仅提取图集）",
                      "个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）",
-                     "个人使用：下载 SHA-256 固定的四位原神角色原画 ZIP"]
+                     "个人使用：下载 SHA-256 固定的四位原神角色原画 ZIP",
+                     "个人本地导入：已下载的 SHA-256 固定原画 ZIP（断网可用）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -337,6 +338,9 @@ class CharInterface(ScrollArea):
             return
         if choice == options[7]:
             self._importPinnedPetDb()
+            return
+        if choice == options[8]:
+            self._importPinnedPetDb(local_archive=True)
             return
         if choice == options[6]:
             module, _ = QFileDialog.getOpenFileName(
@@ -998,8 +1002,8 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在生成原创 Q 版星芽动画，不会覆盖已有角色。"), 1)
 
-    def _importPinnedPetDb(self):
-        """Explicit opt-in for the four hash-pinned community archives."""
+    def _importPinnedPetDb(self, *, local_archive=False):
+        """User-selected remote or previously downloaded SHA-pinned creator ZIP."""
         if self.chibiThread is not None:
             return
         from tools.install_pinned_codexpetdb import listed_packages
@@ -1014,10 +1018,19 @@ class CharInterface(ScrollArea):
             list(options), 0, False)
         if not accepted or selected not in options:
             return
+        archive_path = None
+        if local_archive:
+            archive_path, _ = QFileDialog.getOpenFileName(
+                self, self.tr("选择已下载的原画 ZIP（须匹配固定 SHA-256）"),
+                QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation),
+                "ZIP Archive (*.zip)")
+            if not archive_path:
+                return
         confirmation = QMessageBox.question(
-            self, self.tr("个人本地下载确认"),
-            self.tr("将从 CodexPetDB 下载第三方原画 ZIP，先验证完整 SHA-256，"
-                    "然后仅解压宠物元数据与 PNG/WebP 图集。"
+            self, self.tr("个人本地导入确认" if local_archive else "个人本地下载确认"),
+            self.tr("将校验本人已下载的原画 ZIP" if local_archive
+                    else "将从 CodexPetDB 下载第三方原画 ZIP，先验证完整 SHA-256，")
+            + self.tr("然后仅解压宠物元数据与 PNG/WebP 图集。"
                     "来源原设形象尚未人工验收；不执行 ZIP 内脚本，也不覆盖已有角色。继续吗？"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
@@ -1025,8 +1038,10 @@ class CharInterface(ScrollArea):
             return
         self.addButton.setEnabled(False)
         self.chibiThread = ChibiImportThread(
-            options[selected], os.path.join(basedir, "res", "role"),
-            mode="pinned_codexpetdb", profile=None, preset=None, folder=None)
+            archive_path if local_archive else options[selected],
+            os.path.join(basedir, "res", "role"),
+            mode="pinned_codexpetdb_local" if local_archive else "pinned_codexpetdb",
+            profile=None, preset=options[selected], folder=None)
         self.chibiThread.done.connect(self._onChibiImportComplete)
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
@@ -1194,12 +1209,12 @@ class CharInterface(ScrollArea):
         preview = Path(basedir) / "res" / "role" / role_name / "ANIMATION_PREVIEW.png"
         source_mode = self.chibiThread.mode if self.chibiThread is not None else ""
         title = ("作者真实动作帧核对（非人工验收通过）"
-                 if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "react_shimeji_lfs", "creator_source")
+                 if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source")
                  else "角色动作帧预览")
         message = ("安装成功。是否打开由原作者 PNG 原始帧直接拼成的核对图？"
                    "请检查脸部、发饰、服装和动作是否确实属于所选角色。"
                    "预览不等于自动完成形象验收。"
-                   if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "react_shimeji_lfs", "creator_source")
+                   if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source")
                    else "角色已导入。是否打开动作帧预览图，检查动画素材？")
         if preview.is_file() and self.__showMessageBox(title, message):
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
@@ -1463,10 +1478,14 @@ class ChibiImportThread(QThread):
                 installed = install_creator_mascot(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
-            elif self.mode == "pinned_codexpetdb":
+            elif self.mode in ("pinned_codexpetdb", "pinned_codexpetdb_local"):
                 from tools.install_pinned_codexpetdb import install_pinned_codexpetdb
+                # self.source is always Path: use selected string registry key,
+                # not Path("kaveh") which fails membership checks in source index.
+                source_key = self.preset if self.preset is not None else str(self.source)
                 new_folder = install_pinned_codexpetdb(
-                    self.source, self.output_root, confirmed=True)
+                    source_key, self.output_root, confirmed=True,
+                    archive=self.source if self.mode == "pinned_codexpetdb_local" else None)
             elif self.mode == "react_shimeji_lfs":
                 from tools.install_pinned_react_shimeji import install_pinned_react_shimeji
                 new_folder = install_pinned_react_shimeji(
