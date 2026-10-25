@@ -10,6 +10,7 @@ SOURCE_STYLE = {
     "native": (0, "精细 Q 版优先", "detailed_native_candidate"),
     "codex": (1, "原作者图集·细节待核对", "unreviewed_codex_atlas"),
     "independent_codex": (1, "独立作者图集·细节待核对", "unreviewed_codex_atlas"),
+    "codexpetdb_zip": (1, "第三方 ZIP 来源SHA已核验·原设待看图", "unreviewed_codex_atlas"),
     "shimeji": (2, "小型 Shimeji·可接受备选", "acceptable_small_shimeji"),
     "nano_shimeji": (2, "小型 Shimeji·可接受备选", "acceptable_small_shimeji"),
 }
