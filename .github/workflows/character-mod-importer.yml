@@ -50,6 +50,9 @@ on:
       - "tools/install_artist_codex.py"
       - "tools/install_artist_shimeji.py"
       - "tools/artist_shimeji_sources.json"
+      - "tools/install_nanopet_shimeji.py"
+      - "tools/nanopet_shimeji_sources.json"
+      - "tests/test_nanopet_shimeji_sources.py"
       - "tools/character_source_coverage.py"
       - "tests/test_artist_shimeji_sources.py"
       - "tests/test_artist_codex_install.py"
@@ -123,6 +126,9 @@ on:
       - "tools/install_artist_codex.py"
       - "tools/install_artist_shimeji.py"
       - "tools/artist_shimeji_sources.json"
+      - "tools/install_nanopet_shimeji.py"
+      - "tools/nanopet_shimeji_sources.json"
+      - "tests/test_nanopet_shimeji_sources.py"
       - "tools/character_source_coverage.py"
       - "tests/test_artist_shimeji_sources.py"
       - "tests/test_artist_codex_install.py"
@@ -200,7 +206,9 @@ jobs:
       - name: Review pinned Shimeji source definitions
         run: |
           python tools/install_artist_shimeji.py --help
+          python tools/install_nanopet_shimeji.py --help
           python tools/character_source_coverage.py --missing-only > missing-creator-sources.json
+          python -m unittest discover -s tests -p "test_nanopet_shimeji_sources.py" -v
           python -m unittest discover -s tests -p "test_artist_shimeji_sources.py" -v
       - name: Test Git-pinned 6-role Codex source registry
         run: python -m unittest discover -s tests -p "test_artist_codex_install.py" -v
@@ -272,6 +280,32 @@ jobs:
                   with Image.open(role/"action"/name) as img:
                       img.verify()
               print("REAL_SHIMEJI_FRAMES_VALIDATED",kind,report)
+          PY
+      - name: Download 2 new Genshin identities from NanoPet author-credited Shimeji
+        shell: bash
+        run: |
+          for role in aether-by-tenkotenmeo zhongli-by-vol-tuna; do
+            python tools/install_nanopet_shimeji.py "$role" --role-root "$RUNNER_TEMP/nanopet-author-qa" --accept-personal-use
+          done
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from PIL import Image
+          from tools.install_native_role import validate_native_role
+          root=Path(os.environ["RUNNER_TEMP"])/"nanopet-author-qa"
+          roles={"aether-by-tenkotenmeo":"genshin_traveler_aether",
+                 "zhongli-by-vol-tuna":"genshin_zhongli"}
+          for source,profile in roles.items():
+              folder="SourceNano"+"".join(w.title() for w in source.replace("-by-","-").split("-"))
+              role=root/folder
+              meta=json.loads((role/"PERSONAL_IMPORT.json").read_text("utf-8"))
+              assert meta["selected_profile"]==profile
+              assert meta["all_original_frames_preserved"]>=45
+              assert not meta["likeness_manually_reviewed"]
+              assert validate_native_role(role)["actions"]>=8
+              for file in ("stand_0.png","walk_0.png","drag_0.png","fall_0.png"):
+                  with Image.open(role/"action"/file) as im: im.verify()
+              print("REAL_NANOPET_AUTHOR_FRAMES_OK",source)
           PY
       # No artifact upload: author-created character images are temporary CI input.
 
