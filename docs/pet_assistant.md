@@ -80,7 +80,7 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 
 ## 所有角色的主动互动快捷动作（本轮追加）
 
-桌宠助手新增 **「主动互动（仅已解锁原生动作）」**：根据当前主桌宠已安装并解锁的动画，动态展示「打招呼、蹦一蹦、观察周围、休息一下、散步、说话动作、睡觉」。用户选择后点击「让当前桌宠执行」，只通过原有 `action_requested` 信号调用运行时，运行时再次检查当前人物的 `unlocked` 状态，故不会由语言模型的文本或普通语音识别结果自动触发。
+桌宠助手新增 **「主动互动（仅已解锁原生动作）」**：根据当前主桌宠已安装并解锁的动画，动态展示「打招呼、蹦一蹦、观察周围、休息一下、散步、说话动作、睡觉、摸摸头、爬行」。用户选择后点击「让当前桌宠执行」，只通过原有 `action_requested` 信号调用运行时，运行时再次检查当前人物的 `unlocked` 状态，故不会由语言模型的文本或普通语音识别结果自动触发。
 
 同一类互动可以使用原画 Codex（如 `wave`, `jump`, `lookaround`）或原生 DyberPet 中文动作组（如「打招呼」「左右散步」），**严格全名匹配**，不会把「attack_wave_effect」之类不相关的动作猜作招手。缺对应动作时禁用按钮并提示用户导入更完整的原作者素材；不使用占位图、不重复一帧冒充多种动作，当前角色切换后立刻清空原角色动作授权并重新同步。
 
@@ -93,3 +93,5 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 命令：`python tools/character_interaction_coverage.py --output character-interactions.json`。此清单不连接网络、不修改任何角色文件；`runtime_unlock_qa_verified=false`、`character_likeness_qa_verified=false` 直到后续逐角色真实 Qt/外观人工验收。源动作名称存在只说明图集可能支持该类别，不表示游戏状态已解锁，更不代表角色自己的独特姿势或音色已达标。
 
 目标是将每名角色的 **动作素材存在 → 实机能触发 → 动画连续且原设辨识度合格** 三层分别闭环，缺的内容明确列出来，再持续从公开作者来源补真实素材。
+
+**Shimeji 动作语义补齐：** 新增 `patpat`/`climb` 精确别名，仅当选中角色的 `act_conf` 真有对应动画、当前运行实例确已解锁时才可触发。程序只播放已有真实帧，不能用重复/空素材冒充抚摸、爬行动作。测试覆盖缺动作与假名称不误匹配。
