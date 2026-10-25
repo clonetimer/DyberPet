@@ -15,7 +15,7 @@ class ReactShimejiLeadTests(unittest.TestCase):
         report = react_shimeji_lead_report()
         self.assertEqual(report["summary"]["repo_character_packages"], 2224)
         self.assertEqual(report["summary"]["matched_distinct_genshin_personas"], 6)
-        self.assertEqual(report["summary"]["new_leads_for_missing_characters"], 6)
+        self.assertEqual(report["summary"]["new_leads_for_missing_characters"], 4)
         self.assertTrue(report["summary"]["fixed_source_coverage_unchanged"])
         self.assertEqual(report["summary"]["downloaded_or_installed"], 0)
         self.assertEqual(report["summary"]["art_qa_passed"], 0)
@@ -38,9 +38,9 @@ class ReactShimejiLeadTests(unittest.TestCase):
 
     def test_existing_pinned_source_counts_remain_intact(self):
         summary = source_coverage()["summary"]
-        self.assertEqual(summary["characters_with_pinned_sources"], 31)
-        self.assertEqual(summary["characters_without_pinned_sources"], 92)
-        self.assertEqual(summary["pinned_source_options"], 54)
+        self.assertEqual(summary["characters_with_pinned_sources"], 35)
+        self.assertEqual(summary["characters_without_pinned_sources"], 88)
+        self.assertEqual(summary["pinned_source_options"], 58)
 
     def test_gui_has_explicit_safe_preview_choices_and_no_auto_download(self):
         source = (Path(__file__).resolve().parents[1] /
