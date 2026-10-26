@@ -1,0 +1,58 @@
+name: R5 genuine creator Q/standee comparison board
+
+on:
+  push:
+    branches:
+      - feat/r5-real-sprite-chibi-comparison-board-20261026
+  pull_request:
+    paths:
+      - "tools/creator_q_review_board.py"
+      - "DyberPet/DyberSettings/creator_q_review_board.py"
+      - "DyberPet/DyberSettings/character_catalog_dialog.py"
+      - "tests/test_creator_q_review_board.py"
+      - "tests/test_creator_q_review_board_qt.py"
+      - ".github/workflows/r5-original-art-review-board.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dyberpet-q-board-r5-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  original-art-review-board:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Linux Qt offscreen prerequisites
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 libx11-xcb1
+      - run: python -m pip install "Pillow>=11,<13" "PySide6>=6.7,<7"
+      - name: True installed-artist PNG evidence and no fake Q approvals
+        run: python -m unittest discover -s tests -p "test_creator_q_review_board.py" -v
+      - name: Live Qt 18-thumbnail paging and intentional artist URL opening
+        run: python -m unittest discover -s tests -p "test_creator_q_review_board_qt.py" -v
+      - name: Existing R4 human Q/standee and frame viewer regressions
+        run: |
+          python -m unittest discover -s tests -p "test_creator_chibi_quality.py" -v
+          python -m unittest discover -s tests -p "test_creator_standee_triage.py" -v
+          python -m unittest discover -s tests -p "test_native_interaction_preview_shortcuts.py" -v
+          python -m unittest discover -s tests -p "test_creator_assistant_integration_qt.py" -v
+          python -m unittest discover -s tests -p "test_character_catalog_search.py" -v
+      - name: Compile Python and Qt source
+        run: python -m compileall -q tools/creator_q_review_board.py DyberPet/DyberSettings/creator_q_review_board.py DyberPet/DyberSettings/character_catalog_dialog.py
+      - name: No third-party art inside source checkout
+        run: python -c "from pathlib import Path; assert not list(Path('res/role').glob('Source*')); print('ORIGINAL_ART_NOT_COMMITTED=true')"
