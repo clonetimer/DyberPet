@@ -204,7 +204,7 @@ class CatalogGapExportTests(unittest.TestCase):
         import ast
         from unittest.mock import MagicMock
         from PIL import Image
-        import types
+        from PySide6.QtWidgets import QWidget
         from DyberPet.DyberSettings.native_frame_preview import NativeFramePreviewDialog
 
         project = Path(__file__).resolve().parents[1]
@@ -229,17 +229,26 @@ class CatalogGapExportTests(unittest.TestCase):
                 Image.new("RGBA", (40, 60), (idx * 90, 60, 100, 255)).save(
                     role / "action" / f"wave_{idx}.png")
             ns["basedir"] = td
+            ns["__package__"] = "DyberPet.DyberSettings"
             exec(compile(body, "<review-handler>", "exec"), ns)
-            fake = MagicMock()
-            with patch.object(NativeFramePreviewDialog, "exec", autospec=True,
-                              return_value=0) as opened:
-                ns["_previewJustInstalledCreatorArt"](fake, "CreatorOne")
-                self.assertEqual(opened.call_count, 1)
-                self.assertEqual(opened.call_args.args[0].action.currentData(),
-                                 "wave")
-            fake._CharCardUI__showSystemNote.assert_not_called()
-            ns["_previewJustInstalledCreatorArt"](fake, "../wrong")
-            fake._CharCardUI__showSystemNote.assert_called()
+            fake = QWidget()
+            warnings = MagicMock()
+            # The single extracted method is compiled outside its original
+            # class, so Python's class-level double-underscore mangling is
+            # absent. The real runtime uses CharCardUI's own bound method.
+            setattr(fake, "__showSystemNote", warnings)
+            try:
+                with patch.object(NativeFramePreviewDialog, "exec", autospec=True,
+                                  return_value=0) as opened:
+                    ns["_previewJustInstalledCreatorArt"](fake, "CreatorOne")
+                    self.assertEqual(opened.call_count, 1)
+                    self.assertEqual(opened.call_args.args[0].action.currentData(),
+                                     "wave")
+                warnings.assert_not_called()
+                ns["_previewJustInstalledCreatorArt"](fake, "../wrong")
+                warnings.assert_called_once()
+            finally:
+                fake.close()
 
     def test_demo_role_and_linked_frame_refused_for_visual_quality_review(self):
         from DyberPet.DyberSettings.native_frame_preview import safe_animation_inventory
