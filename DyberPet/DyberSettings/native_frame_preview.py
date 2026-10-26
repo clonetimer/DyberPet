@@ -23,6 +23,15 @@ from tools.creator_art_manual_review import (
     GRADES, create_manual_review_receipt, save_manual_review)
 
 
+def _inventory_stat_snapshot(role_root, folder, inventory):
+    """Detect files replaced during this review before recording seen frames."""
+    role = _safe_installed_role(Path(role_root).expanduser(), folder)
+    files = {role / "act_conf.json", role / "pet_conf.json"}
+    files.update(p for frames in inventory.values() for p in frames)
+    return tuple(sorted((str(p), p.stat().st_size, p.stat().st_mtime_ns)
+                        for p in files))
+
+
 def safe_animation_inventory(role_root, folder):
     role = _safe_installed_role(Path(role_root).expanduser(), folder)
     if ((role / "BUILTIN_CHIBI_DEMO.json").exists() or
@@ -110,6 +119,7 @@ class NativeFramePreviewDialog(QDialog):
         self.export_review.clicked.connect(self._export_review)
         layout.addWidget(self.export_review)
         self._visited = {}
+        self._snapshots = {}
         self._clock = QTimer(self)
         self._clock.setInterval(150)
         self._clock.timeout.connect(self._advance)
@@ -133,6 +143,12 @@ class NativeFramePreviewDialog(QDialog):
         try:
             self._inventory = safe_animation_inventory(
                 self._root, self.version.currentData())
+            folder = self.version.currentData()
+            metadata = _inventory_stat_snapshot(
+                self._root, folder, self._inventory)
+            if self._snapshots.get(folder) != metadata:
+                self._visited[folder] = {}
+            self._snapshots[folder] = metadata
         except (OSError, ValueError, TypeError, KeyError) as exc:
             # Qt signal handlers must not let a broken third-party folder
             # abort the desktop process. Show a reviewable problem instead.
@@ -213,12 +229,15 @@ class NativeFramePreviewDialog(QDialog):
         if not filename:
             return
         try:
+            if _inventory_stat_snapshot(
+                    self._root, folder, self._inventory) != self._snapshots.get(folder):
+                raise ValueError("原画文件在本次预览后已变化，请重新选择素材版本核对")
             receipt = create_manual_review_receipt(
                 self._root, folder, self._inventory,
                 self._visited.get(folder, {}), self.grade.currentData(),
                 self.compared.isChecked(), self.motion_checked.isChecked(),
                 self.review_note.text())
-            save_manual_review(filename, receipt)
+            save_manual_review(filename, receipt, role_root=self._root)
         except (OSError, ValueError, TypeError) as exc:
             QMessageBox.warning(self, "人工核对记录未保存", str(exc))
             return

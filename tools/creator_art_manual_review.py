@@ -15,7 +15,7 @@ from tools.character_interaction_coverage import _safe_installed_role
 
 GRADES = ("未评价", "A 原设较吻合", "B 部分差异", "C 明显不符")
 MAX_NOTE_LENGTH = 500
-MAX_REVIEW_BYTES = 8 * 1024 * 1024 * 1024  # only for an explicit user export
+MAX_REVIEW_BYTES = 512 * 1024 * 1024  # bounded explicit, local-only review export
 
 
 def create_manual_review_receipt(role_root, folder, inventory, visited, grade,
@@ -92,9 +92,14 @@ def create_manual_review_receipt(role_root, folder, inventory, visited, grade,
     }
 
 
-def save_manual_review(path, receipt):
+def save_manual_review(path, receipt, *, role_root):
+    """Never overwrite installed original art, even if a user picks its folder."""
     target = Path(path)
     if target.suffix.lower() != ".json" or target.is_symlink():
         raise ValueError("仅允许保存为真实的 .json 文件，不覆盖符号链接")
+    if target.resolve().is_relative_to(Path(role_root).resolve()):
+        raise ValueError("评审报告不能写入原画素材安装目录")
+    if not target.parent.is_dir():
+        raise ValueError("报告导出目录不存在")
     payload = json.dumps(receipt, ensure_ascii=False, indent=2) + "\n"
     target.write_text(payload, encoding="utf-8")

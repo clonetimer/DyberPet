@@ -157,6 +157,45 @@ class CatalogGapExportTests(unittest.TestCase):
             finally:
                 dlg.close()
 
+    def test_manual_review_export_cannot_overwrite_source_art_and_flags_changed_sprite(self):
+        from PIL import Image
+        from tools.creator_art_manual_review import (
+            save_manual_review, create_manual_review_receipt)
+        from DyberPet.DyberSettings.native_frame_preview import NativeFramePreviewDialog
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "role"
+            folder = root / "RealAuthor"
+            (folder / "action").mkdir(parents=True)
+            (folder / "act_conf.json").write_text(
+                json.dumps({"idle": {"images": "idle"}}), encoding="utf-8")
+            (folder / "pet_conf.json").write_text(
+                json.dumps({"default": "idle"}), encoding="utf-8")
+            Image.new("RGBA", (55, 60), (11, 100, 70, 255)).save(
+                folder / "action" / "idle_0.png")
+            viewer = NativeFramePreviewDialog(root, ["RealAuthor"])
+            try:
+                receipt = create_manual_review_receipt(
+                    root, "RealAuthor", viewer._inventory,
+                    viewer._visited["RealAuthor"], "未评价", False, False)
+                with self.assertRaisesRegex(ValueError, "不能写入"):
+                    save_manual_review(folder / "act_conf.json", receipt, role_root=root)
+                dest = Path(td) / "visual_review.json"
+                save_manual_review(dest, receipt, role_root=root)
+                self.assertEqual(
+                    json.loads(dest.read_text(encoding="utf-8"))["human_visual_grade"],
+                    "未评价")
+                Image.new("RGBA", (55, 60), (22, 2, 2, 255)).save(
+                    folder / "action" / "idle_0.png")
+                with patch.object(QFileDialog, "getSaveFileName",
+                                  return_value=(str(dest), "JSON 文件 (*.json)")), \
+                     patch.object(QMessageBox, "warning") as warning:
+                    viewer.export_review.click()
+                    self.assertEqual(warning.call_count, 1)
+                    self.assertIn("已变化", warning.call_args.args[2])
+                viewer.version.setCurrentIndex(0)  # rescan explicitly
+            finally:
+                viewer.close()
+
     def test_demo_role_and_linked_frame_refused_for_visual_quality_review(self):
         from DyberPet.DyberSettings.native_frame_preview import safe_animation_inventory
         with tempfile.TemporaryDirectory() as td:
