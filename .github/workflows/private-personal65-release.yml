@@ -1,7 +1,15 @@
 name: Private Personal65 Python and Rust hybrid Release
 
 on:
-  # Manual-only because this account currently rejects hosted runner jobs before startup.
+  push:
+    branches:
+      - "release/personal65-python-rust-20261026"
+    paths:
+      - ".github/workflows/private-personal65-release.yml"
+      - "tools/build_personal65_windows.ps1"
+      - "tools/build_windows_portable.ps1"
+      - "tools/personal_source_batch.py"
+      - "run_DyberPet.py"
   workflow_dispatch:
 
 permissions:
@@ -72,6 +80,8 @@ jobs:
   release:
     name: Publish private prerelease after both builds pass
     needs: [build-windows]
+    # Never create a personal Release while repository visibility is public.
+    if: github.event.repository.private == true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
