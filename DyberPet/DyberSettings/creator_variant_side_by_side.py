@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
 )
 
 from tools.character_interaction_coverage import _safe_installed_role
+from tools.genshin_library import _profile_of
+from tools.role_family import known_mascot_family
 from tools.creator_chibi_quality import load_local_quality_review
 from DyberPet.assistant.role_interactions import available_interactions
 from DyberPet.DyberSettings.native_frame_preview import (
@@ -34,11 +36,19 @@ def checked_variant_pair(role_root, options, left=None, right=None):
             any(not isinstance(x, str) for x in options) or
             len(set(options)) != len(options)):
         raise ValueError("同一角色至少需要两个不同的作者素材版本")
+    bound_profiles = set()
     for folder in options:
         role = _safe_installed_role(root, folder)
         if ((role / "BUILTIN_CHIBI_DEMO.json").exists() or
                 (role / "BUILTIN_MASCOT_DEMO.json").exists()):
             raise ValueError("不能将简笔演示形象当成作者原画进行比较")
+        mascot = known_mascot_family(role)
+        profile = ("mascot_" + mascot if mascot is not None else _profile_of(role))
+        if not isinstance(profile, str) or not profile:
+            raise ValueError("作者原画缺少明确的角色来源绑定，不能A/B对照")
+        bound_profiles.add(profile)
+    if len(bound_profiles) != 1:
+        raise ValueError("左右两份原画对应不同人物，禁止混合对照")
     a = left or options[0]
     b = right or next(x for x in options if x != a)
     if a not in options or b not in options or a == b:
