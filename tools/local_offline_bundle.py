@@ -57,7 +57,7 @@ def _entry_files(root):
             file = folder / name
             if file.is_symlink() or not file.is_file():
                 raise ValueError("Refusing linked/unusual file: " + name)
-            if name.casefold() in _EXCLUDE_NAMES or name.endswith((".pyc", ".tmp")):
+            if name == "LOCAL_OFFLINE_BUILD.json" or name.casefold() in _EXCLUDE_NAMES or name.endswith((".pyc", ".tmp")):
                 continue
             info = file.stat()
             if not stat.S_ISREG(info.st_mode):
