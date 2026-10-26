@@ -54,6 +54,8 @@ on:
       - "tools/artist_shimeji_sources.json"
       - "tools/install_nanopet_shimeji.py"
       - "tools/install_personal_shimeji_zip.py"
+      - "tools/probe_shimejishop_itto.py"
+      - "tests/test_shimejishop_itto.py"
       - "tools/artist_animation_audit.py"
       - "tools/install_pinned_codexpetdb.py"
       - "tools/discover_new_codexpetdb_pins.py"
@@ -166,6 +168,8 @@ on:
       - "tools/artist_shimeji_sources.json"
       - "tools/install_nanopet_shimeji.py"
       - "tools/install_personal_shimeji_zip.py"
+      - "tools/probe_shimejishop_itto.py"
+      - "tests/test_shimejishop_itto.py"
       - "tools/artist_animation_audit.py"
       - "tools/install_pinned_codexpetdb.py"
       - "tools/discover_new_codexpetdb_pins.py"
@@ -284,6 +288,7 @@ jobs:
           python tools/character_source_coverage.py --missing-only > missing-creator-sources.json
           python -m unittest discover -s tests -p "test_nanopet_shimeji_sources.py" -v
           python -m unittest discover -s tests -p "test_personal_shimeji_zip.py" -v
+          python -m unittest discover -s tests -p "test_shimejishop_itto.py" -v
           python -m unittest discover -s tests -p "test_artist_animation_audit.py" -v
           python -m unittest discover -s tests -p "test_pinned_codexpetdb.py" -v
           python -m unittest discover -s tests -p "test_pending_source_probes.py" -v
@@ -632,3 +637,22 @@ jobs:
         timeout-minutes: 9
         run: python tools/probe_live_missing_codexpetdb.py --limit 6
     # No third-party artwork is stored or redistributed.
+
+  itto-external-shimeji-probe:
+    name: Itto original third-party ZIP structural QA (non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install original PNG decoder
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Download publisher archive, check exact PNG bytes and native animations
+        timeout-minutes: 5
+        run: python tools/probe_shimejishop_itto.py
+    # No third-party art is committed, republished or promoted from this probe.
