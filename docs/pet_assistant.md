@@ -168,3 +168,6 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 ## 2026-10-26：修复真实动作组名称与原生帧名称混淆
 
 桌宠真正接受 `Interaction_worker.start_interact('actlist', GROUP_NAME)` 里的**组名**，并非动画 PNG 前缀 `wave/jump`。接入 `DyberPet.assistant.native_groups`：逐条核对当前角色 `pet_conf.json` 的组、实际已加载的底层动作、FV/游戏真实解锁状态，并排除已锁、混合语义、误标的“打招呼却只有待机图”组。用户点击的仍是中文“打招呼／散步／休息”等类别，后台准确发送当前运行引擎可播放的真实组名；测试同时覆盖收藏动作失效和组名转译。原画真实性、角色外观和声音验收仍独立进行。
+
+
+**动态解锁同步：** 用户提升亲密度、变更动作锁后，既有 `_update_fvlock` 会刷新当前已打开的桌宠助手动作组和收藏状态，过时按钮不会继续显示为可执行。实时启动前仍会在 PetWidget 再查一次解锁状态。

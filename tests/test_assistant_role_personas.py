@@ -63,6 +63,22 @@ class RolePersonaTests(unittest.TestCase):
                                    "rest": "休息"})
         self.assertNotIn("假动作", actions.values())
 
+    def test_fv_unlock_refreshes_assistant_action_buttons_in_real_main_source(self):
+        # Main application cannot be imported in a pure unit test because it
+        # creates Qt/system settings on import. Inspect the genuine method AST.
+        import ast
+        source = (Path(__file__).resolve().parents[1] /
+                  "DyberPet" / "DyberPet.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        methods = [n for cls in tree.body if isinstance(cls, ast.ClassDef)
+                   for n in cls.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                   and n.name == "_update_fvlock"]
+        self.assertEqual(len(methods), 1)
+        syncs = [call for call in ast.walk(methods[0]) if isinstance(call, ast.Call)
+                 and isinstance(call.func, ast.Attribute)
+                 and call.func.attr == "_sync_assistant_actions"]
+        self.assertEqual(len(syncs), 1)
+
     def test_direct_roster_id_fallback_only_for_valid_curated_ids(self):
         with tempfile.TemporaryDirectory() as td:
             self.assertEqual(persona_for_local_role("genshin_kaveh", td),

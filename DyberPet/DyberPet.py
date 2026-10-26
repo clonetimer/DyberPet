@@ -892,6 +892,10 @@ class PetWidget(QWidget):
                     self.act_menu.removeAction(self.select_acts[act_index])
                     self.select_acts.remove(self.select_acts[act_index])
 
+        # FV/affection changes must update the *already open* assistant.
+        # Its old shortcut buttons must not survive a newly locked group.
+        if getattr(self, "_pet_assistant", None) is not None:
+            self._sync_assistant_actions()
 
     def _set_Statusmenu(self):
 
