@@ -12,6 +12,19 @@ from pathlib import Path
 from unittest.mock import patch
 
 
+def assert_source_catalog_matches_registry(visible_count, expected_count, active_filter):
+    """Check real catalog against the active registry, not an old milestone.
+
+    A new verified character must not break X11 merely because the count grew.
+    Likewise a missing UI row must never be hidden by changing a hardcoded test.
+    """
+    if active_filter != "source" or visible_count != expected_count:
+        raise RuntimeError(
+            "X11 source catalog disagrees with verified source registry: "
+            f"shown={visible_count}, expected={expected_count}, "
+            f"filter={active_filter!r}")
+
+
 def verify_linux_gui():
     if sys.platform != "linux":
         raise RuntimeError("Linux-only X11/Xvfb GUI acceptance")
@@ -151,13 +164,18 @@ def verify_linux_gui():
         # Exercise the real 125-item searchable catalogue against the X11 Qt
         # display, with genuine native demo assets in frozen mode.
         from DyberPet.DyberSettings.character_catalog_dialog import CharacterCatalogDialog
+        from tools.character_source_coverage import source_coverage
+        expected_source_count = source_coverage()["summary"]["characters_with_pinned_sources"]
         search_dialog = CharacterCatalogDialog(progress, parent=window)
         try:
             search_dialog.show()
             app.processEvents()
-            if (not search_dialog.isVisible() or search_dialog.results.count()!=43 or
-                    search_dialog.statusFilter.currentData()!="source"):
-                raise RuntimeError("X11 default catalog must show 43 real-art source candidates")
+            if not search_dialog.isVisible():
+                raise RuntimeError("X11 character catalogue did not render")
+            assert_source_catalog_matches_registry(
+                search_dialog.results.count(),
+                expected_source_count,
+                search_dialog.statusFilter.currentData())
             if any("作者来源" not in search_dialog.results.item(i).text()
                    for i in range(search_dialog.results.count())):
                 raise RuntimeError("X11 source catalog lacks creator provenance")
@@ -245,6 +263,7 @@ def verify_linux_gui():
             "full_character_coverage_templates": progress["summary"]["template_total"],
             "full_character_coverage_ready": progress["summary"]["native_preview_ready"],
             "character_catalog_searchable": True,
+            "character_catalog_fixed_source_count": expected_source_count,
             "character_catalog_english_search": True,
             "character_catalog_mascot_filter": True,
             "character_catalog_demo_count": expected_count,

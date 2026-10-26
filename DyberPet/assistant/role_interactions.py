@@ -5,15 +5,18 @@ This is a *manual* interaction convenience, never a model/tool side effect.
 """
 from __future__ import annotations
 
+from secrets import choice as secure_choice
+
 # Friendly choices for artist-imported Codex sprites, Shimeji conversions and
 # legacy DyberPet Chinese action-group names. All matches are full exact names.
 INTERACTION_CATEGORIES = (
     ("greet", "打招呼", ("打招呼", "招手", "挥手", "wave", "hello", "greet")),
-    ("jump", "蹦一蹦", ("蹦一蹦", "跳跃", "跳一跳", "jump", "happy", "bounce")),
+    ("jump", "蹦一蹦", ("蹦一蹦", "跳跃", "跳一跳", "jump", "bounce")),
     ("observe", "观察周围", ("认真观察", "左顾右盼", "观察", "lookaround", "review", "focus")),
-    ("rest", "休息一下", ("休息", "等待", "稍作休息", "wait", "rest", "idle")),
+    ("rest", "休息一下", ("休息", "等待", "稍作休息", "wait", "rest")),
     ("sit", "坐下来", ("坐下", "坐着", "sit", "sitting", "seated")),
-    ("walk", "散步", ("左右散步", "散步", "行走", "walk", "right_walk", "left_walk", "run")),
+    ("walk", "散步", ("左右散步", "散步", "行走", "walk", "right_walk", "left_walk")),
+    ("run", "跑起来", ("奔跑", "跑步", "run", "running", "dash")),
     ("talk", "说话动作", ("说话", "口型", "对话", "talk", "speak")),
     ("sleep", "睡觉", ("睡觉", "睡眠", "sleep", "nap")),
     ("pet", "摸摸头", ("抚摸", "摸头", "拍拍", "patpat", "pat", "pet")),
@@ -46,3 +49,23 @@ def requested_action(interactions, category):
         if entry["id"] == category:
             return entry["action"] if entry["available"] else None
     return None
+
+
+def choose_random_real_action(interactions, *, previous=None, pick=None):
+    """Choose only a currently available genuine action, avoiding repeats.
+
+    No default idle, no synthetic gesture and no cross-role queue. The caller
+    must still check that the returned action remains unlocked on dispatch.
+    pick is injectable strictly for deterministic tests.
+    """
+    allowed = list(dict.fromkeys(
+        entry["action"] for entry in interactions
+        if entry.get("available") and isinstance(entry.get("action"), str)
+        and entry["action"]
+    ))
+    if len(allowed) > 1 and previous in allowed:
+        allowed.remove(previous)
+    if not allowed:
+        return None
+    chosen = (pick or secure_choice)(allowed)
+    return chosen if chosen in allowed else None

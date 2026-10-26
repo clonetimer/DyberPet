@@ -54,9 +54,9 @@ class HashPinnedPackageTests(unittest.TestCase):
 
     def test_exact_public_listing_sources_are_unique(self):
         manifest = listed_packages()
-        self.assertEqual(len(manifest["sources"]), 12)
+        self.assertEqual(len(manifest["sources"]), 28)
         self.assertEqual(set(manifest["sources"]),
-                         {"kaveh", "kinich", "kirara", "alhaitham", "baizhu", "candace", "chevreuse", "layla", "chiori", "cyno", "dehya", "freminet"})
+                         {"kaveh", "kinich", "kirara", "alhaitham", "baizhu", "candace", "chevreuse", "layla", "chiori", "cyno", "dehya", "freminet", "charlotte", "columbina", "gaming", "iansan", "aino", "dahlia", "flins", "lan_yan", "durin", "ineffa", "jahoda", "lauma", "alyosha", "lohen", "odette", "prune"})
         for key, record in manifest["sources"].items():
             self.assertEqual(len(record["sha256"]), 64)
             self.assertGreater(record["verified_bytes"], 100)
@@ -144,7 +144,9 @@ class HashPinnedPackageTests(unittest.TestCase):
         path = Path(__file__).resolve().parents[1] / "DyberPet/DyberSettings/CharCardUI.py"
         source = path.read_text("utf-8")
         ast.parse(source)
-        self.assertIn("个人使用：下载 SHA-256 固定的十二位原神角色原画 ZIP", source)
+        self.assertIn('verified_source_count = len(listed_packages()["sources"])', source)
+        self.assertIn('f"个人使用：下载 SHA-256 固定的{verified_source_count}位原神角色原画 ZIP"', source)
+        self.assertEqual(len(listed_packages()["sources"]), 28)
         self.assertIn('"pinned_codexpetdb_local" if local_archive else "pinned_codexpetdb"', source)
         self.assertIn('elif self.mode in ("pinned_codexpetdb", "pinned_codexpetdb_local"):', source)
         self.assertIn("QMessageBox.StandardButton.Yes", source)

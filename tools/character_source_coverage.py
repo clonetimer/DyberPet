@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from urllib.parse import quote
 
@@ -64,12 +65,12 @@ def source_coverage():
     for kind, asset in external["sources"].items():
         record(asset["profile"], "independent_codex", kind,
                f"https://github.com/{asset['repository']}/tree/{asset['revision']}/{asset['directory']}")
-    # These twelve r1 packages were independently downloaded and SHA-256
+    # These approved r1 packages were independently downloaded and SHA-256
     # verified against source bytes in the CI provider-zip-integrity job.
     # This is *source integrity* coverage, never human character likeness.
     petdb = json.loads(Path(__file__).with_name(
         "codexpetdb_pinned_zip_leads.json").read_text(encoding="utf-8"))
-    if petdb.get("schema") != 1 or len(petdb.get("sources", {})) != 12:
+    if petdb.get("schema") != 1 or not 28 <= len(petdb.get("sources", {})) <= 123:
         raise ValueError("Invalid SHA-256-verified community art source registry")
     for key, asset in sorted(petdb["sources"].items()):
         if asset["profile"] not in rows or len(asset["sha256"]) != 64:
@@ -83,6 +84,30 @@ def source_coverage():
             "contains_original_atlas_verified": True,
             "artist_character_likeness_verified": False,
             "native_role_installed_by_report": False,
+        })
+    # Exact original LFS bytes and native install were independently verified
+    # in CI; this is source integrity only, not full motion/likeness approval.
+    react = json.loads(Path(__file__).with_name(
+        "react_lfs_verified_sources.json").read_text(encoding="utf-8"))
+    if react.get("schema") != 1 or len(react.get("sources", {})) != 2:
+        raise ValueError("Unexpected verified React-Shimeji source registry")
+    for key, entry in sorted(react["sources"].items()):
+        profile = entry["profile"]
+        if (profile not in rows or len(entry["sha256"]) != 64 or
+                not isinstance(entry["verified_bytes"], int) or
+                entry["verified_bytes"] < 100):
+            raise ValueError("Invalid verified upstream React-Shimeji source")
+        link = ("https://github.com/" + react["repository"] + "/tree/" +
+                react["revision"] + "/packages/character-" + entry["slug"])
+        record(profile, "react_lfs", key, link)
+        rows[profile]["source_candidates"][-1].update({
+            "full_lfs_source_sha256": entry["sha256"],
+            "full_lfs_bytes_verified_in_ci": entry["verified_bytes"],
+            "native_install_tested_in_ci": True,
+            "real_original_png_frames_verified": entry["atlas_frames"],
+            "action_quality_pending": entry["action_quality_pending"],
+            "artist_character_likeness_verified": False,
+            "physical_runtime_motion_qa_verified": False,
         })
     for item in rows.values():
         item["source_candidates"].sort(key=lambda c: (c["preference_order"], c["provider"], c["source_key"]))
@@ -126,6 +151,10 @@ def main(argv=None):
     if args.output is not None:
         args.output.write_text(output, encoding="utf-8")
     else:
+        # Windows CI/PowerShell may launch the script with cp1252 stdout,
+        # which cannot encode Chinese role names. Produce real UTF-8 JSON.
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="strict")
         print(output, end="")
     return 0
 

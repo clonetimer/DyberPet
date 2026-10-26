@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "provider": "CodexPetDB",
+  "status": "catalog_metadata_only_not_verified",
+  "note": "Four independent candidates from canonical CodexPetDB catalog, NOT pinned/approved until non-gating CI retrieves actual ZIP bytes, checks SHA256, pet.json identity, original atlas, real frame motion and native import. Potential CDN 404/429 remains unverified.",
+  "sources": {
+    "aino": {
+      "profile": "genshin_aino",
+      "slug": "gi-aino",
+      "revision": "019f8c73-1ff4-77b5-8d88-87213159e806",
+      "sha256": "37b16a5d7d002b8d702de543782ba71a54397006d02676cea304c109a6233b11",
+      "verified_bytes": 1245895,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-aino/download"
+    },
+    "dahlia": {
+      "profile": "genshin_dahlia",
+      "slug": "gi-dahlia",
+      "revision": "019f8c76-2609-77c6-be63-120ff8a5c2e6",
+      "sha256": "67184f9eafc466af27baf82c475b598cb79085ce9d8acd947330dd219ec7566f",
+      "verified_bytes": 720705,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-dahlia/download"
+    },
+    "flins": {
+      "profile": "genshin_flins",
+      "slug": "gi-flins",
+      "revision": "019f8c77-4691-7588-a4f6-f188d584959d",
+      "sha256": "860561c7accdcda2a970fa8e3b20264a1079492ad87fae136a2ef29ae029ecda",
+      "verified_bytes": 733245,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-flins/download"
+    },
+    "lan_yan": {
+      "profile": "genshin_lan_yan",
+      "slug": "gi-lan-yan",
+      "revision": "019f8c79-fc82-72cd-94c8-fd50e65cf1fd",
+      "sha256": "f821e89ebb1eecbb9ef3d3f7b879577c6cfe0177381997dce930f4f06a3b32cb",
+      "verified_bytes": 882508,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-lan-yan/download"
+    }
+  }
+}

@@ -9,7 +9,7 @@ from pathlib import Path
 
 # A tiny real PNG fixture; original identity remains unreviewed.
 _PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg=="
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4ryHyHwAFoAI7Y0OAZQAAAABJRU5ErkJggg=="
 )
 
 
@@ -23,7 +23,8 @@ def _source_frames(folder, names):
 from tools.character_interaction_coverage import interaction_coverage, inspect_selected_role_interactions
 
 from DyberPet.assistant.role_interactions import (
-    available_interactions, requested_action, INTERACTION_CATEGORIES)
+    available_interactions, requested_action, INTERACTION_CATEGORIES,
+    choose_random_real_action)
 
 
 class RoleInteractionTests(unittest.TestCase):
@@ -35,7 +36,7 @@ class RoleInteractionTests(unittest.TestCase):
         self.assertEqual(by_id["greet"]["action"], "wave")
         self.assertEqual(by_id["jump"]["action"], "jump")
         self.assertEqual(by_id["observe"]["action"], "review")
-        self.assertEqual(by_id["rest"]["action"], "idle")
+        self.assertFalse(by_id["rest"]["available"])  # idle is not a rest animation
         self.assertEqual(by_id["walk"]["action"], "right_walk")
         self.assertFalse(by_id["talk"]["available"])
         self.assertFalse(by_id["sleep"]["available"])
@@ -64,7 +65,7 @@ class RoleInteractionTests(unittest.TestCase):
         self.assertEqual(requested_action(plan, "climb"), "climb")
         self.assertEqual(requested_action(plan, "crawl"), "crawl")
         self.assertEqual(requested_action(plan, "sit"), "sit")
-        self.assertEqual(requested_action(plan, "rest"), "idle")
+        self.assertIsNone(requested_action(plan, "rest"))  # idle is not a seated/resting animation
         self.assertNotEqual(requested_action(plan, "climb"),
                             requested_action(plan, "crawl"))
         self.assertEqual([x["label"] for x in plan if x["id"] in ("climb", "crawl")],
@@ -76,12 +77,47 @@ class RoleInteractionTests(unittest.TestCase):
         self.assertIsNone(requested_action(no_climb, "climb"))
         self.assertIsNone(requested_action(no_climb, "rest"))
 
+    def test_random_interaction_never_repeats_when_another_real_action_exists(self):
+        plan = available_interactions(["wave", "jump", "idle"])
+        self.assertEqual(
+            choose_random_real_action(plan, previous="wave", pick=lambda items: items[0]),
+            "jump")
+        self.assertEqual(
+            choose_random_real_action(plan, previous="jump", pick=lambda items: items[0]),
+            "wave")
+        one = available_interactions(["climb", "idle"])
+        self.assertEqual(choose_random_real_action(
+            one, previous="climb", pick=lambda items: items[0]), "climb")
+        self.assertIsNone(choose_random_real_action(
+            available_interactions(["idle", "default"])))
+        self.assertIsNone(choose_random_real_action(
+            plan, pick=lambda items: "fabricated-action"))
+        self.assertIsNone(choose_random_real_action(
+            plan, previous="wave", pick=lambda items: "wave"))
+
     def test_no_unrelated_or_unlocked_action_is_invented(self):
         for actions in ([], ["attack", "eat", "fake_patpat"], ["wave_effect", "fake_wave"],
                         ["walk_disabled"], [None, 123, "", " jump "]):
             plan = available_interactions(actions)
             self.assertTrue(all(not p["available"] for p in plan))
             self.assertTrue(all(p["action"] is None for p in plan))
+
+    def test_run_walk_and_explicit_rest_never_swap_motion_semantics(self):
+        actions = available_interactions(["run", "idle", "happy", "climb", "crawl"])
+        by_id = {x["id"]: x for x in actions}
+        self.assertEqual(by_id["run"]["action"], "run")
+        self.assertFalse(by_id["walk"]["available"])
+        self.assertFalse(by_id["rest"]["available"])
+        self.assertFalse(by_id["jump"]["available"])
+        self.assertEqual(by_id["climb"]["action"], "climb")
+        self.assertEqual(by_id["crawl"]["action"], "crawl")
+        self.assertNotEqual(by_id["climb"]["action"], by_id["crawl"]["action"])
+        actions2 = available_interactions(["right_walk", "rest", "sit", "jump"])
+        self.assertTrue({k: v["available"] for k, v in
+                        ((x["id"], x) for x in actions2)}["sit"])
+        self.assertEqual(requested_action(actions2, "walk"), "right_walk")
+        self.assertEqual(requested_action(actions2, "rest"), "rest")
+        self.assertIsNone(requested_action(actions2, "run"))
 
     def test_deterministic_without_duplicate_matches(self):
         x = available_interactions(["wave", "hello", "idle", "wave", "left_walk"])
@@ -113,13 +149,43 @@ class InteractionCoverageTests(unittest.TestCase):
                                           mascot_snapshot=masc)
         self.assertEqual(result["summary"]["template_total"], 3)
         self.assertEqual(result["summary"]["roles_with_creator_art"], 1)
+        self.assertEqual(result["summary"]["broken_creator_asset_folder_count"], 0)
         row = result["characters"][0]
+        self.assertEqual(row["playable_creator_role_count"], 1)
         self.assertEqual(row["actual_action_names"], ["idle", "jump"])
         self.assertIn("jump", row["action_categories_present_in_art"])
         self.assertIn("greet", row["action_categories_missing_in_art"])
         self.assertFalse(row["runtime_unlock_qa_verified"])
         self.assertFalse(row["character_likeness_qa_verified"])
         self.assertFalse(result["characters"][1]["original_creator_art_present"])
+
+    def test_mixed_valid_and_broken_creator_folders_count_only_playable_sources(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for name in ("Good", "Empty", "BadPNG"):
+                (root / name).mkdir()
+            (root / "Good" / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            _source_frames(root / "Good", ("wave",))
+            (root / "BadPNG" / "act_conf.json").write_text(
+                json.dumps({"jump": {"images": "jump"}}), encoding="utf-8")
+            bad = root / "BadPNG" / "action"
+            bad.mkdir()
+            (bad / "jump_0.png").write_bytes(b"not-a-png" * 10)
+            gen = {"characters": [{"profile": "genshin_kaveh", "name": "卡维",
+                   "installed_folders": [
+                       {"folder": name, "is_original_demo": False}
+                       for name in ("Good", "Empty", "BadPNG")]}]}
+            audit = interaction_coverage(root, genshin_snapshot=gen,
+                                         mascot_snapshot={"mascots": []})
+        row = audit["characters"][0]
+        self.assertEqual(row["imported_creator_role_count"], 3)
+        self.assertEqual(row["playable_creator_role_count"], 1)
+        self.assertEqual(row["creator_folders_with_broken_actions"], 2)
+        self.assertTrue(row["original_creator_art_present"])
+        self.assertEqual(row["actual_action_names"], ["wave"])
+        self.assertEqual(audit["summary"]["broken_creator_asset_folder_count"], 2)
+        self.assertEqual(audit["summary"]["roles_with_creator_art"], 1)
 
     def test_missing_or_unsafe_config_is_reported_not_counted_as_animation(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -131,8 +197,60 @@ class InteractionCoverageTests(unittest.TestCase):
             result = interaction_coverage(root, genshin_snapshot=gen,
                                           mascot_snapshot={"mascots": []})
         self.assertEqual(result["summary"]["roles_with_read_errors"], 1)
+        self.assertEqual(result["summary"]["roles_with_creator_art"], 0)
+        self.assertEqual(result["summary"]["roles_with_creator_folder_but_no_playable_actions"], 1)
+        self.assertEqual(result["summary"]["broken_creator_asset_folder_count"], 1)
+        self.assertEqual(result["characters"][0]["playable_creator_role_count"], 0)
+        self.assertFalse(result["characters"][0]["original_creator_art_present"])
         self.assertEqual(result["summary"]["roles_with_at_least_one_interaction"], 0)
         self.assertFalse(result["characters"][0]["action_categories_present_in_art"])
+
+    def test_png_signature_with_invalid_payload_does_not_count_as_art(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            folder = root / "BrokenPNG"
+            folder.mkdir()
+            (folder / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            (folder / "action").mkdir()
+            (folder / "action" / "wave_0.png").write_bytes(_PNG[:8] + b"\\0" * 100)
+            gen = {"characters": [{"profile": "genshin_sayu", "name": "早柚",
+                     "installed_folders": [{"folder": "BrokenPNG", "is_original_demo": False}]}]}
+            report = interaction_coverage(root, genshin_snapshot=gen,
+                                          mascot_snapshot={"mascots": []})
+            selected = inspect_selected_role_interactions(
+                root, folder.name, unlocked_actions=["wave"])
+        self.assertEqual(report["summary"]["roles_with_creator_art"], 0)
+        self.assertEqual(report["summary"]["broken_creator_asset_folder_count"], 1)
+        self.assertEqual(selected["configured_but_unplayable_actions"], ["wave"])
+        self.assertFalse(selected["installed_action_categories"])
+        self.assertFalse(selected["currently_unlocked_categories"])
+
+    def test_traversal_and_linked_role_directory_cannot_claim_creator_art(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "pets"
+            root.mkdir()
+            outsider = base / "Outside"
+            outsider.mkdir()
+            (outsider / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            _source_frames(outsider, ("wave",))
+            folders = [{"folder": "../Outside", "is_original_demo": False}]
+            alias = root / "Alias"
+            try:
+                alias.symlink_to(outsider, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                pass  # Windows accounts may lack permission to create symlinks.
+            else:
+                folders.append({"folder": "Alias", "is_original_demo": False})
+            gen = {"characters": [{"profile": "genshin_sayu", "name": "早柚",
+                    "installed_folders": folders}]}
+            report = interaction_coverage(root, genshin_snapshot=gen,
+                                          mascot_snapshot={"mascots": []})
+        self.assertEqual(report["summary"]["roles_with_creator_art"], 0)
+        self.assertEqual(report["summary"]["broken_creator_asset_folder_count"], len(folders))
+        self.assertFalse(report["characters"][0]["action_categories_present_in_art"])
 
 class CurrentRoleGapTests(unittest.TestCase):
     def test_current_character_only_reads_install_and_currently_unlocked_actions(self):

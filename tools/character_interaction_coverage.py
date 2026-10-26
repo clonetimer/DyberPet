@@ -11,26 +11,45 @@ import json
 from pathlib import Path
 import re
 
+from PIL import Image, UnidentifiedImageError
+
 from DyberPet.assistant.role_interactions import available_interactions
 
 MAX_ACTION_CONFIG_BYTES = 512 * 1024
+MAX_SPRITE_PIXELS = 4_000_000
+MAX_SPRITE_SIDE = 4096
+
+
+def _safe_installed_role(root, folder):
+    # Never follow a received role name outside the selected installation root.
+    # Whole-directory symlinks must be rejected, not just linked act_conf.json.
+    if (not isinstance(folder, str) or not folder or len(folder) > 120 or
+            folder in (".", "..") or
+            any(part in folder for part in ("/", chr(92), chr(0)))):
+        raise ValueError("Invalid installed role folder name")
+    role = root / folder
+    if role.is_symlink() or not role.is_dir():
+        raise ValueError("Missing or linked installed role folder")
+    return role
 
 
 def _action_inventory(root, folder):
     """Only a safe installed first PNG frame can establish an action exists.
 
     A declared action in act_conf is NOT playable when its original files are
-    missing. This cheap check intentionally does not prove pixels, uniqueness,
-    sprite identity or runtime unlock; those require deeper visual testing.
+    missing or corrupted. This on-demand check decodes the first frame only:
+    it does not prove full sequence completeness, unique animation, character
+    identity or runtime unlock; those require deeper visual testing.
     """
-    target = root / folder / "act_conf.json"
+    role = _safe_installed_role(root, folder)
+    target = role / "act_conf.json"
     if (target.is_symlink() or not target.is_file() or
             target.stat().st_size > MAX_ACTION_CONFIG_BYTES):
         raise ValueError("Unsafe or missing action configuration")
     data = json.loads(target.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or len(data) > 128:
         raise ValueError("Action map must be a bounded JSON object")
-    art = root / folder / "action"
+    art = role / "action"
     if art.is_symlink() or not art.is_dir():
         raise ValueError("Role has no trusted action PNG directory")
     valid, unusable = [], []
@@ -47,10 +66,19 @@ def _action_inventory(root, folder):
                 not 32 <= original_frame.stat().st_size <= 8 * 1024 * 1024):
             unusable.append(name)
             continue
-        with original_frame.open("rb") as image_file:
-            if image_file.read(8) != b"\x89PNG\r\n\x1a\n":
-                unusable.append(name)
-                continue
+        # An eight-byte PNG signature does not prove the sprite can decode:
+        # reject forged headers, truncated IDAT streams and decompression bombs.
+        try:
+            with Image.open(original_frame) as image:
+                if (image.format != "PNG" or image.width <= 0 or image.height <= 0 or
+                        image.width > MAX_SPRITE_SIDE or image.height > MAX_SPRITE_SIDE or
+                        image.width * image.height > MAX_SPRITE_PIXELS):
+                    unusable.append(name)
+                    continue
+                image.load()
+        except (OSError, ValueError, UnidentifiedImageError):
+            unusable.append(name)
+            continue
         valid.append(name)
     return valid, unusable
 
@@ -81,17 +109,22 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
     def record(profile, name, family, folders):
         actual_folders = [x["folder"] for x in folders]
         all_names = set()
+        playable_folders = []
         errors = []
         for folder in actual_folders:
             try:
-                all_names.update(_original_art_action_names(root, folder))
+                names = _original_art_action_names(root, folder)
+                all_names.update(names)
+                playable_folders.append(folder)
             except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
                 errors.append({"folder": folder, "reason": str(exc)[:160]})
         interactions = available_interactions(sorted(all_names))
         rows.append({
             "id": profile, "name": name, "family": family,
             "imported_creator_role_count": len(actual_folders),
-            "original_creator_art_present": bool(actual_folders),
+            "playable_creator_role_count": len(playable_folders),
+            "creator_folders_with_broken_actions": len(actual_folders) - len(playable_folders),
+            "original_creator_art_present": bool(playable_folders),
             "actual_action_names": sorted(all_names),
             "action_categories_present_in_art": [x["id"] for x in interactions if x["available"]],
             "action_categories_missing_in_art": [x["id"] for x in interactions if not x["available"]],
@@ -113,6 +146,11 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
         "summary": {
             "template_total": len(rows),
             "roles_with_creator_art": sum(r["original_creator_art_present"] for r in rows),
+            "roles_with_creator_folder_but_no_playable_actions": sum(
+                bool(r["imported_creator_role_count"]) and
+                not r["original_creator_art_present"] for r in rows),
+            "broken_creator_asset_folder_count": sum(
+                r["creator_folders_with_broken_actions"] for r in rows),
             "roles_with_at_least_one_interaction": sum(
                 bool(r["action_categories_present_in_art"]) for r in rows),
             "roles_missing_all_original_art_interactions": sum(
