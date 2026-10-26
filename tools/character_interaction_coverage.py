@@ -206,7 +206,8 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
 
 
 
-def inspect_selected_role_interactions(role_root, role_name, *, unlocked_actions=()):
+def inspect_selected_role_interactions(role_root, role_name, *,
+                                       unlocked_actions=(), runtime_group_plan=None):
     """Inspect one active role without scanning all 125 character directories.
 
     A locally created receipt cannot prove official art provenance or likeness;
@@ -225,7 +226,10 @@ def inspect_selected_role_interactions(role_root, role_name, *, unlocked_actions
     if not folder.is_dir():
         return {
             "role": role_name, "status": "not_installed",
-            "on_disk_action_names": [], "configured_but_unplayable_actions": [], "installed_action_categories": [],
+            "on_disk_action_names": [], "configured_but_unplayable_actions": [],
+            "runtime_action_group_mapping": {},
+            "runtime_group_evidence_available": runtime_group_plan is not None,
+            "installed_action_categories": [],
             "currently_unlocked_categories": [], "missing_categories": [
                 x["id"] for x in available_interactions([])],
             "art_likeness_qa_passed": False, "physical_desktop_qa_passed": False,
@@ -246,18 +250,43 @@ def inspect_selected_role_interactions(role_root, role_name, *, unlocked_actions
     now_unlocked = set(x for x in unlocked_actions if isinstance(x, str))
     live = available_interactions(
         [name for name in action_names if name in now_unlocked])
+    group_map = {}
+    if runtime_group_plan is not None:
+        if not isinstance(runtime_group_plan, list):
+            raise ValueError("Invalid runtime action-group evidence")
+        on_disk_categories = {x["id"] for x in on_disk if x["available"]}
+        allowed_ids = {x["id"] for x in available_interactions([])}
+        for item in runtime_group_plan:
+            if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+                raise ValueError("Invalid runtime group entry")
+            category, title = item["id"], item.get("action")
+            if (category not in allowed_ids or category in group_map or
+                    item.get("available") is not True or
+                    not isinstance(title, str) or title not in now_unlocked or
+                    category not in on_disk_categories):
+                continue
+            group_map[category] = title
+        # Unlike legacy on-disk PNG hints, the active PetWidget dispatches
+        # only installed+unlocked random-act GROUP NAMES. Never compare those
+        # names directly with wave/jump image keys.
+        live = [{"id": x["id"], "available": x["id"] in group_map}
+                for x in available_interactions([])]
     return {
         "role": role_name,
         "status": status,
         "on_disk_action_names": sorted(action_names),
         "configured_but_unplayable_actions": sorted(invalid),
+        "runtime_action_group_mapping": group_map,
+        "runtime_group_evidence_available": runtime_group_plan is not None,
         "installed_action_categories": [x["id"] for x in on_disk if x["available"]],
         "currently_unlocked_categories": [x["id"] for x in live if x["available"]],
         "missing_categories": [x["id"] for x in on_disk if not x["available"]],
         "art_likeness_qa_passed": False,
         "physical_desktop_qa_passed": False,
-        "note": ("These are installed action-name hints only; source art, "
-                 "real playback, animation uniqueness and rights await visual review."),
+        "note": ("Installed native action names and active PetWidget action-group "
+                 "unlocks are distinct namespaces. Runtime group mapping, when supplied, "
+                 "is used for playable categories; source art, real playback, "
+                 "animation uniqueness and rights await visual review."),
     }
 
 

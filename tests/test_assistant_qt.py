@@ -132,6 +132,7 @@ class AssistantQtTests(unittest.TestCase):
             self.assertEqual(inspector.call_count, 1)
             self.assertEqual(inspector.call_args.args[1], "咕嘎")
             self.assertEqual(inspector.call_args.kwargs["unlocked_actions"], {"wave"})
+            self.assertIsInstance(inspector.call_args.kwargs["runtime_group_plan"], list)
             self.assertIn("打招呼", message.call_args.args[2])
             self.assertIn("未人工核验", message.call_args.args[2])
             self.dialog.set_character("Doro")

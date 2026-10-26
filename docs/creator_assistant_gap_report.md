@@ -42,3 +42,8 @@ python tools/creator_assistant_gap_report.py --role-root res/role --deep-frame-a
 - `roles_with_version_specific_action_gaps`：受多版本差异影响的人物数。
 
 总览导出入口仍为系统的「全部角色库 → 导出全部角色素材与互动缺口 JSON」。正在运行的桌宠助手只能操作当前角色由 PetWidget **实时已解锁** 的原生动作，不能从其他文件夹借动作。所有结构性识别仍非原设人物视觉、人设声音或物理桌面验收。
+
+
+## 2026-10-26 · 当前角色互动作业报告纠正名称空间混用
+
+`act_conf.json` 的 `wave`、`jump` 等是**原生 PNG 动画键**；正在运行的 PetWidget 将 `pet_conf.random_act` 中的中文**动作组名**传给 `Interaction_worker.start_interact('actlist', ...)`。如果报告直接取两者名称的交集，会将真实可执行动作误报为未解锁。本轮导出和弹窗使用同一份实时校验通过的 `runtime_group_plan`，单独列出 `runtime_action_group_mapping`、`runtime_group_evidence_available`、`currently_unlocked_categories`；素材动作列依然只表示原画存在，不能代表已解锁或形象验收。离线非 GUI 调用保留旧名称报告兼容行为。

@@ -431,7 +431,8 @@ class PetAssistantDialog(QDialog):
         try:
             report = inspect_selected_role_interactions(
                 self.role_root, self.character_name,
-                unlocked_actions=self._unlocked_actions)
+                unlocked_actions=self._unlocked_actions,
+                runtime_group_plan=self._interaction_plan)
         except (OSError, ValueError) as exc:
             self._job_error("互动素材检查失败：" + str(exc))
             return
@@ -454,6 +455,9 @@ class PetAssistantDialog(QDialog):
             "仅有配置、缺少 PNG 帧：" + ("、".join(configured_but_missing) or "无"),
             "有素材但当前未解锁：" + (
                 "、".join(titles.get(k, k) for k in installed_but_locked) or "无"),
+            "当前引擎可执行动作组：" + (
+                "、".join(f"{titles.get(k,k)} → {group}" for k, group
+                         in report.get("runtime_action_group_mapping", {}).items()) or "无"),
             "可触发的互动类别：" + (
                 "、".join(titles.get(k, k) for k in good) or "无"),
             "尚无对应真实动作的类别：" + (
@@ -471,11 +475,12 @@ class PetAssistantDialog(QDialog):
             # when the current role is missing or its action config is unsafe.
             report = inspect_selected_role_interactions(
                 self.role_root, self.character_name,
-                unlocked_actions=self._unlocked_actions)
+                unlocked_actions=self._unlocked_actions,
+                runtime_group_plan=self._interaction_plan)
         except (OSError, ValueError) as exc:
             self._job_error("角色互动报告无法生成：" + str(exc))
             return
-        report["inspection_scope"] = "current_role_on_disk_plus_runtime_unlocked"
+        report["inspection_scope"] = "current_role_native_frames_plus_verified_runtime_groups"
         report["human_original_likeness_verified"] = False
         report["manual_playback_verified"] = False
         # The chosen character remains the only source of truth. No model text

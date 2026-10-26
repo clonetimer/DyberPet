@@ -280,6 +280,37 @@ class InteractionCoverageTests(unittest.TestCase):
         self.assertEqual(by_folder["KavehJump"]["available_category_ids"], ["jump"])
         self.assertFalse(by_folder["KavehJump"]["requires_manual_visual_qa"] is False)
 
+    def test_current_role_disk_frames_and_runtime_group_names_do_not_miscompare(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            folder = root / "RealSprite"
+            folder.mkdir()
+            (folder / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}, "jump": {"images": "jump"}}),
+                encoding="utf-8")
+            _source_frames(folder, ("wave", "jump"))
+            plan = [
+                {"id": "greet", "action": "打招呼", "available": True},
+                {"id": "jump", "action": None, "available": False},
+            ]
+            result = inspect_selected_role_interactions(
+                root, "RealSprite", unlocked_actions=["打招呼"],
+                runtime_group_plan=plan)
+            self.assertIn("greet", result["installed_action_categories"])
+            self.assertIn("jump", result["installed_action_categories"])
+            self.assertEqual(result["currently_unlocked_categories"], ["greet"])
+            self.assertEqual(result["runtime_action_group_mapping"],
+                             {"greet": "打招呼"})
+            self.assertTrue(result["runtime_group_evidence_available"])
+            self.assertEqual(result["missing_categories"], [
+                category["id"] for category in available_interactions([])
+                if category["id"] not in ("greet", "jump")])
+            no_loaded = inspect_selected_role_interactions(
+                root, "RealSprite", unlocked_actions=["打招呼"],
+                runtime_group_plan=[])
+            self.assertEqual(no_loaded["currently_unlocked_categories"], [])
+            self.assertEqual(no_loaded["runtime_action_group_mapping"], {})
+
     def test_unusable_artist_version_is_exposed_but_not_union_counted(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
