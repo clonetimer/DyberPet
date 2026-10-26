@@ -12,13 +12,14 @@ from PIL import Image
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
+    QCheckBox, QComboBox, QDialog, QFileDialog, QGridLayout, QHBoxLayout, QLabel,
     QLineEdit, QMessageBox, QPushButton, QSlider, QVBoxLayout,
 )
 
 from tools.artist_animation_audit import (
     _frames_for_action, _read_config, MAX_ACTIONS, MAX_PIXELS, MAX_SIDE)
 from tools.character_interaction_coverage import _safe_installed_role
+from DyberPet.assistant.role_interactions import available_interactions
 from tools.creator_art_manual_review import (
     GRADES, create_manual_review_receipt, save_manual_review)
 
@@ -84,6 +85,23 @@ class NativeFramePreviewDialog(QDialog):
         layout.addWidget(self.version)
         self.action = QComboBox(self)
         layout.addWidget(self.action)
+        # A character gets ONLY genuine authored actions from this exact local
+        # version. Missing categories are visibly disabled, never synthesized.
+        self.interaction_summary = QLabel(self)
+        self.interaction_summary.setWordWrap(True)
+        layout.addWidget(self.interaction_summary)
+        interaction_grid = QGridLayout()
+        self.interaction_buttons = {}
+        for index, item in enumerate(available_interactions(())):
+            button = QPushButton(item["label"], self)
+            button.setEnabled(False)
+            button.setToolTip("当前作者素材未提供该互动动作")
+            button.clicked.connect(
+                lambda _checked=False, category=item["id"]:
+                self._preview_interaction(category))
+            interaction_grid.addWidget(button, index // 4, index % 4)
+            self.interaction_buttons[item["id"]] = button
+        layout.addLayout(interaction_grid)
         self.canvas = QLabel(self)
         self.canvas.setMinimumSize(400, 240)
         self.canvas.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -165,6 +183,7 @@ class NativeFramePreviewDialog(QDialog):
             self.action.blockSignals(True)
             self.action.clear()
             self.action.blockSignals(False)
+            self._refresh_interaction_shortcuts()
             return
         self.play.setEnabled(True)
         self.export_review.setEnabled(True)
@@ -173,7 +192,36 @@ class NativeFramePreviewDialog(QDialog):
         for name in self._inventory:
             self.action.addItem(name, name)
         self.action.blockSignals(False)
+        self._refresh_interaction_shortcuts()
         self._select_action()
+
+    def _refresh_interaction_shortcuts(self):
+        actions = available_interactions(self._inventory.keys())
+        total = 0
+        for item in actions:
+            button = self.interaction_buttons[item["id"]]
+            usable = bool(item["available"])
+            button.setEnabled(usable)
+            button.setToolTip(
+                "预览当前版本的真实 PNG 动作：" + item["action"]
+                if usable else "该素材版本没有可用的对应动作，未作合成")
+            total += int(usable)
+        self.interaction_summary.setText(
+            f"本素材版本可预览 {total} / {len(actions)} 类真实互动；"
+            "不可用的按钮保持禁用（不是多个版本的动作总和）。")
+
+    def _preview_interaction(self, category):
+        choices = available_interactions(self._inventory.keys())
+        match = next((x for x in choices
+                      if x["id"] == category and x["available"]), None)
+        if match is None:
+            return
+        idx = self.action.findData(match["action"])
+        if idx < 0:
+            return  # Never dispatch a filename absent from this version.
+        self.action.setCurrentIndex(idx)
+        if not self._clock.isActive() and self._frames:
+            self._toggle_play()
 
     def _select_action(self, *_):
         self._clock.stop()
