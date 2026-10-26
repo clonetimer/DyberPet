@@ -5,7 +5,8 @@ import ast
 from pathlib import Path
 import unittest
 
-from tools.community_codex_leads import PROFILE_TO_SLUG, public_candidate_report
+from tools.community_codex_leads import (
+    PROFILE_TO_SLUG, public_candidate_report, EXTERNAL_SHIMEJI_PAGES)
 from tools.character_source_coverage import source_coverage
 
 
@@ -37,6 +38,15 @@ class CommunityRoleLeadsTests(unittest.TestCase):
         self.assertEqual(PROFILE_TO_SLUG["genshin_kirara"], "gi-kirara")
         self.assertNotIn("genshin_manekina", PROFILE_TO_SLUG)
         self.assertEqual(len(PROFILE_TO_SLUG), len(set(PROFILE_TO_SLUG.values())))
+
+    def test_itto_candidate_cannot_be_counted_as_pinned_art(self):
+        self.assertEqual(EXTERNAL_SHIMEJI_PAGES, {
+            "genshin_arataki_itto": "https://shimejishop.com/free/arataki-itto-shimeji/"
+        })
+        row = next(x for x in source_coverage()["characters"]
+                   if x["id"] == "genshin_arataki_itto")
+        self.assertFalse(row["source_found"])
+        self.assertEqual(row["source_candidate_count"], 0)
 
     def test_gui_only_opens_known_candidates_by_explicit_click(self):
         path = Path(__file__).resolve().parents[1] / "DyberPet/DyberSettings/character_catalog_dialog.py"
