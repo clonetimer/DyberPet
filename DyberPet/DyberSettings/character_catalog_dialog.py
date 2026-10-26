@@ -126,6 +126,14 @@ class CharacterCatalogDialog(QDialog):
             "识别高瘦立牌风险、疑似静止动作；不会自动决定是否符合Q版。")
         self.exportStandeeButton.clicked.connect(self._export_standee_triage)
         layout.addWidget(self.exportStandeeButton)
+        self.compareCreatorButton = QPushButton(
+            "查看真实Q版原画对照墙（优先15套体态风险素材）", self)
+        self.compareCreatorButton.setEnabled(self._role_root is not None)
+        self.compareCreatorButton.setToolTip(
+            "直接在界面显示本机原始PNG首帧，支持逐版本动作核验和查看已登记"
+            "作者备选来源；不会自行更换原画。")
+        self.compareCreatorButton.clicked.connect(self._open_creator_review_board)
+        layout.addWidget(self.compareCreatorButton)
 
         self.searchBox.textChanged.connect(self._refresh)
         self.familyFilter.currentIndexChanged.connect(self._refresh)
@@ -366,6 +374,19 @@ class CharacterCatalogDialog(QDialog):
             "已导出素材来源及每个已安装版本的动作差异。"
             "人物总动作是版本并集，不能直接作为当前桌宠能力。"
             "原设相似度、实际播放、音色仍需人工核对。")
+
+    def _open_creator_review_board(self):
+        if self._role_root is None:
+            return
+        try:
+            from DyberPet.DyberSettings.creator_q_review_board import (
+                CreatorQReviewBoardDialog)
+            gallery = CreatorQReviewBoardDialog(self._role_root, self)
+            gallery.exec()
+            self._reload_quality()
+            self._refresh()
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            QMessageBox.warning(self, "打开真实原画对照墙失败", str(exc))
 
     def _export_standee_triage(self):
         if self._role_root is None:
