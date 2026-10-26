@@ -93,8 +93,9 @@ class CharacterCatalogDialog(QDialog):
 
         self.exportGapButton = QPushButton("导出全部角色素材与互动缺口 JSON", self)
         self.exportGapButton.setToolTip(
-            "只读汇总本机创作者原画和可解码的首帧动作，不会下载素材，"
-            "也不会将原设视觉或实际桌面验收误判为通过")
+            "只读汇总本机创作者原画及每个已安装版本的动作差异；"
+            "汇总动作是多个版本的并集，不代表当前选中的版本全部可用。"
+            "不会下载素材，也不会自动盖章原设美术验收。")
         self.exportGapButton.setEnabled(self._role_root is not None)
         self.exportGapButton.clicked.connect(self._export_gap_report)
         layout.addWidget(self.exportGapButton)
@@ -207,8 +208,9 @@ class CharacterCatalogDialog(QDialog):
             return
         QMessageBox.information(
             self, "导出完成",
-            "已导出可核实的素材和动作状态。"
-            "原设相似度、实际动画播放、音色与来源使用条件仍需人工审核。")
+            "已导出素材来源及每个已安装版本的动作差异。"
+            "人物总动作是版本并集，不能直接作为当前桌宠能力。"
+            "原设相似度、实际播放、音色仍需人工核对。")
 
     def _select(self):
         selected = self.selected_character_id()

@@ -30,3 +30,15 @@ python tools/creator_assistant_gap_report.py --role-root res/role --deep-frame-a
 ```
 
 这会逐原生角色调用 `artist_animation_audit.audit_native_character`，读取每个动作的**所有** PNG，检查序列连续、图像可解码、尺寸、透明帧、重复静帧，以及运动动作是否存在不同画面；有一套坏图不会阻止其它角色的报告输出。结果位于 `full_frame_structure_audit`，`passed_structure` 仅表示图像序列结构检查通过，不代表原设美术、动作语义、实际桌面播放、音色、版权或人工质量评审通过。标准的 `complete_motion_sequence_verified` 仍为 false。
+
+
+## 2026-10-26 · 多素材版本不能合并冒充单个角色的互动能力
+
+同一人物可保留不同作者的多个已安装版本（例如一版只有挥手，另一版只有跳跃）。总览报告的 `available_action_categories_in_art` 是**全部版本的并集**，不能据此断言当前桌宠同时拥有这些动作。新增：
+
+- `per_installed_creator_version`：逐目录记录本机已解码的原画动作与每个动作类别。坏目录有独立异常，不计入可用素材。
+- `categories_shared_by_every_usable_version`：所有可解码版本共同拥有的交互类别。
+- `categories_missing_from_at_least_one_usable_version`：有的版本有、有的版本没有的交互类别。
+- `roles_with_version_specific_action_gaps`：受多版本差异影响的人物数。
+
+总览导出入口仍为系统的「全部角色库 → 导出全部角色素材与互动缺口 JSON」。正在运行的桌宠助手只能操作当前角色由 PetWidget **实时已解锁** 的原生动作，不能从其他文件夹借动作。所有结构性识别仍非原设人物视觉、人设声音或物理桌面验收。

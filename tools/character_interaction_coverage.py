@@ -110,15 +110,37 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
         actual_folders = [x["folder"] for x in folders]
         all_names = set()
         playable_folders = []
+        variants = []
         errors = []
         for folder in actual_folders:
             try:
                 names = _original_art_action_names(root, folder)
                 all_names.update(names)
                 playable_folders.append(folder)
+                variant_actions = available_interactions(names)
+                variants.append({
+                    "folder": folder, "status": "has_decodable_first_frames",
+                    "installed_action_names": sorted(names),
+                    "available_category_ids": [a["id"] for a in variant_actions
+                                               if a["available"]],
+                    "requires_manual_visual_qa": True,
+                })
             except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
-                errors.append({"folder": folder, "reason": str(exc)[:160]})
+                reason = str(exc)[:160]
+                errors.append({"folder": folder, "reason": reason})
+                variants.append({
+                    "folder": folder, "status": "unusable_config_or_first_frame",
+                    "installed_action_names": [],
+                    "available_category_ids": [],
+                    "requires_manual_visual_qa": True, "error": reason,
+                })
         interactions = available_interactions(sorted(all_names))
+        playable_sets = [set(x["available_category_ids"]) for x in variants
+                         if x["status"] == "has_decodable_first_frames"]
+        common = (set.intersection(*playable_sets) if playable_sets else set())
+        any_version = {x["id"] for x in interactions if x["available"]}
+        ordered = [x["id"] for x in interactions]
+        some_only = any_version - common
         rows.append({
             "id": profile, "name": name, "family": family,
             "imported_creator_role_count": len(actual_folders),
@@ -127,6 +149,13 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
             "creator_folders_with_broken_actions": len(actual_folders) - len(playable_folders),
             "original_creator_art_present": bool(playable_folders),
             "actual_action_names": sorted(all_names),
+            "creator_role_variants": variants,
+            "action_categories_in_every_usable_version": [
+                k for k in ordered if k in common],
+            "action_categories_only_in_some_versions": [
+                k for k in ordered if k in some_only],
+            "largest_single_version_category_count": max(
+                (len(s) for s in playable_sets), default=0),
             "action_categories_present_in_art": [x["id"] for x in interactions if x["available"]],
             "action_categories_missing_in_art": [x["id"] for x in interactions if not x["available"]],
             "runtime_unlock_qa_verified": False,
@@ -154,6 +183,12 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
                 r["creator_folders_with_broken_actions"] for r in rows),
             "roles_with_at_least_one_interaction": sum(
                 bool(r["action_categories_present_in_art"]) for r in rows),
+            "roles_with_variant_dependent_actions": sum(
+                len(r["creator_role_variants"]) > 1 and
+                bool(r["action_categories_only_in_some_versions"]) for r in rows),
+            "roles_where_union_exceeds_any_single_version": sum(
+                len(r["action_categories_present_in_art"]) >
+                r["largest_single_version_category_count"] for r in rows),
             "roles_missing_all_original_art_interactions": sum(
                 not r["action_categories_present_in_art"] for r in rows),
             "roles_with_read_errors": sum(bool(r["errors"]) for r in rows),
@@ -162,6 +197,9 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
         },
         "characters": rows,
         "note": ("Original/demo characters NEVER count as creator-art coverage. "
+                 "Categories in this report are a UNION of installed role variants; "
+                 "each variant has a separate action list, so the union is NOT the "
+                 "capability set of one selected desktop pet. "
                  "This report is a static asset action inventory, NOT proof of runtime "
                  "unlock, actual Qt playback, original identity, voice, or rights."),
     }

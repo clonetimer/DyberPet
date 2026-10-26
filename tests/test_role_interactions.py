@@ -252,6 +252,58 @@ class InteractionCoverageTests(unittest.TestCase):
         self.assertEqual(report["summary"]["broken_creator_asset_folder_count"], len(folders))
         self.assertFalse(report["characters"][0]["action_categories_present_in_art"])
 
+    def test_two_independent_artist_versions_never_fake_one_complete_action_set(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for folder, action in (("KavehWave", "wave"), ("KavehJump", "jump")):
+                d = root / folder
+                d.mkdir()
+                (d / "act_conf.json").write_text(
+                    json.dumps({action: {"images": action}}), encoding="utf-8")
+                _source_frames(d, (action,))
+            snapshot = {"characters": [{"profile": "genshin_kaveh", "name": "卡维",
+                         "installed_folders": [
+                             {"folder": "KavehWave", "is_original_demo": False},
+                             {"folder": "KavehJump", "is_original_demo": False}]}]}
+            result = interaction_coverage(
+                root, genshin_snapshot=snapshot, mascot_snapshot={"mascots": []})
+        row = result["characters"][0]
+        self.assertEqual(set(row["action_categories_present_in_art"]), {"greet", "jump"})
+        self.assertEqual(row["action_categories_in_every_usable_version"], [])
+        self.assertEqual(
+            set(row["action_categories_only_in_some_versions"]), {"greet", "jump"})
+        self.assertEqual(row["largest_single_version_category_count"], 1)
+        self.assertEqual(result["summary"]["roles_with_variant_dependent_actions"], 1)
+        self.assertEqual(result["summary"]["roles_where_union_exceeds_any_single_version"], 1)
+        by_folder = {v["folder"]: v for v in row["creator_role_variants"]}
+        self.assertEqual(by_folder["KavehWave"]["available_category_ids"], ["greet"])
+        self.assertEqual(by_folder["KavehJump"]["available_category_ids"], ["jump"])
+        self.assertFalse(by_folder["KavehJump"]["requires_manual_visual_qa"] is False)
+
+    def test_unusable_artist_version_is_exposed_but_not_union_counted(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            good = root / "OriginalWave"
+            bad = root / "Broken"
+            good.mkdir()
+            bad.mkdir()
+            (good / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            _source_frames(good, ("wave",))
+            snapshot = {"characters": [{"profile": "genshin_sayu", "name": "早柚",
+                         "installed_folders": [
+                            {"folder": "OriginalWave", "is_original_demo": False},
+                            {"folder": "Broken", "is_original_demo": False}]}]}
+            result = interaction_coverage(
+                root, genshin_snapshot=snapshot, mascot_snapshot={"mascots": []})
+        row = result["characters"][0]
+        self.assertEqual(row["playable_creator_role_count"], 1)
+        self.assertEqual(len(row["creator_role_variants"]), 2)
+        self.assertEqual(
+            next(v for v in row["creator_role_variants"] if v["folder"] == "Broken")["status"],
+            "unusable_config_or_first_frame")
+        self.assertEqual(row["action_categories_in_every_usable_version"], ["greet"])
+
 class CurrentRoleGapTests(unittest.TestCase):
     def test_current_character_only_reads_install_and_currently_unlocked_actions(self):
         with tempfile.TemporaryDirectory() as td:

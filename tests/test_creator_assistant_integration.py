@@ -139,6 +139,46 @@ class CreatorAssistantIntegrationTests(unittest.TestCase):
                 make_gap_report(td, pinned_report=src, installed_report=installed,
                                 deep_frame_audit=True)
 
+    def test_integrated_per_version_audit_never_claims_combined_actions_available(self):
+        source, installed = reports()
+        row = installed["characters"][1]
+        row["imported_creator_role_count"] = 2
+        row["playable_creator_role_count"] = 2
+        row["creator_role_variants"] = [
+            {"folder": "Source1", "status": "has_decodable_first_frames",
+             "available_category_ids": ["greet"], "installed_action_names": ["wave"]},
+            {"folder": "Source2", "status": "has_decodable_first_frames",
+             "available_category_ids": ["jump"], "installed_action_names": ["jump"]},
+        ]
+        row["action_categories_present_in_art"] = ["greet", "jump"]
+        row["action_categories_missing_in_art"] = ["sleep"]
+        row["action_categories_in_every_usable_version"] = []
+        row["action_categories_only_in_some_versions"] = ["greet", "jump"]
+        result = make_gap_report(".", pinned_report=source, installed_report=installed)
+        by_id = {x["id"]: x for x in result["roles"]}
+        entry = by_id["genshin_b"]
+        self.assertEqual(entry["interaction_scope"],
+                         "union_of_installed_versions_not_runtime_role")
+        self.assertEqual(entry["categories_shared_by_every_usable_version"], [])
+        self.assertEqual(entry["categories_missing_from_at_least_one_usable_version"],
+                         ["greet", "jump"])
+        self.assertEqual(len(entry["per_installed_creator_version"]), 2)
+        self.assertEqual(result["summary"]["roles_with_version_specific_action_gaps"], 1)
+        self.assertEqual(result["summary"]["roles_with_multiple_imported_creator_versions"], 1)
+        self.assertFalse(entry["physical_desktop_playback_verified"])
+
+    def test_variant_receipts_reject_double_counting_the_same_folder(self):
+        source, installed = reports()
+        art = installed["characters"][1]
+        art["creator_role_variants"] = [
+            {"folder": "Shared", "status": "has_decodable_first_frames"},
+            {"folder": "Shared", "status": "has_decodable_first_frames"},
+        ]
+        art["imported_creator_role_count"] = 2
+        art["playable_creator_role_count"] = 2
+        with self.assertRaises(ValueError):
+            make_gap_report(".", pinned_report=source, installed_report=installed)
+
     def test_real_empty_install_tree_does_not_fake_available_roles(self):
         with tempfile.TemporaryDirectory() as td:
             report = make_gap_report(Path(td))

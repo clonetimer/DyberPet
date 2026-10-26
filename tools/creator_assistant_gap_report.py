@@ -109,6 +109,16 @@ def make_gap_report(role_root, *, pinned_report=None, installed_report=None,
                        "not_applicable" if not deep else
                        "passed_structure" if all(x["status"] == "structure_passed" for x in deep)
                        else "has_structure_issues")
+        variants = art.get("creator_role_variants")
+        if variants is not None:
+            if (not isinstance(variants, list) or len(variants) != folders or
+                    sum(v.get("status") == "has_decodable_first_frames"
+                        for v in variants) != usable_folders or
+                    len(set(v["folder"] for v in variants)) != len(variants)):
+                raise ValueError("Per-installed-version interaction evidence is inconsistent")
+        # An older injected/local test report may not contain variant evidence;
+        # avoid inferring that the union belongs to one selected role.
+        variants = list(variants) if variants is not None else []
         actions = list(art.get("action_categories_present_in_art", []))
         missing = list(art.get("action_categories_missing_in_art", []))
         if len(set(actions + missing)) != len(actions) + len(missing):
@@ -123,6 +133,13 @@ def make_gap_report(role_root, *, pinned_report=None, installed_report=None,
             "creator_folders_with_decodable_first_frames": usable_folders,
             "configured_actions_with_decodable_first_frame": list(art.get("actual_action_names", [])),
             "available_action_categories_in_art": actions,
+            "interaction_scope": "union_of_installed_versions_not_runtime_role",
+            "per_installed_creator_version": variants,
+            "version_specific_evidence_available": bool(variants) or folders == 0,
+            "categories_shared_by_every_usable_version": list(
+                art.get("action_categories_in_every_usable_version", [])),
+            "categories_missing_from_at_least_one_usable_version": list(
+                art.get("action_categories_only_in_some_versions", [])),
             "missing_action_categories_in_art": missing,
             "local_asset_errors": list(art.get("errors", [])),
             "full_frame_structure_audit": {
@@ -151,6 +168,11 @@ def make_gap_report(role_root, *, pinned_report=None, installed_report=None,
                 x["creator_folders_with_decodable_first_frames"] > 0 for x in mascots),
             "roles_with_broken_local_creator_files": sum(
                 x["stage"] == "local_creator_files_unplayable" for x in rows),
+            "roles_with_version_specific_action_gaps": sum(
+                bool(x["categories_missing_from_at_least_one_usable_version"])
+                for x in rows),
+            "roles_with_multiple_imported_creator_versions": sum(
+                x["imported_creator_folders"] > 1 for x in rows),
             "deep_frame_audit_enabled": bool(deep_frame_audit),
             "roles_with_full_frame_structure_checked": sum(
                 x["full_frame_structure_audit"]["checked_folder_count"] > 0 for x in rows),
@@ -165,7 +187,9 @@ def make_gap_report(role_root, *, pinned_report=None, installed_report=None,
         "roles": rows,
         "note": (
             "Pinned public sources are NOT installed art. The optional deep audit checks "
-            "each available PNG sequence for decoding and structural issues. Neither "
+            "each available PNG sequence for decoding and structural issues. "
+            "Available interaction categories are the union of all installed creator "
+            "versions, not a promise that the selected version supports every action. Neither "
             "first-frame checks nor this deep audit establish actual desktop playback, "
             "character identity, original likeness, "
             "voice, distribution rights or actual Windows/Linux GUI acceptance. "
