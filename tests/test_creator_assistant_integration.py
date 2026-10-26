@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from PIL import Image
+
 from tools.creator_assistant_gap_report import make_gap_report, save_gap_report
 
 
@@ -83,6 +85,59 @@ class CreatorAssistantIntegrationTests(unittest.TestCase):
             self.assertEqual(json.loads(target.read_text(encoding="utf-8")), output)
             with self.assertRaises(ValueError):
                 save_gap_report(Path(td) / "not-json.txt", output)
+
+    def test_opt_in_full_frame_audit_catches_corrupt_later_frame(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            role = root / "RealSayu"
+            art = role / "action"
+            art.mkdir(parents=True)
+            (role / "pet_conf.json").write_text(
+                json.dumps({"default": "walk"}), encoding="utf-8")
+            (role / "act_conf.json").write_text(
+                json.dumps({"walk": {"images": "walk", "need_move": True}}),
+                encoding="utf-8")
+            Image.new("RGBA", (4, 4), (255, 0, 0, 255)).save(art / "walk_0.png")
+            (art / "walk_1.png").write_bytes(b"not-a-png-second-frame")
+            src, installed = reports()
+            installed["characters"][1]["playable_creator_role_folders"] = ["RealSayu"]
+            ordinary = make_gap_report(root, pinned_report=src, installed_report=installed)
+            self.assertEqual(
+                next(x for x in ordinary["roles"] if x["id"] == "genshin_b")
+                ["full_frame_structure_audit"]["status"], "not_requested")
+            checked = make_gap_report(root, pinned_report=src, installed_report=installed,
+                                      deep_frame_audit=True)
+            row = next(x for x in checked["roles"] if x["id"] == "genshin_b")
+            self.assertEqual(row["stage"], "local_creator_first_frame_decodable")
+            self.assertEqual(row["full_frame_structure_audit"]["status"], "has_structure_issues")
+            self.assertFalse(row["complete_motion_sequence_verified"])
+            self.assertEqual(checked["summary"]["roles_with_full_frame_structure_issues"], 1)
+            self.assertEqual(checked["summary"]["roles_with_full_frame_structure_checked"], 1)
+            Image.new("RGBA", (4, 4), (0, 0, 255, 255)).save(art / "walk_1.png")
+            good = make_gap_report(root, pinned_report=src, installed_report=installed,
+                                   deep_frame_audit=True)
+            good_role = next(x for x in good["roles"] if x["id"] == "genshin_b")
+            self.assertEqual(good_role["full_frame_structure_audit"]["status"],
+                             "passed_structure")
+            self.assertEqual(good_role["full_frame_structure_audit"]["folders"][0]
+                             ["frame_count"], 2)
+            self.assertFalse(good_role["physical_desktop_playback_verified"])
+
+    def test_full_frame_audit_rejects_untrusted_folder_names(self):
+        with tempfile.TemporaryDirectory() as td:
+            src, installed = reports()
+            art = installed["characters"][1]
+            art["playable_creator_role_folders"] = ["../Outside"]
+            output = make_gap_report(td, pinned_report=src, installed_report=installed,
+                                     deep_frame_audit=True)
+            row = next(x for x in output["roles"] if x["id"] == "genshin_b")
+            self.assertEqual(row["full_frame_structure_audit"]["status"], "has_structure_issues")
+            self.assertIn("unreadable_or_incomplete_sequence",
+                          row["full_frame_structure_audit"]["folders"][0]["issue_categories"])
+            art["playable_creator_role_folders"] = []
+            with self.assertRaises(ValueError):
+                make_gap_report(td, pinned_report=src, installed_report=installed,
+                                deep_frame_audit=True)
 
     def test_real_empty_install_tree_does_not_fake_available_roles(self):
         with tempfile.TemporaryDirectory() as td:

@@ -19,7 +19,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.character_source_coverage import source_coverage
-from tools.character_interaction_coverage import interaction_coverage
+from tools.character_interaction_coverage import interaction_coverage, _safe_installed_role
+from tools.artist_animation_audit import audit_native_character
 
 MASCOTS = frozenset(("mascot_guga", "mascot_doro"))
 
@@ -34,7 +35,40 @@ def _index_rows(report, *, key):
     return result
 
 
-def make_gap_report(role_root, *, pinned_report=None, installed_report=None):
+def _full_frame_structure(role_root, art, count):
+    """Opt-in complete original PNG structure check, not character identity QA."""
+    names = art.get("playable_creator_role_folders", [])
+    if (not isinstance(names, list) or len(names) != count or
+            any(not isinstance(name, str) for name in names) or
+            len(names) != len(set(names))):
+        raise ValueError("Creator-art inventory lacks exact per-folder evidence")
+    results = []
+    for name in names:
+        try:
+            role = _safe_installed_role(Path(role_root).expanduser(), name)
+            inspected = audit_native_character(role)
+            details = inspected["summary"]
+            results.append({
+                "folder": name,
+                "status": ("structure_passed" if details["animation_structure_passed"]
+                           else "structure_issues"),
+                "frame_count": details["original_frames_inspected"],
+                "problem_actions": details["actions_with_pixel_issues"],
+                "issue_categories": details["issue_categories"],
+            })
+        except (ValueError, OSError, TypeError) as exc:
+            # One broken installation does not conceal the state of other roles.
+            results.append({
+                "folder": name, "status": "structure_issues",
+                "frame_count": 0, "problem_actions": None,
+                "issue_categories": ["unreadable_or_incomplete_sequence"],
+                "error": str(exc)[:160],
+            })
+    return results
+
+
+def make_gap_report(role_root, *, pinned_report=None, installed_report=None,
+                    deep_frame_audit=False):
     """Join reports by exact identity; no name guessing, downloads or writes."""
     sources = pinned_report if pinned_report is not None else source_coverage()
     local = installed_report if installed_report is not None else interaction_coverage(role_root)
@@ -69,6 +103,12 @@ def make_gap_report(role_root, *, pinned_report=None, installed_report=None):
             stage = "pinned_source_not_installed"
         else:
             stage = "missing_pinned_source"
+        deep = (_full_frame_structure(role_root, art, usable_folders)
+                if deep_frame_audit else [])
+        deep_status = ("not_requested" if not deep_frame_audit else
+                       "not_applicable" if not deep else
+                       "passed_structure" if all(x["status"] == "structure_passed" for x in deep)
+                       else "has_structure_issues")
         actions = list(art.get("action_categories_present_in_art", []))
         missing = list(art.get("action_categories_missing_in_art", []))
         if len(set(actions + missing)) != len(actions) + len(missing):
@@ -85,6 +125,11 @@ def make_gap_report(role_root, *, pinned_report=None, installed_report=None):
             "available_action_categories_in_art": actions,
             "missing_action_categories_in_art": missing,
             "local_asset_errors": list(art.get("errors", [])),
+            "full_frame_structure_audit": {
+                "status": deep_status,
+                "checked_folder_count": len(deep),
+                "folders": deep,
+            },
             "human_original_likeness_verified": False,
             "complete_motion_sequence_verified": False,
             "physical_desktop_playback_verified": False,
@@ -106,14 +151,23 @@ def make_gap_report(role_root, *, pinned_report=None, installed_report=None):
                 x["creator_folders_with_decodable_first_frames"] > 0 for x in mascots),
             "roles_with_broken_local_creator_files": sum(
                 x["stage"] == "local_creator_files_unplayable" for x in rows),
+            "deep_frame_audit_enabled": bool(deep_frame_audit),
+            "roles_with_full_frame_structure_checked": sum(
+                x["full_frame_structure_audit"]["checked_folder_count"] > 0 for x in rows),
+            "roles_with_full_frame_structure_issues": sum(
+                x["full_frame_structure_audit"]["status"] == "has_structure_issues" for x in rows),
+            "roles_with_all_checked_sequences_structurally_clean": sum(
+                x["full_frame_structure_audit"]["status"] == "passed_structure" for x in rows),
             "human_likeness_approved": 0,
             "physical_desktop_qa_approved": 0,
             "voice_fidelity_approved": 0,
         },
         "roles": rows,
         "note": (
-            "Pinned public sources are NOT installed art. Decoding an action's first PNG "
-            "does NOT establish complete motion, character identity, original likeness, "
+            "Pinned public sources are NOT installed art. The optional deep audit checks "
+            "each available PNG sequence for decoding and structural issues. Neither "
+            "first-frame checks nor this deep audit establish actual desktop playback, "
+            "character identity, original likeness, 
             "voice, distribution rights or actual Windows/Linux GUI acceptance. "
             "Built-in demos never count as original creator art."
         ),
@@ -144,8 +198,11 @@ def main(argv=None):
     parser.add_argument("--role-root", type=Path,
                         default=Path(__file__).resolve().parents[1] / "res" / "role")
     parser.add_argument("--output", type=Path, help="Export UTF-8 JSON (read-only inputs)")
+    parser.add_argument(
+        "--deep-frame-audit", action="store_true",
+        help="Opt-in slower full sprite sequence inspection; never certifies likeness")
     args = parser.parse_args(argv)
-    report = make_gap_report(args.role_root)
+    report = make_gap_report(args.role_root, deep_frame_audit=args.deep_frame_audit)
     if args.output:
         save_gap_report(args.output, report)
     else:

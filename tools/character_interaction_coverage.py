@@ -123,6 +123,7 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
             "id": profile, "name": name, "family": family,
             "imported_creator_role_count": len(actual_folders),
             "playable_creator_role_count": len(playable_folders),
+            "playable_creator_role_folders": sorted(playable_folders),
             "creator_folders_with_broken_actions": len(actual_folders) - len(playable_folders),
             "original_creator_art_present": bool(playable_folders),
             "actual_action_names": sorted(all_names),
