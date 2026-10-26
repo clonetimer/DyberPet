@@ -35,8 +35,10 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
     def test_new_unverified_lead_filter_excludes_integrity_verified_amber_and_fischl(self):
         self.dialog.statusFilter.setCurrentIndex(
             self.dialog.statusFilter.findData("lead"))
-        self.assertEqual(self.dialog.results.count(), 1)
-        self.assertIn("1 / 125", self.dialog.countLabel.text())
+        # Emilie has also been independently verified and promoted, so
+        # none of the older community/LFS leads remains truly unpinned.
+        self.assertEqual(self.dialog.results.count(), 0)
+        self.assertIn("0 / 125", self.dialog.countLabel.text())
         names = [self.dialog.results.item(i).data(0x0100)
                  for i in range(self.dialog.results.count())]
         self.assertEqual(len(names), len(set(names)))
@@ -44,7 +46,7 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
         self.assertNotIn("genshin_fischl", names)
         self.assertNotIn("genshin_kaveh", names)
         self.assertNotIn("genshin_citlali", names)
-        self.assertTrue(self.dialog.communityButton.isEnabled())
+        self.assertFalse(self.dialog.communityButton.isEnabled())
 
     def test_single_and_multiple_explicit_preview_routes(self):
         self.dialog.statusFilter.setCurrentIndex(
