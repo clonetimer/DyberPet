@@ -28,7 +28,7 @@ class CreatorArtPreferenceTests(unittest.TestCase):
             [sys.executable, str(repo / "tools/character_source_coverage.py")],
             cwd=repo, env=env, capture_output=True, check=True)
         ledger = json.loads(result.stdout.decode("utf-8"))
-        self.assertEqual(ledger["summary"]["characters_with_pinned_sources"], 61)
+        self.assertEqual(ledger["summary"]["characters_with_pinned_sources"], 65)
         self.assertTrue(any(x["name"] == "菈乌玛" for x in ledger["characters"]))
 
     def test_style_labels_are_not_unearned_quality_grades(self):
@@ -51,16 +51,16 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         result = source_coverage()
         summary = result["summary"]
         self.assertEqual(summary["template_count"], 123)
-        self.assertEqual(summary["characters_with_pinned_sources"], 61)
-        self.assertEqual(summary["characters_without_pinned_sources"], 62)
-        self.assertEqual(summary["pinned_source_options"], 84)
+        self.assertEqual(summary["characters_with_pinned_sources"], 65)
+        self.assertEqual(summary["characters_without_pinned_sources"], 58)
+        self.assertEqual(summary["pinned_source_options"], 88)
         self.assertEqual(summary["style_priority_detailed_native_count"], 3)
         self.assertEqual(summary["user_visible_style_grades_approved"], 0)
         total = sum(summary[x] for x in (
             "style_priority_detailed_native_count",
             "style_priority_atlas_pending_count",
             "style_priority_shimeji_candidate_count"))
-        self.assertEqual(total, 61)
+        self.assertEqual(total, 65)
         refs = {row["id"]: row for row in result["characters"]}
         for key in ("genshin_nahida", "genshin_xiao", "genshin_wanderer"):
             self.assertEqual(refs[key]["recommended_source"]["provider"], "native")
@@ -89,8 +89,8 @@ class CreatorArtPreferenceTests(unittest.TestCase):
                                           status="source", source_lookup=lookup)
         missing = query_character_catalog(progress, family="genshin",
                                           status="source_missing", source_lookup=lookup)
-        self.assertEqual(len(visible), 61)
-        self.assertEqual(len(missing), 62)
+        self.assertEqual(len(visible), 65)
+        self.assertEqual(len(missing), 58)
         self.assertEqual(len(query_character_catalog(progress, family="genshin")), 123)
         self.assertEqual(query_character_catalog(progress, status="personal"), [])
         self.assertEqual(visible[0]["id"] in ("genshin_nahida", "genshin_xiao", "genshin_wanderer"), True)
@@ -144,9 +144,10 @@ class CreatorArtPreferenceTests(unittest.TestCase):
             "genshin_cyno", "genshin_dehya", "genshin_freminet",
             "genshin_aino", "genshin_dahlia", "genshin_flins", "genshin_lan_yan",
             "genshin_durin", "genshin_ineffa", "genshin_jahoda", "genshin_lauma",
-            "genshin_alyosha", "genshin_lohen", "genshin_odette", "genshin_prune"
+            "genshin_alyosha", "genshin_lohen", "genshin_odette", "genshin_prune",
+            "genshin_yanfei", "genshin_emilie", "genshin_illuga", "genshin_zibai"
         })
-        self.assertEqual(len({fixed_archive_url(v) for v in packages.values()}), 28)
+        self.assertEqual(len({fixed_archive_url(v) for v in packages.values()}), 32)
 
 
 if __name__ == "__main__":
