@@ -198,10 +198,18 @@ class NativeFramePreviewDialog(QDialog):
             self._snapshots[folder] = metadata
             # Read ALL original action frames. This is informational risk
             # evidence only and NEVER a substitute for the creator/Q review.
-            evidence = analyze_creator_actions(self._root, folder)
-            self._motion_risks = {
-                entry["action"]: entry for entry in evidence["actions"]
-            }
+            try:
+                evidence = analyze_creator_actions(self._root, folder)
+            except (OSError, ValueError, TypeError, KeyError) as motion_exc:
+                # Diagnostics must NEVER disable an otherwise playable pet.
+                self._motion_risks = {}
+                self.motion_risk_label.setText(
+                    "动作深度统计暂不可用：" + str(motion_exc)[:110] +
+                    "；仍可独立逐帧查看真实作者动画。")
+            else:
+                self._motion_risks = {
+                    entry["action"]: entry for entry in evidence["actions"]
+                }
         except (OSError, ValueError, TypeError, KeyError) as exc:
             # Qt signal handlers must not let a broken third-party folder
             # abort the desktop process. Show a reviewable problem instead.
