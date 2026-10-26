@@ -570,10 +570,13 @@ class CharInterface(ScrollArea):
         from tools.install_nanopet_shimeji import source_manifest as nano_manifest
         from tools.install_external_codex import source_manifest as external_manifest
         from tools.install_pinned_codexpetdb import listed_packages, fixed_archive_url
+        from tools.react_shimeji_source_leads import (
+            verified_lfs_sources, REPOSITORY as REACT_REPO, REVISION as REACT_REV)
         shimeji = source_manifest()
         nano = nano_manifest()
         external = external_manifest()
         petdb = listed_packages()["sources"]
+        verified_react = verified_lfs_sources()
         labels = {f"① 精细Q版优先 · 完整原生动画 · {title}":("artist_genshin", key)
                   for key, (_, _, title) in ROLES.items()}
         labels.update({f"② 作者图集待视觉核对 · {row[1]} · {key}":("artist_codex", key)
@@ -588,6 +591,10 @@ class CharInterface(ScrollArea):
             f"② 已核验 SHA-256 的原画 ZIP · {row['slug']} · {key}": ("pinned_codexpetdb", key)
             for key, row in petdb.items()
         })
+        labels.update({
+            f"② LFS 原始 PNG 已核验 · {row['slug']} · 动作待验收": ("react_shimeji_lfs", profile)
+            for profile, row in verified_react.items()
+        })
         if only_profile:
             def mapped_profile(source):
                 mode, key = source
@@ -601,6 +608,8 @@ class CharInterface(ScrollArea):
                     return nano["roles"][key]["profile"]
                 if mode == "pinned_codexpetdb":
                     return petdb[key]["profile"]
+                if mode == "react_shimeji_lfs":
+                    return key
                 return external["sources"][key]["profile"]
             labels = {name: source for name, source in labels.items()
                       if mapped_profile(source) == only_profile}
@@ -619,6 +628,36 @@ class CharInterface(ScrollArea):
         if not ok or selected not in labels:
             return
         mode, kind = labels[selected]
+        if mode == "react_shimeji_lfs":
+            source_record = verified_react[kind]
+            source_url = (
+                f"https://github.com/{REACT_REPO}/blob/{REACT_REV}/"
+                f"packages/character-{source_record['slug']}/index.ts")
+            if not self.__showMessageBox(
+                    "选择经 SHA 校验的作者原始图集",
+                    "请从以下原作者页面手动下载完整 .ts 原始图集（不是只有几行字的 LFS 指针）：\n"
+                    + source_url + "\n固定 SHA-256："
+                    + source_record["sha256"] +
+                    "\n安装程序会校验精确身份及全部字节；现有 crawl/fall 动作只有单独姿势帧，"
+                    "仍需用户预览验证是否存在真实移动。继续选择已下载文件吗？"):
+                return
+            local_module, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择完整作者 Git LFS 原画模块"),
+                QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation),
+                "原画 TypeScript 图集 (*.ts)")
+            if not local_module:
+                return
+            self.addButton.setEnabled(False)
+            self.artistSourceButton.setEnabled(False)
+            self.chibiThread = ChibiImportThread(
+                local_module, os.path.join(basedir, "res", "role"),
+                mode="react_shimeji_lfs", profile=kind, preset=None, folder=None)
+            self.chibiThread.done.connect(self._onChibiImportComplete)
+            self.chibiThread.finished.connect(self._onChibiThreadFinished)
+            self.chibiThread.start()
+            self.__showSystemNote(
+                "正在检查原画 LFS 内容 SHA 与原始帧；动作质量仍须单独验收。", 1)
+            return
         if mode == "artist_genshin":
             source = SOURCE_URL + ROLES[kind][0]
         elif mode == "artist_codex":
