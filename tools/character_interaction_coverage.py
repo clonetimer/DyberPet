@@ -81,17 +81,22 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
     def record(profile, name, family, folders):
         actual_folders = [x["folder"] for x in folders]
         all_names = set()
+        playable_folders = []
         errors = []
         for folder in actual_folders:
             try:
-                all_names.update(_original_art_action_names(root, folder))
+                names = _original_art_action_names(root, folder)
+                all_names.update(names)
+                playable_folders.append(folder)
             except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
                 errors.append({"folder": folder, "reason": str(exc)[:160]})
         interactions = available_interactions(sorted(all_names))
         rows.append({
             "id": profile, "name": name, "family": family,
             "imported_creator_role_count": len(actual_folders),
-            "original_creator_art_present": bool(actual_folders),
+            "playable_creator_role_count": len(playable_folders),
+            "creator_folders_with_broken_actions": len(actual_folders) - len(playable_folders),
+            "original_creator_art_present": bool(playable_folders),
             "actual_action_names": sorted(all_names),
             "action_categories_present_in_art": [x["id"] for x in interactions if x["available"]],
             "action_categories_missing_in_art": [x["id"] for x in interactions if not x["available"]],
@@ -113,6 +118,11 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
         "summary": {
             "template_total": len(rows),
             "roles_with_creator_art": sum(r["original_creator_art_present"] for r in rows),
+            "roles_with_creator_folder_but_no_playable_actions": sum(
+                bool(r["imported_creator_role_count"]) and
+                not r["original_creator_art_present"] for r in rows),
+            "broken_creator_asset_folder_count": sum(
+                r["creator_folders_with_broken_actions"] for r in rows),
             "roles_with_at_least_one_interaction": sum(
                 bool(r["action_categories_present_in_art"]) for r in rows),
             "roles_missing_all_original_art_interactions": sum(
