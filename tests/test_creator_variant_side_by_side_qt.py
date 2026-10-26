@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication
 from DyberPet.DyberSettings.creator_variant_side_by_side import (
     CreatorVariantSideBySideDialog, checked_variant_pair,
     shared_native_interactions,
+    display_pixmap_for_comparison,
 )
 
 def _original(root, folder, profile, colors, *, action_name="left_walk"):
@@ -52,6 +53,9 @@ class OriginalABTests(unittest.TestCase):
                     "SourceAyaka","SourceAyaka")
             with self.assertRaisesRegex(ValueError,"Invalid"):
                 checked_variant_pair(root,["SourceAyaka","../evil"])
+            _original(root,"SourceOther","genshin_venti",[(44,33,22,255)])
+            with self.assertRaisesRegex(ValueError,"不同人物"):
+                checked_variant_pair(root, ["SourceAyaka", "SourceOther"])
             (root/"SourceAyaka"/"BUILTIN_CHIBI_DEMO.json").write_text("{}")
             with self.assertRaisesRegex(ValueError,"简笔演示"):
                 checked_variant_pair(root, ["SourceAyaka","SourceCanvasR5Ayaka"])
@@ -89,6 +93,22 @@ class OriginalABTests(unittest.TestCase):
                 ui.close()
             self.assertEqual(original_a, {p.name:p.read_bytes() for p in (a/"action").glob("*.png")})
             self.assertEqual(original_b, {p.name:p.read_bytes() for p in (b/"action").glob("*.png")})
+
+    def test_preview_crop_only_removes_transparent_edges_not_author_content(self):
+        with TemporaryDirectory() as d:
+            root = Path(d)
+            path = root / "real_creator.png"
+            art = Image.new("RGBA", (40, 90), (0, 0, 0, 0))
+            for x in range(10, 25):
+                for y in range(15, 65):
+                    art.putpixel((x, y), (40, 100, 170, 255))
+            art.save(path)
+            before = path.read_bytes()
+            original = display_pixmap_for_comparison(path, trim_transparent=False)
+            tight = display_pixmap_for_comparison(path, trim_transparent=True)
+            self.assertEqual((original.width(), original.height()), (40, 90))
+            self.assertEqual((tight.width(), tight.height()), (15, 50))
+            self.assertEqual(before, path.read_bytes())
 
     def test_no_cross_variant_action_fabrication_or_auto_action(self):
         with TemporaryDirectory() as tmp:
