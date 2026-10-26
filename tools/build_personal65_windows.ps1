@@ -40,6 +40,11 @@ $installerArgs = @(
     "--hidden-import", "tools.install_nanopet_shimeji",
     "--hidden-import", "tools.install_external_codex",
     "--hidden-import", "tools.install_pinned_codexpetdb",
+    "--hidden-import", "tools.install_verified_react_lfs",
+    "--hidden-import", "tools.probe_missing_react_lfs",
+    "--hidden-import", "tools.react_shimeji_source_leads",
+    "--hidden-import", "tools.install_pinned_react_shimeji",
+    "--hidden-import", "tools.install_personal_shimeji_zip",
     "--hidden-import", "tools.install_personal_codex_zip",
     "--hidden-import", "tools.artist_animation_audit",
     "--hidden-import", "tools.genshin_library",
@@ -151,6 +156,8 @@ if ($LASTEXITCODE -ne 0) { throw "Frozen personal source planner failed" }
 $report = Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($report.summary.selected_profiles -ne 123 -or
     $report.summary.missing_source -ne 58 -or
+    $report.summary.ready_for_opt_in -ne 65 -or
+    $report.summary.manual_import_only -ne 0 -or
     ($report.summary.ready_for_opt_in + $report.summary.manual_import_only + $report.summary.already_installed_structurally) -ne 65) {
     throw "Expected 65 pinned-source profiles, 58 uncovered, and 123 total: $($report.summary | ConvertTo-Json -Compress)"
 }
