@@ -10,9 +10,14 @@ import unittest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PIL import Image
-from PySide6.QtWidgets import QApplication
-
-from DyberPet.DyberSettings.native_frame_preview import NativeFramePreviewDialog
+try:
+    from PySide6.QtWidgets import QApplication
+    from DyberPet.DyberSettings.native_frame_preview import NativeFramePreviewDialog
+except ImportError:
+    # Most pure importer CI matrices intentionally do not install Qt.
+    # The dedicated Windows/Linux offscreen gate MUST install Qt and run tests.
+    QApplication = None
+    NativeFramePreviewDialog = None
 
 
 def role(root, name, actions):
@@ -29,6 +34,7 @@ def role(root, name, actions):
     return p
 
 
+@unittest.skipUnless(QApplication is not None, "Qt is intentionally absent in importer-only CI")
 class NativeInteractionPreviewShortcutTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
