@@ -175,7 +175,7 @@ class CharacterCatalogDialog(QDialog):
                 "status") == "user_q_standard_eligible"]
         elif mode == "rejected":
             rows = [x for x in rows if self._quality_by_id.get(x["id"], {}).get(
-                "status") in ("rejected_standee", "rejected_motion")]
+                "status") in ("rejected_standee", "rejected_visual", "rejected_motion")]
         elif mode == "unreviewed":
             rows = [x for x in rows if self._quality_by_id.get(x["id"], {}).get(
                 "status") == "unreviewed_candidate"]
@@ -199,6 +199,7 @@ class CharacterCatalogDialog(QDialog):
             quality_label = {
                 "user_q_standard_eligible": "本机Q版审核通过",
                 "rejected_standee": "立牌型/需替换",
+                "rejected_visual": "外观与原设不符",
                 "rejected_motion": "动作结构不合格",
                 "unreviewed_candidate": "Q版待验收",
             }.get(qa.get("status"), "无Q版审核记录")
@@ -310,6 +311,24 @@ class CharacterCatalogDialog(QDialog):
                 from tools.character_interaction_coverage import (
                     rank_installed_role_variants)
                 candidates = rank_installed_role_variants(self._role_root, folders)
+                grades = {
+                    item["folder"]: item["status"]
+                    for item in self._quality_by_id.get(profile, {}).get("variants", [])
+                }
+                # Never suggest a user-rejected standee as the top version if
+                # a genuine user-approved Q variant for the same person exists.
+                priority = {
+                    "user_q_standard_eligible": 0,
+                    "unreviewed_candidate": 1,
+                    "candidate_not_approved": 1,
+                    "rejected_motion": 2,
+                    "rejected_visual": 3,
+                    "rejected_standee": 3,
+                    "source_changed_recheck": 3,
+                    "review_invalid": 3,
+                }
+                candidates.sort(key=lambda item: priority.get(
+                    grades.get(item["folder"], "unreviewed_candidate"), 2))
                 folders = [item["folder"] for item in candidates]
             dialog = NativeFramePreviewDialog(self._role_root, folders, self)
             if folders and candidates and candidates[0]["available_interaction_count"]:
@@ -375,10 +394,10 @@ class CharacterCatalogDialog(QDialog):
     def _select(self):
         selected = self.selected_character_id()
         if selected and self._quality_by_id.get(selected, {}).get(
-                "status") == "rejected_standee":
+                "status") in ("rejected_standee", "rejected_visual"):
             choice = QMessageBox.question(
                 self, "立牌型素材提示",
-                "本机已将该角色标为立牌/细长立绘，不符合圆润Q版标准。"
+                "本机已将该角色标为立牌/细长立绘或与原设不符，不符合Q版标准。"
                 "仍然打开候选版本吗？",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No)
