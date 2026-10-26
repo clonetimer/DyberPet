@@ -1321,6 +1321,8 @@ class CharInterface(ScrollArea):
             "artist_genshin", "artist_codex", "artist_shimeji",
             "artist_nano", "artist_external_codex", "pinned_codexpetdb",
             "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source",
+            "shimeji_zip", "codex_zip", "codex",
+            "native_zip", "native_folder", "animations",
         }
         if source_mode in original_modes:
             # Use the actual installed PNG sequence player, not a static
