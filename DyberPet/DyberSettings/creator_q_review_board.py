@@ -208,6 +208,19 @@ class CreatorQReviewBoardDialog(QDialog):
         preview.setEnabled(bool(frame))
         preview.clicked.connect(lambda _checked=False, x=item: self._open_role(x))
         actions.addWidget(preview)
+        variants = [
+            row["folder"] for row in self.board["rows"]
+            if row["id"] == item["id"] and row.get("first_png")
+        ]
+        compare = QPushButton("同人物 A/B 对照", box)
+        compare.setEnabled(len(variants) >= 2)
+        compare.setToolTip(
+            "只比较同一人物真实安装的两个作者版本，"
+            "左右同步播放各自原生动作，不合并动画。"
+            if len(variants) >= 2 else "此人物只安装了一套可读作者素材")
+        compare.clicked.connect(
+            lambda _checked=False, x=item: self._open_side_by_side(x))
+        actions.addWidget(compare)
         candidate = QPushButton("备用作者来源", box)
         candidate.setEnabled(bool(item.get("source_options")))
         candidate.clicked.connect(lambda _checked=False, x=item: self._open_sources(x))
@@ -228,6 +241,23 @@ class CreatorQReviewBoardDialog(QDialog):
             self._reload_reviews()
         except (OSError, ValueError, TypeError, KeyError) as exc:
             QMessageBox.warning(self, "原画核对无法启动", str(exc))
+
+    def _open_side_by_side(self, item):
+        from DyberPet.DyberSettings.creator_variant_side_by_side import (
+            CreatorVariantSideBySideDialog)
+        siblings = [x["folder"] for x in self.board["rows"]
+                    if x["id"] == item["id"] and x.get("first_png")]
+        siblings = list(dict.fromkeys([item["folder"]] + siblings))
+        if len(siblings) < 2:
+            QMessageBox.information(
+                self, "没有可对照的双来源", "该人物目前没有两个真实可读的本地原画版本")
+            return
+        try:
+            dialog = CreatorVariantSideBySideDialog(self._root, siblings, self)
+            dialog.exec()
+            self._reload_reviews()
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            QMessageBox.warning(self, "A/B 同步对照失败", str(exc))
 
     def _open_sources(self, item):
         entries = [x for x in item.get("source_options", [])
