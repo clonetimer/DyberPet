@@ -106,7 +106,12 @@ def create_local_bundle(portable_root, output, *, confirmed=False):
     if not confirmed:
         raise ValueError("Explicit personal local bundle confirmation is required")
     root, _ = _checked_root(portable_root)
-    output = Path(output).expanduser().absolute()
+    requested = Path(output).expanduser().absolute()
+    if requested.is_symlink() or requested.exists():
+        raise FileExistsError("Bundle destination exists; never overwrite private role packages")
+    # Windows temp paths and short-name aliases may point inside the portable
+    # root despite being lexically different. Resolve BOTH for containment.
+    output = requested.resolve(strict=False)
     if output.suffix.lower() != ".zip":
         raise ValueError("Local bundle output must be a .zip file")
     if output == root or root in output.parents:

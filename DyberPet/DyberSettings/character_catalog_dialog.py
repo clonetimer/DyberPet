@@ -31,6 +31,8 @@ class CharacterCatalogDialog(QDialog):
         self._entries = list(entries)
         self._source_by_id = {x["id"]: x for x in source_coverage()["characters"]}
         self._selected_id = None
+        self._quality_by_id = {}
+        self._reload_quality()
         self.setWindowTitle("DyberPet · 全部角色库（本机状态）")
         self.setMinimumSize(600, 520)
         layout = QVBoxLayout(self)
@@ -55,6 +57,14 @@ class CharacterCatalogDialog(QDialog):
             self.statusFilter.addItem(label, value)
         filters.addWidget(self.familyFilter)
         filters.addWidget(self.statusFilter)
+        self.qFilter = QComboBox(self)
+        for title, value in (
+                ("全部候选 · 标出Q版质量", "all"),
+                ("本机Q版合格标准集", "q_passed"),
+                ("立牌/形象不合格", "rejected"),
+                ("已装素材 · 尚未审核", "unreviewed")):
+            self.qFilter.addItem(title, value)
+        filters.addWidget(self.qFilter)
         layout.addLayout(filters)
 
         self.results = QListWidget(self)
@@ -109,11 +119,41 @@ class CharacterCatalogDialog(QDialog):
         self.exportGapButton.setEnabled(self._role_root is not None)
         self.exportGapButton.clicked.connect(self._export_gap_report)
         layout.addWidget(self.exportGapButton)
+        self.exportStandeeButton = QPushButton("导出立牌轮廓与动作风险清单（仅供人工筛查）", self)
+        self.exportStandeeButton.setEnabled(self._role_root is not None)
+        self.exportStandeeButton.setToolTip(
+            "读取已安装作者图集的透明像素包围框与前两帧差异，"
+            "识别高瘦立牌风险、疑似静止动作；不会自动决定是否符合Q版。")
+        self.exportStandeeButton.clicked.connect(self._export_standee_triage)
+        layout.addWidget(self.exportStandeeButton)
 
         self.searchBox.textChanged.connect(self._refresh)
         self.familyFilter.currentIndexChanged.connect(self._refresh)
         self.statusFilter.currentIndexChanged.connect(self._refresh)
+        self.qFilter.currentIndexChanged.connect(self._refresh)
         self._refresh()
+
+    def _reload_quality(self):
+        if self._role_root is None or not self._role_root.is_dir():
+            self._quality_by_id = {}
+            return
+        from tools.genshin_library import scan_genshin_library
+        from tools.mascot_library import scan_mascot_library
+        from tools.creator_chibi_quality import summarize_local_quality
+        groups = {}
+        genshin = scan_genshin_library(self._role_root)
+        for item in genshin["characters"]:
+            folders = [v["folder"] for v in item["installed_folders"]
+                       if not v.get("is_original_demo")]
+            if folders:
+                groups[item["profile"]] = folders
+        mascot = scan_mascot_library(self._role_root)
+        for item in mascot["mascots"]:
+            folders = [v["folder"] for v in item["imported_creator_art"]]
+            if folders:
+                groups["mascot_" + item["key"]] = folders
+        self._quality_by_id = summarize_local_quality(
+            self._role_root, groups)["profiles"]
 
     def _refresh(self, *_):
         old = self.selected_character_id()
@@ -129,6 +169,16 @@ class CharacterCatalogDialog(QDialog):
                           set(EXTERNAL_SHIMEJI_PAGES))
             rows = [row for row in rows if row["id"] in candidates and
                     not self._source_by_id.get(row["id"], {}).get("source_found", False)]
+        mode = self.qFilter.currentData()
+        if mode == "q_passed":
+            rows = [x for x in rows if self._quality_by_id.get(x["id"], {}).get(
+                "status") == "user_q_standard_eligible"]
+        elif mode == "rejected":
+            rows = [x for x in rows if self._quality_by_id.get(x["id"], {}).get(
+                "status") in ("rejected_standee", "rejected_visual", "rejected_motion")]
+        elif mode == "unreviewed":
+            rows = [x for x in rows if self._quality_by_id.get(x["id"], {}).get(
+                "status") == "unreviewed_candidate"]
         for row in rows:
             status = describe_character_status(row)
             prefix = "原神" if row["family"] == "genshin" else "吉祥物"
@@ -145,20 +195,36 @@ class CharacterCatalogDialog(QDialog):
             if row["id"] in EXTERNAL_SHIMEJI_PAGES and (
                     source is None or not source["source_found"]):
                 lead += " · 外部作者 Shimeji 候选（动作存在缺陷，身份待核对）"
-            title = f"【{prefix}】{row['name']} · {status}{creator_info}{lead}"
+            qa = self._quality_by_id.get(row["id"], {})
+            quality_label = {
+                "user_q_standard_eligible": "本机Q版审核通过",
+                "rejected_standee": "立牌型/需替换",
+                "rejected_visual": "外观与原设不符",
+                "rejected_motion": "动作结构不合格",
+                "unreviewed_candidate": "Q版待验收",
+            }.get(qa.get("status"), "无Q版审核记录")
+            title = f"【{prefix}】{row['name']} · {status} · {quality_label}{creator_info}{lead}"
             item = QListWidgetItem(title)
             item.setToolTip(
                 f"{row['id']} · 演示动作 {row['demo_actions']} 类 / "
                 f"{row['demo_frames']} 帧；{creator_info.strip()}；"
                 "作者来源不等于已安装，也未通过形象人工验收")
+            item.setToolTip(item.toolTip() + "；本机Q版状态：" + quality_label +
+                            "；仅表示个人检查，不代表官方原设/版权核准")
             item.setData(Qt.ItemDataRole.UserRole, row["id"])
             self.results.addItem(item)
             if row["id"] == old:
                 self.results.setCurrentItem(item)
         if self.results.count() and self.results.currentItem() is None:
             self.results.setCurrentRow(0)
+        passed = sum(
+            x["status"] == "user_q_standard_eligible"
+            for x in self._quality_by_id.values())
+        standee = sum(x["status"] == "rejected_standee"
+                      for x in self._quality_by_id.values())
         self.countLabel.setText(
             f"当前筛选 {self.results.count()} / {len(self._entries)} 个角色。"
+            f"本机Q版合格 {passed}；立牌待替换 {standee}。"
             "先选人物再点「安装真实作者素材」：只显示该人物对应的来源，精细版优先。")
         self.openButton.setEnabled(self.results.count() > 0)
         self._refresh_candidate_button()
@@ -245,6 +311,24 @@ class CharacterCatalogDialog(QDialog):
                 from tools.character_interaction_coverage import (
                     rank_installed_role_variants)
                 candidates = rank_installed_role_variants(self._role_root, folders)
+                grades = {
+                    item["folder"]: item["status"]
+                    for item in self._quality_by_id.get(profile, {}).get("variants", [])
+                }
+                # Never suggest a user-rejected standee as the top version if
+                # a genuine user-approved Q variant for the same person exists.
+                priority = {
+                    "user_q_standard_eligible": 0,
+                    "unreviewed_candidate": 1,
+                    "candidate_not_approved": 1,
+                    "rejected_motion": 2,
+                    "rejected_visual": 3,
+                    "rejected_standee": 3,
+                    "source_changed_recheck": 3,
+                    "review_invalid": 3,
+                }
+                candidates.sort(key=lambda item: priority.get(
+                    grades.get(item["folder"], "unreviewed_candidate"), 2))
                 folders = [item["folder"] for item in candidates]
             dialog = NativeFramePreviewDialog(self._role_root, folders, self)
             if folders and candidates and candidates[0]["available_interaction_count"]:
@@ -252,6 +336,8 @@ class CharacterCatalogDialog(QDialog):
                     "按当前素材真实可解码互动类别数排序；"
                     "这仅用于优先预览，不代表原设形象或语音验收通过。")
             dialog.exec()
+            self._reload_quality()
+            self._refresh()
         except (OSError, ValueError, KeyError, TypeError) as exc:
             QMessageBox.warning(self, "无法预览本机作者动画", str(exc))
 
@@ -281,8 +367,42 @@ class CharacterCatalogDialog(QDialog):
             "人物总动作是版本并集，不能直接作为当前桌宠能力。"
             "原设相似度、实际播放、音色仍需人工核对。")
 
+    def _export_standee_triage(self):
+        if self._role_root is None:
+            return
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "导出原画立牌风险核查清单",
+            "DyberPet_standee_Q_review_priorities.json", "JSON 文件 (*.json)")
+        if not filename:
+            return
+        if Path(filename).suffix.lower() != ".json":
+            QMessageBox.warning(self, "无法导出", "请选择 .json 文件名")
+            return
+        try:
+            from tools.creator_standee_triage import triage_creator_library
+            from tools.creator_assistant_gap_report import save_gap_report
+            report = triage_creator_library(self._role_root)
+            save_gap_report(filename, report)
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            QMessageBox.warning(self, "立牌风险清单导出失败", str(exc))
+            return
+        QMessageBox.information(
+            self, "立牌风险清单已导出",
+            "导出包含高瘦轮廓风险、疑似静止动作数量，仅供逐个看图复核。"
+            "不会将角色自动标为Q版合格或判为立牌。")
+
     def _select(self):
         selected = self.selected_character_id()
+        if selected and self._quality_by_id.get(selected, {}).get(
+                "status") in ("rejected_standee", "rejected_visual"):
+            choice = QMessageBox.question(
+                self, "立牌型素材提示",
+                "本机已将该角色标为立牌/细长立绘或与原设不符，不符合Q版标准。"
+                "仍然打开候选版本吗？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No)
+            if choice != QMessageBox.StandardButton.Yes:
+                return
         if selected:
             self._selected_id = selected
             self.accept()
