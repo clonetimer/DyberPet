@@ -2,6 +2,7 @@
 # This is PRIVATE LOCAL ASSEMBLY. Nothing containing artwork is uploaded.
 param([switch]$PackOnly)
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 
 $root = $PSScriptRoot
 $helper = Join-Path $root "DyberPet-Role-Installer.exe"
@@ -67,9 +68,11 @@ $archive = Join-Path (Split-Path -Parent $root) ("DyberPet-Personal65-" + $varia
 if (Test-Path -LiteralPath $archive) { throw "Local ZIP destination already exists" }
 
 $bundleReport = Join-Path $reportDir "personal65-local-offline-result.json"
-& $helper --role-root $roleRoot --bundle-output $archive --confirm-local-bundle > $bundleReport
+$bundleText = & $helper --role-root $roleRoot --bundle-output $archive --confirm-local-bundle
 if ($LASTEXITCODE -ne 0) { throw "Local role-embedded ZIP failed; no success claimed" }
-$result = Get-Content -LiteralPath $bundleReport -Raw -Encoding UTF8 | ConvertFrom-Json
+$json = ($bundleText -join "`n")
+[System.IO.File]::WriteAllText($bundleReport, $json + "`n", (New-Object System.Text.UTF8Encoding($false)))
+$result = $json | ConvertFrom-Json
 Write-Host ""
 Write-Host "LOCAL OFFLINE PACKAGE CREATED: $archive" -ForegroundColor Green
 Write-Host "SHA256: $($result.sha256)"
