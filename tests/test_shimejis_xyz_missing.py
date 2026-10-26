@@ -25,6 +25,21 @@ class GenshinSourceDirectoryTests(unittest.TestCase):
                             for x in report["candidates"]))
         self.assertEqual(report["source_page"], PACK_URL)
 
+    def test_explicit_traveler_and_childe_aliases_are_not_new_coverage(self):
+        rows = list(self.coverage["characters"])
+        rows.extend([
+            {"id": "genshin_traveler_aether", "name": "空", "source_found": True},
+            {"id": "genshin_traveler_lumine", "name": "荧", "source_found": True},
+            {"id": "genshin_tartaglia", "name": "达达利亚", "source_found": True},
+        ])
+        html = """<a href="/directory/shimeji/genshin-impact-aether-by-artist">Aether</a>
+        <a href="/directory/shimeji/genshin-impact-lumine-by-artist">Lumine</a>
+        <a href="/directory/shimeji/genshin-impact-childe-by-artist">Childe</a>"""
+        result = candidate_report(page=html, coverage={"characters": rows})
+        self.assertEqual(result["uncovered_matching_candidates"], 0)
+        self.assertEqual(result["previously_covered_matches"], 3)
+        self.assertEqual(result["unmatched_or_ambiguous"], 0)
+
     def test_unsafe_domains_no_slugs_or_ambiguous_names_refused(self):
         page = """<a href="https://evil.test/directory/shimeji/genshin-noelle">bad</a>
                   <a href="/directory/shimeji/genshin-lisa-ayaka">ambiguous</a>"""
