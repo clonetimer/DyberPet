@@ -141,6 +141,10 @@ def main(argv=None):
                     help="Plan or explicitly install Guga/Doro original creator fan-art locally")
     ap.add_argument("--profile", action="append", default=None,
                     help="Repeatable genshin_... profile (default: all 123 templates)")
+    ap.add_argument("--bundle-output", type=Path,
+                    help="Create LOCAL offline Windows app ZIP with your installed art; never upload")
+    ap.add_argument("--confirm-local-bundle", action="store_true",
+                    help="Confirm private/local-only copy and creator use terms")
     ap.add_argument("--install", action="store_true",
                     help="Actually fetch selected exact-pinned sources to local role folder")
     ap.add_argument("--accept-personal-use", action="store_true",
@@ -151,6 +155,22 @@ def main(argv=None):
                     help="Optional .json plan/report path; never an art archive")
     args = ap.parse_args(argv)
     try:
+        if args.bundle_output is not None:
+            if args.install or args.mascots or args.profile or args.output or args.max_roles is not None or args.accept_personal_use:
+                raise ValueError("--bundle-output cannot be combined with install/planning options")
+            try:
+                from .local_offline_bundle import create_local_bundle
+            except ImportError:
+                from tools.local_offline_bundle import create_local_bundle
+            portable_root = args.role_root.resolve().parent.parent
+            result = create_local_bundle(portable_root, args.bundle_output,
+                                         confirmed=args.confirm_local_bundle)
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8")
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        if args.confirm_local_bundle:
+            raise ValueError("--confirm-local-bundle requires --bundle-output")
         if args.mascots and args.profile:
             raise ValueError("--mascots and --profile cannot be combined")
         if args.mascots:
