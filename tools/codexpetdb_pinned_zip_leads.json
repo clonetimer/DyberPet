@@ -1,0 +1,295 @@
+{
+  "schema": 1,
+  "provider": "CodexPetDB",
+  "note": "32 publisher ZIPs independently downloaded and fully SHA256/size verified against original packages, matched pet.json identity, converted to native DyberPet roles with per-frame pixel audit in GitHub Actions. New Yanfei/Emilie/Illuga/Zibai passed run 40263186002 (2026-10-26). Character appearance, unique motion semantics, voice, physical playback and reuse rights are NOT manually approved.",
+  "sources": {
+    "kaveh": {
+      "profile": "genshin_kaveh",
+      "slug": "gi-kaveh",
+      "revision": "019f8c79-1fd9-71eb-9425-7b39ef9d28d2",
+      "sha256": "5d1d0ca4ec073d547947b18cecc4c659b363664eaf8a866b248130c4920e1065",
+      "listing_url": "https://codexpetdb.com/en/pets/gi-kaveh/download",
+      "max_bytes": 3000000,
+      "verified_bytes": 813411
+    },
+    "kinich": {
+      "profile": "genshin_kinich",
+      "slug": "gi-kinich",
+      "revision": "019f8c79-6be7-7426-a862-835e127b5bd4",
+      "sha256": "fdda86a6f1e9cdad9eb967385ed05a5ec561730f45350ee2661046adef2a177f",
+      "listing_url": "https://codexpetdb.com/en/pets/gi-kinich/download",
+      "max_bytes": 3000000,
+      "verified_bytes": 1153165
+    },
+    "kirara": {
+      "profile": "genshin_kirara",
+      "slug": "gi-kirara",
+      "revision": "019f8c79-b4bd-7228-8af4-b0c04806138d",
+      "sha256": "5bf7fe02a4cbfd93587e0d33e0b56b5ca44e9f77a9de31e742a33435dd87d21a",
+      "listing_url": "https://codexpetdb.com/en/pets/gi-kirara/download",
+      "max_bytes": 3000000,
+      "verified_bytes": 655190
+    },
+    "alhaitham": {
+      "profile": "genshin_alhaitham",
+      "slug": "gi-alhaitham",
+      "revision": "019f8c73-6cb1-761c-9821-d2e1dd7ad9b1",
+      "sha256": "90e3b8427f80616b8ec48d2fa5c1c2ac8c1f6c7389dab5aa4874dd4729f6162b",
+      "listing_url": "https://codexpetdb.com/en/pets/gi-alhaitham/download",
+      "max_bytes": 3000000,
+      "verified_bytes": 824182
+    },
+    "baizhu": {
+      "profile": "genshin_baizhu",
+      "slug": "gi-baizhu",
+      "revision": "019f8c74-259d-721f-9465-e06d5c079bbb",
+      "sha256": "e956335db1c23bfe1776be909cafd65bb16a2f6f9df1a6ec1424fbc8a33ee315",
+      "verified_bytes": 828590,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-baizhu/download"
+    },
+    "candace": {
+      "profile": "genshin_candace",
+      "slug": "gi-candace",
+      "revision": "019f8c74-6f05-71a3-b493-f4e4e923dbc5",
+      "sha256": "a3bd9022ba024b4e4cf9193f4e962f21398cbb67ced1d38e184beb7dac88c004",
+      "verified_bytes": 1030614,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-candace/download"
+    },
+    "chevreuse": {
+      "profile": "genshin_chevreuse",
+      "slug": "gi-chevreuse",
+      "revision": "019f8c75-004d-7711-b2e6-264fe6d28d3e",
+      "sha256": "f3972517521672f1a5fb5d06b4b553200dfdf88e0148f85c881b73dbc9bec7bf",
+      "verified_bytes": 744234,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-chevreuse/download"
+    },
+    "layla": {
+      "profile": "genshin_layla",
+      "slug": "gi-layla",
+      "revision": "019f8c7a-900c-749c-aeb5-a7e694656bff",
+      "sha256": "2098073af5ad526f7a380a5a6b9ebb4d6a07ddd7bbd6c0cd7c314806c00b2934",
+      "verified_bytes": 977903,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-layla/download"
+    },
+    "chiori": {
+      "profile": "genshin_chiori",
+      "slug": "gi-chiori",
+      "revision": "019f8c75-47f1-731a-804f-3435e50bcb83",
+      "sha256": "b33e8b3fca0f9bc0bebd31f6bfb5638f8aca50a280aa1dd747d0649329474391",
+      "verified_bytes": 1035836,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-chiori/download"
+    },
+    "cyno": {
+      "profile": "genshin_cyno",
+      "slug": "gi-cyno",
+      "revision": "019f8c75-da05-72a9-b339-55c0082a77d4",
+      "sha256": "935d270c453885c4719b36ba2423fe3e404bfd325b74019d5a04af40121c8ec4",
+      "verified_bytes": 1331811,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-cyno/download"
+    },
+    "dehya": {
+      "profile": "genshin_dehya",
+      "slug": "gi-dehya",
+      "revision": "019f8c76-6ccf-7535-8521-306b9bc0b6dd",
+      "sha256": "0dca6ffe41c7d547d014b576c81ff1131239676f7d18264664d181f8d5a5713c",
+      "verified_bytes": 715617,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-dehya/download"
+    },
+    "freminet": {
+      "profile": "genshin_freminet",
+      "slug": "gi-freminet",
+      "revision": "019f8c77-904d-76c3-94df-2c266f692749",
+      "sha256": "a832d1ab9417f622bd5324dd406f6576f1b6c0930092b409099e16f65156d5b0",
+      "verified_bytes": 688367,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-freminet/download"
+    },
+    "charlotte": {
+      "profile": "genshin_charlotte",
+      "slug": "gi-charlotte",
+      "revision": "019f8c74-b91e-72ca-8048-23e161ad33f0",
+      "sha256": "92d97b0006ccc445ba3a5152ba47cd9043be4131fec79f135d27a4808031ac2c",
+      "verified_bytes": 835499,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-charlotte/download"
+    },
+    "columbina": {
+      "profile": "genshin_columbina",
+      "slug": "gi-columbina",
+      "revision": "019f8c75-9128-72bb-9e32-4bf8ccb14a1c",
+      "sha256": "de19c4e905396dbfa927b73c9f547308b4c9da8276d4d0e8ab6b3e1e2e5dfed1",
+      "verified_bytes": 1212976,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-columbina/download"
+    },
+    "gaming": {
+      "profile": "genshin_gaming",
+      "slug": "gi-gaming",
+      "revision": "019f8c77-da6a-771f-bd64-21b7dda6eab5",
+      "sha256": "f00be7bb6d324a870fd6e3cd391500526d34da24e9fbd4e9675314f6187c0826",
+      "verified_bytes": 1141319,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-gaming/download"
+    },
+    "iansan": {
+      "profile": "genshin_iansan",
+      "slug": "gi-iansan",
+      "revision": "019f8c78-23ec-72cd-abf0-fa9d370c3c58",
+      "sha256": "b1a7ae810d7226581882e23de180e2725e15038360caca7e0624e9043411e5c6",
+      "verified_bytes": 783798,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-iansan/download"
+    },
+    "aino": {
+      "profile": "genshin_aino",
+      "slug": "gi-aino",
+      "revision": "019f8c73-1ff4-77b5-8d88-87213159e806",
+      "sha256": "37b16a5d7d002b8d702de543782ba71a54397006d02676cea304c109a6233b11",
+      "verified_bytes": 1245895,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-aino/download"
+    },
+    "dahlia": {
+      "profile": "genshin_dahlia",
+      "slug": "gi-dahlia",
+      "revision": "019f8c76-2609-77c6-be63-120ff8a5c2e6",
+      "sha256": "67184f9eafc466af27baf82c475b598cb79085ce9d8acd947330dd219ec7566f",
+      "verified_bytes": 720705,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-dahlia/download"
+    },
+    "flins": {
+      "profile": "genshin_flins",
+      "slug": "gi-flins",
+      "revision": "019f8c77-4691-7588-a4f6-f188d584959d",
+      "sha256": "860561c7accdcda2a970fa8e3b20264a1079492ad87fae136a2ef29ae029ecda",
+      "verified_bytes": 733245,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-flins/download"
+    },
+    "lan_yan": {
+      "profile": "genshin_lan_yan",
+      "slug": "gi-lan-yan",
+      "revision": "019f8c79-fc82-72cd-94c8-fd50e65cf1fd",
+      "sha256": "f821e89ebb1eecbb9ef3d3f7b879577c6cfe0177381997dce930f4f06a3b32cb",
+      "verified_bytes": 882508,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-lan-yan/download"
+    },
+    "durin": {
+      "profile": "genshin_durin",
+      "slug": "gi-durin",
+      "revision": "019f8c96-7691-70fc-8e39-f56cebe823b9",
+      "sha256": "8fc8bfa96092c3f060ba51ea6765f3847bc5a0b740929c3b3b97b430aba4c1bc",
+      "verified_bytes": 1008717,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-durin/download"
+    },
+    "ineffa": {
+      "profile": "genshin_ineffa",
+      "slug": "gi-ineffa",
+      "revision": "019f8c95-0fb6-7419-9272-df9ab6530c5a",
+      "sha256": "c278705518a21cf959ec164d4f5e349af64079326e302a9bc31c87f4e4e4664f",
+      "verified_bytes": 844872,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-ineffa/download"
+    },
+    "jahoda": {
+      "profile": "genshin_jahoda",
+      "slug": "gi-jahoda",
+      "revision": "019f8c78-d806-70e9-ac77-9e56cd1957a6",
+      "sha256": "e9ecf6019e672519fcbbe8347193f4e4e483be4bd448348408f68fbe31bd41b8",
+      "verified_bytes": 827665,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-jahoda/download"
+    },
+    "lauma": {
+      "profile": "genshin_lauma",
+      "slug": "gi-lauma",
+      "revision": "019f8c93-7090-7462-be9b-f84cda6220b8",
+      "sha256": "e52b9873ff3bd8085239c6454fdacadf2551db12671f8f1a1ec369789c7408ec",
+      "verified_bytes": 869915,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-lauma/download"
+    },
+    "alyosha": {
+      "profile": "genshin_alyosha",
+      "slug": "gi-alyosha",
+      "revision": "019f88d3-972e-76ac-8a1d-54de5616f8c6",
+      "sha256": "f13eee03007ced076de7a14ab4925dd0f6747028ad3796b12152f9bb2883dfcf",
+      "verified_bytes": 1063504,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-alyosha/download"
+    },
+    "odette": {
+      "profile": "genshin_odette",
+      "slug": "gi-odette",
+      "revision": "019f88ee-151d-750f-8899-5693cf570446",
+      "sha256": "10f722451c8ed24fac85efbfc77c54cd2e3bdfa85b3cf065c94b4ca1ab1df764",
+      "verified_bytes": 652801,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-odette/download"
+    },
+    "prune": {
+      "profile": "genshin_prune",
+      "slug": "gi-prune",
+      "revision": "019f8c9a-2278-76fa-ac7d-1d44ab7f1d71",
+      "sha256": "8f153a5fa1dedcdb68dfc6191891229953b6eb03bdc66b6226e2218e175fa86e",
+      "verified_bytes": 995099,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-prune/download"
+    },
+    "lohen": {
+      "profile": "genshin_lohen",
+      "slug": "gi-lohen",
+      "revision": "019f8c7a-fe62-76ba-b5f3-c4c9199e6603",
+      "sha256": "a77f0df094ebfd9bcb56d6d1d51347e93c4557db99eb7b0389764039cc8d9f66",
+      "verified_bytes": 829501,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-lohen/download"
+    },
+    "yanfei": {
+      "profile": "genshin_yanfei",
+      "slug": "gi-yanfei",
+      "revision": "019fa763-268a-7464-ab17-f58fd19c5712",
+      "sha256": "761d5821752ca49e14fa84200809582cd9f1abe0363cc9f4eeed1a5b2ab3b10d",
+      "verified_bytes": 1526288,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-yanfei/download"
+    },
+    "emilie": {
+      "profile": "genshin_emilie",
+      "slug": "gi-emilie",
+      "revision": "019f8c76-ff78-7273-98a1-f31ca37a5d1b",
+      "sha256": "8b74e58be3eaf6e1103fb2b0c1af2e28bd4bbe80626510d6ce45d8aedf376444",
+      "verified_bytes": 715013,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-emilie/download"
+    },
+    "illuga": {
+      "profile": "genshin_illuga",
+      "slug": "gi-illuga",
+      "revision": "019f89b0-fdc6-7578-b163-cdd4bbb42d78",
+      "sha256": "25d026d4e8b2aa0e20a02753133c6f854b5e8903b9b0a22c4f3ffe4b17090c9a",
+      "verified_bytes": 788883,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-illuga/download"
+    },
+    "zibai": {
+      "profile": "genshin_zibai",
+      "slug": "gi-zibai",
+      "revision": "019f8cb5-4614-77cf-8092-ce508770ca9f",
+      "sha256": "2be2ebe192b737c95f01061d5c77396bacbbd13273f5455eefa37d9a4de234a0",
+      "verified_bytes": 915460,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-zibai/download"
+    }
+  }
+}

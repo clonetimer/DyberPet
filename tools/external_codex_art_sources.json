@@ -1,0 +1,182 @@
+{
+  "schema": 1,
+  "note": "Eleven pinned independent Genshin Codex art sources; Sayu is a new distinct character. Human likeness and rights review pending.",
+  "sources": {
+    "linnea": {
+      "repository": "Alchuang22-dev/Linnea-Codex-Pet",
+      "revision": "57a95bd88bdd773448863d7049b8db1d8aec6f39",
+      "directory": "pet",
+      "manifest_id": "linnea",
+      "profile": "genshin_linnea",
+      "name": "莉奈娅",
+      "pet": {
+        "size": 228,
+        "sha": "1703dacb7d0ad726f9073ceffa12162dd5f62fa6"
+      },
+      "sprites": {
+        "size": 3382396,
+        "sha": "cdb855f05defd3ec08ccc6511a2d8a25d1ab6727"
+      }
+    },
+    "hu_tao_pixel": {
+      "repository": "ZaytsevZY/genshin-pets",
+      "revision": "88cc8fe7de174eab62a6eafb417c1a1ea8b4bf95",
+      "directory": "pets/hutao",
+      "manifest_id": "hutao",
+      "profile": "genshin_hu_tao",
+      "name": "胡桃（独立像素版本）",
+      "pet": {
+        "size": 170,
+        "sha": "fe67e520fe99a381d2be676afd69def6186bb587"
+      },
+      "sprites": {
+        "size": 1815520,
+        "sha": "7f24c8872ec41ab1b76fa50e868115e8bc2c41db"
+      }
+    },
+    "nahida_mini": {
+      "repository": "Rukkhadevata-Karrenay/nahida-mini-codex-pet",
+      "revision": "3b0c593fb8c93544ebb3cb28f55f97c82ed0e6d1",
+      "directory": "dist",
+      "manifest_id": "nahida-mini-codex-pet-v1",
+      "profile": "genshin_nahida",
+      "name": "纳西妲（Mini 像素版）",
+      "pet": {
+        "size": 174,
+        "sha": "bba10c54ff1cb29113174f08da94a059fef69022"
+      },
+      "sprites": {
+        "size": 1811498,
+        "sha": "342746252b5a4b61f2bedfe01a7f858b5297e3a9"
+      }
+    },
+    "sandrone": {
+      "repository": "crema-lida/genshin-codex-pets",
+      "revision": "52c50711ef2d47fe28deddf69fbb36618ffa0de2",
+      "directory": "Sandrone/sandrone",
+      "manifest_id": "sandrone",
+      "profile": "genshin_sandrone",
+      "name": "桑多涅（独立作者）",
+      "pet": {
+        "size": 168,
+        "sha": "f5f0a86cec2cbfcf14c4d5a51c0a7e429e1fcc04"
+      },
+      "sprites": {
+        "size": 1657010,
+        "sha": "57d4185d5a75b41077a4ff7de7660eaca6fe6b70"
+      }
+    },
+    "sandrone_marionette": {
+      "repository": "sqybi/codex-fan-pets-gi",
+      "revision": "7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff",
+      "directory": "pets/sandrone-marionette",
+      "manifest_id": "sandrone桑多涅-marionette木偶",
+      "profile": "genshin_sandrone",
+      "name": "桑多涅（木偶版）",
+      "pet": {
+        "size": 205,
+        "sha": "baa89bdfedae76ef8ba649c8547d03879df13783"
+      },
+      "sprites": {
+        "size": 1877016,
+        "sha": "d077b882c2d302be8d3e6bef32d2b630d02a2905"
+      }
+    },
+    "keqing_chibi": {
+      "repository": "PengZirong/keqing-codex-pet",
+      "revision": "f8c45f36164accbed15c46084bce2b274ca82d8b",
+      "directory": "variants/chibi",
+      "manifest_id": "keqing-chibi",
+      "profile": "genshin_keqing",
+      "name": "刻晴 · 精细 Q 版（优先预览）",
+      "pet": {
+        "size": 218,
+        "sha": "71f72eb99d69b9071cf117d1976f02724f54030f"
+      },
+      "sprites": {
+        "size": 3320422,
+        "sha": "1e71a04a3d1d730580505f7191de56248825c337"
+      }
+    },
+    "keqing_classic": {
+      "repository": "PengZirong/keqing-codex-pet",
+      "revision": "f8c45f36164accbed15c46084bce2b274ca82d8b",
+      "directory": "variants/classic",
+      "manifest_id": "keqing",
+      "profile": "genshin_keqing",
+      "name": "刻晴 · 经典比例原画版",
+      "pet": {
+        "size": 182,
+        "sha": "1332b59038e446f4386cbb2dd69048223172a18c"
+      },
+      "sprites": {
+        "size": 2045822,
+        "sha": "883426f35f7d8e7447284e2e66a22b18d1d77b9b"
+      }
+    },
+    "klee_fan": {
+      "repository": "rullerzhou-afk/codex-fan-pets",
+      "revision": "7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff",
+      "directory": "pets/klee",
+      "manifest_id": "klee",
+      "profile": "genshin_klee",
+      "name": "可莉（另一作者图集）",
+      "pet": {
+        "size": 141,
+        "sha": "989410aee2bbaf2215a55943ee7e940b9887bac8"
+      },
+      "sprites": {
+        "size": 2117626,
+        "sha": "43cb4c76279829705f3178a4cb80b9c6f41a7024"
+      }
+    },
+    "yoimiya_fan": {
+      "repository": "rullerzhou-afk/codex-fan-pets",
+      "revision": "7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff",
+      "directory": "pets/yoimiya宵宫",
+      "manifest_id": "yoimiya宵宫",
+      "profile": "genshin_yoimiya",
+      "name": "宵宫（另一作者图集）",
+      "pet": {
+        "size": 201,
+        "sha": "d05ee0337114ab602893810d6b2d03e39c9cf30b"
+      },
+      "sprites": {
+        "size": 2404750,
+        "sha": "cdfb34fb418a0facb36ec9908cc3fb87f101760a"
+      }
+    },
+    "furina_fan": {
+      "repository": "rullerzhou-afk/codex-fan-pets",
+      "revision": "7e1deb0c5b825856ccad0f4c01a0d3ca03dbe1ff",
+      "directory": "pets/furina芙宁娜",
+      "manifest_id": "furina芙宁娜",
+      "profile": "genshin_furina",
+      "name": "芙宁娜（另一作者图集）",
+      "pet": {
+        "size": 187,
+        "sha": "99de7b619322db8a33cf2afae9744a9f51a0170f"
+      },
+      "sprites": {
+        "size": 2199566,
+        "sha": "7b0dd26db2c4351d1c8c588811133d09c0697d4b"
+      }
+    },
+    "sayu_cozy": {
+      "repository": "mn8821236/petscodex",
+      "revision": "a4e3532b15da80e73845f1c431a44e55b5b894fb",
+      "directory": "cozy-sayu",
+      "manifest_id": "cozy-sayu",
+      "profile": "genshin_sayu",
+      "name": "早柚 · Cozy 作者动画（外观待审）",
+      "pet": {
+        "size": 467,
+        "sha": "625d83dc3eacea82d0b08d699a0d4c6a139d5c37"
+      },
+      "sprites": {
+        "size": 1554794,
+        "sha": "6aaefa1074a2e72d73333a171575b4ff8b9693e7"
+      }
+    }
+  }
+}

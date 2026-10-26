@@ -43,7 +43,8 @@ class AnimationImportTest(unittest.TestCase):
         info = json.loads((target / "info" / "info.json").read_text(encoding="utf-8"))
         act = json.loads((target / "act_conf.json").read_text(encoding="utf-8"))
         report = json.loads((target / "IMPORT_REPORT.json").read_text(encoding="utf-8"))
-        self.assertEqual(pet["patpat"], "wave")
+        self.assertEqual(pet["patpat"], "idle")
+        self.assertNotIn("patpat", act)  # Waving remains greeting, never fake petting.
         self.assertEqual(info["petName"], "纳西妲")
         self.assertEqual(info["author"]["name"], "Unspecified")
         self.assertIn("Q版", info["tages"])

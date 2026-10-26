@@ -38,6 +38,10 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.install_artist_genshin \
   --hidden-import tools.artist_visual_review \
   --hidden-import tools.install_artist_codex \
+  --hidden-import tools.install_artist_shimeji \
+  --hidden-import tools.install_nanopet_shimeji \
+  --hidden-import tools.install_external_codex \
+  --hidden-import tools.character_source_coverage \
   --hidden-import tools.install_creator_mascots \
   --hidden-import tools.role_action_preview \
   --hidden-import tools.character_progress \

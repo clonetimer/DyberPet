@@ -15,7 +15,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QStandardPaths, QSize
 from PySide6.QtGui import QDesktopServices, QIcon, QFont
-from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QCheckBox, QSizePolicy, QHBoxLayout, QSpacerItem
+from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QCheckBox, QSizePolicy, QHBoxLayout, QSpacerItem, QMessageBox
 
 from .custom_utils import CharCard, CharCardGroup, CharLine
 from DyberPet.conf import CheckCharFiles
@@ -88,7 +88,7 @@ class CharInterface(ScrollArea):
             self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
         self.artistSourceButton = PushButton(self.tr("安装作者原画角色"), self, FIF.DOWNLOAD)
         self.artistSourceButton.setToolTip(
-            self.tr("本机下载已有原作者逐帧动画：纳西妲／魈／流浪者，不再生成替代造型"))
+            self.tr("从公开作者作品本机安装原有逐帧动画、Codex 图集和 Shimeji 动作，不生成替代造型"))
         self.mascotButton = PushButton(self.tr("咕嘎 / Doro"), self, FIF.HEART)
         self.mascotButton.setToolTip(
             self.tr("查看企鹅/四足演示角色以及个人导入的对应素材；不冒充作者原设美术"))
@@ -307,9 +307,16 @@ class CharInterface(ScrollArea):
 
         # Keep existing role management layout: one compact choice determines
         # whether user selects an unpacked role folder or a native MOD ZIP.
+        from tools.install_pinned_codexpetdb import listed_packages
+        verified_source_count = len(listed_packages()["sources"])
         options = ["个人本地导入：角色文件夹 / Codex / GIF / PNG", "个人本地导入：原生角色 ZIP",
                    "生成原创 Q 版示例角色（不需下载素材）",
-                   "浏览角色合集来源（网页手动获取，不自动下载）"]
+                   "浏览角色合集来源（网页手动获取，不自动下载）",
+                    "个人本地导入：Shimeji 原画 ZIP（仅提取图片）",
+                    "个人本地导入：Codex 动画 ZIP（仅提取图集）",
+                     "个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）",
+                     f"个人使用：下载 SHA-256 固定的{verified_source_count}位原神角色原画 ZIP",
+                     "个人本地导入：已下载的 SHA-256 固定原画 ZIP（断网可用）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -330,6 +337,33 @@ class CharInterface(ScrollArea):
             return
         if choice == options[2]:
             self._importOriginalDemo()
+            return
+        if choice == options[7]:
+            self._importPinnedPetDb()
+            return
+        if choice == options[8]:
+            self._importPinnedPetDb(local_archive=True)
+            return
+        if choice == options[6]:
+            module, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择已下载的完整 React-Shimeji LFS 模块"),
+                docs, "React-Shimeji Module (*.ts)")
+            if module:
+                self._importReactShimeji(module)
+            return
+        if choice == options[5]:
+            archive, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择本人已下载的 Codex 动画 ZIP"), docs,
+                "Codex Pet ZIP (*.zip)")
+            if archive:
+                self._importCodexZip(archive)
+            return
+        if choice == options[4]:
+            archive, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择本人已下载的标准 Shimeji ZIP"), docs,
+                "Shimeji ZIP (*.zip)")
+            if archive:
+                self._importShimejiZip(archive)
             return
         if choice == options[3]:
             QDesktopServices.openUrl(QUrl(
@@ -522,30 +556,129 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在本机获取并校验角色作者发布的图集，然后转换动画。"),1)
 
-    def _installArtistGenshin(self):
-        """Opt-in to existing published animation artwork, never redraw it."""
+    def _installArtistGenshin(self, only_profile=None):
+        """Select genuine source art for one chosen role; never redraw it."""
+        if not isinstance(only_profile, str) or not only_profile.startswith("genshin_"):
+            only_profile = None
         if self.chibiThread is not None:
             self.__showSystemNote("其他角色安装仍在进行。", 1)
             return
+        from tools.creator_art_preference import install_preference
         from tools.install_artist_genshin import ROLES, SOURCE_URL
         from tools.install_artist_codex import SOURCES, ROOT
-        labels = {f"完整原生动画 · {title}":("artist_genshin", key)
+        from tools.install_artist_shimeji import source_manifest
+        from tools.install_nanopet_shimeji import source_manifest as nano_manifest
+        from tools.install_external_codex import source_manifest as external_manifest
+        from tools.install_pinned_codexpetdb import listed_packages, fixed_archive_url
+        from tools.react_shimeji_source_leads import (
+            verified_lfs_sources, REPOSITORY as REACT_REPO, REVISION as REACT_REV)
+        shimeji = source_manifest()
+        nano = nano_manifest()
+        external = external_manifest()
+        petdb = listed_packages()["sources"]
+        verified_react = verified_lfs_sources()
+        labels = {f"① 精细Q版优先 · 完整原生动画 · {title}":("artist_genshin", key)
                   for key, (_, _, title) in ROLES.items()}
-        labels.update({f"轻量创作者图集 · {row[1]}":("artist_codex", key)
+        labels.update({f"② 作者图集待视觉核对 · {row[1]} · {key}":("artist_codex", key)
                        for key, row in SOURCES.items()})
+        labels.update({f"③ 可接受小型 Shimeji · {row['name']} · {key}":("artist_shimeji", key)
+                       for key, row in shimeji["roles"].items()})
+        labels.update({f"③ 可接受小型 Shimeji · {row['name']} · {row['artist']}":("artist_nano", key)
+                       for key, row in nano["roles"].items()})
+        labels.update({f"② 独立画师图集待视觉核对 · {row['name']} · {key}":("artist_external_codex", key)
+                       for key, row in external["sources"].items()})
+        labels.update({
+            f"② 已核验 SHA-256 的原画 ZIP · {row['slug']} · {key}": ("pinned_codexpetdb", key)
+            for key, row in petdb.items()
+        })
+        labels.update({
+            f"② LFS 原始 PNG 已核验 · {row['slug']} · 动作待验收": ("react_shimeji_lfs", profile)
+            for profile, row in verified_react.items()
+        })
+        if only_profile:
+            def mapped_profile(source):
+                mode, key = source
+                if mode == "artist_genshin":
+                    return ROLES[key][1]
+                if mode == "artist_codex":
+                    return SOURCES[key][2]
+                if mode == "artist_shimeji":
+                    return shimeji["roles"][key]["profile"]
+                if mode == "artist_nano":
+                    return nano["roles"][key]["profile"]
+                if mode == "pinned_codexpetdb":
+                    return petdb[key]["profile"]
+                if mode == "react_shimeji_lfs":
+                    return key
+                return external["sources"][key]["profile"]
+            labels = {name: source for name, source in labels.items()
+                      if mapped_profile(source) == only_profile}
+        if not labels:
+            self.__showMessageBox(
+                "该角色暂缺原画资源",
+                "目前尚未找到并固定校验属于此人物的公开作者动画。"
+                "不会用简笔画、同名其他游戏角色或通用换色素材代替。"
+                "此人物继续列入待补充清单。")
+            return
         selected, ok = QInputDialog.getItem(
             self, "安装真实来源的桌宠美术",
-            "选择已有作者制作的桌宠动画；完整原生动画包可能较大，"
-            "轻量图集通常只有数 MB。不会绘制新的替代形象。",
-            list(labels), 0, False)
+            "第一组精细 Q 版优先；图集需看图复核；第二组 Shimeji 可接受。"
+            "以下只是素材风格优先级，不代表原设相似度验收通过。",
+            sorted(labels, key=lambda name: (install_preference(labels[name][0]), name)), 0, False)
         if not ok or selected not in labels:
             return
         mode, kind = labels[selected]
-        source = (SOURCE_URL + ROLES[kind][0] if mode == "artist_genshin"
-                  else ROOT + "/" + SOURCES[kind][0])
+        if mode == "react_shimeji_lfs":
+            source_record = verified_react[kind]
+            source_url = (
+                f"https://github.com/{REACT_REPO}/blob/{REACT_REV}/"
+                f"packages/character-{source_record['slug']}/index.ts")
+            if not self.__showMessageBox(
+                    "选择经 SHA 校验的作者原始图集",
+                    "请从以下原作者页面手动下载完整 .ts 原始图集（不是只有几行字的 LFS 指针）：\n"
+                    + source_url + "\n固定 SHA-256："
+                    + source_record["sha256"] +
+                    "\n安装程序会校验精确身份及全部字节；现有 crawl/fall 动作只有单独姿势帧，"
+                    "仍需用户预览验证是否存在真实移动。继续选择已下载文件吗？"):
+                return
+            local_module, _ = QFileDialog.getOpenFileName(
+                self, self.tr("请选择完整作者 Git LFS 原画模块"),
+                QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation),
+                "原画 TypeScript 图集 (*.ts)")
+            if not local_module:
+                return
+            self.addButton.setEnabled(False)
+            self.artistSourceButton.setEnabled(False)
+            self.chibiThread = ChibiImportThread(
+                local_module, os.path.join(basedir, "res", "role"),
+                mode="react_shimeji_lfs", profile=kind, preset=None, folder=None)
+            self.chibiThread.done.connect(self._onChibiImportComplete)
+            self.chibiThread.finished.connect(self._onChibiThreadFinished)
+            self.chibiThread.start()
+            self.__showSystemNote(
+                "正在检查原画 LFS 内容 SHA 与原始帧；动作质量仍须单独验收。", 1)
+            return
+        if mode == "artist_genshin":
+            source = SOURCE_URL + ROLES[kind][0]
+        elif mode == "artist_codex":
+            source = ROOT + "/" + SOURCES[kind][0]
+        elif mode == "artist_shimeji":
+            source = ("https://github.com/" + shimeji["repository"]
+                      + "/tree/" + shimeji["revision"]
+                      + "/public/assets/" + kind)
+        elif mode == "pinned_codexpetdb":
+            source = fixed_archive_url(petdb[kind])
+        elif mode == "artist_nano":
+            source = ("https://github.com/" + nano["repository"]
+                      + "/tree/" + nano["revision"] + "/" + nano["asset_root"]
+                      + "/" + nano["roles"][kind]["upstream_dir"] + "/img")
+        else:
+            row = external["sources"][kind]
+            source = ("https://github.com/" + row["repository"]
+                      + "/tree/" + row["revision"] + "/" + row["directory"])
         if not self.__showMessageBox(
                 "本机安装公开作者动画",
-                f"来源：{source}\\n"
+                f"来源：{source}\n"
                 "确认后下载固定版本原始动画，并安装为独立角色。"
                 "不会覆盖现有桌宠或用户存档。"
                 "公开素材与人物形象的人工验收是两回事；安装后请先预览。继续吗？"):
@@ -583,7 +716,10 @@ class CharInterface(ScrollArea):
             return
         selected=dialog.selection
         if selected=="__install_artist__":
-            self._installArtistGenshin()
+            highlighted = dialog.selected_character_id()
+            self._installArtistGenshin(
+                highlighted if highlighted and highlighted.startswith("genshin_")
+                else None)
             return
         if selected=="__manage_genshin__":
             self._showGenshinLibrary()
@@ -907,6 +1043,123 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(self.tr("正在生成原创 Q 版星芽动画，不会覆盖已有角色。"), 1)
 
+    def _importPinnedPetDb(self, *, local_archive=False):
+        """User-selected remote or previously downloaded SHA-pinned creator ZIP."""
+        if self.chibiThread is not None:
+            return
+        from tools.install_pinned_codexpetdb import listed_packages
+        from tools.chibi_profiles import CHIBI_PROFILES
+        options = {
+            CHIBI_PROFILES[item["profile"]]["name"] + " [" + item["slug"] + "]": key
+            for key, item in sorted(listed_packages()["sources"].items())
+        }
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("选择需要安装的原画角色"),
+            self.tr("仅显示具有公开下载地址及固定 ZIP SHA-256 的四位人物："),
+            list(options), 0, False)
+        if not accepted or selected not in options:
+            return
+        archive_path = None
+        if local_archive:
+            archive_path, _ = QFileDialog.getOpenFileName(
+                self, self.tr("选择已下载的原画 ZIP（须匹配固定 SHA-256）"),
+                QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation),
+                "ZIP Archive (*.zip)")
+            if not archive_path:
+                return
+        confirmation = QMessageBox.question(
+            self, self.tr("个人本地导入确认" if local_archive else "个人本地下载确认"),
+            self.tr("将校验本人已下载的原画 ZIP，文件长度与 SHA-256 必须完全匹配；" if local_archive
+                    else "将从 CodexPetDB 下载第三方原画 ZIP，先验证完整 SHA-256，")
+            + self.tr("然后仅解压宠物元数据与 PNG/WebP 图集。"
+                    "来源原设形象尚未人工验收；不执行 ZIP 内脚本，也不覆盖已有角色。继续吗？"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if confirmation != QMessageBox.StandardButton.Yes:
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            archive_path if local_archive else options[selected],
+            os.path.join(basedir, "res", "role"),
+            mode="pinned_codexpetdb_local" if local_archive else "pinned_codexpetdb",
+            profile=None, preset=options[selected], folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(
+            self.tr("正在校验已下载的原画 ZIP；只有匹配 SHA-256 后才会安装。"
+                    if local_archive else
+                    "正在下载并核验固定 SHA-256 原画包；安装成功前不会更改现有角色。"), 1)
+
+    def _importReactShimeji(self, modulePath):
+        """Require an explicit one of six exact pinned identities."""
+        if self.chibiThread is not None:
+            return
+        from tools.react_shimeji_source_leads import CANDIDATES
+        from tools.chibi_profiles import CHIBI_PROFILES
+        mapping = {
+            CHIBI_PROFILES[profile]["name"] + " [" + profile + "]": profile
+            for profile in sorted(CANDIDATES)
+        }
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("选择对应原神人物"),
+            self.tr("仅支持六位已固定 LFS SHA-256 的候选来源；仍需人工核对人物画风："),
+            list(mapping), 0, False)
+        if not accepted or selected not in mapping:
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            modulePath, os.path.join(basedir, "res", "role"),
+            mode="react_shimeji_lfs", profile=mapping[selected],
+            preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(
+            self.tr("正在校验真实 LFS 模块 SHA-256 并从 PNG 图集读取原始帧；不执行 TypeScript。"), 1)
+
+    def _importCodexZip(self, archivePath):
+        """Convert a community Codex ZIP without unpacking executable payloads."""
+        if self.chibiThread is not None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted:
+            return
+        if profile is None or not profile.startswith("genshin_"):
+            self.__showSystemNote(
+                self.tr("Codex ZIP 必须明确选择目标原神人物，不能凭文件名自动猜测。"), 2)
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            archivePath, os.path.join(basedir, "res", "role"),
+            mode="codex_zip", profile=profile, preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(
+            self.tr("正在校验并导入 Codex 原始精灵图集（不执行压缩包内程序）。"), 1)
+
+    def _importShimejiZip(self, archivePath):
+        """Import personal original Shimeji PNGs without launching archive programs."""
+        if self.chibiThread is not None:
+            return
+        accepted, profile = self._chooseChibiProfile()
+        if not accepted:
+            return
+        if profile is None or not profile.startswith("genshin_"):
+            self.__showSystemNote(
+                self.tr("Shimeji 原画需要明确选择对应的原神角色，不能自动猜测人物身份。"), 2)
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            archivePath, os.path.join(basedir, "res", "role"),
+            mode="shimeji_zip", profile=profile, preset=None, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(
+            self.tr("正在安全读取 Shimeji PNG 帧，不执行 ZIP 内任何程序。"), 1)
+
     def _importNativeZip(self, archivePath):
         """Import native ZIP with optional, explicit *local* profile association."""
         if self.chibiThread is not None:
@@ -986,6 +1239,22 @@ class CharInterface(ScrollArea):
     def _onChibiImportComplete(self, role_name, error):
         if error:
             if (self.chibiThread is not None and
+                    self.chibiThread.mode in ("pinned_codexpetdb", "pinned_codexpetdb_local")):
+                if ("429" in error or "Too Many Requests" in error):
+                    error = (
+                        "原画来源站点暂时限制下载请求（HTTP 429）。"
+                        "您可以从作者页面下载对应 ZIP 后，使用「添加角色 → "
+                        "已下载的 SHA-256 固定原画 ZIP（断网可用）」导入。"
+                        "只有固定哈希完全匹配的原件才会被安装，已有角色不受影响。"
+                    )
+                elif ("SHA-256" in error or "length differs" in error or
+                      "pet.json.id" in error):
+                    error = (
+                        "原画安装被安全校验拒绝：" + error[:260] +
+                        "。请检查所选人物和 ZIP 是否与固定发布版本完全一致。"
+                        "不要关闭校验或用其他人物的素材替代。"
+                    )
+            if (self.chibiThread is not None and
                     self.chibiThread.mode == "creator_source"):
                 error = (self.tr("未能安装作者动画素材：") + error[:360] +
                          self.tr("\n内置原创咕嘎 / Doro 演示版仍可正常使用。"
@@ -999,12 +1268,12 @@ class CharInterface(ScrollArea):
         preview = Path(basedir) / "res" / "role" / role_name / "ANIMATION_PREVIEW.png"
         source_mode = self.chibiThread.mode if self.chibiThread is not None else ""
         title = ("作者真实动作帧核对（非人工验收通过）"
-                 if source_mode in ("artist_genshin", "artist_codex", "creator_source")
+                 if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source")
                  else "角色动作帧预览")
         message = ("安装成功。是否打开由原作者 PNG 原始帧直接拼成的核对图？"
                    "请检查脸部、发饰、服装和动作是否确实属于所选角色。"
                    "预览不等于自动完成形象验收。"
-                   if source_mode in ("artist_genshin", "artist_codex", "creator_source")
+                   if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source")
                    else "角色已导入。是否打开动作帧预览图，检查动画素材？")
         if preview.is_file() and self.__showMessageBox(title, message):
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
@@ -1248,11 +1517,49 @@ class ChibiImportThread(QThread):
                 installed = install_artist_codex(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
+            elif self.mode == "artist_shimeji":
+                from tools.install_artist_shimeji import install_artist_shimeji
+                installed = install_artist_shimeji(
+                    self.preset, self.output_root, confirmed=True)
+                new_folder = self.output_root / installed["folder"]
+            elif self.mode == "artist_nano":
+                from tools.install_nanopet_shimeji import install_nanopet_shimeji
+                installed = install_nanopet_shimeji(
+                    self.preset, self.output_root, confirmed=True)
+                new_folder = self.output_root / installed["folder"]
+            elif self.mode == "artist_external_codex":
+                from tools.install_external_codex import install_external_codex
+                installed = install_external_codex(
+                    self.preset, self.output_root, confirmed=True)
+                new_folder = self.output_root / installed["folder"]
             elif self.mode == "creator_source":
                 from tools.install_creator_mascots import install_creator_mascot
                 installed = install_creator_mascot(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
+            elif self.mode in ("pinned_codexpetdb", "pinned_codexpetdb_local"):
+                from tools.install_pinned_codexpetdb import install_pinned_codexpetdb
+                # self.source is always Path: use selected string registry key,
+                # not Path("kaveh") which fails membership checks in source index.
+                source_key = self.preset if self.preset is not None else str(self.source)
+                new_folder = install_pinned_codexpetdb(
+                    source_key, self.output_root, confirmed=True,
+                    archive=self.source if self.mode == "pinned_codexpetdb_local" else None)
+            elif self.mode == "react_shimeji_lfs":
+                from tools.install_pinned_react_shimeji import install_pinned_react_shimeji
+                new_folder = install_pinned_react_shimeji(
+                    self.source, self.output_root,
+                    profile=self.profile, confirmed=True)
+            elif self.mode == "codex_zip":
+                from tools.install_personal_codex_zip import install_personal_codex_zip
+                new_folder = install_personal_codex_zip(
+                    self.source, self.output_root,
+                    profile=self.profile, confirmed=True)
+            elif self.mode == "shimeji_zip":
+                from tools.install_personal_shimeji_zip import install_personal_shimeji_zip
+                new_folder = install_personal_shimeji_zip(
+                    self.source, self.output_root,
+                    profile=self.profile, confirmed=True)
             elif self.mode in ("native_zip", "native_folder"):
                 if self.profile:
                     # Attach only the user-selected display identity; never

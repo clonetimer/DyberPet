@@ -1,0 +1,167 @@
+"""End-to-end standard Shimeji ZIP personal import without executing vendor code."""
+from __future__ import annotations
+
+import ast
+import hashlib
+import io
+import json
+from pathlib import Path
+import tempfile
+import unittest
+import zipfile
+
+from PIL import Image
+
+from tools.install_personal_shimeji_zip import (
+    inspect_shimeji_zip, install_personal_shimeji_zip, MAX_ARCHIVE_BYTES)
+from tools.install_native_role import validate_native_role
+
+
+class PersonalShimejiZipTests(unittest.TestCase):
+    @staticmethod
+    def png(color):
+        out = io.BytesIO()
+        Image.new("RGBA", (40, 55), color).save(out, format="PNG")
+        return out.getvalue()
+
+    def make_zip(self, directory, *, sparse=False, duplicate=False, without_clone=False):
+        archive = Path(directory) / "kaveh-untrusted.zip"
+        ids = (38, 1, 2, 3, 5, 6, 7, 4, 11, 18, 19, 20, 21,
+               12, 13, 14, 31, 32, 33)
+        if sparse:
+            ids = (38,)
+        if without_clone:
+            ids = tuple(n for n in ids if n != 38)
+        with zipfile.ZipFile(archive, "w") as z:
+            z.writestr("Shimeji.exe", b"never execute this")
+            z.writestr("libs/SomeRuntime.jar", b"do not extract this")
+            z.writestr("../path-traversal.txt", b"not extracted")
+            for idx in ids:
+                z.writestr(f"Pet/img/shime{idx}.png",
+                           self.png((idx * 5 % 255, idx * 11 % 255, 50, 230)))
+            if duplicate:
+                z.writestr("Other/img/shime38.png", self.png((2, 3, 4, 255)))
+        return archive
+
+    def test_import_real_pngs_preserves_original_bytes_and_skips_executables(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = self.make_zip(tmp)
+            origin = inspect_shimeji_zip(archive)
+            root = Path(tmp) / "roles"
+            with self.assertRaises(ValueError):
+                install_personal_shimeji_zip(archive, root,
+                    profile="genshin_kaveh")
+            self.assertFalse(root.exists())
+            dest = install_personal_shimeji_zip(
+                archive, root, profile="genshin_kaveh", confirmed=True)
+            self.assertEqual((dest/"source_frames"/"shime38.png").read_bytes(),
+                             origin[38])
+            self.assertEqual((dest/"action"/"stand_0.png").read_bytes(), origin[1])
+            self.assertFalse((dest/"Shimeji.exe").exists())
+            self.assertFalse((dest/"libs").exists())
+            self.assertFalse((Path(tmp)/"path-traversal.txt").exists())
+            validation = validate_native_role(dest)
+            self.assertGreaterEqual(validation["actions"], 5)
+            act_conf = json.loads((dest/"act_conf.json").read_text("utf-8"))
+            self.assertNotIn("patpat", act_conf)
+            self.assertIn("rest", act_conf)
+            self.assertTrue((dest/"ANIMATION_PREVIEW.png").is_file())
+            self.assertTrue((dest/"ACTION_PIXEL_AUDIT.json").is_file())
+            qa = json.loads((dest/"ACTION_PIXEL_AUDIT.json").read_text("utf-8"))
+            self.assertGreaterEqual(qa["summary"]["native_actions"], 5)
+            self.assertFalse(qa["summary"]["character_visual_likeness_verified"])
+            self.assertFalse(qa["summary"]["action_semantics_manually_verified"])
+            receipt = json.loads((dest/"PERSONAL_IMPORT.json").read_text("utf-8"))
+            self.assertEqual(receipt["selected_profile"], "genshin_kaveh")
+            self.assertFalse(receipt["source_upstream_identity_verified"])
+            self.assertFalse(receipt["likeness_manually_reviewed"])
+            self.assertFalse(receipt["redistribution_allowed_by_tool"])
+            self.assertEqual(receipt["all_original_frames_preserved"], len(origin))
+            second = install_personal_shimeji_zip(
+                archive, root, profile="genshin_kaveh", confirmed=True)
+            self.assertNotEqual(second, dest)
+            self.assertTrue(dest.exists())
+
+    def test_actual_gui_has_explicit_png_only_zip_route(self):
+        gui_path = Path(__file__).resolve().parents[1] / "DyberPet" / "DyberSettings" / "CharCardUI.py"
+        source = gui_path.read_text("utf-8")
+        ast.parse(source)
+        self.assertIn("个人本地导入：Shimeji 原画 ZIP（仅提取图片）", source)
+        self.assertIn("mode=\"shimeji_zip\"", source)
+        self.assertIn('elif self.mode == "shimeji_zip":', source)
+        self.assertIn("install_personal_shimeji_zip(", source)
+
+    def test_missing_required_frames_and_duplicate_names_blocked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = self.make_zip(tmp, sparse=True)
+            with self.assertRaisesRegex(ValueError, "requires stand 1"):
+                inspect_shimeji_zip(source)
+        with tempfile.TemporaryDirectory() as tmp:
+            source = self.make_zip(tmp, duplicate=True)
+            with self.assertRaisesRegex(ValueError, "Duplicate"):
+                inspect_shimeji_zip(source)
+
+    def test_invalid_source_attestation_refused_without_creating_role(self):
+        with tempfile.TemporaryDirectory() as td:
+            archive = self.make_zip(td)
+            root = Path(td) / "roles"
+            with self.assertRaisesRegex(ValueError, "Verified React-Shimeji"):
+                install_personal_shimeji_zip(
+                    archive, root, profile="genshin_kaveh", confirmed=True,
+                    verified_react_sha="not-a-real-sha")
+            self.assertFalse(root.exists())
+            installed = install_personal_shimeji_zip(
+                archive, root, profile="genshin_kaveh", confirmed=True,
+                verified_react_sha="a" * 64)
+            receipt = json.loads(
+                (installed / "PERSONAL_IMPORT.json").read_text("utf-8"))
+            self.assertEqual(receipt["source_module_sha256"], "a" * 64)
+            self.assertEqual(receipt["source_kind"],
+                             "pinned_react_shimeji_lfs_local_only")
+            self.assertFalse(receipt["source_author_likeness_qa_passed"])
+
+    def test_standard_idle_and_walk_work_even_without_clone_frame38(self):
+        with tempfile.TemporaryDirectory() as td:
+            archive = self.make_zip(td, without_clone=True)
+            frames = inspect_shimeji_zip(archive)
+            self.assertIn(1, frames)
+            self.assertNotIn(38, frames)
+            role = install_personal_shimeji_zip(
+                archive, Path(td) / "roles", profile="genshin_kaveh",
+                confirmed=True)
+            self.assertEqual((role / "action" / "stand_0.png").read_bytes(), frames[1])
+            act = json.loads((role / "act_conf.json").read_text("utf-8"))
+            self.assertNotIn("patpat", act)
+            self.assertIn("rest", act)
+
+    def test_oversize_compressed_archive_rejected_before_loading(self):
+        with tempfile.TemporaryDirectory() as td:
+            huge = Path(td) / "oversized.zip"
+            with huge.open("wb") as stream:
+                stream.truncate(MAX_ARCHIVE_BYTES + 1)
+            with self.assertRaisesRegex(ValueError, "compressed archive size"):
+                inspect_shimeji_zip(huge)
+            self.assertFalse((Path(td) / "roles").exists())
+
+    def test_saved_archive_hash_matches_original_local_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            source = self.make_zip(td)
+            installed = install_personal_shimeji_zip(
+                source, Path(td) / "roles", profile="genshin_kaveh",
+                confirmed=True)
+            receipt = json.loads((installed / "PERSONAL_IMPORT.json").read_text("utf-8"))
+            self.assertEqual(receipt["source_archive_sha256"],
+                             hashlib.sha256(source.read_bytes()).hexdigest())
+
+    def test_wrong_profile_and_nonzip_are_not_silently_accepted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = self.make_zip(tmp)
+            with self.assertRaisesRegex(ValueError, "exact Genshin identity"):
+                install_personal_shimeji_zip(
+                    source, Path(tmp)/"roles", profile="unknown", confirmed=True)
+            with self.assertRaises(ValueError):
+                inspect_shimeji_zip(Path(tmp)/"missing.zip")
+
+
+if __name__ == "__main__":
+    unittest.main()

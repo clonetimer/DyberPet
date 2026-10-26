@@ -1,0 +1,3273 @@
+{
+  "schema": 1,
+  "repository": "Poseima/nano-pet",
+  "revision": "abf4ec309fbe44dba6675d71c0cccb2dc419f38c",
+  "asset_root": "NanoPetAssets/genshin-impact",
+  "rights": "upstream MIT software code license is not an artwork redistribution license; local opt-in only",
+  "excluded": [
+    "genshin-impact-xiao-catboy-by-uuteki"
+  ],
+  "excluded_reason": "Noncanon catboy stylization cannot substitute for standard original Xiao visual",
+  "roles": {
+    "aether-by-tenkotenmeo": {
+      "name": "空（旅行者）",
+      "profile": "genshin_traveler_aether",
+      "upstream_dir": "genshin-impact-aether-by-tenkotenmeo",
+      "artist": "tenkotenmeo",
+      "files": {
+        "shime1.png": {
+          "size": 19570,
+          "sha": "3789c630edb169a267ea40fa155896fa3d2c6e64"
+        },
+        "shime10.png": {
+          "size": 16315,
+          "sha": "19738db5c46afc3095f672c723e1a7b17417aa6d"
+        },
+        "shime11.png": {
+          "size": 21736,
+          "sha": "2018c647c764070a55c0940f138dabcac72d49fa"
+        },
+        "shime12.png": {
+          "size": 20078,
+          "sha": "514fa7f5bd9c889141a058ca9e53974553aa822d"
+        },
+        "shime13.png": {
+          "size": 20466,
+          "sha": "8eb2c11599a5966cdd90251a15d1f8fab003639c"
+        },
+        "shime14.png": {
+          "size": 20078,
+          "sha": "514fa7f5bd9c889141a058ca9e53974553aa822d"
+        },
+        "shime15.png": {
+          "size": 22165,
+          "sha": "1faed102468499b2dd6bc0ac320855663b0534b9"
+        },
+        "shime16.png": {
+          "size": 21965,
+          "sha": "96e9c301b792b369c3d5800c22cf629effb1938e"
+        },
+        "shime17.png": {
+          "size": 22465,
+          "sha": "42414ed5339826e9a1059430fb56639b17dc569d"
+        },
+        "shime18.png": {
+          "size": 16166,
+          "sha": "948c336973d0db5526be255c9583e279e6e0a59e"
+        },
+        "shime19.png": {
+          "size": 20313,
+          "sha": "c848051a6cf3592a31404f6d5db30cb119b0cf03"
+        },
+        "shime2.png": {
+          "size": 19647,
+          "sha": "20b492ee316b27252a1b1ca041044569df00b121"
+        },
+        "shime20.png": {
+          "size": 26202,
+          "sha": "64e5347071f36737fd215ed9c5e3e3e6d8ee56a4"
+        },
+        "shime21.png": {
+          "size": 26152,
+          "sha": "8fca44f9a61959705e5525a1688167cdb51f62ee"
+        },
+        "shime22.png": {
+          "size": 22880,
+          "sha": "07e150bde4dc0db94e08f4253c25afc20c087eba"
+        },
+        "shime23.png": {
+          "size": 25670,
+          "sha": "79be4cdad1b7ec623fda2ce43af9ec030b92da06"
+        },
+        "shime24.png": {
+          "size": 25910,
+          "sha": "d5dab7bce94c94e2aecd2c549c5306df9cd81193"
+        },
+        "shime25.png": {
+          "size": 26330,
+          "sha": "f8cd3c51cdf0cfb9d28f87e97935d110402f2c73"
+        },
+        "shime26.png": {
+          "size": 21572,
+          "sha": "79c9b02b5a638e0c4c2204b61d2ae7dcb5d34d21"
+        },
+        "shime27.png": {
+          "size": 41126,
+          "sha": "d18ff137e72da35576172a2a4821de995f7f977d"
+        },
+        "shime28.png": {
+          "size": 41228,
+          "sha": "01a357d957f9b84219ee40ecb5d49fd3fd8aca34"
+        },
+        "shime3.png": {
+          "size": 20032,
+          "sha": "23550577e1f064209184b3be62dd24bf0ca5045b"
+        },
+        "shime30.png": {
+          "size": 41153,
+          "sha": "f4058b1f9bd9e5ef5af34848b108d3c0f813b7e3"
+        },
+        "shime31.png": {
+          "size": 41182,
+          "sha": "98a2177f4809c0d08e16f14f4daa7fd29a337bac"
+        },
+        "shime32.png": {
+          "size": 41309,
+          "sha": "bddc78ba7abd898c55d9119949c13ac3904bf737"
+        },
+        "shime33.png": {
+          "size": 41392,
+          "sha": "55c127112fc01d168714e1c0d41169fd1906ee10"
+        },
+        "shime34.png": {
+          "size": 18058,
+          "sha": "5cebb0082d97ed1aa8127c6799a9a48931676f4e"
+        },
+        "shime35.png": {
+          "size": 18176,
+          "sha": "1a0aa6c9df0283defd1b31722c333b063805ab13"
+        },
+        "shime36.png": {
+          "size": 18497,
+          "sha": "7e59a372581d4f4307c276219337d0e96f38c45b"
+        },
+        "shime37.png": {
+          "size": 19357,
+          "sha": "e7899c6d0895e3ceeaf9e02fcf48f4d1f718bcd1"
+        },
+        "shime38.png": {
+          "size": 19876,
+          "sha": "086848fa33017ba4c8f40a7be626dc61d83d524b"
+        },
+        "shime39.png": {
+          "size": 19885,
+          "sha": "771e2626c8efeb17af78db0e798c00fc67c9003f"
+        },
+        "shime4.png": {
+          "size": 18804,
+          "sha": "c144c07695c88daf284f39faca540865b8840cad"
+        },
+        "shime40.png": {
+          "size": 18920,
+          "sha": "57f676e12130e69c716eaa0d684bf43a72eaaa7d"
+        },
+        "shime41.png": {
+          "size": 18905,
+          "sha": "12b5d9f5512bd85b23edb79362816ae22136bea5"
+        },
+        "shime42.png": {
+          "size": 21301,
+          "sha": "fe71a5392feca2adc1d8de955649fef47c4a0888"
+        },
+        "shime43.png": {
+          "size": 29111,
+          "sha": "69e118dd3a1ea8d9a46717e22972179c029c05be"
+        },
+        "shime44.png": {
+          "size": 29417,
+          "sha": "d0eac21c1a7bb56d246bcbe26ab9fd6c282fedcf"
+        },
+        "shime45.png": {
+          "size": 29154,
+          "sha": "0b57fdc9f1148045b90574df88e9c1f5797060e2"
+        },
+        "shime46.png": {
+          "size": 21335,
+          "sha": "151f16b0508d70584cefde4f47b5d05abb26ab6b"
+        },
+        "shime5.png": {
+          "size": 16253,
+          "sha": "b20c0431485a8a2b4209b36fc6664c66bfbd55eb"
+        },
+        "shime6.png": {
+          "size": 15703,
+          "sha": "b3b88326eed6a039caa39a678222eb8aafcb2ea2"
+        },
+        "shime7.png": {
+          "size": 16313,
+          "sha": "59eff77d3b157a0335df5ba495fb80933d6e739e"
+        },
+        "shime8.png": {
+          "size": 15718,
+          "sha": "349b3a15ebfb32883a9e7a8afc850e0084451e40"
+        },
+        "shime9.png": {
+          "size": 16909,
+          "sha": "7922b6058d17f578b784fd84488389e60b10300f"
+        }
+      }
+    },
+    "albedo-by-uuteki": {
+      "name": "阿贝多",
+      "profile": "genshin_albedo",
+      "upstream_dir": "genshin-impact-albedo-by-uuteki",
+      "artist": "uuteki",
+      "files": {
+        "shime1.png": {
+          "size": 23201,
+          "sha": "193b08de459e674df17c0a63a46feca9103b06a1"
+        },
+        "shime10.png": {
+          "size": 24203,
+          "sha": "7996058946441f9d43cff3a98a3fd91f3d8e79fa"
+        },
+        "shime11.png": {
+          "size": 21552,
+          "sha": "39940a29fed91db9016628394544178a4a8af33f"
+        },
+        "shime12.png": {
+          "size": 20772,
+          "sha": "a7565697ec3fb7386372bd38a9eb5063565ffba4"
+        },
+        "shime13.png": {
+          "size": 20559,
+          "sha": "d8da9d367395cf31dcb752be3062503a4d2c8778"
+        },
+        "shime14.png": {
+          "size": 20549,
+          "sha": "287bc873d4a0d219ab2a3b4f462af739ed8b6abd"
+        },
+        "shime15.png": {
+          "size": 27711,
+          "sha": "3af3e89a3b8cca45cac3f85380a9fb9f2d3ee312"
+        },
+        "shime16.png": {
+          "size": 28959,
+          "sha": "33f06ad0063c2b533448c7b8a7d05b4c76f94fdb"
+        },
+        "shime17.png": {
+          "size": 27349,
+          "sha": "659c65815c80f29165942cf9c943faf7be5459a8"
+        },
+        "shime18.png": {
+          "size": 17528,
+          "sha": "bc7cea3fe83c3a11e840ccc040cb979a9b95f779"
+        },
+        "shime19.png": {
+          "size": 18488,
+          "sha": "29bb0ce2df0d1e0867e62c5b3d27fbbf9d03068c"
+        },
+        "shime2.png": {
+          "size": 23593,
+          "sha": "4d845ddaf121a5b4bf17af7d5d3f4c39c0852f39"
+        },
+        "shime20.png": {
+          "size": 16308,
+          "sha": "57675921fb745076f2ccc864f3d9fef2194e20a6"
+        },
+        "shime21.png": {
+          "size": 17151,
+          "sha": "f0cd088ada67537891da284363b2d0e0dd9483a5"
+        },
+        "shime22.png": {
+          "size": 22434,
+          "sha": "ac025b2525710862cc31b30eeef88df552eb468d"
+        },
+        "shime23.png": {
+          "size": 22240,
+          "sha": "e5af55f8bb87c38b5c439cead67b70326d262208"
+        },
+        "shime24.png": {
+          "size": 22694,
+          "sha": "9d2b3938df73eb541b82bf58bbb414a12cb45f5e"
+        },
+        "shime25.png": {
+          "size": 23036,
+          "sha": "79b024aadcfbec342d91a0b685cb74042e2c553f"
+        },
+        "shime26.png": {
+          "size": 27711,
+          "sha": "3af3e89a3b8cca45cac3f85380a9fb9f2d3ee312"
+        },
+        "shime27.png": {
+          "size": 28959,
+          "sha": "33f06ad0063c2b533448c7b8a7d05b4c76f94fdb"
+        },
+        "shime28.png": {
+          "size": 27349,
+          "sha": "659c65815c80f29165942cf9c943faf7be5459a8"
+        },
+        "shime29.png": {
+          "size": 28959,
+          "sha": "33f06ad0063c2b533448c7b8a7d05b4c76f94fdb"
+        },
+        "shime3.png": {
+          "size": 22937,
+          "sha": "8ef0643af6aed3da0144a7fa15fdb912416a5326"
+        },
+        "shime30.png": {
+          "size": 20160,
+          "sha": "5db8d291fb83857d9a22a1353a306a5a0c7c4b40"
+        },
+        "shime31.png": {
+          "size": 21260,
+          "sha": "bdbb8f89e30ac26a116897f79fa20549704f38bc"
+        },
+        "shime32.png": {
+          "size": 21109,
+          "sha": "8567e0a29e56962660d5c5fb07cfe2853948f0c0"
+        },
+        "shime33.png": {
+          "size": 20991,
+          "sha": "1302adc354a198193e70308c75fe12daf5e4d1b4"
+        },
+        "shime34.png": {
+          "size": 18772,
+          "sha": "bed9d9587410ae93e27386a95fde6e5bdfba05ec"
+        },
+        "shime35.png": {
+          "size": 18997,
+          "sha": "858ce13d3430d028778fe067281c6e5de62f3052"
+        },
+        "shime36.png": {
+          "size": 19009,
+          "sha": "2995c46be12b04f433b05d0b0bf6d9b6579fc3bc"
+        },
+        "shime37.png": {
+          "size": 21213,
+          "sha": "28563daa67a445dc97bf417ca45c01b2d6f799ed"
+        },
+        "shime38.png": {
+          "size": 21839,
+          "sha": "ae51aa8ff6208f4e79834c80d601cade1fab72de"
+        },
+        "shime39.png": {
+          "size": 19662,
+          "sha": "62b5416847b42e91aaaab111b99b2d240896a209"
+        },
+        "shime4.png": {
+          "size": 23447,
+          "sha": "849fc5bd51afd86abac89151daa5d98024a5c9ab"
+        },
+        "shime40.png": {
+          "size": 21203,
+          "sha": "7eb47bc47cee0a32baf6486499b17f703580de7e"
+        },
+        "shime41.png": {
+          "size": 24479,
+          "sha": "1bf47b75cd4565457a4685143456650f245453fc"
+        },
+        "shime42.png": {
+          "size": 18950,
+          "sha": "821b06485419a7f3bf4d1232880416fefff14ea2"
+        },
+        "shime43.png": {
+          "size": 18889,
+          "sha": "f14d3c4a2bc15945139c02157d2d9faec68eb5b5"
+        },
+        "shime44.png": {
+          "size": 19983,
+          "sha": "3a941520f8148c9907f9a3a4b7e996c07bb3f93c"
+        },
+        "shime45.png": {
+          "size": 21261,
+          "sha": "ef1fa1fd7fe2a91bc46a3bde1a46b73be8336c71"
+        },
+        "shime46.png": {
+          "size": 26117,
+          "sha": "a3aa95485bf129e42e5aee820288eec9cdeab370"
+        },
+        "shime5.png": {
+          "size": 23125,
+          "sha": "696508d854431a078b48dd85a13a1572fb758b1b"
+        },
+        "shime6.png": {
+          "size": 23817,
+          "sha": "9bac5544e0c37ec94ae1b19082659d49b0a928d5"
+        },
+        "shime7.png": {
+          "size": 24846,
+          "sha": "6a80a0a42d3d34ade4af809a2bb02b132aee9a8b"
+        },
+        "shime8.png": {
+          "size": 24244,
+          "sha": "a32236452e94a7bdc24f59f869a61f0c3b3c6ff2"
+        },
+        "shime9.png": {
+          "size": 23669,
+          "sha": "5ba7095899442373751dd5af0b81af5e6d3175c8"
+        }
+      }
+    },
+    "ayaka-by-uuteki": {
+      "name": "神里绫华",
+      "profile": "genshin_ayaka",
+      "upstream_dir": "genshin-impact-ayaka-by-uuteki",
+      "artist": "uuteki",
+      "files": {
+        "shime1.png": {
+          "size": 20072,
+          "sha": "2a98f0a46870ce9a605fb47b1d3f418a1f94330c"
+        },
+        "shime10.png": {
+          "size": 24108,
+          "sha": "4692a226f2cdeccb057daca6d1eca260fca5cb02"
+        },
+        "shime11.png": {
+          "size": 18266,
+          "sha": "e68697bdb4b39db0080867ff503c492838064692"
+        },
+        "shime12.png": {
+          "size": 20650,
+          "sha": "d2e461155e1f459315c7b37b987181f00362654f"
+        },
+        "shime13.png": {
+          "size": 20213,
+          "sha": "589944affcfcf2a89fd9982ce2676cabbdd8b8f8"
+        },
+        "shime14.png": {
+          "size": 20827,
+          "sha": "313596297589c4782962609665fa4c36b00b25cb"
+        },
+        "shime15.png": {
+          "size": 18818,
+          "sha": "88dfefaf741e751de8bdf431f6ef012bede4fa94"
+        },
+        "shime16.png": {
+          "size": 20545,
+          "sha": "f6e4edb5905fa830f8d500552df4ac1832cc2028"
+        },
+        "shime17.png": {
+          "size": 20583,
+          "sha": "bfcfe2adb252488b42821b26c54d9d539d842f91"
+        },
+        "shime18.png": {
+          "size": 18552,
+          "sha": "55203513a3a45cfb02f841f861e07e4f17b4783b"
+        },
+        "shime19.png": {
+          "size": 19238,
+          "sha": "1126a1a383fd5a09254596b4a362919bb76074cd"
+        },
+        "shime2.png": {
+          "size": 21144,
+          "sha": "2d235dea1a2ac36aa4073f61bd951da60afc6f17"
+        },
+        "shime20.png": {
+          "size": 15267,
+          "sha": "67c3d081cab6d335f1cac6f0202163bceb9cfed7"
+        },
+        "shime21.png": {
+          "size": 14749,
+          "sha": "f729eb234d83e1f6b2ed580dccbe64e112502aaf"
+        },
+        "shime22.png": {
+          "size": 22479,
+          "sha": "87330b9ab8af86b045ba69c05be541c5e3a29a2f"
+        },
+        "shime23.png": {
+          "size": 22641,
+          "sha": "5e400677382efba7e0cb6850f60bde8e0e2f8cef"
+        },
+        "shime24.png": {
+          "size": 22383,
+          "sha": "cadef277b7483c59ef9a82239eaa94631086ce09"
+        },
+        "shime25.png": {
+          "size": 22812,
+          "sha": "4322c6bb64caf14bf0ab7085d14325cd508b0226"
+        },
+        "shime26.png": {
+          "size": 18586,
+          "sha": "52b03c5567613cee76d58e73d205001500ca2bad"
+        },
+        "shime27.png": {
+          "size": 20065,
+          "sha": "57085e9c7a9f822ccf13b740ed334ee1658dac31"
+        },
+        "shime28.png": {
+          "size": 20057,
+          "sha": "eef168ff3bf496fa7b4e65c5541ce322fae557f3"
+        },
+        "shime29.png": {
+          "size": 20342,
+          "sha": "613218ffd4ae9f4017f7609cc7fcc4b8151ac862"
+        },
+        "shime3.png": {
+          "size": 21023,
+          "sha": "1ca747c81033fb122e34070227cbb3c72d1446ca"
+        },
+        "shime30.png": {
+          "size": 20262,
+          "sha": "c631887c1219a7f92c25bc8dba305dd4af29826d"
+        },
+        "shime31.png": {
+          "size": 21225,
+          "sha": "ec796ac37f02047527d270298153ddd13aaeb2c7"
+        },
+        "shime32.png": {
+          "size": 20946,
+          "sha": "7cdcf546170ee307dc05cb5c33924ad7fdde5ae5"
+        },
+        "shime33.png": {
+          "size": 21123,
+          "sha": "6c141fa59cafb9cab753cea99b543978979985a0"
+        },
+        "shime34.png": {
+          "size": 19162,
+          "sha": "6a90fc57a913b3c18bfd8a34157f07c652910f85"
+        },
+        "shime35.png": {
+          "size": 20105,
+          "sha": "4842e82d086b91cac24ee7c017ffb8a118a9b458"
+        },
+        "shime36.png": {
+          "size": 20487,
+          "sha": "782c979a0078631c59e25e10c88ae82825b6fff1"
+        },
+        "shime37.png": {
+          "size": 21225,
+          "sha": "295b4efac473efbf63ba1bff4d9375945b0ec21d"
+        },
+        "shime38.png": {
+          "size": 21159,
+          "sha": "1514aa00f4f99a83274f75da1c84abec9549f7bd"
+        },
+        "shime39.png": {
+          "size": 19622,
+          "sha": "a12a9c2a71b48e014da1b621c7c854af2193c257"
+        },
+        "shime40.png": {
+          "size": 18868,
+          "sha": "642ce95a9bce4697bc8bf39cdcabc2c6aa9ba828"
+        },
+        "shime41.png": {
+          "size": 21974,
+          "sha": "543b8eff94e614c050b5d0c534630a219fb57bb6"
+        },
+        "shime42.png": {
+          "size": 20830,
+          "sha": "7fffc27101c720a68ab43d15616895032085c96e"
+        },
+        "shime43.png": {
+          "size": 21221,
+          "sha": "6382af6a195e18aba62c73edb53a39ea6bd167be"
+        },
+        "shime44.png": {
+          "size": 21116,
+          "sha": "b67db65804788e19eda4678bd4ddf271634db56b"
+        },
+        "shime45.png": {
+          "size": 21339,
+          "sha": "49e1c1956f99c5ef5a8b76bcc5c2244a96fd8a87"
+        },
+        "shime46.png": {
+          "size": 21544,
+          "sha": "89998efb01dca5f2ccf7fcbcf2ab78b63d56c854"
+        },
+        "shime4_.png": {
+          "size": 18552,
+          "sha": "55203513a3a45cfb02f841f861e07e4f17b4783b"
+        },
+        "shime5.png": {
+          "size": 22351,
+          "sha": "8ea31a03470a7bcc6e6b598455c351a4db41c3f8"
+        },
+        "shime6.png": {
+          "size": 20725,
+          "sha": "81df77226ac1514663afe87add33f28fcec1900b"
+        },
+        "shime7.png": {
+          "size": 22351,
+          "sha": "8ea31a03470a7bcc6e6b598455c351a4db41c3f8"
+        },
+        "shime8.png": {
+          "size": 21232,
+          "sha": "7074ab53becdd9a1a6195f1180004d58d802020e"
+        },
+        "shime9.png": {
+          "size": 24282,
+          "sha": "ff2d48b535f05152849e3f882ce29c72aa4e426d"
+        }
+      }
+    },
+    "childe-by-nemururin": {
+      "name": "达达利亚",
+      "profile": "genshin_tartaglia",
+      "upstream_dir": "genshin-impact-childe-by-nemururin",
+      "artist": "nemururin",
+      "files": {
+        "shime1.png": {
+          "size": 17460,
+          "sha": "1779b3d0b36b20ca8a12313d055569b115652cfb"
+        },
+        "shime10.png": {
+          "size": 19518,
+          "sha": "8850313e7eb341cf9754f5d2e4ce470f40d6d890"
+        },
+        "shime11.png": {
+          "size": 16054,
+          "sha": "3afc90d69207a787d946b45f9ab37ac8a4ef4a50"
+        },
+        "shime12.png": {
+          "size": 15648,
+          "sha": "305c3ac7bcf0b8e77ee4ce52d81f98e9d233bb47"
+        },
+        "shime13.png": {
+          "size": 15795,
+          "sha": "3c1447fdb4db5ba2f4f25f57cb8ae227a1356a50"
+        },
+        "shime14.png": {
+          "size": 15855,
+          "sha": "1d471ae45f55bfd6f20966747e55ed509ef6a6e0"
+        },
+        "shime15.png": {
+          "size": 16490,
+          "sha": "a8197a84145dd91477af8bfeb3b72a91151fffa2"
+        },
+        "shime16.png": {
+          "size": 16564,
+          "sha": "7c263a0db41c4ee75b052234bdabef5e568e867f"
+        },
+        "shime17.png": {
+          "size": 16448,
+          "sha": "12ca2291aaca2addae8a1b014a490da6e385ef0b"
+        },
+        "shime18.png": {
+          "size": 18613,
+          "sha": "d19461be0190494af69b4f427848ca62b443bf08"
+        },
+        "shime19.png": {
+          "size": 16266,
+          "sha": "25134d7f8f9c70b63e8e06685977835ab563c201"
+        },
+        "shime2.png": {
+          "size": 18041,
+          "sha": "a4ef5754838079046c532fea7b1c693e3b3b22cb"
+        },
+        "shime20.png": {
+          "size": 14671,
+          "sha": "06e60bfad14ea67bef0266aca0d9c396978d9479"
+        },
+        "shime21.png": {
+          "size": 14449,
+          "sha": "c01659cd8420ab50deac4c7e0617238fe45e6077"
+        },
+        "shime22.png": {
+          "size": 18360,
+          "sha": "39969806e53d170c14d95abfde3d53754ea5a5f3"
+        },
+        "shime23.png": {
+          "size": 17267,
+          "sha": "4d8b4e927552babe3b9b040fb72b8e1d5f7edec1"
+        },
+        "shime24.png": {
+          "size": 16709,
+          "sha": "8df4f0314f9e3e3403a442a4e566cee29bea019d"
+        },
+        "shime25.png": {
+          "size": 16694,
+          "sha": "b370eb289983c5917137f48a99718a4f72089277"
+        },
+        "shime26.png": {
+          "size": 16490,
+          "sha": "a8197a84145dd91477af8bfeb3b72a91151fffa2"
+        },
+        "shime27.png": {
+          "size": 16564,
+          "sha": "7c263a0db41c4ee75b052234bdabef5e568e867f"
+        },
+        "shime28.png": {
+          "size": 16448,
+          "sha": "12ca2291aaca2addae8a1b014a490da6e385ef0b"
+        },
+        "shime29.png": {
+          "size": 15771,
+          "sha": "b41bdae0c1dcd716d70dc5055ba2eb8528a7d5f6"
+        },
+        "shime3.png": {
+          "size": 19000,
+          "sha": "24fe105a83b56ea6e505d6ed7fed991a73bb55f0"
+        },
+        "shime30.png": {
+          "size": 16802,
+          "sha": "1df7634c28e5bec32ad1f4131ecbae38458ad7d0"
+        },
+        "shime31.png": {
+          "size": 16347,
+          "sha": "75734fce3b97cb3b254c9c67a6022d98670e4b1c"
+        },
+        "shime32.png": {
+          "size": 16347,
+          "sha": "75734fce3b97cb3b254c9c67a6022d98670e4b1c"
+        },
+        "shime33.png": {
+          "size": 16347,
+          "sha": "75734fce3b97cb3b254c9c67a6022d98670e4b1c"
+        },
+        "shime34.png": {
+          "size": 14956,
+          "sha": "186c8d8709e89c7e4147ccc4cb77e3b774bdd1f7"
+        },
+        "shime35.png": {
+          "size": 15500,
+          "sha": "dd383b3b009313b650a26064ca34b2d0171c80c8"
+        },
+        "shime36.png": {
+          "size": 15495,
+          "sha": "93d3de5760c67f40007f0ec25aeeefbc91b4a230"
+        },
+        "shime37.png": {
+          "size": 19057,
+          "sha": "be23657d7edb19980a6dc19649e640ec5b8c63e8"
+        },
+        "shime38.png": {
+          "size": 19811,
+          "sha": "efd60747d3d7be77c5550c93f546850fb8e326b4"
+        },
+        "shime39.png": {
+          "size": 19957,
+          "sha": "dbc0cfa3c0af95d3f562fd039f08f589652ed24e"
+        },
+        "shime4.png": {
+          "size": 16564,
+          "sha": "ee311b2fc031cc1c194609e42f6f589b78220fee"
+        },
+        "shime40.png": {
+          "size": 16538,
+          "sha": "c82475dd804d698c71f7c8bfa6eb1c016edaffee"
+        },
+        "shime41.png": {
+          "size": 18684,
+          "sha": "3cb1d731eaf9fd43090436070e45d9dc55fd4cb2"
+        },
+        "shime42.png": {
+          "size": 16937,
+          "sha": "2be3f143059de4a35b1a1e7116b7913e48a9efe1"
+        },
+        "shime43.png": {
+          "size": 15773,
+          "sha": "507ba707944a36b83df13367285a1d9dfa2bc340"
+        },
+        "shime44.png": {
+          "size": 20980,
+          "sha": "c3c1debd027e66a27bc2d7408c89271b1abc61b8"
+        },
+        "shime45.png": {
+          "size": 21119,
+          "sha": "bc586cc4ef865cbe6836ae46b011867914622c41"
+        },
+        "shime46.png": {
+          "size": 20628,
+          "sha": "bddb93ecf18fb5a05d5898a00996f704dee8f8f4"
+        },
+        "shime5.png": {
+          "size": 18480,
+          "sha": "fc91d5f1f2b20dab973f81dcc9743700b00351fb"
+        },
+        "shime6.png": {
+          "size": 18248,
+          "sha": "0797194a705422aa18b28911ed531e5de62048d1"
+        },
+        "shime7.png": {
+          "size": 19328,
+          "sha": "d79866a855c65e5ac4b5b4601eca9fb9f4bb6114"
+        },
+        "shime8.png": {
+          "size": 19284,
+          "sha": "260b6c41c3379a1ecaa2e6f19baeec8af945c7c7"
+        },
+        "shime9.png": {
+          "size": 19560,
+          "sha": "6141e66c88f5cd4623ff9933206ec113393ad775"
+        }
+      }
+    },
+    "chongyun-by-uuteki": {
+      "name": "重云",
+      "profile": "genshin_chongyun",
+      "upstream_dir": "genshin-impact-chongyun-by-uuteki",
+      "artist": "uuteki",
+      "files": {
+        "shime1.png": {
+          "size": 17646,
+          "sha": "983771a607ddbaf1eb72ade25abadf3d73d458de"
+        },
+        "shime10.png": {
+          "size": 21756,
+          "sha": "dfd4645518d22111e83281750626e4283a8963c2"
+        },
+        "shime11.png": {
+          "size": 18590,
+          "sha": "045b583648eb5c92b2f7f1377aea86f035e1c4b2"
+        },
+        "shime12.png": {
+          "size": 17603,
+          "sha": "4499a7c8e915661bdaba836d1b4b88d256f161ee"
+        },
+        "shime13.png": {
+          "size": 18145,
+          "sha": "b3dd843db40ad9467e31902f446934cf24139f41"
+        },
+        "shime14.png": {
+          "size": 17463,
+          "sha": "3e9ca1c585e18550d723dc1668c2c4eb27d63a44"
+        },
+        "shime15.png": {
+          "size": 26742,
+          "sha": "b428af24a752e0f88821407976995ff00439bca9"
+        },
+        "shime16.png": {
+          "size": 20492,
+          "sha": "d68b3b337ff505ba7f54558641beb5095a5bcd2a"
+        },
+        "shime17.png": {
+          "size": 21926,
+          "sha": "d52cee9ce7544d8d5cbc192f10be4738c90fa37a"
+        },
+        "shime18.png": {
+          "size": 17766,
+          "sha": "741168190ad3d7c31e5ea5bc01b84eea423bbcc1"
+        },
+        "shime19.png": {
+          "size": 17170,
+          "sha": "b8b14915692f33b1b44ea85f7cb27e2a20055a8a"
+        },
+        "shime2.png": {
+          "size": 18953,
+          "sha": "1072c18180f7803a0f08deda2bbc0a3c977cdade"
+        },
+        "shime20.png": {
+          "size": 16132,
+          "sha": "d48cf6f3efe5b0b605df0e3fb7327155f6601a30"
+        },
+        "shime21.png": {
+          "size": 15911,
+          "sha": "b35dc8eecea1231042201e48113f19fb2c1e021c"
+        },
+        "shime22.png": {
+          "size": 20052,
+          "sha": "bdfca445224d3ca030d6654b65d6259cf1c2b288"
+        },
+        "shime23.png": {
+          "size": 18593,
+          "sha": "06f19370de77a712c5d8c2b2e133c3d98fa0c348"
+        },
+        "shime24.png": {
+          "size": 18682,
+          "sha": "0b8e127f23227e1fbac33d9bda0ea1549d83b9cd"
+        },
+        "shime25.png": {
+          "size": 18703,
+          "sha": "05ebbdbe2ce39959bf21e2d119bee3f8675ebd16"
+        },
+        "shime26.png": {
+          "size": 26695,
+          "sha": "75699d41a58285c4db8f57d9966c19d3bed4665a"
+        },
+        "shime27.png": {
+          "size": 26817,
+          "sha": "3ba98ce426a560ab7dfcf35ccdfebe94860d058c"
+        },
+        "shime28.png": {
+          "size": 17471,
+          "sha": "443d5b531968c1bf6717aadb2b15951cb82aec84"
+        },
+        "shime29.png": {
+          "size": 28272,
+          "sha": "0a2142e6f1d72903c6fa3442e56ec99b1da0c9d2"
+        },
+        "shime3.png": {
+          "size": 18098,
+          "sha": "b3e9d98938305904970b9ce2607e89fc3437096c"
+        },
+        "shime30.png": {
+          "size": 17194,
+          "sha": "94f989491b2bfa1349ec4f4f34be0dda8bc26412"
+        },
+        "shime31.png": {
+          "size": 19003,
+          "sha": "a665df4bd3d5fc0c0563078890998dc68168f553"
+        },
+        "shime32.png": {
+          "size": 19445,
+          "sha": "f67698f95f71d987c3a3fb11dc8b012e216b6603"
+        },
+        "shime33.png": {
+          "size": 18313,
+          "sha": "1ce304ee9ad91263be565be3ffbf8c481b951ad6"
+        },
+        "shime34.png": {
+          "size": 16198,
+          "sha": "f0189cf5b9623799ebea07469c1a9dcb82d1a085"
+        },
+        "shime35.png": {
+          "size": 16594,
+          "sha": "a2bbf3c8eaeff7ce61b9431f93c2021f0079f31a"
+        },
+        "shime36.png": {
+          "size": 16817,
+          "sha": "d7f00757aafe636a6c998503be6f7be551c765aa"
+        },
+        "shime37.png": {
+          "size": 18235,
+          "sha": "42288c63f26b5c9f1512b542df05ac1cda318345"
+        },
+        "shime38.png": {
+          "size": 18158,
+          "sha": "11db18262e4b401c770cd10ab6abe2beefea0e92"
+        },
+        "shime39.png": {
+          "size": 16783,
+          "sha": "3537bf78b8ab14816fda78ac04554f674d9510c7"
+        },
+        "shime4.png": {
+          "size": 18189,
+          "sha": "fcc098a0291f7e9d2008dcf9505e8ba2bd53aa00"
+        },
+        "shime40.png": {
+          "size": 17181,
+          "sha": "87c15edbfff84003dab791ae72716af5aa2f7b6a"
+        },
+        "shime41.png": {
+          "size": 20146,
+          "sha": "f2c5c09a2f0abbf56c58302e7f20771a91e1f5c5"
+        },
+        "shime42.png": {
+          "size": 18631,
+          "sha": "abda8981a5808ba1ddc0ed85564fcccfb9108a71"
+        },
+        "shime43.png": {
+          "size": 18407,
+          "sha": "0f773c621affe356dd51ec432637f74cbb80b66d"
+        },
+        "shime44.png": {
+          "size": 19236,
+          "sha": "9216ef9433638763d021457ab7b5c864cba95e83"
+        },
+        "shime45.png": {
+          "size": 19254,
+          "sha": "312cdbe5080fd1bb427b9fd8994c5f8356d9cd0d"
+        },
+        "shime46.png": {
+          "size": 19421,
+          "sha": "a3ac4421c0a30c0261dda1cc0d511e9100111539"
+        },
+        "shime5.png": {
+          "size": 18687,
+          "sha": "40a086ad79d0de65893c71aae2e6659cc239c3c8"
+        },
+        "shime6.png": {
+          "size": 18289,
+          "sha": "f4902e093a26aa1210fee70c9e4227452a41a26f"
+        },
+        "shime7.png": {
+          "size": 18687,
+          "sha": "40a086ad79d0de65893c71aae2e6659cc239c3c8"
+        },
+        "shime8.png": {
+          "size": 19615,
+          "sha": "9440eba7b36f87765900e3f7044d9bd6d0b27aa1"
+        },
+        "shime9.png": {
+          "size": 20471,
+          "sha": "121909bd44c897fbf2852a0bb3ecceb884cb820a"
+        }
+      }
+    },
+    "diluc-by-vol-tuna": {
+      "name": "迪卢克",
+      "profile": "genshin_diluc",
+      "upstream_dir": "genshin-impact-diluc-by-vol-tuna",
+      "artist": "vol-tuna",
+      "files": {
+        "shime1.png": {
+          "size": 17027,
+          "sha": "fc026b1756c980514611d68a4846567fb0f14355"
+        },
+        "shime10.png": {
+          "size": 18515,
+          "sha": "0cf68aadf4b4eb0d11e5a7a2b5d6ad225b0b9ba8"
+        },
+        "shime11.png": {
+          "size": 15521,
+          "sha": "9daa176771c5fbe63417110449e684723c6bc8c4"
+        },
+        "shime12.png": {
+          "size": 14938,
+          "sha": "e52f82584dbd9e9694e7f8c4ede2ece94199acd3"
+        },
+        "shime13.png": {
+          "size": 15114,
+          "sha": "9c902866735ee4a41dacf16ba832f09982f70a4e"
+        },
+        "shime14.png": {
+          "size": 15034,
+          "sha": "12d50d1051e21912e4b72a2d9fb07ae7c2b5e155"
+        },
+        "shime15.png": {
+          "size": 15141,
+          "sha": "95c7df92b3bba8215f46fff47a0799b310727ec4"
+        },
+        "shime16.png": {
+          "size": 14822,
+          "sha": "53be4d6c02cb705755dfa11bd01dfae540700550"
+        },
+        "shime17.png": {
+          "size": 14669,
+          "sha": "4f1e4892d79578c6da6d086183cccc5575e7b2a6"
+        },
+        "shime18.png": {
+          "size": 13043,
+          "sha": "d2bbd72cf27ca751bd4cf17ea85697a395e56a28"
+        },
+        "shime19.png": {
+          "size": 13304,
+          "sha": "4f5635b9722d6ac7ea456d7821e4ba65df76ad36"
+        },
+        "shime2.png": {
+          "size": 16181,
+          "sha": "e871efa866615e2eac34ed02a03f963beb30989a"
+        },
+        "shime20.png": {
+          "size": 12530,
+          "sha": "c4191bceb1166ac7f738e74fefacce2a5074c067"
+        },
+        "shime21.png": {
+          "size": 12830,
+          "sha": "88f755ce4c470bb016aec021754297a72753b178"
+        },
+        "shime22.png": {
+          "size": 17199,
+          "sha": "eec09ab5100fe67e3836c568f8385527bbf053ee"
+        },
+        "shime23.png": {
+          "size": 16535,
+          "sha": "1c951f139631a534d3e19b5bd07347870dcca288"
+        },
+        "shime24.png": {
+          "size": 16953,
+          "sha": "0d1238c2353184026dcc70b177dce4dd361e7929"
+        },
+        "shime25.png": {
+          "size": 17165,
+          "sha": "6816a1b8fcb974eb84acd6944630b8944d4e2280"
+        },
+        "shime26.png": {
+          "size": 15141,
+          "sha": "95c7df92b3bba8215f46fff47a0799b310727ec4"
+        },
+        "shime27.png": {
+          "size": 14822,
+          "sha": "53be4d6c02cb705755dfa11bd01dfae540700550"
+        },
+        "shime28.png": {
+          "size": 14669,
+          "sha": "4f1e4892d79578c6da6d086183cccc5575e7b2a6"
+        },
+        "shime29.png": {
+          "size": 14822,
+          "sha": "53be4d6c02cb705755dfa11bd01dfae540700550"
+        },
+        "shime3.png": {
+          "size": 17160,
+          "sha": "ae671c45d371ad75b3175adeede6feff3365bd32"
+        },
+        "shime30.png": {
+          "size": 15051,
+          "sha": "a3696912f2578ecc1e21450c35bf8a3ffebd75e5"
+        },
+        "shime31.png": {
+          "size": 15884,
+          "sha": "d9ca210b51dbfa431fe230c0cb9c1432909276bb"
+        },
+        "shime32.png": {
+          "size": 15912,
+          "sha": "51ba0951b20f947604d92daa707505a0d40f41ae"
+        },
+        "shime33.png": {
+          "size": 16000,
+          "sha": "29d7b56f68801c795986d21539ac385c2608a498"
+        },
+        "shime34.png": {
+          "size": 13463,
+          "sha": "01a8123026806d0ac84491ccb39eadac25759769"
+        },
+        "shime35.png": {
+          "size": 13325,
+          "sha": "c16496c1fd7fc52003b41b7a58ed5681e874da1f"
+        },
+        "shime36.png": {
+          "size": 13382,
+          "sha": "d21889faaa404305c836adc62f83aaf82ca5e60d"
+        },
+        "shime37.png": {
+          "size": 15100,
+          "sha": "1127040d140e9badb58a2560b914345ac70638ed"
+        },
+        "shime38.png": {
+          "size": 15549,
+          "sha": "093146c8a692d28a7f84757fb4b3a5f4caf18552"
+        },
+        "shime39.png": {
+          "size": 14009,
+          "sha": "53bdaebc1a4c25a12ffc0145856d993378653529"
+        },
+        "shime4.png": {
+          "size": 16252,
+          "sha": "c568ecbccb4ac8cf59876366f6ba1bef6a3e23e2"
+        },
+        "shime40.png": {
+          "size": 16157,
+          "sha": "274d013bbc2d9bf5c8277078db543e678c928fa3"
+        },
+        "shime41.png": {
+          "size": 17774,
+          "sha": "1cf4b544eb9ed0b3b314ebc141ee44982ce1d306"
+        },
+        "shime42.png": {
+          "size": 13206,
+          "sha": "12272f48969be34566efe0affb3876235cf857e3"
+        },
+        "shime43.png": {
+          "size": 12796,
+          "sha": "c2bd647985e5a8e504737db595c7d9a0838dc099"
+        },
+        "shime44.png": {
+          "size": 14988,
+          "sha": "db8ff1b3877cc4d3a117a8108c64778313fc6489"
+        },
+        "shime45.png": {
+          "size": 14830,
+          "sha": "35877eb43d084a426de2ebef745d6b12b58c49b0"
+        },
+        "shime46.png": {
+          "size": 17481,
+          "sha": "5450fbec93be75c8ffb3bf0c546aa8c1bcfdb93c"
+        },
+        "shime5.png": {
+          "size": 17551,
+          "sha": "85e1895026118fc599eb65c59320115628c39e19"
+        },
+        "shime6.png": {
+          "size": 18449,
+          "sha": "873ad32f0b0ee6ab05dd726ef863d392f59f67af"
+        },
+        "shime7.png": {
+          "size": 17727,
+          "sha": "d784911344c9352acef5b42601262f19aaab4fee"
+        },
+        "shime8.png": {
+          "size": 17726,
+          "sha": "209b07aac5d855dc077e62743bfb3ecf7035e284"
+        },
+        "shime9.png": {
+          "size": 17214,
+          "sha": "99e7e96c2bed5676b5f13386a3616051f024a69e"
+        }
+      }
+    },
+    "hu-tao-by-uuteki": {
+      "name": "胡桃",
+      "profile": "genshin_hu_tao",
+      "upstream_dir": "genshin-impact-hu-tao-by-uuteki",
+      "artist": "uuteki",
+      "files": {
+        "shime1.png": {
+          "size": 24453,
+          "sha": "edc5498afe4287c4bdb7a8a2505d7152a4fda693"
+        },
+        "shime10.png": {
+          "size": 26034,
+          "sha": "4bb3e606134f309803d25c77ce511bf88cdb1997"
+        },
+        "shime11.png": {
+          "size": 22928,
+          "sha": "f7429d5a2a0dc199e5c6eb36c49831b3a722c81c"
+        },
+        "shime12.png": {
+          "size": 22071,
+          "sha": "c67fcea017f647ae896cda18cf64ed86b22d199a"
+        },
+        "shime13.png": {
+          "size": 21999,
+          "sha": "881105afb8137c2ac6e6bf0c6a39732e178e376c"
+        },
+        "shime14.png": {
+          "size": 22071,
+          "sha": "c67fcea017f647ae896cda18cf64ed86b22d199a"
+        },
+        "shime15.png": {
+          "size": 22917,
+          "sha": "9ca70407ce4d097f49740376d5fb650968a9ce61"
+        },
+        "shime16.png": {
+          "size": 22949,
+          "sha": "7532ca464d26115987bd84fdbe00ed26131eeb91"
+        },
+        "shime17.png": {
+          "size": 22800,
+          "sha": "43e27609ce15e65eeaa6ac66844cea19e7b951be"
+        },
+        "shime18.png": {
+          "size": 21972,
+          "sha": "dab926a854c0b94462db4aaaf2b3862a30ccca95"
+        },
+        "shime19.png": {
+          "size": 23312,
+          "sha": "f5169328868c0d0f120cc2028930a72ac64c5562"
+        },
+        "shime2.png": {
+          "size": 25416,
+          "sha": "7c6e216b3a776b7b7ff1a08460e7dbb6f20dca2d"
+        },
+        "shime20.png": {
+          "size": 18094,
+          "sha": "44c3cc3425719920f2d6bfb841e2baf1991534d0"
+        },
+        "shime21.png": {
+          "size": 17692,
+          "sha": "5da8fd06ed272254b59bc101c379d04954a2f32d"
+        },
+        "shime22.png": {
+          "size": 24213,
+          "sha": "77dffce619121d05fa906c0a667dc37cacb2124b"
+        },
+        "shime23.png": {
+          "size": 24192,
+          "sha": "97b2979347f84543a2f6240f916e950946bcb681"
+        },
+        "shime24.png": {
+          "size": 24876,
+          "sha": "67ebf2ccf9e9072b934c8877fdbcba761c35f8f2"
+        },
+        "shime25.png": {
+          "size": 24192,
+          "sha": "97b2979347f84543a2f6240f916e950946bcb681"
+        },
+        "shime26.png": {
+          "size": 22917,
+          "sha": "9ca70407ce4d097f49740376d5fb650968a9ce61"
+        },
+        "shime27.png": {
+          "size": 22949,
+          "sha": "7532ca464d26115987bd84fdbe00ed26131eeb91"
+        },
+        "shime28.png": {
+          "size": 22800,
+          "sha": "43e27609ce15e65eeaa6ac66844cea19e7b951be"
+        },
+        "shime29.png": {
+          "size": 22949,
+          "sha": "7532ca464d26115987bd84fdbe00ed26131eeb91"
+        },
+        "shime3.png": {
+          "size": 25065,
+          "sha": "4847f42e749c47395ba810e5b25875945fb10263"
+        },
+        "shime30.png": {
+          "size": 23929,
+          "sha": "b7af0d56350ff0c80ce849616104dbb8153f48e8"
+        },
+        "shime31.png": {
+          "size": 25217,
+          "sha": "1b6185d8e36fd07423a8056e4ad4df621a29da03"
+        },
+        "shime32.png": {
+          "size": 25791,
+          "sha": "9eab239b63de8463f246bd1bbd8bd6830e5eea38"
+        },
+        "shime33.png": {
+          "size": 24923,
+          "sha": "1b09e0b697d653989f419e1a3542b115b4bd6549"
+        },
+        "shime34.png": {
+          "size": 22297,
+          "sha": "231047821134a0f0a734b97baf6737eba841eefb"
+        },
+        "shime35.png": {
+          "size": 22347,
+          "sha": "f4291a97f7144ae701a7f9a526163816bae59f98"
+        },
+        "shime36.png": {
+          "size": 22254,
+          "sha": "5dbdba7360d3e5a2c20fe24dcad0633e6792c2b2"
+        },
+        "shime37.png": {
+          "size": 24825,
+          "sha": "bf7b418ff1d8720d62a3cd0800042f0341563a59"
+        },
+        "shime38.png": {
+          "size": 24825,
+          "sha": "bf7b418ff1d8720d62a3cd0800042f0341563a59"
+        },
+        "shime39.png": {
+          "size": 21377,
+          "sha": "27fff2eef73281f983e6f1ed6d55cac3a16b9f4b"
+        },
+        "shime4.png": {
+          "size": 24705,
+          "sha": "3cfcb8752c8e84879778b4d69a222b38a13fc9f8"
+        },
+        "shime40.png": {
+          "size": 21623,
+          "sha": "22d878ad1e19feb7a74e9c8dcc91d749bbce0075"
+        },
+        "shime41.png": {
+          "size": 24371,
+          "sha": "e14bf48a4083331860e9051fbeac18a0eec7735d"
+        },
+        "shime42.png": {
+          "size": 26398,
+          "sha": "741b63dc0fe499dc398d660dd02cd15549ed6b01"
+        },
+        "shime43.png": {
+          "size": 26029,
+          "sha": "b57e6769cdd186d94b9825685ff43b62e9793fa1"
+        },
+        "shime44.png": {
+          "size": 27056,
+          "sha": "295f1a314ac7474c1a18f9fe088f83e1b52c78bc"
+        },
+        "shime45.png": {
+          "size": 27967,
+          "sha": "92064071ea0c578d5767c86a3704503c3afbf159"
+        },
+        "shime46.png": {
+          "size": 26950,
+          "sha": "f1ce1fe53162fbeeea1f76f596263a6faf496169"
+        },
+        "shime5.png": {
+          "size": 25269,
+          "sha": "7fed9171f82c08c08cc3893c41df59b3b42a1ee8"
+        },
+        "shime6.png": {
+          "size": 25712,
+          "sha": "e88bf5d717595b06bf811899e23accc6b0637b52"
+        },
+        "shime7.png": {
+          "size": 25269,
+          "sha": "7fed9171f82c08c08cc3893c41df59b3b42a1ee8"
+        },
+        "shime8.png": {
+          "size": 25712,
+          "sha": "e88bf5d717595b06bf811899e23accc6b0637b52"
+        },
+        "shime9.png": {
+          "size": 25269,
+          "sha": "7fed9171f82c08c08cc3893c41df59b3b42a1ee8"
+        }
+      }
+    },
+    "kaeya-by-vol-tuna": {
+      "name": "凯亚",
+      "profile": "genshin_kaeya",
+      "upstream_dir": "genshin-impact-kaeya-by-vol-tuna",
+      "artist": "vol-tuna",
+      "files": {
+        "shime1.png": {
+          "size": 15646,
+          "sha": "62440514e8ef7e5941105dfe2a16c4bc3513db1a"
+        },
+        "shime10.png": {
+          "size": 17573,
+          "sha": "effe8a5c64ef4f5f4cf736ad42cb80588f287a16"
+        },
+        "shime11.png": {
+          "size": 14668,
+          "sha": "bbf29f4d15aa4cebcdacba39efcb613a9a765c39"
+        },
+        "shime12.png": {
+          "size": 14426,
+          "sha": "d34052f0e6f74de28c999d76f03f1197383ccaac"
+        },
+        "shime13.png": {
+          "size": 14428,
+          "sha": "4e251a5da31ff58c90f5eb3010aaa2acb7e3aca6"
+        },
+        "shime14.png": {
+          "size": 14624,
+          "sha": "480f44732388203cb03711ad7952afb704ca79b2"
+        },
+        "shime15.png": {
+          "size": 15310,
+          "sha": "1ae4cebe49d8004ece68027658a38b4bc5dab18b"
+        },
+        "shime16.png": {
+          "size": 15368,
+          "sha": "17c537176c252227aecde89472891603866564cb"
+        },
+        "shime17.png": {
+          "size": 15467,
+          "sha": "d5378144934f5816696f398f55850d3ff92181c7"
+        },
+        "shime18.png": {
+          "size": 14626,
+          "sha": "bbaa4afe7125116e7e401b7bf46ae9d792806a21"
+        },
+        "shime19.png": {
+          "size": 14596,
+          "sha": "c9b36029cdb2f9789384f09be31224e631f803ee"
+        },
+        "shime2.png": {
+          "size": 15632,
+          "sha": "1a5d27d440e11f53995d3561e960bdc6adf00e04"
+        },
+        "shime20.png": {
+          "size": 12576,
+          "sha": "676c25eda937d5cb13b97ea738e613971eb21af3"
+        },
+        "shime21.png": {
+          "size": 12912,
+          "sha": "02527fd5061493f373dbed6392f48603aa2155ff"
+        },
+        "shime22.png": {
+          "size": 17189,
+          "sha": "c89298a175fa8ff6de7ab36d0c4ba357466b03c0"
+        },
+        "shime23.png": {
+          "size": 15657,
+          "sha": "51bf44782808e2d0fdcec03b4dff76e4e56785b2"
+        },
+        "shime24.png": {
+          "size": 15327,
+          "sha": "1ab609d6d2e074e76b82a80c317a10d23aa381e1"
+        },
+        "shime25.png": {
+          "size": 15355,
+          "sha": "e6fabef10197b16d2d5637a0d066c037458e36c6"
+        },
+        "shime26.png": {
+          "size": 15486,
+          "sha": "e19fa7520c7b52c5525d631b006b9ceab5fcb994"
+        },
+        "shime27.png": {
+          "size": 15343,
+          "sha": "647656b2e653a93cfb46614574a465bd609b35b6"
+        },
+        "shime28.png": {
+          "size": 15456,
+          "sha": "201aad349be6ab0dabe48291a39aae64cb8b5e06"
+        },
+        "shime29.png": {
+          "size": 15485,
+          "sha": "a904baa1676a7a154dff02515498aa411c450fb9"
+        },
+        "shime3.png": {
+          "size": 15572,
+          "sha": "17dd7766178f3d6a45cada9bbab522eb4f81ce0d"
+        },
+        "shime30.png": {
+          "size": 14144,
+          "sha": "2be44160de6a154cca1677d65e9488cf9397fd9e"
+        },
+        "shime31.png": {
+          "size": 16131,
+          "sha": "30894651027d15c53de90d7ffda058a2e52117e7"
+        },
+        "shime32.png": {
+          "size": 16083,
+          "sha": "ce52c9c84e9b746a1ef2a687c3318def936556ea"
+        },
+        "shime33.png": {
+          "size": 16118,
+          "sha": "a9285cd16ad7739579ebfaa160b61c2c89661855"
+        },
+        "shime34.png": {
+          "size": 14328,
+          "sha": "e04f1480f4b81acf806e13c8bedac3b55e022299"
+        },
+        "shime35.png": {
+          "size": 14467,
+          "sha": "53c10580e71dd554054da5f325fcfc3dbf7dd075"
+        },
+        "shime36.png": {
+          "size": 14814,
+          "sha": "f7c9d6c230e6c8e09c90e0d6633733a80cf0b0b8"
+        },
+        "shime37.png": {
+          "size": 15602,
+          "sha": "0e4fd396867b8d8519e18bcf6edafd6c538e40aa"
+        },
+        "shime38.png": {
+          "size": 16328,
+          "sha": "c74febdc5c251f84713f8d5bcee0e9be6843a81f"
+        },
+        "shime39.png": {
+          "size": 14766,
+          "sha": "b1c532c57fa16184c9360cd056e23a50ed443b1e"
+        },
+        "shime4.png": {
+          "size": 15435,
+          "sha": "82bc5a18ec0e6e4aa027ac996e629f7c79f7bdfe"
+        },
+        "shime40.png": {
+          "size": 14758,
+          "sha": "57ccd92ad01ad77007742f40f3e4cbbfe53f34d9"
+        },
+        "shime41.png": {
+          "size": 17814,
+          "sha": "45996c282c310de6d6a331dbc61de98f01226488"
+        },
+        "shime42.png": {
+          "size": 14593,
+          "sha": "d1cf9b90c36e10970b0aeb5b06d14bce978d3387"
+        },
+        "shime43.png": {
+          "size": 14035,
+          "sha": "1526ed58d696dcb843f4959fa669bd1f9e43316a"
+        },
+        "shime44.png": {
+          "size": 14783,
+          "sha": "5ddded4f1d58dec671555f571ff0335ebb07da1d"
+        },
+        "shime45.png": {
+          "size": 15876,
+          "sha": "e854b28dac604ad63ca8b65d5e873ec3aaf10acc"
+        },
+        "shime46.png": {
+          "size": 17458,
+          "sha": "b03d0f441d6576314e078ee33836acb073c2a405"
+        },
+        "shime5.png": {
+          "size": 16097,
+          "sha": "8c03b858a33180443bbe5cde9df56a3abfedef08"
+        },
+        "shime6.png": {
+          "size": 15721,
+          "sha": "f9333aebea2b3a452a3519496390bfc552c5194c"
+        },
+        "shime7.png": {
+          "size": 15519,
+          "sha": "92001559186538a858015b6b635ce5a2fce9b81f"
+        },
+        "shime8.png": {
+          "size": 17608,
+          "sha": "92f5f46330b2d68ff72d1fbe38900bf88b00ba0b"
+        },
+        "shime9.png": {
+          "size": 16352,
+          "sha": "8aed4ae1ac986f7a349f79e5bf6e07c278bfddf7"
+        }
+      }
+    },
+    "kazuha-by-uuteki": {
+      "name": "枫原万叶",
+      "profile": "genshin_kazuha",
+      "upstream_dir": "genshin-impact-kazuha-by-uuteki",
+      "artist": "uuteki",
+      "files": {
+        "shime1.png": {
+          "size": 18519,
+          "sha": "6ebce13a869f7e1565dc514b20ee648c85795802"
+        },
+        "shime10.png": {
+          "size": 21225,
+          "sha": "a48931305e9d2fa05505dc786ada5d6fed395453"
+        },
+        "shime11.png": {
+          "size": 19919,
+          "sha": "ac27bf3519e8785e97ac84a338e8add48763db9a"
+        },
+        "shime12.png": {
+          "size": 18478,
+          "sha": "038f78b647d0545eb3dc314fc23b8c5f7cda0edd"
+        },
+        "shime13.png": {
+          "size": 18386,
+          "sha": "f7856cb5cfd47ed830c65891ee0625a6c504689e"
+        },
+        "shime14.png": {
+          "size": 18428,
+          "sha": "a63975f5afb9708e70f245d910b54374bd299ce6"
+        },
+        "shime15.png": {
+          "size": 19492,
+          "sha": "f7e8b4bb51389b7df318a6445da02a62e17bfdfc"
+        },
+        "shime16.png": {
+          "size": 20914,
+          "sha": "cbad9fb7e2b54ef3b8b3619e134099cf352198ff"
+        },
+        "shime17.png": {
+          "size": 20575,
+          "sha": "a5a0df3afe9e9f9867e6915964d31179965a01cd"
+        },
+        "shime18.png": {
+          "size": 18120,
+          "sha": "96ebca55c08a36b816c30f667a67dc81be956f4d"
+        },
+        "shime19.png": {
+          "size": 16915,
+          "sha": "eb8179b4a0f22f4b7e698c430e2cfd4521fcabb7"
+        },
+        "shime2.png": {
+          "size": 19863,
+          "sha": "823d046b09787d3b6f19a2c1598e98ccf7068f4d"
+        },
+        "shime20.png": {
+          "size": 16383,
+          "sha": "43bee51cbb673f90d28fd98728cb77dbdcf752bb"
+        },
+        "shime21.png": {
+          "size": 15905,
+          "sha": "b6ba273de1cc5ba7ec894c1c261a92a7c147a888"
+        },
+        "shime22.png": {
+          "size": 28034,
+          "sha": "5cd75818ce295545ea3a247c3bacceb8bb0f670f"
+        },
+        "shime23.png": {
+          "size": 19418,
+          "sha": "cb1710957a50cabd831adabbfb0173613a4f97bb"
+        },
+        "shime24.png": {
+          "size": 19410,
+          "sha": "d8ddfe64fdb7993aee562c218d2896dd58a5aff4"
+        },
+        "shime25.png": {
+          "size": 19777,
+          "sha": "1972b2dcb623b703526b603143e9b5218b60eec1"
+        },
+        "shime26.png": {
+          "size": 19352,
+          "sha": "89a3df89e3bc74359c1bf01037cb82cf7fd6cf62"
+        },
+        "shime27.png": {
+          "size": 20513,
+          "sha": "2e36269fd17298278d21135de80036a807865457"
+        },
+        "shime28.png": {
+          "size": 20914,
+          "sha": "cbad9fb7e2b54ef3b8b3619e134099cf352198ff"
+        },
+        "shime29.png": {
+          "size": 19906,
+          "sha": "1f7db97fea207a36b64a64155ba93ac9ae1f7c9a"
+        },
+        "shime3.png": {
+          "size": 19616,
+          "sha": "5397f3bdfe33ae312b1a1c15063e3696687a5649"
+        },
+        "shime30.png": {
+          "size": 17332,
+          "sha": "df052433451630c06d6121fa672a65b7ad9c8fab"
+        },
+        "shime31.png": {
+          "size": 19041,
+          "sha": "3a3982c5fb4a1eccc42d098feb2c60757ac55ae4"
+        },
+        "shime32.png": {
+          "size": 19193,
+          "sha": "7adb9da72dd500dfc8797f597a9ce63220ecc54d"
+        },
+        "shime33.png": {
+          "size": 18930,
+          "sha": "a8f16164dac78d4762f343b0eb4ab5ccdfb1091e"
+        },
+        "shime34.png": {
+          "size": 16530,
+          "sha": "5a370032c2673629c91c230dc1295c9f66a94e5c"
+        },
+        "shime35.png": {
+          "size": 16530,
+          "sha": "5a370032c2673629c91c230dc1295c9f66a94e5c"
+        },
+        "shime36.png": {
+          "size": 17155,
+          "sha": "f1478875f8c4a5d770e825011eec4b148ea8a4e5"
+        },
+        "shime37.png": {
+          "size": 19083,
+          "sha": "efa7f5487fce56167e77c87a8f04f0213ea9c2bb"
+        },
+        "shime38.png": {
+          "size": 19515,
+          "sha": "c104bca377615ddeea75399c35089626d85413f4"
+        },
+        "shime39.png": {
+          "size": 17591,
+          "sha": "0f237de6ee73fed6bd3f984574a15c0084568297"
+        },
+        "shime4.png": {
+          "size": 17726,
+          "sha": "e75a2d21f6f741a0786ccd4d2037e5c317bd83c9"
+        },
+        "shime40.png": {
+          "size": 18276,
+          "sha": "a25a5051ee64a32536182be64d9cb4c812e3d12b"
+        },
+        "shime41.png": {
+          "size": 20409,
+          "sha": "8b9adac1d3355e2d8224e8882e75097e8200f2e9"
+        },
+        "shime42.png": {
+          "size": 23457,
+          "sha": "b509ded3fc361e5f8c26a1d9dc5f723efe58316a"
+        },
+        "shime43.png": {
+          "size": 23269,
+          "sha": "737b7242647b87e6d9e4631f2ad5dae3f546c368"
+        },
+        "shime44.png": {
+          "size": 23004,
+          "sha": "19738d2240a489004b6526987607772caa6734a3"
+        },
+        "shime45.png": {
+          "size": 23240,
+          "sha": "e9f2012f9123608738845fa12313bad0ead22b16"
+        },
+        "shime46.png": {
+          "size": 23457,
+          "sha": "b509ded3fc361e5f8c26a1d9dc5f723efe58316a"
+        },
+        "shime5.png": {
+          "size": 20093,
+          "sha": "0f72847a6e7188b10aa5c0e590be2e122a61cde7"
+        },
+        "shime6.png": {
+          "size": 18969,
+          "sha": "7d8d79adc9ffc1911312d953f4201eca451061e0"
+        },
+        "shime7.png": {
+          "size": 20093,
+          "sha": "0f72847a6e7188b10aa5c0e590be2e122a61cde7"
+        },
+        "shime8.png": {
+          "size": 19661,
+          "sha": "670b11e916c12d35aba169a6062a9462bc361218"
+        },
+        "shime9.png": {
+          "size": 21367,
+          "sha": "b3c34a13220dbf40b2e717e7ab7df9e46bee4aaf"
+        }
+      }
+    },
+    "klee-by-uuteki": {
+      "name": "可莉",
+      "profile": "genshin_klee",
+      "upstream_dir": "genshin-impact-klee-by-uuteki",
+      "artist": "uuteki",
+      "files": {
+        "shime1.png": {
+          "size": 23656,
+          "sha": "f9e3192ce26d77b800a40528098553c6a4748f81"
+        },
+        "shime10.png": {
+          "size": 25587,
+          "sha": "0e75dc0926c00f52c7b3209c5b36be93aa322476"
+        },
+        "shime11.png": {
+          "size": 23487,
+          "sha": "e075996970f0383ca85f4c55473c369606de7d5a"
+        },
+        "shime12.png": {
+          "size": 22774,
+          "sha": "7578a359c67879cfd07b914a917c2e70a5e4fc30"
+        },
+        "shime13.png": {
+          "size": 22802,
+          "sha": "cfe832bc36b378ecaa5ba2e0acc3ec82ece6fac1"
+        },
+        "shime14.png": {
+          "size": 22774,
+          "sha": "7578a359c67879cfd07b914a917c2e70a5e4fc30"
+        },
+        "shime15.png": {
+          "size": 36757,
+          "sha": "6abefe642b2d9b0380be0620566e4647c7849927"
+        },
+        "shime16.png": {
+          "size": 36757,
+          "sha": "6abefe642b2d9b0380be0620566e4647c7849927"
+        },
+        "shime17.png": {
+          "size": 36757,
+          "sha": "6abefe642b2d9b0380be0620566e4647c7849927"
+        },
+        "shime18.png": {
+          "size": 20562,
+          "sha": "795fb2f71048365ba180f081e12409f1e5f53e63"
+        },
+        "shime19.png": {
+          "size": 20796,
+          "sha": "21642970ea3a4ebefa33df9ba6272afa597ebe38"
+        },
+        "shime2.png": {
+          "size": 24445,
+          "sha": "f058ae99e0ebdb19f9aa1d9c96bf1c49024a2974"
+        },
+        "shime20.png": {
+          "size": 20570,
+          "sha": "d3fcdfeda79c2712844e25103b3107f55af142ab"
+        },
+        "shime21.png": {
+          "size": 20329,
+          "sha": "ce08ded8d0ddbf3956fb3ea8a0e922fb06051cf2"
+        },
+        "shime22.png": {
+          "size": 23594,
+          "sha": "8f83cae6b7ca0b31245fd363ec3897111e1ecce2"
+        },
+        "shime23.png": {
+          "size": 24067,
+          "sha": "954e3f89342abf38b2f9aee966c363f61756339d"
+        },
+        "shime24.png": {
+          "size": 24827,
+          "sha": "f74fa8399bff7f1d7485b6745b0dc4c256ffb788"
+        },
+        "shime25.png": {
+          "size": 24067,
+          "sha": "954e3f89342abf38b2f9aee966c363f61756339d"
+        },
+        "shime26.png": {
+          "size": 35968,
+          "sha": "f86f3cbce74f23ac95e644ca370e53a194636856"
+        },
+        "shime27.png": {
+          "size": 36964,
+          "sha": "629edfb2f9837e72f77bb554b9d0f463baa3e6c3"
+        },
+        "shime28.png": {
+          "size": 35968,
+          "sha": "f86f3cbce74f23ac95e644ca370e53a194636856"
+        },
+        "shime29.png": {
+          "size": 36964,
+          "sha": "629edfb2f9837e72f77bb554b9d0f463baa3e6c3"
+        },
+        "shime3.png": {
+          "size": 23907,
+          "sha": "0d4724b8b421d8c38d330743cd9add783099d62e"
+        },
+        "shime30.png": {
+          "size": 23523,
+          "sha": "65c1adbc3d5a66a5674a2120b1352eea302e725f"
+        },
+        "shime31.png": {
+          "size": 23993,
+          "sha": "010233993b655dd8225ca5f94de27c79ed880a2d"
+        },
+        "shime32.png": {
+          "size": 24546,
+          "sha": "4a06aa4be2d5b343d6e0b45123c0714e6bb71b17"
+        },
+        "shime33.png": {
+          "size": 24093,
+          "sha": "fe8b4e698056e14a82499bdad8635e4181185caf"
+        },
+        "shime34.png": {
+          "size": 21519,
+          "sha": "2b0055cdfeb66812725a9e86feffb990a4e6389b"
+        },
+        "shime35.png": {
+          "size": 21671,
+          "sha": "4cfa4f909891fc55c4ebd8dd49c8e5d7a6a0f4e0"
+        },
+        "shime36.png": {
+          "size": 21805,
+          "sha": "600c21444d49ac2868bda62928efecf49f3d779c"
+        },
+        "shime37.png": {
+          "size": 24335,
+          "sha": "225288e971525e40d5f36484929bb72596893522"
+        },
+        "shime38.png": {
+          "size": 24335,
+          "sha": "225288e971525e40d5f36484929bb72596893522"
+        },
+        "shime39.png": {
+          "size": 22913,
+          "sha": "7405416a01aafa32194842c63b9a4ea9ed405d69"
+        },
+        "shime4.png": {
+          "size": 24330,
+          "sha": "c5799f204ac764eade618d9b9cdb79249135f487"
+        },
+        "shime40.png": {
+          "size": 23077,
+          "sha": "6847fc8b87df19ab42fd685867a72de4541fd5b3"
+        },
+        "shime41.png": {
+          "size": 25438,
+          "sha": "81607a7a0e8850afb44eca2f3acd50787b795495"
+        },
+        "shime42.png": {
+          "size": 23314,
+          "sha": "01322e87804e70dd332c21b5b8283c7c7d8a8ced"
+        },
+        "shime43.png": {
+          "size": 23260,
+          "sha": "e287b449cd948707de2bb5770959105756779b62"
+        },
+        "shime44.png": {
+          "size": 23627,
+          "sha": "e6850fc1e4ecfd282bc8698122e994e4ee11ac7b"
+        },
+        "shime45.png": {
+          "size": 23311,
+          "sha": "ebe89b929b59f217fd3a6a5b32397e930c32bf62"
+        },
+        "shime46.png": {
+          "size": 23360,
+          "sha": "43f298b775ec60a432950891dba0bdcd5aa4c95c"
+        },
+        "shime5.png": {
+          "size": 25744,
+          "sha": "a0284c4641b71b522a96bb24b4492e13a17f7a6a"
+        },
+        "shime6.png": {
+          "size": 24678,
+          "sha": "3c2e430a7386adc3dc8e3b76c577c901bfc55a5e"
+        },
+        "shime7.png": {
+          "size": 25808,
+          "sha": "6d79d8fdda406544e7f3b399610096525b76fb71"
+        },
+        "shime8.png": {
+          "size": 24678,
+          "sha": "3c2e430a7386adc3dc8e3b76c577c901bfc55a5e"
+        },
+        "shime9.png": {
+          "size": 25744,
+          "sha": "a0284c4641b71b522a96bb24b4492e13a17f7a6a"
+        }
+      }
+    },
+    "lumine-by-marcia": {
+      "name": "荧（旅行者）",
+      "profile": "genshin_traveler_lumine",
+      "upstream_dir": "genshin-impact-lumine-by-marcia",
+      "artist": "marcia",
+      "files": {
+        "shime1.png": {
+          "size": 16056,
+          "sha": "c2431337b4f87d81f60fdfb43bc780b9f6c9c221"
+        },
+        "shime10.png": {
+          "size": 20670,
+          "sha": "0e8f3602a86a0c7c6694009b7eb1e6515b494742"
+        },
+        "shime11.png": {
+          "size": 13099,
+          "sha": "0a2cb0d997eca6aa5359fa37b9f6898c3c6ba643"
+        },
+        "shime12.png": {
+          "size": 13787,
+          "sha": "6ec4eb47d3c004b8ec0b75f422000f28eb903fca"
+        },
+        "shime13.png": {
+          "size": 13871,
+          "sha": "d7b07c33f2bd246ffe03fe18280a018e60b7b9c5"
+        },
+        "shime14.png": {
+          "size": 13969,
+          "sha": "b2c9e3407d46057238f34742a9d2ad3e9e619493"
+        },
+        "shime15.png": {
+          "size": 14639,
+          "sha": "391ba33bab745dcdf2e84062234263e6506e3a6c"
+        },
+        "shime16.png": {
+          "size": 14618,
+          "sha": "7bf3b3d9f0913541a7332317501973f40e1f97e1"
+        },
+        "shime17.png": {
+          "size": 14672,
+          "sha": "a52a37590040290bf012a9faa57c9983adfec35e"
+        },
+        "shime18.png": {
+          "size": 15064,
+          "sha": "d6b4cc28a6a4b41db098d0a6cfab15a4945f5f3a"
+        },
+        "shime19.png": {
+          "size": 15701,
+          "sha": "b628d650bb569add0bdead33f5bbd7b3fd6a07e5"
+        },
+        "shime2.png": {
+          "size": 15937,
+          "sha": "880a407c76908ff2efdb0cb98e15cc926efa716e"
+        },
+        "shime20.png": {
+          "size": 10647,
+          "sha": "85aa7da934b9949349b7e59071b72c8189fb8fa6"
+        },
+        "shime21.png": {
+          "size": 10795,
+          "sha": "922e5c5c058deb42ff395b05f7b89a5593a8b6bd"
+        },
+        "shime22.png": {
+          "size": 15955,
+          "sha": "27c1fd1ee5ebeca5e16365eff3dbeeff5a6c7401"
+        },
+        "shime23.png": {
+          "size": 17622,
+          "sha": "fa2319e6bef52c836d8a9be42c4052089389e353"
+        },
+        "shime24.png": {
+          "size": 17529,
+          "sha": "edb3b041fc599d11d17e09345717d95bf193013d"
+        },
+        "shime25.png": {
+          "size": 17621,
+          "sha": "776ace566602ad7f3fad9c407ce41259bd162f3d"
+        },
+        "shime26.png": {
+          "size": 14639,
+          "sha": "391ba33bab745dcdf2e84062234263e6506e3a6c"
+        },
+        "shime27.png": {
+          "size": 14618,
+          "sha": "7bf3b3d9f0913541a7332317501973f40e1f97e1"
+        },
+        "shime28.png": {
+          "size": 14672,
+          "sha": "a52a37590040290bf012a9faa57c9983adfec35e"
+        },
+        "shime29.png": {
+          "size": 14615,
+          "sha": "f6015b7b6cb702dbce30c812cda1de3c96c324bb"
+        },
+        "shime3.png": {
+          "size": 15827,
+          "sha": "6ca7f94484eeea8d141ecafc2e7df868ab2755f0"
+        },
+        "shime30.png": {
+          "size": 12618,
+          "sha": "20bb02900bcbb661d4f6df917419dff5450eddd8"
+        },
+        "shime31.png": {
+          "size": 13566,
+          "sha": "ccc34595f0dbe9b8168a3b75af954f5a55e47f89"
+        },
+        "shime32.png": {
+          "size": 13574,
+          "sha": "e07fdc50817f6802e9bca479d702d188ddcc5263"
+        },
+        "shime33.png": {
+          "size": 13813,
+          "sha": "95d6b18859b0ab4e81231455abd0f8cac020856f"
+        },
+        "shime34.png": {
+          "size": 13689,
+          "sha": "159faf6fba7ec79a0abdcfbb86cfd1b5498259e6"
+        },
+        "shime35.png": {
+          "size": 14827,
+          "sha": "4d6d4ed0c58d47164625e76a2cbeda5655abfa07"
+        },
+        "shime36.png": {
+          "size": 14215,
+          "sha": "761f7fdb1957c7fa8c3a896dd1a888660b67e46b"
+        },
+        "shime37.png": {
+          "size": 17861,
+          "sha": "1940814df3d5a561af89f02408d03a053eeb45af"
+        },
+        "shime38.png": {
+          "size": 18074,
+          "sha": "752721e16a8bbf68cb245390532638f0dfa2054f"
+        },
+        "shime39.png": {
+          "size": 16725,
+          "sha": "bb1a84ca85b87dc26e9442b99f2c32155c613750"
+        },
+        "shime4.png": {
+          "size": 14869,
+          "sha": "fae08aa4d621786f33a49db7ee261e28ea742aff"
+        },
+        "shime40.png": {
+          "size": 17052,
+          "sha": "45dcfa73dce1a7a51446ec9aed1711b72377406f"
+        },
+        "shime41.png": {
+          "size": 19594,
+          "sha": "745e9f621146b085149c202d26859844f9519e50"
+        },
+        "shime42.png": {
+          "size": 12616,
+          "sha": "e76db2500b898c839f420b5d021e674c92736a73"
+        },
+        "shime43.png": {
+          "size": 13501,
+          "sha": "96615c233cc8a313c8be7965f69cd49b080af0ae"
+        },
+        "shime44.png": {
+          "size": 14766,
+          "sha": "d261efb7f2ae9e3ad5c8760e7a0f3ae1110d28f7"
+        },
+        "shime45.png": {
+          "size": 14466,
+          "sha": "9be98b79de21bce5b285bb2990e3a6f227ac087e"
+        },
+        "shime46.png": {
+          "size": 15762,
+          "sha": "a791c8b2b418e654568587a2430ac49f25b4ed8d"
+        },
+        "shime5.png": {
+          "size": 21000,
+          "sha": "351f622b8aced038b31ef50dc527f6035372d428"
+        },
+        "shime6.png": {
+          "size": 21861,
+          "sha": "df9bde602738d31750815b6e34512d09d99294b5"
+        },
+        "shime7.png": {
+          "size": 21020,
+          "sha": "08e66c42b2e67568d0a19e3e5a668b9585ff0e90"
+        },
+        "shime8.png": {
+          "size": 21711,
+          "sha": "c9eab7cad73bff1f1663d9e54e8c4d2615b46c88"
+        },
+        "shime9.png": {
+          "size": 20413,
+          "sha": "3e37489433f395eb10140debda7d38da27d5a231"
+        }
+      }
+    },
+    "razor-by-batsouppe": {
+      "name": "雷泽",
+      "profile": "genshin_razor",
+      "upstream_dir": "genshin-impact-razor-by-batsouppe",
+      "artist": "batsouppe",
+      "files": {
+        "shime1.png": {
+          "size": 26989,
+          "sha": "5cf2d02f2c8469bb67cb54482fa5ab59bd1b911d"
+        },
+        "shime10.png": {
+          "size": 27262,
+          "sha": "1b0c2b34f1590940f8610b7a8320380313a2558c"
+        },
+        "shime11.png": {
+          "size": 25564,
+          "sha": "a022633afa9088dd235961733f37d56795e59b12"
+        },
+        "shime12.png": {
+          "size": 26439,
+          "sha": "85b84063e7e78bf64a6978d05c39229987d996fd"
+        },
+        "shime13.png": {
+          "size": 26705,
+          "sha": "b6d9bb276c89151d6f5ef38660ac621b32b1c571"
+        },
+        "shime14.png": {
+          "size": 26441,
+          "sha": "9728db60d3709cbe9f1ef448b70abf5eb0b1ef26"
+        },
+        "shime15.png": {
+          "size": 27463,
+          "sha": "42c080df31b004528a5e1b545007e876f88c36bf"
+        },
+        "shime16.png": {
+          "size": 27807,
+          "sha": "377b478ca1bb9b61aac4859388848aa7ae085772"
+        },
+        "shime17.png": {
+          "size": 27197,
+          "sha": "7799ddac71d3c91a7526ffcd9f46f5417a8fad34"
+        },
+        "shime18.png": {
+          "size": 23057,
+          "sha": "616885925dea9fef50a73be4d606e2492cb72c16"
+        },
+        "shime19.png": {
+          "size": 20277,
+          "sha": "e5ee8baba3f443c3cd6599ac7932b74503ca9c9f"
+        },
+        "shime2.png": {
+          "size": 26820,
+          "sha": "5abef883b950864637b8615016dbb888df604afb"
+        },
+        "shime20.png": {
+          "size": 20354,
+          "sha": "2f7937d1d2153c436078f1aa8c48d8959b8c79eb"
+        },
+        "shime21.png": {
+          "size": 20537,
+          "sha": "7245d602b483b6a7cb14d74c5cda583ca30d50b3"
+        },
+        "shime22.png": {
+          "size": 29090,
+          "sha": "444d86aa4b2766afadd99ec47c03ef5b331a81a9"
+        },
+        "shime23.png": {
+          "size": 24497,
+          "sha": "919658b532bd43c6eaa90cd5355e428cee7fe8af"
+        },
+        "shime24.png": {
+          "size": 24900,
+          "sha": "e4e3d35944a3df9d4157a9bbe3188b0f79281b68"
+        },
+        "shime25.png": {
+          "size": 24004,
+          "sha": "5a0316f61d9d83805034d2957b2478dd6bd39369"
+        },
+        "shime26.png": {
+          "size": 27525,
+          "sha": "ce74bc97f04d7a1a7a1ea9595180f26896933387"
+        },
+        "shime27.png": {
+          "size": 27525,
+          "sha": "af0b5c67fb1daf6743fa9031ee1aab7bb4bff5e4"
+        },
+        "shime28.png": {
+          "size": 27844,
+          "sha": "185b93f15b72538b4b047268fc39db6a9266ade1"
+        },
+        "shime29.png": {
+          "size": 27218,
+          "sha": "f554edaec4a4bb978ac5f1d0d6de35610d48e9af"
+        },
+        "shime3.png": {
+          "size": 26643,
+          "sha": "6b8a2e6dedd483bc332365f2dd4465aed89cec7e"
+        },
+        "shime30.png": {
+          "size": 25764,
+          "sha": "bd5096c470a0927694a1a7d409fd920df1acfe4a"
+        },
+        "shime31.png": {
+          "size": 26485,
+          "sha": "d7eed5bb7243f0553b8dd57c07f468de5330e898"
+        },
+        "shime32.png": {
+          "size": 26030,
+          "sha": "c193ff76c447cabbb6e054a93de406cd5b7b73aa"
+        },
+        "shime33.png": {
+          "size": 26555,
+          "sha": "e3408f0d75f70a69470ecac00a5007c0645de660"
+        },
+        "shime34.png": {
+          "size": 22951,
+          "sha": "204392d15db755be4530178c6abb0602fa2d317f"
+        },
+        "shime35.png": {
+          "size": 23066,
+          "sha": "093fdd632a3aee2e74912610c910381b76907b54"
+        },
+        "shime36.png": {
+          "size": 22921,
+          "sha": "10e1f6533bcb83cf76d36df5e5acd0065b607e7d"
+        },
+        "shime37.png": {
+          "size": 25405,
+          "sha": "4baf295beca0c8020fd89e08ec1c8ba74136869d"
+        },
+        "shime38.png": {
+          "size": 25752,
+          "sha": "516a5b661e92969453d2ca7f388bc8766363881d"
+        },
+        "shime39.png": {
+          "size": 25987,
+          "sha": "2d88542319c67783baea5b321f15b09b66e7eacc"
+        },
+        "shime4.png": {
+          "size": 23236,
+          "sha": "4de52363e2d5ce5634a6def7f9184cc653abd880"
+        },
+        "shime40.png": {
+          "size": 26300,
+          "sha": "25adddf82fd8a120c49fbcfee1c08fd64395ccb1"
+        },
+        "shime41.png": {
+          "size": 26657,
+          "sha": "360f1619674948cc15ed76b2bd193f0950ab74c3"
+        },
+        "shime42.png": {
+          "size": 27014,
+          "sha": "d8679aef73741952b56da6965a32b9807fa39ed2"
+        },
+        "shime43.png": {
+          "size": 25456,
+          "sha": "50319a7467682ead788ac36b58bad5df3c27d197"
+        },
+        "shime44.png": {
+          "size": 24609,
+          "sha": "a28dc4e4ceb4922403e3d2e97dd5e2abb19ce5f4"
+        },
+        "shime45.png": {
+          "size": 24581,
+          "sha": "20e20c85291bd9d2b78e0c2379e93653580d0b33"
+        },
+        "shime46.png": {
+          "size": 23114,
+          "sha": "5fce4d8388d4b2a803a73d26ed140a52f0675cab"
+        },
+        "shime5.png": {
+          "size": 26683,
+          "sha": "f74814ef011656ef473d212d2b2f0892495bd067"
+        },
+        "shime6.png": {
+          "size": 26233,
+          "sha": "697dfd2495de0d3e58488285dfb1e8847e6f1700"
+        },
+        "shime7.png": {
+          "size": 26399,
+          "sha": "569a5bdaec83ecd26e6e61ccae04b871d5b5c249"
+        },
+        "shime8.png": {
+          "size": 26993,
+          "sha": "249ca7b264623c422ad2b3bc2206f83cf4608c7a"
+        },
+        "shime9.png": {
+          "size": 27090,
+          "sha": "1659c70bcec44337c6defce53543ac28e4b3a264"
+        }
+      }
+    },
+    "thoma-by-uuteki": {
+      "name": "托马",
+      "profile": "genshin_thoma",
+      "upstream_dir": "genshin-impact-thoma-by-uuteki",
+      "artist": "uuteki",
+      "files": {
+        "shime1.png": {
+          "size": 16842,
+          "sha": "2c22faae61644a91109dd7cbaf49e3b19c9128a5"
+        },
+        "shime10.png": {
+          "size": 19601,
+          "sha": "6d5b6a3da354b6cc5a371e229d598f27e79b283b"
+        },
+        "shime11.png": {
+          "size": 18643,
+          "sha": "ebcc5b37f245d90dd556fabfa9f8bc178b645878"
+        },
+        "shime12.png": {
+          "size": 15952,
+          "sha": "e6241a4cadcaea6c025406ff4c165c5bb55b25d5"
+        },
+        "shime13.png": {
+          "size": 16132,
+          "sha": "2a7bbebfa4e638579cb51c0b4692b8a5f69fa3f4"
+        },
+        "shime14.png": {
+          "size": 16143,
+          "sha": "9f054314dcf36f9068ca7d38efe554a4d0450769"
+        },
+        "shime15.png": {
+          "size": 18589,
+          "sha": "045e0bf9a3697ca9a4ea29aa6fb46a4c69ade325"
+        },
+        "shime16.png": {
+          "size": 18679,
+          "sha": "5a319f5038dbfda7f1a4dd5ca2794f538c2dffda"
+        },
+        "shime17.png": {
+          "size": 16949,
+          "sha": "b0af54cf428ca56e0b10c883db31e9da8a0331f1"
+        },
+        "shime18.png": {
+          "size": 16907,
+          "sha": "02e5e2b3bff1932c4cd4e9ac75fc628cbc107982"
+        },
+        "shime19.png": {
+          "size": 16384,
+          "sha": "891e442722a4b61b446872ebd32d11976b94acf8"
+        },
+        "shime2.png": {
+          "size": 18186,
+          "sha": "01855a86e82b49b78b542f3501250134629be22e"
+        },
+        "shime20.png": {
+          "size": 14988,
+          "sha": "437498e45d7bdfdadc7dc289db57759ee1f12adb"
+        },
+        "shime21.png": {
+          "size": 14546,
+          "sha": "c65abfea58a34a475c3561a3a97c574c8cf73911"
+        },
+        "shime22.png": {
+          "size": 17855,
+          "sha": "26e18b642e14efb5225027e6043d0a94431be210"
+        },
+        "shime23.png": {
+          "size": 18672,
+          "sha": "e95b14943b6f85a6198f57598b90b29c48f12164"
+        },
+        "shime24.png": {
+          "size": 18763,
+          "sha": "732a2a9a6530286d2c5e520f9624b72f4a3121a1"
+        },
+        "shime25.png": {
+          "size": 19096,
+          "sha": "51136060c17410b0e85e126bb2f9cc3871fa0856"
+        },
+        "shime26.png": {
+          "size": 17872,
+          "sha": "133b5b0a24563aee7f4449da05b0b833f08b848d"
+        },
+        "shime27.png": {
+          "size": 17787,
+          "sha": "a74d20f8728fefbe8b08d6547fc6caef8a1c3088"
+        },
+        "shime28.png": {
+          "size": 16920,
+          "sha": "db1b529443bbecbc1229c628da00570c561e7790"
+        },
+        "shime29.png": {
+          "size": 17027,
+          "sha": "b1b13665a8fc79c43f792798ee546150f0157fca"
+        },
+        "shime3.png": {
+          "size": 17193,
+          "sha": "90e3dedc5b980373d79061369d117709203cdeb3"
+        },
+        "shime30.png": {
+          "size": 15955,
+          "sha": "a9444258a5121834a2d9ae9ee352ede0e9123358"
+        },
+        "shime31.png": {
+          "size": 17648,
+          "sha": "d9de97a460e3b9331a4456e83f3b1d6482b7ca60"
+        },
+        "shime32.png": {
+          "size": 17715,
+          "sha": "a3101f51b3b9c4e526c4cf6fb4dacdaa7b291fb8"
+        },
+        "shime33.png": {
+          "size": 17661,
+          "sha": "4834e379638ee4b4294620a7fd05e329c5889cf3"
+        },
+        "shime34.png": {
+          "size": 14630,
+          "sha": "d4fdf0bd98fed3b7882c1152115268700dc02ee5"
+        },
+        "shime35.png": {
+          "size": 14899,
+          "sha": "fd26b30c5bf89bb6072721f63f7a7e9526978f3e"
+        },
+        "shime36.png": {
+          "size": 15655,
+          "sha": "349146dfd15ce3ce5c0c6d0423456fd5293190fc"
+        },
+        "shime37.png": {
+          "size": 17013,
+          "sha": "2927fde8e90dba881fb8dffdc975b0e2658e8625"
+        },
+        "shime38.png": {
+          "size": 17955,
+          "sha": "8fbad92cc4e83260c1af481ca4698253c0de3edd"
+        },
+        "shime39.png": {
+          "size": 16010,
+          "sha": "0f6fa7685af0bda9f773b7cfd80c0a61494fd85f"
+        },
+        "shime4.png": {
+          "size": 17835,
+          "sha": "a6a7d24c3dea6cce1b86be2f8fff8998ec18b87b"
+        },
+        "shime40.png": {
+          "size": 15951,
+          "sha": "c963ba37cb389c1e5036d56e21ea1a642a021196"
+        },
+        "shime41.png": {
+          "size": 19238,
+          "sha": "1c1d23be6f0e5b258546761250f03cfb83514534"
+        },
+        "shime42.png": {
+          "size": 20765,
+          "sha": "6d6a5a8aef96b74e9022404a05765c644bb51534"
+        },
+        "shime43.png": {
+          "size": 20742,
+          "sha": "69195f7ceabc0239c5392468fa07f68780d444b5"
+        },
+        "shime44.png": {
+          "size": 21341,
+          "sha": "9fba0c635b586b4d38978d3f704ef253135f6369"
+        },
+        "shime45.png": {
+          "size": 20867,
+          "sha": "4a04f260febbb79e0953c534439bf898cf5dc234"
+        },
+        "shime46.png": {
+          "size": 20834,
+          "sha": "ccec55f77b71b59e3aab0c51f35acf198e43c8af"
+        },
+        "shime5.png": {
+          "size": 17992,
+          "sha": "5f42190ac6c8d5d212f4b9dc0941469a18b9d9a8"
+        },
+        "shime6.png": {
+          "size": 17159,
+          "sha": "6891f1c60c74d486b7b5b6cf547cc3f1b9d6158e"
+        },
+        "shime7.png": {
+          "size": 17992,
+          "sha": "5f42190ac6c8d5d212f4b9dc0941469a18b9d9a8"
+        },
+        "shime8.png": {
+          "size": 18518,
+          "sha": "f557bcb17e0cc614334bc9fab2c4576245d6ef77"
+        },
+        "shime9.png": {
+          "size": 19310,
+          "sha": "ab8e19528613b73455e49841a56f1d08a85be19a"
+        }
+      }
+    },
+    "venti-by-sayonara-kuro": {
+      "name": "温迪（Sayonara Kuro）",
+      "profile": "genshin_venti",
+      "upstream_dir": "genshin-impact-venti-by-sayonara-kuro",
+      "artist": "sayonara-kuro",
+      "files": {
+        "shime1.png": {
+          "size": 14349,
+          "sha": "bebed559ab9cbfe587e118ced7c565e91e583b34"
+        },
+        "shime10.png": {
+          "size": 17544,
+          "sha": "6191facb006e86dcb1de98818dd61c3e38afd97d"
+        },
+        "shime11.png": {
+          "size": 20180,
+          "sha": "8bce0fcdfd828bfb640468b64195e66e5f6765a2"
+        },
+        "shime12.png": {
+          "size": 14094,
+          "sha": "b4b9887c19136c427d6b643b9f0c70b8c358b49f"
+        },
+        "shime13.png": {
+          "size": 14495,
+          "sha": "1a2a1d97264b93bbad6a29f1914fa68d92117892"
+        },
+        "shime14.png": {
+          "size": 14494,
+          "sha": "fdc369eb6637b9148424268af12c0b8966fa32b2"
+        },
+        "shime15.png": {
+          "size": 19020,
+          "sha": "cec94e8f88a85551b090bb065f42e4e2b62493f6"
+        },
+        "shime16.png": {
+          "size": 19096,
+          "sha": "9e52bed08816a1133e47d8c6898dedad1a1069bf"
+        },
+        "shime17.png": {
+          "size": 19048,
+          "sha": "fa0d2aa374fc2ad8f7953640803ba243b128f1fa"
+        },
+        "shime18.png": {
+          "size": 11941,
+          "sha": "1ebf401b71b054b626108344ff59dc37f3ca27fa"
+        },
+        "shime19.png": {
+          "size": 11634,
+          "sha": "b8754f3a399b554c66749089dd00590e782d30e1"
+        },
+        "shime2.png": {
+          "size": 14688,
+          "sha": "68abe56256e237003fbe298f2e951d53b3b2e76a"
+        },
+        "shime20.png": {
+          "size": 16271,
+          "sha": "835fd5759327c7521fb02b0dbd883fdaca455f00"
+        },
+        "shime21.png": {
+          "size": 15915,
+          "sha": "769e1cf34c70a9db296b984b7397820e932936a7"
+        },
+        "shime22.png": {
+          "size": 18895,
+          "sha": "3f3326706298b869336927aca7db027712c11c1b"
+        },
+        "shime23.png": {
+          "size": 17906,
+          "sha": "f1ba3d103d0d2dff80b55b646b43f30305863d4b"
+        },
+        "shime24.png": {
+          "size": 18095,
+          "sha": "25785edb3dcb0063e01a1e6f7d031c8be019b2ba"
+        },
+        "shime25.png": {
+          "size": 17973,
+          "sha": "e9c3207dae7de67c3d8a14738bdadae0a47cd597"
+        },
+        "shime26.png": {
+          "size": 19020,
+          "sha": "cec94e8f88a85551b090bb065f42e4e2b62493f6"
+        },
+        "shime27.png": {
+          "size": 19096,
+          "sha": "9e52bed08816a1133e47d8c6898dedad1a1069bf"
+        },
+        "shime28.png": {
+          "size": 19048,
+          "sha": "fa0d2aa374fc2ad8f7953640803ba243b128f1fa"
+        },
+        "shime29.png": {
+          "size": 19096,
+          "sha": "9e52bed08816a1133e47d8c6898dedad1a1069bf"
+        },
+        "shime3.png": {
+          "size": 14867,
+          "sha": "4271a705347f6aa10e211dd1655dceb85c00fe1e"
+        },
+        "shime30.png": {
+          "size": 20612,
+          "sha": "11defc7072663ea832a39af5c5c0bf6e72c16d3f"
+        },
+        "shime31.png": {
+          "size": 20612,
+          "sha": "11defc7072663ea832a39af5c5c0bf6e72c16d3f"
+        },
+        "shime32.png": {
+          "size": 21033,
+          "sha": "964ad448af6e7ec9db5379bc621f4cc1102852ec"
+        },
+        "shime33.png": {
+          "size": 21010,
+          "sha": "7dabf8c645e89e699d507de94dfa0345fbf2e4ba"
+        },
+        "shime34.png": {
+          "size": 13032,
+          "sha": "863b4f55a41cf0c18769ead12d31fa8fd6fa357f"
+        },
+        "shime35.png": {
+          "size": 13075,
+          "sha": "5f52db82f4d4f387eda7ffb207566755fa2cae37"
+        },
+        "shime36.png": {
+          "size": 13293,
+          "sha": "e35196c2d12676d6f6d6cd0ba14026b8f3eb002a"
+        },
+        "shime37.png": {
+          "size": 17740,
+          "sha": "b493803e7262f57b226ff11733abac5fc7238656"
+        },
+        "shime38.png": {
+          "size": 21240,
+          "sha": "258b0638a000f1168554386156e318affcefd163"
+        },
+        "shime39.png": {
+          "size": 22209,
+          "sha": "4638f28209954194dbb59fdc66c8dbf8e8cb75ac"
+        },
+        "shime4.png": {
+          "size": 17383,
+          "sha": "07bf6143a586409b563540352e318282d1c394c0"
+        },
+        "shime40.png": {
+          "size": 22894,
+          "sha": "24337663b2c970c223816081d3e7157e46e20b54"
+        },
+        "shime41.png": {
+          "size": 22800,
+          "sha": "3d9a17d412938dd6e733a75d74d0ca87a7689def"
+        },
+        "shime42.png": {
+          "size": 21240,
+          "sha": "258b0638a000f1168554386156e318affcefd163"
+        },
+        "shime43.png": {
+          "size": 21240,
+          "sha": "258b0638a000f1168554386156e318affcefd163"
+        },
+        "shime44.png": {
+          "size": 22209,
+          "sha": "4638f28209954194dbb59fdc66c8dbf8e8cb75ac"
+        },
+        "shime45.png": {
+          "size": 22209,
+          "sha": "4638f28209954194dbb59fdc66c8dbf8e8cb75ac"
+        },
+        "shime46.png": {
+          "size": 22894,
+          "sha": "24337663b2c970c223816081d3e7157e46e20b54"
+        },
+        "shime5.png": {
+          "size": 17268,
+          "sha": "34633f0713f186991d4c0ab15814e7ebf363f9f6"
+        },
+        "shime6.png": {
+          "size": 17544,
+          "sha": "6191facb006e86dcb1de98818dd61c3e38afd97d"
+        },
+        "shime7.png": {
+          "size": 17268,
+          "sha": "34633f0713f186991d4c0ab15814e7ebf363f9f6"
+        },
+        "shime8.png": {
+          "size": 17544,
+          "sha": "6191facb006e86dcb1de98818dd61c3e38afd97d"
+        },
+        "shime9.png": {
+          "size": 17268,
+          "sha": "34633f0713f186991d4c0ab15814e7ebf363f9f6"
+        }
+      }
+    },
+    "venti-by-uuteki": {
+      "name": "温迪（uuteki）",
+      "profile": "genshin_venti",
+      "upstream_dir": "genshin-impact-venti-by-uuteki",
+      "artist": "uuteki",
+      "files": {
+        "shime1.png": {
+          "size": 20586,
+          "sha": "f9eefe99e52bd077b1f7c466a1e84bc05c09034b"
+        },
+        "shime10.png": {
+          "size": 25414,
+          "sha": "7b8c7677b651e790cd33957050591bc02b4a1c25"
+        },
+        "shime11.png": {
+          "size": 20479,
+          "sha": "3d7db63459d8f46cc3c0e7792881c8bab2f63fb0"
+        },
+        "shime12.png": {
+          "size": 19286,
+          "sha": "292925731953cd14ca157644069ad61fbb54e15a"
+        },
+        "shime13.png": {
+          "size": 19337,
+          "sha": "5c7980254988374419871a5776ca222d72e86149"
+        },
+        "shime14.png": {
+          "size": 19416,
+          "sha": "02cc40cd508febd221d63f958d9099091110ae24"
+        },
+        "shime15.png": {
+          "size": 19304,
+          "sha": "7488a9ddd4add7aab3145bbc5a77041122b2c5c7"
+        },
+        "shime16.png": {
+          "size": 19484,
+          "sha": "a4b9859a77bc296d58126631207cb5d4099377ac"
+        },
+        "shime17.png": {
+          "size": 20991,
+          "sha": "e3a2d10d9fd85369fcce4311475ebf85a2ed7df0"
+        },
+        "shime18.png": {
+          "size": 20210,
+          "sha": "fc543d6730eac522ce1c3b68e6aa39329712fbe2"
+        },
+        "shime19.png": {
+          "size": 19759,
+          "sha": "6a47af8ee13ab3bfdd08134b29931ff3bcbec3a1"
+        },
+        "shime2.png": {
+          "size": 22301,
+          "sha": "f186b31213992f0e05bff844144718674c414c6f"
+        },
+        "shime20.png": {
+          "size": 17652,
+          "sha": "d2cfae7d21d0d198ca39fab80fe0c4ab16fed632"
+        },
+        "shime21.png": {
+          "size": 17272,
+          "sha": "e0660d0469892346af4a3d1da30b6488d35602e6"
+        },
+        "shime22.png": {
+          "size": 21330,
+          "sha": "54dc145c92620730f25ce4b2273618dc1bbefb33"
+        },
+        "shime23.png": {
+          "size": 20780,
+          "sha": "2aec896118b0927a2cf7b17cbc55ed5e6a99c387"
+        },
+        "shime24.png": {
+          "size": 20780,
+          "sha": "2aec896118b0927a2cf7b17cbc55ed5e6a99c387"
+        },
+        "shime25.png": {
+          "size": 20228,
+          "sha": "00b841acbf0e4c852b11c48876f1cea4d101fe5c"
+        },
+        "shime26.png": {
+          "size": 19130,
+          "sha": "4cd873ca3e1521ad64a01925b3082dbd34ab16b5"
+        },
+        "shime27.png": {
+          "size": 19599,
+          "sha": "8964db4809e88febf6be4728b740113a033f2835"
+        },
+        "shime28.png": {
+          "size": 19983,
+          "sha": "45b3ca997284b4b33f9f14376f228487ff2d031d"
+        },
+        "shime29.png": {
+          "size": 20261,
+          "sha": "ce9551327ffb4f56627b82bbe5f4a846891e5a0c"
+        },
+        "shime3.png": {
+          "size": 21697,
+          "sha": "1558ac2c68a6c359ffac42f74273b497adeed296"
+        },
+        "shime30.png": {
+          "size": 18629,
+          "sha": "aa203c84bfb7767703aa6c91d0465f4fe7a731a5"
+        },
+        "shime31.png": {
+          "size": 27702,
+          "sha": "6c7d7e06ae8fdd123ce7aabed2dad1afbfca1374"
+        },
+        "shime32.png": {
+          "size": 27932,
+          "sha": "1d4a7248fdd6acb3f5448e6993625475dac76544"
+        },
+        "shime33.png": {
+          "size": 27932,
+          "sha": "1d4a7248fdd6acb3f5448e6993625475dac76544"
+        },
+        "shime34.png": {
+          "size": 19411,
+          "sha": "2e74d860a8920a52d579d0eb69a1ef1c13620fd6"
+        },
+        "shime35.png": {
+          "size": 19848,
+          "sha": "3d6e09a08f8239d6fad3ef5b81490fce61696152"
+        },
+        "shime36.png": {
+          "size": 20332,
+          "sha": "9aff164ce2ae2595e872f758a435131b34730f8e"
+        },
+        "shime37.png": {
+          "size": 21753,
+          "sha": "a96cf6f4901493299ba4eff7c74028d9bb0650e1"
+        },
+        "shime38.png": {
+          "size": 21704,
+          "sha": "b3d45e465966f85eb0356376e7901f5dbce64fe4"
+        },
+        "shime39.png": {
+          "size": 19148,
+          "sha": "615ba4f6760294ac312c49494b501f8e2a6d508c"
+        },
+        "shime4.png": {
+          "size": 32185,
+          "sha": "a014c030f1178bab6b180892933d48a3778729aa"
+        },
+        "shime40.png": {
+          "size": 19682,
+          "sha": "bb50cf04257d54b37cf4e6097fca76a2b3e8bc98"
+        },
+        "shime41.png": {
+          "size": 21627,
+          "sha": "75c8dfdb9b6392e57be16a171b6942e312390673"
+        },
+        "shime42.png": {
+          "size": 20954,
+          "sha": "58fc984dcc6806e116a271b751a2d4cb6d8802cb"
+        },
+        "shime43.png": {
+          "size": 22528,
+          "sha": "f80163b0b79f2270fa5e4dd9e6058e4a3fafb751"
+        },
+        "shime44.png": {
+          "size": 23459,
+          "sha": "2c75491faf83ddf0b23eeecc0aaf786e854152bc"
+        },
+        "shime45.png": {
+          "size": 23478,
+          "sha": "192078f1b21f15c8fca888f9d3fef2092b07a1ff"
+        },
+        "shime46.png": {
+          "size": 23242,
+          "sha": "760925287feb7219f806275f2983c457a656ca39"
+        },
+        "shime5.png": {
+          "size": 22723,
+          "sha": "0f1c17f9fe94b17f1915d658bb8961489a944988"
+        },
+        "shime6.png": {
+          "size": 20660,
+          "sha": "478e113cc8a8a2d3709c318e658f9531413f8ad3"
+        },
+        "shime7.png": {
+          "size": 22723,
+          "sha": "0f1c17f9fe94b17f1915d658bb8961489a944988"
+        },
+        "shime8.png": {
+          "size": 23549,
+          "sha": "b34cb6de3e668ed5fa747f180cca9b40deccedcb"
+        },
+        "shime9.png": {
+          "size": 24248,
+          "sha": "ee184a1c8d915f23781b28cf1e06b44c22eadad4"
+        }
+      }
+    },
+    "xiao-by-tachi-png": {
+      "name": "魈",
+      "profile": "genshin_xiao",
+      "upstream_dir": "genshin-impact-xiao-by-tachi-png",
+      "artist": "tachi-png",
+      "files": {
+        "shime1.png": {
+          "size": 14717,
+          "sha": "3b272fd3565a78229fc28d9e66e62ac894e546ab"
+        },
+        "shime10.png": {
+          "size": 14245,
+          "sha": "f5079a712e46b6f6152521d97f9bfaa3f6ed8d2d"
+        },
+        "shime11.png": {
+          "size": 13611,
+          "sha": "4f296299a3193e5d6962e7caad4cbc717d382a0f"
+        },
+        "shime12.png": {
+          "size": 16460,
+          "sha": "27c33cc114c0588b55dc4f5181682edd7531cb9d"
+        },
+        "shime13.png": {
+          "size": 16369,
+          "sha": "6df1dab6181ebe9787466e7a081c3163ab2a5bf3"
+        },
+        "shime14.png": {
+          "size": 16460,
+          "sha": "27c33cc114c0588b55dc4f5181682edd7531cb9d"
+        },
+        "shime15.png": {
+          "size": 15137,
+          "sha": "0549913e03b3e1c50f158613b351d59ff5395c06"
+        },
+        "shime16.png": {
+          "size": 15138,
+          "sha": "c1e303368f72ea1917335798ae8e4579de5e6dc6"
+        },
+        "shime17.png": {
+          "size": 15137,
+          "sha": "0549913e03b3e1c50f158613b351d59ff5395c06"
+        },
+        "shime18.png": {
+          "size": 20119,
+          "sha": "0581c8ad65b5320feef4787d575659acb10bcb22"
+        },
+        "shime19.png": {
+          "size": 18699,
+          "sha": "7f9233b20e5ddd2da833bfe0bd140a05811cecf2"
+        },
+        "shime2.png": {
+          "size": 14567,
+          "sha": "8effe6316033d93eed03178e4ca454f1fee8b60a"
+        },
+        "shime20.png": {
+          "size": 13883,
+          "sha": "e5a384f25556849b9f2b8b3672d5cd34805ec81d"
+        },
+        "shime21.png": {
+          "size": 14019,
+          "sha": "63909241a13d44123d908809a37094045e1bdf19"
+        },
+        "shime22.png": {
+          "size": 19980,
+          "sha": "52f8e6e1736b4c401df4dc65d725b08fd9f841eb"
+        },
+        "shime23.png": {
+          "size": 16695,
+          "sha": "fde55f332ac36dcd5e14ed61e421ccd52530fc91"
+        },
+        "shime24.png": {
+          "size": 16416,
+          "sha": "b2a935df8b01e0943a4ce475021ce8837ad11de7"
+        },
+        "shime25.png": {
+          "size": 16695,
+          "sha": "fde55f332ac36dcd5e14ed61e421ccd52530fc91"
+        },
+        "shime26.png": {
+          "size": 13611,
+          "sha": "4f296299a3193e5d6962e7caad4cbc717d382a0f"
+        },
+        "shime27.png": {
+          "size": 14040,
+          "sha": "6dea8ffa1edbd2939b76133c7ea8e77ef4387aab"
+        },
+        "shime28.png": {
+          "size": 14024,
+          "sha": "8fe07f36e350e633cc97cbf999dd72b82513c1d5"
+        },
+        "shime29.png": {
+          "size": 14043,
+          "sha": "069a523272cd8994866d89f1e626369f552dacda"
+        },
+        "shime3.png": {
+          "size": 14172,
+          "sha": "16a911ab9118c17fe53343b198b6de135b695605"
+        },
+        "shime30.png": {
+          "size": 12923,
+          "sha": "718c3b0920bf31ff5bce0dc49106f31396ff66e4"
+        },
+        "shime31.png": {
+          "size": 13267,
+          "sha": "222a6f1035efebc7e811653b62ad545dd3e7f8de"
+        },
+        "shime32.png": {
+          "size": 12923,
+          "sha": "718c3b0920bf31ff5bce0dc49106f31396ff66e4"
+        },
+        "shime33.png": {
+          "size": 13267,
+          "sha": "222a6f1035efebc7e811653b62ad545dd3e7f8de"
+        },
+        "shime34.png": {
+          "size": 19980,
+          "sha": "52f8e6e1736b4c401df4dc65d725b08fd9f841eb"
+        },
+        "shime35.png": {
+          "size": 19980,
+          "sha": "52f8e6e1736b4c401df4dc65d725b08fd9f841eb"
+        },
+        "shime36.png": {
+          "size": 19980,
+          "sha": "52f8e6e1736b4c401df4dc65d725b08fd9f841eb"
+        },
+        "shime37.png": {
+          "size": 14928,
+          "sha": "29c1bcdecedf918e71b52dd2a8c1bb308946e221"
+        },
+        "shime38.png": {
+          "size": 14928,
+          "sha": "29c1bcdecedf918e71b52dd2a8c1bb308946e221"
+        },
+        "shime39.png": {
+          "size": 13476,
+          "sha": "fb31a241049b662d5c992b85bac930ce6980c27b"
+        },
+        "shime4.png": {
+          "size": 15354,
+          "sha": "7eaf04b5fb163bbf6b329c8be275dabacf365885"
+        },
+        "shime40.png": {
+          "size": 14229,
+          "sha": "019ce64b35e1bedef368c6c3cbe545fae60c6c49"
+        },
+        "shime41.png": {
+          "size": 15954,
+          "sha": "386a18c78c9471ee9460e18fffff8d6240dc00d4"
+        },
+        "shime42.png": {
+          "size": 26125,
+          "sha": "58aec1843125903153c7ea3472481b081f3fdaee"
+        },
+        "shime43.png": {
+          "size": 27050,
+          "sha": "5905fabdf4b31e0979fa0fb02fafa33d5b002720"
+        },
+        "shime44.png": {
+          "size": 26125,
+          "sha": "58aec1843125903153c7ea3472481b081f3fdaee"
+        },
+        "shime45.png": {
+          "size": 27050,
+          "sha": "5905fabdf4b31e0979fa0fb02fafa33d5b002720"
+        },
+        "shime46.png": {
+          "size": 26125,
+          "sha": "58aec1843125903153c7ea3472481b081f3fdaee"
+        },
+        "shime5.png": {
+          "size": 14519,
+          "sha": "5216d32a3e456213b7b4892c505429514f455e0b"
+        },
+        "shime6.png": {
+          "size": 14245,
+          "sha": "f5079a712e46b6f6152521d97f9bfaa3f6ed8d2d"
+        },
+        "shime7.png": {
+          "size": 14519,
+          "sha": "5216d32a3e456213b7b4892c505429514f455e0b"
+        },
+        "shime8.png": {
+          "size": 14245,
+          "sha": "f5079a712e46b6f6152521d97f9bfaa3f6ed8d2d"
+        },
+        "shime9.png": {
+          "size": 14519,
+          "sha": "5216d32a3e456213b7b4892c505429514f455e0b"
+        }
+      }
+    },
+    "zhongli-by-vol-tuna": {
+      "name": "钟离",
+      "profile": "genshin_zhongli",
+      "upstream_dir": "genshin-impact-zhongli-by-vol-tuna",
+      "artist": "vol-tuna",
+      "files": {
+        "shime1.png": {
+          "size": 17279,
+          "sha": "e2717be1569c45318c7f49ae60ee028e7f092759"
+        },
+        "shime10.png": {
+          "size": 18153,
+          "sha": "481bb72992ab8c62401a621f4dd12286ef05f6d0"
+        },
+        "shime11.png": {
+          "size": 14551,
+          "sha": "810f839d50bd007515893013c7a8402e750f50a5"
+        },
+        "shime12.png": {
+          "size": 14595,
+          "sha": "ce7356bab0d84f223fbedff44de3be6794882062"
+        },
+        "shime13.png": {
+          "size": 15019,
+          "sha": "8760644c7d0a12b99828ea9be836987c4396b381"
+        },
+        "shime14.png": {
+          "size": 14918,
+          "sha": "ee5a57f686dc861379ebf421a4855916910c639f"
+        },
+        "shime15.png": {
+          "size": 15148,
+          "sha": "033ffce7216faff8a591ad1f258ee9dfe9265516"
+        },
+        "shime16.png": {
+          "size": 16758,
+          "sha": "0a8710cd87282efeb6a9421f4becd53d6e3e755a"
+        },
+        "shime17.png": {
+          "size": 16656,
+          "sha": "59fa09b0020322c5183092af463286048db6e72c"
+        },
+        "shime18.png": {
+          "size": 14887,
+          "sha": "1607567b7498d9df44e274483b184487a14d0dfc"
+        },
+        "shime19.png": {
+          "size": 13950,
+          "sha": "c10b92d87bf28603d35c1960490b68f94ad2e01e"
+        },
+        "shime2.png": {
+          "size": 16754,
+          "sha": "dffb350419b67e4afd954f96f55f51366ace6ab9"
+        },
+        "shime20.png": {
+          "size": 12023,
+          "sha": "0bba8027b94516d509761552aaceeaba7186dd7c"
+        },
+        "shime21.png": {
+          "size": 12205,
+          "sha": "0c66c5fc9ba57b98a694264c281656bb7552b0d6"
+        },
+        "shime22.png": {
+          "size": 16649,
+          "sha": "867a934165abc7a2730bbb51f59a7c80bee1a5ae"
+        },
+        "shime23.png": {
+          "size": 14946,
+          "sha": "56cfc68e97db168113fa6aabc9b220ec98fdf117"
+        },
+        "shime24.png": {
+          "size": 14962,
+          "sha": "23e7f683f5add9ece151ea890d0af7dec6c849b0"
+        },
+        "shime25.png": {
+          "size": 15046,
+          "sha": "30130e1cd17cf565499135bc06e87435d9f82ed6"
+        },
+        "shime26.png": {
+          "size": 14720,
+          "sha": "fd07d22b9d153130881d7fac20a162ab7401cc2e"
+        },
+        "shime27.png": {
+          "size": 16314,
+          "sha": "55bba78e8979c7c56d502de81447c9f675391ebe"
+        },
+        "shime28.png": {
+          "size": 16651,
+          "sha": "e731caffe5308e6ccb651b56264504d2c1c74aed"
+        },
+        "shime29.png": {
+          "size": 16947,
+          "sha": "62d9ae843a9d84d91a70bf08df16c367c27fd129"
+        },
+        "shime3.png": {
+          "size": 15685,
+          "sha": "a3a3772ba4a0712cfd8c23aab226afe3dc1a0027"
+        },
+        "shime30.png": {
+          "size": 14911,
+          "sha": "eee84c92a4c8f1ae28bb96fbfae2d854de598844"
+        },
+        "shime31.png": {
+          "size": 15637,
+          "sha": "d67c6643f022674dcff625f659788dde5fe49692"
+        },
+        "shime32.png": {
+          "size": 15662,
+          "sha": "f6b660b594a96abc5210e25aa2406c1f0f7ccefa"
+        },
+        "shime33.png": {
+          "size": 15609,
+          "sha": "bb206179cdf01bacfb161b67525274f1c8f8cd92"
+        },
+        "shime34.png": {
+          "size": 13863,
+          "sha": "0379b4750496b274c80f0f8383052e54f7bd9af5"
+        },
+        "shime35.png": {
+          "size": 13632,
+          "sha": "9ebc793b22dfdd9a9d63036796c09bddf8fc7523"
+        },
+        "shime36.png": {
+          "size": 13945,
+          "sha": "5d4d2593e3d3ac8a4bb61922f820be47407b9724"
+        },
+        "shime37.png": {
+          "size": 15201,
+          "sha": "13776f17c169fef9650d6713ea9843e89896e865"
+        },
+        "shime38.png": {
+          "size": 17098,
+          "sha": "588c4f65bb02a0bbbf5beef4eddee6cab200785a"
+        },
+        "shime39.png": {
+          "size": 17905,
+          "sha": "f0dd9147ce874376d4bd13c6e5b70838cf42a88c"
+        },
+        "shime4.png": {
+          "size": 15768,
+          "sha": "9f9032042c6a1fed03d3f902b6ed876c050c986d"
+        },
+        "shime40.png": {
+          "size": 20496,
+          "sha": "623b25d3ee8eb06b2eb71b72471a88ea6126f2f9"
+        },
+        "shime41.png": {
+          "size": 23465,
+          "sha": "26ec67c1f150b2ed01a141ca51db1d5c2b04d900"
+        },
+        "shime42.png": {
+          "size": 14666,
+          "sha": "2adc102afed898d5ec30e01f42051c5e22c70727"
+        },
+        "shime43.png": {
+          "size": 14339,
+          "sha": "5280a7287ef6779c62c90f4cf3fb76a7cc8da84f"
+        },
+        "shime44.png": {
+          "size": 13491,
+          "sha": "9aef8f8ead8ac1f03f1b4f9c450877dde288bf38"
+        },
+        "shime45.png": {
+          "size": 14085,
+          "sha": "2811cadf27d85baa02f67c911f8bdfb84f8b2992"
+        },
+        "shime46.png": {
+          "size": 18534,
+          "sha": "dc962c6a0c5b14d01d49c2baf8063bce7f19b65a"
+        },
+        "shime5.png": {
+          "size": 17137,
+          "sha": "a66ef2aa05d7e54448bd8248e5e1f694efd50024"
+        },
+        "shime6.png": {
+          "size": 18181,
+          "sha": "a75c8028009bdf3649d1d1ee426aafb520b507c1"
+        },
+        "shime7.png": {
+          "size": 17576,
+          "sha": "981d0f725ed8d5da8d7359d648f1f69876c05fb4"
+        },
+        "shime8.png": {
+          "size": 17886,
+          "sha": "7f154d1ef58c6af21ff03d9769912443dfd70dc4"
+        },
+        "shime9.png": {
+          "size": 16800,
+          "sha": "1fff05698d307c5fc5206852f30b2e16da68f5e8"
+        }
+      }
+    }
+  }
+}
