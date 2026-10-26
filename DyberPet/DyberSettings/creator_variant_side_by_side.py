@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PIL import Image
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
@@ -54,6 +56,20 @@ def checked_variant_pair(role_root, options, left=None, right=None):
     if a not in options or b not in options or a == b:
         raise ValueError("对照必须使用同一人物的两个不同素材版本")
     return a, b
+
+
+def display_pixmap_for_comparison(frame_path, *, trim_transparent):
+    """Display-only alpha crop; author bytes and visible pixels are untouched."""
+    px = QPixmap(str(frame_path))
+    if px.isNull() or not trim_transparent:
+        return px
+    with Image.open(frame_path) as original:
+        original.load()
+        bbox = original.convert("RGBA").getchannel("A").getbbox()
+    if bbox is None:
+        return QPixmap()
+    x0, y0, x1, y1 = bbox
+    return px.copy(x0, y0, x1 - x0, y1 - y0)
 
 
 def shared_native_interactions(left_actions, right_actions):
@@ -133,6 +149,15 @@ class CreatorVariantSideBySideDialog(QDialog):
         self.apply_shared = QPushButton("两侧同步切到该动作", self)
         shared.addWidget(self.apply_shared)
         body.addLayout(shared)
+        mode = QHBoxLayout()
+        mode.addWidget(QLabel("画面呈现方式：", self))
+        self.crop_mode = QComboBox(self)
+        self.crop_mode.addItem("只裁透明边缘 · 方便比较真实头身比例", True)
+        self.crop_mode.addItem("保留原始画布 · 检查动画定位", False)
+        mode.addWidget(self.crop_mode)
+        mode.addWidget(QLabel("只裁预览画面，不改原始PNG", self))
+        mode.addStretch()
+        body.addLayout(mode)
         controls = QHBoxLayout()
         self.play = QPushButton("同步播放", self)
         self.prev = QPushButton("上一帧", self)
@@ -148,6 +173,7 @@ class CreatorVariantSideBySideDialog(QDialog):
         body.addLayout(controls)
         note = QLabel(
             "同屏只是为了人工核对头身比例、发饰服装和动作帧；"
+            "同步预览统一节奏并非原作者动作真实运行帧率；"
             "完整原设辨识与桌面手感仍须逐版本查看。"
             "不得仅凭轮廓比例自动判定合格或把本功能当作认证。",
             self)
@@ -167,6 +193,7 @@ class CreatorVariantSideBySideDialog(QDialog):
         self.next.clicked.connect(self._advance)
         self.slider.valueChanged.connect(self._slider_seek)
         self.apply_shared.clicked.connect(self._choose_shared)
+        self.crop_mode.currentIndexChanged.connect(self._render_both)
         self._load(0)
         self._load(1)
 
@@ -262,7 +289,11 @@ class CreatorVariantSideBySideDialog(QDialog):
                 self.frame_counts[i].setText("帧 0 / 0")
                 continue
             pos = self._tick % len(frames)
-            pix = QPixmap(str(frames[pos]))
+            try:
+                pix = display_pixmap_for_comparison(
+                    frames[pos], trim_transparent=bool(self.crop_mode.currentData()))
+            except (OSError, ValueError):
+                pix = QPixmap()
             if pix.isNull():
                 self._stop()
                 self.viewports[i].setText("当前原画帧已损坏")
