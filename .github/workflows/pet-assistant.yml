@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "DyberPet/assistant/**"
+      - "tools/verify_real_creator_runtime.py"
       - "tools/audit_guga.py"
       - "tools/audit_character.py"
       - "docs/character_fidelity.md"
@@ -122,3 +123,22 @@ jobs:
         env:
           PPL_INTEGRATION_HOME: ${{ github.workspace }}/ppl-src
         run: python -m unittest discover -s tests -p "test_assistant_ppl_live.py" -v
+
+  creator-zip-runtime-integration:
+    name: Real artist ZIP to PetWidget groups (non-gating network smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install real sprites decoder
+        run: python -m pip install "Pillow==11.3.0"
+      - name: Independently verify publisher SHA, original pixels, and actual PetWidget group mapping
+        timeout-minutes: 8
+        run: python tools/verify_real_creator_runtime.py
+    # All publisher pixels stay in temporary local CI only; no art is uploaded or bundled.
