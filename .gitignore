@@ -45,3 +45,6 @@ res/role/守岸人
 /res/role/ArknightsAmiya/
 /res/role/StarrailMarch7/
 /res/role/WutheringRover/
+
+# Local-only creator art installed from pinned remote sources. Never commit these by default.
+/res/role/Source*/
