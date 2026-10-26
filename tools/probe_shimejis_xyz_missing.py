@@ -65,11 +65,23 @@ def _fetch_page():
     return body.decode("utf-8")
 
 
+# Exact roster aliases accepted only when the source collection is Genshin.
+# The original 123-role registry uses canonical Traveler/Tartaglia IDs,
+# whereas many Shimeji creators use the character's shorter display name.
+IDENTITY_ALIASES = {
+    "genshin_traveler_aether": ("aether",),
+    "genshin_traveler_lumine": ("lumine",),
+    "genshin_tartaglia": ("childe",),
+}
+
+
 def _key_in_slug(key, slug):
     # Delimited exact roster IDs, never substring-only matches. Multiple hits
     # are considered ambiguous and suppressed rather than guessed.
     token = key.removeprefix("genshin_").replace("_", "-")
-    return re.search(r"(?:^|-)" + re.escape(token) + r"(?:-|$)", slug) is not None
+    aliases = (token,) + IDENTITY_ALIASES.get(key, ())
+    return any(re.search(r"(?:^|-)" + re.escape(alias) + r"(?:-|$)", slug)
+               for alias in aliases)
 
 
 def candidate_report(*, page=None, coverage=None):
