@@ -30,6 +30,7 @@ $installerArgs = @(
     "--specpath", (Join-Path $root "build/role-installer-spec"),
     "--collect-data", "tools",
     "--hidden-import", "tools.personal_source_batch",
+    "--hidden-import", "tools.local_offline_bundle",
     "--hidden-import", "tools.personal_mascot_batch",
     "--hidden-import", "tools.install_creator_mascots",
     "--hidden-import", "tools.mascot_library",
@@ -58,6 +59,18 @@ $sourceDirs = @(Get-ChildItem -LiteralPath $roles -Directory -ErrorAction Stop |
 if ($sourceDirs.Count -ne 0) { throw "Third-party Source* art accidentally included" }
 
 Copy-Item -LiteralPath (Join-Path $root "docs/personal_source_batch.md") -Destination (Join-Path $package "PERSONAL65_INSTALL.md") -Force
+
+# Personal-only complete offline bundle generation: the art does not enter
+# hosted CI or any GitHub Release, even when the repository is private.
+Copy-Item -LiteralPath (Join-Path $root "tools/Make-Personal65-Offline.ps1") `
+    -Destination (Join-Path $package "Make-Personal65-Offline.ps1") -Force
+$fullPackCmd = '@echo off' + "`r`n" +
+    'cd /d "%~dp0"' + "`r`n" +
+    'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Make-Personal65-Offline.ps1"' + "`r`n" +
+    'pause' + "`r`n"
+[System.IO.File]::WriteAllText((Join-Path $package "Make-My-Offline-DyberPet.cmd"),
+    $fullPackCmd, (New-Object System.Text.ASCIIEncoding))
+
 
 $menu = @'
 param([switch]$PreviewOnly, [ValidateRange(1,65)][int]$MaxRoles = 65)
@@ -142,6 +155,18 @@ if ($report.summary.selected_profiles -ne 123 -or
     throw "Expected 65 pinned-source profiles, 58 uncovered, and 123 total: $($report.summary | ConvertTo-Json -Compress)"
 }
 if ($report.summary.already_installed_structurally -ne 0) { throw "Creator art was prebundled" }
+
+# Ensure the frozen role installer knows about the offline archive workflow;
+# refusing to bundle without a local opt-in must not create an output file.
+$unusedOutput = Join-Path $smokeDir ("no-consent-" + $Backend + ".zip")
+& $helper --role-root $roles --bundle-output $unusedOutput
+if ($LASTEXITCODE -eq 0 -or (Test-Path -LiteralPath $unusedOutput)) {
+    throw "Offline art packer bypassed local consent"
+}
+if (-not (Test-Path -LiteralPath (Join-Path $package "Make-My-Offline-DyberPet.cmd"))) {
+    throw "Personal offline bundling entry point not packaged"
+}
+
 
 $mascotReportPath = Join-Path $smokeDir ("personal-mascots-" + $Backend + ".json")
 & $helper --mascots --role-root $roles --output $mascotReportPath
