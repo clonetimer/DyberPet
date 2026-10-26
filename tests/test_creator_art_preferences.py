@@ -132,7 +132,21 @@ class CreatorArtPreferenceTests(unittest.TestCase):
             "genshin_amber", "genshin_fischl"
         })
         self.assertEqual(install_preference("react_shimeji_lfs"), 1)
-        self.assertIn('"pinned_codexpetdb", "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source"', c)
+        # The accepted creator modes are a semantic set, not a brittle
+        # single-line string. Local ZIP imports must get the same real-frame
+        # review prompt as network-pinned original artwork.
+        import_tree = ast.parse(c)
+        method = next(x for cls in import_tree.body if isinstance(cls, ast.ClassDef)
+                      for x in cls.body if isinstance(x, ast.FunctionDef)
+                      and x.name == "_onChibiImportComplete")
+        values = [ast.literal_eval(n.value) for n in ast.walk(method)
+                  if isinstance(n, ast.Assign) and any(
+                      isinstance(t, ast.Name) and t.id == "original_modes"
+                      for t in n.targets)]
+        self.assertEqual(len(values), 1)
+        self.assertTrue({"pinned_codexpetdb", "pinned_codexpetdb_local",
+                         "react_shimeji_lfs", "creator_source",
+                         "shimeji_zip", "codex_zip"}.issubset(values[0]))
         from tools.install_pinned_codexpetdb import listed_packages, fixed_archive_url
         packages = listed_packages()["sources"]
         self.assertEqual({v["profile"] for v in packages.values()}, {
