@@ -154,6 +154,33 @@ class AssistantQtTests(unittest.TestCase):
             self.dialog.action_preview_button.click()
             self.assertTrue(preview.call_args.kwargs["original_demo"])
 
+    def test_real_group_commands_are_routed_to_petwidget_not_frame_names(self):
+        from DyberPet.assistant.native_groups import runtime_group_interactions
+        commands = []
+        self.dialog.action_requested.connect(commands.append)
+        params = {
+            label: {"unlocked": True, "act_type": "random_act"}
+            for label in ("打招呼", "左右散步", "蹦一蹦")}
+        groups = [{"name": "打招呼", "act_list": ["wave"]},
+                  {"name": "左右散步", "act_list": ["left_walk", "right_walk"]},
+                  {"name": "蹦一蹦", "act_list": ["jump"]}]
+        plan = runtime_group_interactions(params, groups,
+                                          {"wave", "left_walk", "right_walk", "jump"})
+        self.dialog.set_actions(list(params), verified_group_interactions=plan)
+        self.assertTrue(self.dialog.interaction_button.isEnabled())
+        self.dialog.interaction_button.click()
+        self.assertEqual(commands, ["打招呼"])
+        self.dialog.interaction_menu.setCurrentIndex(
+            self.dialog.interaction_menu.findData("walk"))
+        self.dialog.favorite_action_button.click()
+        self.dialog.play_favorite_button.click()
+        self.assertEqual(commands, ["打招呼", "左右散步"])
+        plan = runtime_group_interactions(params, groups, {"wave", "jump"})
+        self.dialog.set_actions(list(params), verified_group_interactions=plan)
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.play_favorite_interaction()
+        self.assertEqual(len(commands), 2)
+
     def test_character_specific_manual_actions_use_only_unlocked_animation(self):
         requests = []
         self.dialog.action_requested.connect(requests.append)

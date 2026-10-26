@@ -29,6 +29,7 @@ from DyberPet.bubbleManager import BubbleManager
 from DyberPet.assistant.character_motion import style_for, GROUND
 from DyberPet.assistant.speech_sync import available_talk_action
 from DyberPet.assistant.preferences import load as load_assistant_preferences
+from DyberPet.assistant.native_groups import load_runtime_group_interactions
 
 # initialize settings
 import DyberPet.settings as settings
@@ -1074,9 +1075,12 @@ class PetWidget(QWidget):
             options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
             unlocked = [key for key, value in options.items()
                         if isinstance(value, dict) and value.get("unlocked")]
-            self._pet_assistant.set_actions(unlocked)
-        except (AttributeError, KeyError):
-            self._pet_assistant.set_actions([])
+            plan = load_runtime_group_interactions(
+                Path(basedir) / "res" / "role", self.curr_pet_name,
+                options, self.pet_conf.act_dict.keys())
+            self._pet_assistant.set_actions(unlocked, verified_group_interactions=plan)
+        except (AttributeError, KeyError, TypeError, ValueError, OSError):
+            self._pet_assistant.set_actions([], verified_group_interactions=[])
 
     def _assistant_play_action(self, name):
         """Never trigger a locked or nonexistent animation."""

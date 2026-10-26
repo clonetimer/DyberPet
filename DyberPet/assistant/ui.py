@@ -309,8 +309,8 @@ class PetAssistantDialog(QDialog):
         self._last_random_action = None
         self.set_actions([])  # No stale unlocked actions from previous character.
 
-    def set_actions(self, names):
-        """Only accept actual currently-unlocked animations from PetWidget."""
+    def set_actions(self, names, *, verified_group_interactions=None):
+        """Expose only runtime group actions, not arbitrary native PNG frame keys."""
         previous = self.action_menu.currentData()
         self.action_menu.clear()
         self.action_menu.addItem("无额外动作", "")
@@ -323,7 +323,22 @@ class PetAssistantDialog(QDialog):
         if self._last_random_action not in self._unlocked_actions:
             self._last_random_action = None
         previous_kind = self.interaction_menu.currentData()
-        self._interaction_plan = available_interactions(self._unlocked_actions)
+        if verified_group_interactions is None:
+            # Standalone dialog tests retain the original simple-name behavior.
+            self._interaction_plan = available_interactions(self._unlocked_actions)
+        else:
+            by_id = {x["id"]: x for x in verified_group_interactions
+                     if isinstance(x, dict) and isinstance(x.get("id"), str)}
+            self._interaction_plan = []
+            for entry in available_interactions([]):
+                matched = by_id.get(entry["id"], {})
+                selected = matched.get("action")
+                ready = (matched.get("available") is True and
+                         isinstance(selected, str) and
+                         selected in self._unlocked_actions)
+                self._interaction_plan.append({
+                    **entry, "action": selected if ready else None,
+                    "available": bool(ready)})
         self.interaction_menu.blockSignals(True)
         self.interaction_menu.clear()
         for entry in self._interaction_plan:
