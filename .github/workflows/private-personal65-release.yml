@@ -56,6 +56,8 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Opt-in planner regression failed" }
+          python -m unittest discover -s tests -p "test_personal_mascot_batch.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Guga/Doro offline planner regression failed" }
       - name: Run Rust/Python parity tests only with built native extension
         if: matrix.backend == 'rust'
         shell: pwsh
