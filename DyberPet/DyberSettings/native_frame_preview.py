@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from tools.artist_animation_audit import (
     _frames_for_action, _read_config, MAX_ACTIONS, MAX_PIXELS, MAX_SIDE)
 from tools.character_interaction_coverage import _safe_installed_role
+from tools.creator_motion_quality import analyze_creator_actions
 from DyberPet.assistant.role_interactions import available_interactions
 from tools.creator_art_manual_review import (
     GRADES, CHIBI_FORMS, create_manual_review_receipt, save_manual_review)
@@ -92,6 +93,11 @@ class NativeFramePreviewDialog(QDialog):
         self.interaction_summary = QLabel(self)
         self.interaction_summary.setWordWrap(True)
         layout.addWidget(self.interaction_summary)
+        self.motion_risk_label = QLabel(self)
+        self.motion_risk_label.setWordWrap(True)
+        self.motion_risk_label.setText(
+            "动作全帧差异：未检查；图像内容重复不代表不存在屏幕位移。")
+        layout.addWidget(self.motion_risk_label)
         interaction_grid = QGridLayout()
         self.interaction_buttons = {}
         for index, item in enumerate(available_interactions(())):
@@ -161,6 +167,7 @@ class NativeFramePreviewDialog(QDialog):
         self._clock.setInterval(150)
         self._clock.timeout.connect(self._advance)
         self._inventory = {}
+        self._motion_risks = {}
         self.version.currentIndexChanged.connect(self._load_version)
         self.action.currentIndexChanged.connect(self._select_action)
         self.frame_slider.valueChanged.connect(self._set_frame)
@@ -172,6 +179,7 @@ class NativeFramePreviewDialog(QDialog):
     def _load_version(self, *_):
         self._clock.stop()
         self.play.setText("播放")
+        self._motion_risks = {}
         self.grade.setCurrentIndex(0)
         self.chibi_form.setCurrentIndex(0)
         self.desktop_checked.setChecked(False)
@@ -188,11 +196,27 @@ class NativeFramePreviewDialog(QDialog):
             if self._snapshots.get(folder) != metadata:
                 self._visited[folder] = {}
             self._snapshots[folder] = metadata
+            # Read ALL original action frames. This is informational risk
+            # evidence only and NEVER a substitute for the creator/Q review.
+            try:
+                evidence = analyze_creator_actions(self._root, folder)
+            except (OSError, ValueError, TypeError, KeyError) as motion_exc:
+                # Diagnostics must NEVER disable an otherwise playable pet.
+                self._motion_risks = {}
+                self.motion_risk_label.setText(
+                    "动作深度统计暂不可用：" + str(motion_exc)[:110] +
+                    "；仍可独立逐帧查看真实作者动画。")
+            else:
+                self._motion_risks = {
+                    entry["action"]: entry for entry in evidence["actions"]
+                }
         except (OSError, ValueError, TypeError, KeyError) as exc:
             # Qt signal handlers must not let a broken third-party folder
             # abort the desktop process. Show a reviewable problem instead.
             self._inventory = {}
             self._frames = []
+            self._motion_risks = {}
+            self.motion_risk_label.setText("无法完整分析当前版本的作者动作帧")
             self.canvas.clear()
             self.canvas.setText("无法打开此作者动画：" + str(exc)[:170])
             self.status.setText("版本不可用")
@@ -258,6 +282,23 @@ class NativeFramePreviewDialog(QDialog):
         self.frame_slider.setValue(0)
         self.frame_slider.blockSignals(False)
         self._render_frame()
+        evidence = self._motion_risks.get(self.action.currentData())
+        if evidence is None:
+            self.motion_risk_label.setText("当前动作暂无全帧证据")
+        else:
+            labels = {
+                "fully_transparent_frame": "存在完全透明帧",
+                "single_frame_motion": "运动动作仅1帧",
+                "translation_only_or_static_pose": "所有帧人物姿态相同，可能只是平移立牌",
+                "long_identical_pose_run": "存在连续重复的人物姿态",
+            }
+            concerns = evidence["risk_indicators"]
+            assessment = ("；".join(labels.get(code, code) for code in concerns)
+                          if concerns else "暂未发现重复姿态风险，但未认证动作自然性")
+            self.motion_risk_label.setText(
+                f"全帧原画证据：{evidence['frame_count']} 帧、"
+                f"{evidence['unique_visible_poses']} 个不同人物姿态；{assessment}。"
+                "仅供人工复核，不会自动改动素材。")
 
     def _set_frame(self, index):
         if not self._frames:
