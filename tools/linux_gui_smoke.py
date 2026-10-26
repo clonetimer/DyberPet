@@ -12,6 +12,19 @@ from pathlib import Path
 from unittest.mock import patch
 
 
+def assert_source_catalog_matches_registry(visible_count, expected_count, active_filter):
+    """Check real catalog against the active registry, not an old milestone.
+
+    A new verified character must not break X11 merely because the count grew.
+    Likewise a missing UI row must never be hidden by changing a hardcoded test.
+    """
+    if active_filter != "source" or visible_count != expected_count:
+        raise RuntimeError(
+            "X11 source catalog disagrees with verified source registry: "
+            f"shown={visible_count}, expected={expected_count}, "
+            f"filter={active_filter!r}")
+
+
 def verify_linux_gui():
     if sys.platform != "linux":
         raise RuntimeError("Linux-only X11/Xvfb GUI acceptance")
@@ -157,13 +170,12 @@ def verify_linux_gui():
         try:
             search_dialog.show()
             app.processEvents()
-            if (not search_dialog.isVisible() or
-                    search_dialog.results.count() != expected_source_count or
-                    search_dialog.statusFilter.currentData() != "source"):
-                raise RuntimeError(
-                    "X11 source catalog disagrees with verified source registry: "
-                    f"shown={search_dialog.results.count()}, "
-                    f"expected={expected_source_count}")
+            if not search_dialog.isVisible():
+                raise RuntimeError("X11 character catalogue did not render")
+            assert_source_catalog_matches_registry(
+                search_dialog.results.count(),
+                expected_source_count,
+                search_dialog.statusFilter.currentData())
             if any("作者来源" not in search_dialog.results.item(i).text()
                    for i in range(search_dialog.results.count())):
                 raise RuntimeError("X11 source catalog lacks creator provenance")
