@@ -111,13 +111,18 @@ if ($report.summary.already_installed_structurally -ne 0) { throw "Creator art w
 # Verify packaged EXE and REQUIRE_RUST on the actual native compiled mode.
 $env:QT_QPA_PLATFORM = "offscreen"
 $env:DYBERPET_SMOKE_REPORT = Join-Path $env:RUNNER_TEMP ("personal65-desktop-smoke-" + $Backend + ".json")
-& $exe --assistant-smoke
-if ($LASTEXITCODE -ne 0) { throw "Frozen desktop assistant smoke failed" }
+Push-Location $package
+try {
+    & $exe --assistant-smoke
+    if ($LASTEXITCODE -ne 0) { throw "Frozen desktop assistant smoke failed" }
+} finally {
+    Pop-Location
+}
 $smoke = Get-Content -LiteralPath $env:DYBERPET_SMOKE_REPORT -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not $smoke.assistant_dialog -or -not $smoke.assets.ok -or $smoke.native_backend.active -ne $Backend) {
     throw "Desktop helper/Qt/native backend smoke failed for $Backend"
 }
-if ($Backend -eq "rust" -and -not $smoke.native_backend.available) {
+if ($Backend -eq "rust" -and -not $smoke.native_backend.rust_available) {
     throw "Rust extension not available in frozen executable"
 }
 $metaPath = Join-Path $package "PERSONAL65_BUILD_INFO.json"
