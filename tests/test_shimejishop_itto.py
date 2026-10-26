@@ -9,7 +9,8 @@ from pathlib import Path
 from unittest.mock import patch
 from zipfile import ZipFile
 from PIL import Image
-from tools.probe_shimejishop_itto import probe_itto, ARCHIVE
+from tools.probe_shimejishop_itto import (
+    probe_itto, ARCHIVE, FULL_ANIMATION_ARCHIVE, bounded_download)
 
 
 def fixture():
@@ -39,6 +40,21 @@ class IttoPublisherCandidateTests(unittest.TestCase):
         self.assertFalse(evidence["character_likeness_manually_verified"])
         self.assertFalse(evidence["source_registry_promoted"])
         self.assertFalse(evidence["rights_verified"])
+
+    def test_full_animation_link_is_bounded_and_distinct(self):
+        raw = fixture()
+        seen = []
+        def get(url):
+            seen.append(url)
+            return raw
+        result = probe_itto(downloader=get, archive_url=FULL_ANIMATION_ARCHIVE)
+        self.assertEqual(seen, [FULL_ANIMATION_ARCHIVE])
+        self.assertEqual(result["source_url"], FULL_ANIMATION_ARCHIVE)
+        self.assertFalse(result["archive_character_identity_verified"])
+        with self.assertRaisesRegex(ValueError, "Unknown original"):
+            probe_itto(downloader=get, archive_url="https://evil.invalid/actor.zip")
+        with self.assertRaisesRegex(ValueError, "Unexpected source archive"):
+            bounded_download("https://evil.invalid/actor.zip")
 
     def test_unsupported_or_truncated_archive_refused(self):
         with self.assertRaises((ValueError, Exception)):

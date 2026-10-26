@@ -31,12 +31,15 @@ except ImportError:
 PROFILE = "genshin_arataki_itto"
 PAGE = "https://shimejishop.com/free/arataki-itto-shimeji/"
 ARCHIVE = "https://shimejishop.com/free/wp-content/uploads/2026/09/50036.zip"
+FULL_ANIMATION_ARCHIVE = (
+    "https://shimejishop.com/free/wp-content/uploads/2026/09/50036_full_animation.zip")
+ARCHIVES = (("basic", ARCHIVE), ("full", FULL_ANIMATION_ARCHIVE))
 MAX_DOWNLOAD = 32 * 1024 * 1024
 
 
 def bounded_download(url=ARCHIVE):
     """Fetch only the named candidate over TLS, refusing other host redirects."""
-    if url != ARCHIVE:
+    if url not in (ARCHIVE, FULL_ANIMATION_ARCHIVE):
         raise ValueError("Unexpected source archive; this probe is Itto-only")
     with urlopen(Request(url, headers={
             "User-Agent": "DyberPet-original-frames-candidate/1"}), timeout=25) as response:
@@ -50,9 +53,11 @@ def bounded_download(url=ARCHIVE):
     return payload
 
 
-def probe_itto(*, downloader=None):
+def probe_itto(*, downloader=None, archive_url=ARCHIVE):
+    if archive_url not in (ARCHIVE, FULL_ANIMATION_ARCHIVE):
+        raise ValueError("Unknown original creator archive URL")
     obtain = downloader if downloader is not None else bounded_download
-    raw = obtain(ARCHIVE)
+    raw = obtain(archive_url)
     if not isinstance(raw, bytes) or not raw or len(raw) > MAX_DOWNLOAD:
         raise ValueError("Invalid or excessive publisher ZIP bytes")
     with tempfile.TemporaryDirectory(prefix="itto-third-party-qa-") as td:
@@ -78,13 +83,17 @@ def probe_itto(*, downloader=None):
             "profile": PROFILE,
             "publisher_page": PAGE,
             "page_named_creator": "Ookami",
-            "source_url": ARCHIVE,
+            "source_url": archive_url,
             "archive_size": len(raw),
             "archive_sha256": hashlib.sha256(raw).hexdigest(),
             "original_png_frames": len(images),
             "native_actions": native["actions"],
             "original_frame_structure_passed": audit["summary"]["animation_structure_passed"],
             "pixel_issue_categories": audit["summary"]["issue_categories"],
+            "pixel_issues_by_action": [
+                {"action": row["action"], "issues": row["issues"]}
+                for row in audit["actions"] if row["issues"]
+            ],
             "original_artist_identity_verified": False,
             "character_likeness_manually_verified": False,
             "archive_character_identity_verified": False,
@@ -97,10 +106,21 @@ def probe_itto(*, downloader=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.parse_args(argv)
-    report = probe_itto()
-    print("ITTO_ORIGINAL_ARCHIVE_CANDIDATE_PROBED " +
-          json.dumps(report, sort_keys=True), flush=True)
-    return 0
+    valid_structure = False
+    for variant, url in ARCHIVES:
+        try:
+            report = probe_itto(archive_url=url)
+            report["variant"] = variant
+            print("ITTO_ORIGINAL_ARCHIVE_CANDIDATE_PROBED " +
+                  json.dumps(report, sort_keys=True), flush=True)
+            valid_structure |= report["original_frame_structure_passed"]
+        except (OSError, ValueError, TimeoutError) as exc:
+            print("ITTO_ORIGINAL_ARCHIVE_UNVERIFIED " +
+                  json.dumps({"variant": variant, "error": str(exc)[:180]},
+                             sort_keys=True), flush=True)
+    # Non-gating CI should turn red if both packages are incomplete/unavailable.
+    # Even a structurally clean package is NOT registered as source coverage.
+    return 0 if valid_structure else 1
 
 
 if __name__ == "__main__":

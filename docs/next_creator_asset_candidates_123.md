@@ -55,3 +55,10 @@
 原先页面署名和压缩包直链仍只是未验证候选。新增独立 GitHub Actions 作业
 `itto-external-shimeji-probe` 和离线模拟单元测试；只访问
 [页面明确指向的 50036.zip](https://shimejishop.com/free/arataki-itto-shimeji/)，限制下载大小与跳转域名；无脚本执行，只读取 PNG，核对 ZIP SHA、shime1/2/3 帧、动作真序列、DyberPet 原生安装器预览及回执。即使通过文件结构，ZIP 并没有本项目可独立信任的《原神》角色 ID 绑定，因此仍需真人对照画面确认才可纳入固定来源。当前已固定来源仍为 65/123，不能以页面署名、截图或目录宣传代替原设美术验收。
+
+
+## 2026-10-26 · Ookami 荒泷一斗候选：真实基本 ZIP 核验，待查完整动作
+
+GitHub Actions [40266080104](https://github.com/clonetimer/DyberPet/actions/runs/40266080104) 中独立非门禁作业真正下载了上游基本 ZIP（1,071,157 字节，SHA-256 `6af3ed562cc59a9b6e0a3c351a5abc69213edda44d30f891f2c6c38ebd9b4b33`）。确认了 46 张 Shimeji 编号原始 PNG、10 个本机转换的原生动作和完整图片安全导入，**但深度结构审计检出 `movement_has_no_distinct_frames`**，且 ZIP 自身不能证明人物一定是《原神》荒泷一斗。因而仍为未计覆盖候选，不能称作动态动作合格。
+
+来源网站同页还提供第二份明确命名的 `50036_full_animation.zip`，本次追加严格 URL 白名单、两包独立校验及每项异常动作明细输出。若两包均没有通过深度结构验收，CI 非门禁任务会失败而非虚报 PASS；若完整动画版通过结构检测，其人设外观、作者身份及来源许可仍必须人工复核后才能晋级固定来源。当前全项目仍为 **88 套 / 65 位 / 缺 58 位**。
