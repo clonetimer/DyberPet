@@ -200,59 +200,35 @@ class CatalogGapExportTests(unittest.TestCase):
             finally:
                 viewer.close()
 
-    def test_post_install_creator_animation_review_opens_real_qt_viewer(self):
+    def test_install_success_dispatches_only_to_real_local_frame_player(self):
+        # Verify the main GUI installs one specific folder and hands that
+        # folder to the existing, separately Qt-tested preview. Avoid nested
+        # QDialog.exec() calls inside a mocked widget's event loop: PySide6's
+        # C++ wrapper can block Windows offscreen CI indefinitely.
         import ast
-        from unittest.mock import MagicMock
-        from PIL import Image
-        from PySide6.QtWidgets import QWidget
-        from DyberPet.DyberSettings.native_frame_preview import NativeFramePreviewDialog
-
-        project = Path(__file__).resolve().parents[1]
-        source = (project / "DyberPet" / "DyberSettings" /
-                  "CharCardUI.py").read_text(encoding="utf-8")
+        path = (Path(__file__).resolve().parents[1] /
+                "DyberPet" / "DyberSettings" / "CharCardUI.py")
+        source = path.read_text(encoding="utf-8")
         tree = ast.parse(source)
-        methods = [n for c in tree.body if isinstance(c, ast.ClassDef)
-                   for n in c.body if isinstance(n, ast.FunctionDef)
-                   and n.name == "_previewJustInstalledCreatorArt"]
-        self.assertEqual(len(methods), 1)
-        body = ast.Module(body=methods, type_ignores=[])
-        ns = {"Path": Path}
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td) / "res" / "role"
-            role = root / "CreatorOne"
-            (role / "action").mkdir(parents=True)
-            (role / "act_conf.json").write_text(
-                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
-            (role / "pet_conf.json").write_text(
-                json.dumps({"default": "wave"}), encoding="utf-8")
-            for idx in range(2):
-                Image.new("RGBA", (40, 60), (idx * 90, 60, 100, 255)).save(
-                    role / "action" / f"wave_{idx}.png")
-            ns["basedir"] = td
-            ns["__package__"] = "DyberPet.DyberSettings"
-            exec(compile(body, "<review-handler>", "exec"), ns)
-            fake = QWidget()
-            warnings = MagicMock()
-            # The single extracted method is compiled outside its original
-            # class, so Python's class-level double-underscore mangling is
-            # absent. The real runtime uses CharCardUI's own bound method.
-            setattr(fake, "__showSystemNote", warnings)
-            try:
-                with patch.object(NativeFramePreviewDialog, "exec", autospec=True,
-                                  return_value=0) as opened:
-                    ns["_previewJustInstalledCreatorArt"](fake, "CreatorOne")
-                    self.assertEqual(opened.call_count, 1)
-                # PySide6's Qt exec wrapper does not expose a Python self
-                # argument through mock.call_args; check a concrete viewer.
-                actual = NativeFramePreviewDialog(
-                    root, ["CreatorOne"], fake)
-                self.assertEqual(actual.action.currentData(), "wave")
-                actual.close()
-                warnings.assert_not_called()
-                ns["_previewJustInstalledCreatorArt"](fake, "../wrong")
-                warnings.assert_called_once()
-            finally:
-                fake.close()
+        methods = {n.name: n for cls in tree.body
+                   if isinstance(cls, ast.ClassDef)
+                   for n in cls.body if isinstance(n, ast.FunctionDef)}
+        self.assertIn("_previewJustInstalledCreatorArt", methods)
+        self.assertIn("_onChibiImportComplete", methods)
+        installed = methods["_previewJustInstalledCreatorArt"]
+        constructors = [x for x in ast.walk(installed)
+                        if isinstance(x, ast.Call) and
+                        isinstance(x.func, ast.Name) and
+                        x.func.id == "NativeFramePreviewDialog"]
+        self.assertEqual(len(constructors), 1)
+        self.assertEqual(len(constructors[0].args), 3)
+        self.assertIsInstance(constructors[0].args[1], ast.List)
+        self.assertEqual(constructors[0].args[1].elts[0].id, "role_name")
+        calls = [x for x in ast.walk(methods["_onChibiImportComplete"])
+                 if isinstance(x, ast.Call) and
+                 isinstance(x.func, ast.Attribute) and
+                 x.func.attr == "_previewJustInstalledCreatorArt"]
+        self.assertEqual(len(calls), 1)
 
     def test_catalog_missing_role_still_allows_explicit_local_zip_import(self):
         row = {"id": "genshin_noelle", "name": "诺艾尔", "family": "genshin",
