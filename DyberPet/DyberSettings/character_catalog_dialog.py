@@ -119,6 +119,13 @@ class CharacterCatalogDialog(QDialog):
         self.exportGapButton.setEnabled(self._role_root is not None)
         self.exportGapButton.clicked.connect(self._export_gap_report)
         layout.addWidget(self.exportGapButton)
+        self.exportStandeeButton = QPushButton("导出立牌轮廓与动作风险清单（仅供人工筛查）", self)
+        self.exportStandeeButton.setEnabled(self._role_root is not None)
+        self.exportStandeeButton.setToolTip(
+            "读取已安装作者图集的透明像素包围框与前两帧差异，"
+            "识别高瘦立牌风险、疑似静止动作；不会自动决定是否符合Q版。")
+        self.exportStandeeButton.clicked.connect(self._export_standee_triage)
+        layout.addWidget(self.exportStandeeButton)
 
         self.searchBox.textChanged.connect(self._refresh)
         self.familyFilter.currentIndexChanged.connect(self._refresh)
@@ -340,6 +347,30 @@ class CharacterCatalogDialog(QDialog):
             "已导出素材来源及每个已安装版本的动作差异。"
             "人物总动作是版本并集，不能直接作为当前桌宠能力。"
             "原设相似度、实际播放、音色仍需人工核对。")
+
+    def _export_standee_triage(self):
+        if self._role_root is None:
+            return
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "导出原画立牌风险核查清单",
+            "DyberPet_standee_Q_review_priorities.json", "JSON 文件 (*.json)")
+        if not filename:
+            return
+        if Path(filename).suffix.lower() != ".json":
+            QMessageBox.warning(self, "无法导出", "请选择 .json 文件名")
+            return
+        try:
+            from tools.creator_standee_triage import triage_creator_library
+            from tools.creator_assistant_gap_report import save_gap_report
+            report = triage_creator_library(self._role_root)
+            save_gap_report(filename, report)
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            QMessageBox.warning(self, "立牌风险清单导出失败", str(exc))
+            return
+        QMessageBox.information(
+            self, "立牌风险清单已导出",
+            "导出包含高瘦轮廓风险、疑似静止动作数量，仅供逐个看图复核。"
+            "不会将角色自动标为Q版合格或判为立牌。")
 
     def _select(self):
         selected = self.selected_character_id()
