@@ -87,7 +87,7 @@ class StageTwoVerifiedChibiAlternatesTests(unittest.TestCase):
 
     def test_bad_shape_aborts_before_modifying_existing_install(self):
         with TemporaryDirectory() as d:
-            root, install, inspect, scan, mascot = self._fixtures(Path(d), risky=True)
+            root, install, inspect, scan, mascot, normalize = self._fixtures(Path(d), risky=True)
             with patch("tools.install_r5_q_review_alternates.scan_genshin_library",
                        side_effect=scan), patch(
                        "tools.install_r5_q_review_alternates.scan_mascot_library",
@@ -99,7 +99,7 @@ class StageTwoVerifiedChibiAlternatesTests(unittest.TestCase):
 
     def test_consent_identity_and_no_overwrite(self):
         with TemporaryDirectory() as d:
-            root, install, inspect, scan, mascot = self._fixtures(Path(d), wrong_identity=True)
+            root, install, inspect, scan, mascot, normalize = self._fixtures(Path(d), wrong_identity=True)
             with self.assertRaisesRegex(ValueError, "consent"):
                 stage_r5_original_alternatives(root)
             with patch("tools.install_r5_q_review_alternates.scan_genshin_library",
