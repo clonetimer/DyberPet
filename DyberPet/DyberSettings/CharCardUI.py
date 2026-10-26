@@ -716,6 +716,11 @@ class CharInterface(ScrollArea):
         if not dialog.exec():
             return
         selected=dialog.selection
+        if selected=="__import_selected_zip__":
+            highlighted = dialog.selected_character_id()
+            if highlighted and highlighted.startswith("genshin_"):
+                self._importLocalArtistForProfile(highlighted)
+            return
         if selected=="__install_artist__":
             highlighted = dialog.selected_character_id()
             self._installArtistGenshin(
@@ -1119,11 +1124,51 @@ class CharInterface(ScrollArea):
         self.__showSystemNote(
             self.tr("正在校验真实 LFS 模块 SHA-256 并从 PNG 图集读取原始帧；不执行 TypeScript。"), 1)
 
-    def _importCodexZip(self, archivePath):
+    def _importLocalArtistForProfile(self, profile):
+        """Opt-in local ZIP for the exact role chosen in the 123-character grid."""
+        from tools.chibi_profiles import CHIBI_PROFILES
+        if profile not in CHIBI_PROFILES or not profile.startswith("genshin_"):
+            self.__showSystemNote("当前没有有效的原神目标人物。", 2)
+            return
+        if self.chibiThread is not None:
+            self.__showSystemNote("其他角色素材正在安装，请先完成当前任务。", 1)
+            return
+        choices = ["Shimeji 原生 PNG 动画 ZIP", "Codex WebP 原画图集 ZIP"]
+        chosen, accepted = QInputDialog.getItem(
+            self, "导入当前人物的真实作者素材",
+            "目标：" + CHIBI_PROFILES[profile]["name"] +
+            " · 由本人选择来源类型；不会自动认证 ZIP 中的人物身份。",
+            choices, 0, False)
+        if not accepted or chosen not in choices:
+            return
+        archive, _ = QFileDialog.getOpenFileName(
+            self, "选取本人合法获取的 ZIP 原画文件",
+            QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation),
+            "ZIP Archive (*.zip)")
+        if not archive:
+            return
+        if not self.__showMessageBox(
+                "确认导入到所选人物",
+                "仅将此 ZIP 记录为 " + CHIBI_PROFILES[profile]["name"] +
+                " 的本机用户素材；您需要亲自确认人物、原作者及使用条件。"
+                "将检查图片、限制压缩包大小，拒绝脚本执行及覆盖已有角色。"
+                "此次安装不会增加经独立核验的公开原画覆盖数字。继续？"):
+            return
+        if chosen == choices[0]:
+            self._importShimejiZip(archive, profile_override=profile)
+        else:
+            self._importCodexZip(archive, profile_override=profile)
+
+    def _importCodexZip(self, archivePath, *, profile_override=None):
         """Convert a community Codex ZIP without unpacking executable payloads."""
         if self.chibiThread is not None:
             return
-        accepted, profile = self._chooseChibiProfile()
+        if profile_override is None:
+            accepted, profile = self._chooseChibiProfile()
+        else:
+            from tools.chibi_profiles import CHIBI_PROFILES
+            accepted = profile_override in CHIBI_PROFILES
+            profile = profile_override if accepted else None
         if not accepted:
             return
         if profile is None or not profile.startswith("genshin_"):
@@ -1140,11 +1185,16 @@ class CharInterface(ScrollArea):
         self.__showSystemNote(
             self.tr("正在校验并导入 Codex 原始精灵图集（不执行压缩包内程序）。"), 1)
 
-    def _importShimejiZip(self, archivePath):
+    def _importShimejiZip(self, archivePath, *, profile_override=None):
         """Import personal original Shimeji PNGs without launching archive programs."""
         if self.chibiThread is not None:
             return
-        accepted, profile = self._chooseChibiProfile()
+        if profile_override is None:
+            accepted, profile = self._chooseChibiProfile()
+        else:
+            from tools.chibi_profiles import CHIBI_PROFILES
+            accepted = profile_override in CHIBI_PROFILES
+            profile = profile_override if accepted else None
         if not accepted:
             return
         if profile is None or not profile.startswith("genshin_"):

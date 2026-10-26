@@ -254,6 +254,43 @@ class CatalogGapExportTests(unittest.TestCase):
             finally:
                 fake.close()
 
+    def test_catalog_missing_role_still_allows_explicit_local_zip_import(self):
+        row = {"id": "genshin_noelle", "name": "诺艾尔", "family": "genshin",
+               "personal_art_structurally_installed": False,
+               "native_original_demo": False, "native_preview_ready": False,
+               "demo_actions": 0, "demo_frames": 0}
+        with tempfile.TemporaryDirectory() as td:
+            d = CharacterCatalogDialog({"characters": [row]}, role_root=td)
+            d.statusFilter.setCurrentIndex(d.statusFilter.findData("all"))
+            d.searchBox.setText("genshin_noelle")
+            self.assertEqual(d.results.count(), 1)
+            self.assertTrue(d.importForRoleButton.isEnabled())
+            self.assertFalse(d.previewOriginalButton.isEnabled())
+            d.importForRoleButton.click()
+            self.assertEqual(d.selection, "__import_selected_zip__")
+            self.assertEqual(d.selected_character_id(), "genshin_noelle")
+            d.close()
+
+    def test_local_zip_is_bound_to_selected_profile_in_existing_importer(self):
+        import ast
+        path = (Path(__file__).resolve().parents[1] /
+                "DyberPet" / "DyberSettings" / "CharCardUI.py")
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        methods = {node.name: node for cls in tree.body
+                   if isinstance(cls, ast.ClassDef)
+                   for node in cls.body if isinstance(node, ast.FunctionDef)}
+        self.assertIn("_importLocalArtistForProfile", methods)
+        for method in ("_importShimejiZip", "_importCodexZip"):
+            self.assertIn("profile_override",
+                          [arg.arg for arg in methods[method].args.kwonlyargs])
+        for method in ("_importShimejiZip", "_importCodexZip"):
+            calls = [node for node in ast.walk(methods[method])
+                     if isinstance(node, ast.Call) and
+                     isinstance(node.func, ast.Attribute) and
+                     node.func.attr == "_chooseChibiProfile"]
+            self.assertEqual(len(calls), 1)
+        self.assertIn("_showAllCharacterCatalog", methods)
+
     def test_demo_role_and_linked_frame_refused_for_visual_quality_review(self):
         from DyberPet.DyberSettings.native_frame_preview import safe_animation_inventory
         with tempfile.TemporaryDirectory() as td:

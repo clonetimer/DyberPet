@@ -75,6 +75,8 @@ class CharacterCatalogDialog(QDialog):
         buttons = QHBoxLayout()
         self.installArtistButton = QPushButton("安装真实作者素材", self)
         self.installArtistButton.clicked.connect(self._install_artist)
+        self.importForRoleButton = QPushButton("导入本人物已有的原画 ZIP", self)
+        self.importForRoleButton.clicked.connect(self._import_selected_local_zip)
         self.communityButton = QPushButton("浏览本人物公开候选（待核验）", self)
         self.communityButton.clicked.connect(self._open_community_candidate)
         self.manageButton = QPushButton("管理原神素材关联", self)
@@ -86,6 +88,7 @@ class CharacterCatalogDialog(QDialog):
         close = QPushButton("关闭", self)
         close.clicked.connect(self.reject)
         buttons.addWidget(self.installArtistButton)
+        buttons.addWidget(self.importForRoleButton)
         buttons.addWidget(self.communityButton)
         buttons.addWidget(self.manageButton)
         buttons.addWidget(self.previewOriginalButton)
@@ -171,6 +174,13 @@ class CharacterCatalogDialog(QDialog):
         self.previewOriginalButton.setToolTip(
             "选择本机已安装的真实作者素材版本，查看每个动作的每一帧 PNG；只读、不联网"
             if preview_ready else "必须先安装并关联真实作者素材，不使用演示简笔画")
+        has_profile = isinstance(profile, str) and profile.startswith("genshin_")
+        self.importForRoleButton.setEnabled(
+            bool(self._role_root is not None and has_profile))
+        self.importForRoleButton.setToolTip(
+            "用户已有 Shimeji/Codex 作者原画 ZIP 时，安全导入并明确绑定当前人物；"
+            "不凭文件名猜身份，个人未审核素材不计入固定公开来源"
+            if has_profile else "需先选中一个原神人物")
         self.communityButton.setEnabled(has_lead)
         self.communityButton.setToolTip(
             "只打开外部来源的图集预览，需逐帧核验后自行下载并导入；不视为已安装或原设验收"
@@ -267,6 +277,12 @@ class CharacterCatalogDialog(QDialog):
     def _install_artist(self):
         self._selected_id = "__install_artist__"
         self.accept()
+
+    def _import_selected_local_zip(self):
+        profile = self.selected_character_id()
+        if isinstance(profile, str) and profile.startswith("genshin_"):
+            self._selected_id = "__import_selected_zip__"
+            self.accept()
 
     def _open_manage(self):
         self._selected_id = "__manage_genshin__"
