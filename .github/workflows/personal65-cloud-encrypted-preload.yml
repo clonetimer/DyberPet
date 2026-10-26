@@ -1,0 +1,150 @@
+name: Personal65 Cloud Preload (ENCRYPTED ONLY)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/personal65-encrypted-cloud-preload-20261026
+    paths:
+      - ".github/workflows/personal65-cloud-encrypted-preload.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: personal65-encrypted-preload
+  cancel-in-progress: true
+
+jobs:
+  preloaded-python:
+    runs-on: windows-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Windows desktop and secure encrypted packaging dependencies
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-windows-portable.txt
+          if ($LASTEXITCODE -ne 0) { throw "Windows prerequisites installation failed" }
+          python -m pip install "cryptography>=44,<47"
+          if ($LASTEXITCODE -ne 0) { throw "Authenticated encryption dependency unavailable" }
+      - name: Security regression, no real artwork in tests
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p "test_personal65_encrypted_package.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Secure envelope regression failed" }
+          python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Character planner regression failed" }
+      - name: Build real Windows portable app and helper
+        shell: pwsh
+        run: |
+          & ./tools/build_personal65_windows.ps1 -Backend python
+          if ($LASTEXITCODE -ne 0) { throw "Real Windows frozen binary build failed" }
+      - name: Prefetch creator art in cloud and construct private recipient-only package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = (Get-Location).Path
+          $app = Join-Path $root "dist/DyberPet"
+          $roles = Join-Path $app "res/role"
+          $helper = Join-Path $app "DyberPet-Role-Installer.exe"
+          $stage = Join-Path $root "preload"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+
+          # One-time downloads happen on hosted Windows, not on user's laptop.
+          # Some pinned sources may be unreachable; record real outcome.
+          $genshinReport = Join-Path $stage "genshin-install.json"
+          & $helper --role-root $roles --install --accept-personal-use --output $genshinReport
+          $genshinCode = $LASTEXITCODE
+          Write-Host "GENSHIN_HELPER_EXIT=$genshinCode"
+          if (-not (Test-Path -LiteralPath $genshinReport)) { throw "No Genshin install receipt" }
+          $g = Get-Content -LiteralPath $genshinReport -Raw -Encoding UTF8 | ConvertFrom-Json
+          Write-Host "GENSHIN_SOURCE_ATTEMPTED=$($g.installation.attempted)"
+          Write-Host "GENSHIN_SOURCE_INSTALLED=$($g.installation.installed_unreviewed)"
+          Write-Host "GENSHIN_SOURCE_FAILED=$($g.installation.failed)"
+
+          $mascotReport = Join-Path $stage "guga-doro-install.json"
+          & $helper --mascots --role-root $roles --install --accept-personal-use --output $mascotReport
+          $mascotCode = $LASTEXITCODE
+          Write-Host "MASCOT_HELPER_EXIT=$mascotCode"
+          if (-not (Test-Path -LiteralPath $mascotReport)) { throw "No mascot install receipt" }
+          $m = Get-Content -LiteralPath $mascotReport -Raw -Encoding UTF8 | ConvertFrom-Json
+          Write-Host "MASCOT_SOURCE_INSTALLED=$($m.installation.installed_unreviewed)"
+          Write-Host "MASCOT_SOURCE_FAILED=$($m.installation.failed)"
+
+          $receiptPath = Join-Path $stage "NO_ART_PUBLIC_SUMMARY.json"
+          $contents = @{
+            genshin_attempted = $g.installation.attempted
+            genshin_installed_unreviewed = $g.installation.installed_unreviewed
+            genshin_failed = $g.installation.failed
+            mascot_installed_unreviewed = $m.installation.installed_unreviewed
+            mascot_failed = $m.installation.failed
+            original_likeness_verified = $false
+            voice_included = $false
+            public_plaintext_art_uploaded = $false
+            source_sha = (git rev-parse HEAD).Trim()
+          }
+          [System.IO.File]::WriteAllText($receiptPath,
+            ($contents | ConvertTo-Json -Depth 4),
+            (New-Object System.Text.UTF8Encoding($false)))
+          if (($g.installation.installed_unreviewed + $m.installation.installed_unreviewed) -lt 1) {
+            throw "No original creator artwork could be preloaded; refuse fake all-65 build"
+          }
+
+          # Only encrypted ZIP is uploaded; never publish source PNG files.
+          $plainZip = Join-Path $stage "INTERNAL-DELETE-AFTER-ENCRYPT.zip"
+          python -c "from tools.local_offline_bundle import create_local_bundle; import sys; result=create_local_bundle(sys.argv[1],sys.argv[2],confirmed=True); print('PRELOAD_TOTAL_Genshin='+str(result['manifest']['genshin_installed_distinct_profiles'])); print('PRELOAD_TOTAL_Mascots='+str(result['manifest']['mascot_creator_art_installed'])); assert result['manifest']['contains_user_imported_art']" $app $plainZip
+          if ($LASTEXITCODE -ne 0) { throw "Offline package assembly failed" }
+          $encrypted = Join-Path $stage "DyberPet-Python-RealArt-Encrypted.ekp"
+          python tools/personal65_encrypted_package.py encrypt --key tools/personal65_recipient_public.pem --input $plainZip --output $encrypted
+          if ($LASTEXITCODE -ne 0) { throw "Recipient-only encryption failed" }
+          Remove-Item -LiteralPath $plainZip -Force
+          if (Test-Path -LiteralPath $plainZip) { throw "Plaintext role ZIP not cleaned" }
+
+          # Distributable unlocker has no art or PRIVATE key.
+          python -m PyInstaller --noconfirm --clean --onefile --console --name DyberPet-Offline-Unlock --distpath $stage --collect-all cryptography tools/personal65_encrypted_package.py
+          if ($LASTEXITCODE -ne 0) { throw "Decryptor executable missing" }
+          if (-not (Test-Path (Join-Path $stage "DyberPet-Offline-Unlock.exe"))) { throw "Decryptor EXE not created" }
+
+          $script = @'
+          @echo off
+          cd /d "%~dp0"
+          if not exist "DyberPet-Personal65-Private-Unlock-Key.pem" (
+            echo Missing PRIVATE unlock key downloaded from your own ChatGPT conversation.
+            echo Do not upload or share this key.
+            pause
+            exit /b 2
+          )
+          "DyberPet-Offline-Unlock.exe" decrypt --key "DyberPet-Personal65-Private-Unlock-Key.pem" --input "DyberPet-Python-RealArt-Encrypted.ekp" --output "DyberPet-Python-Preloaded-Ready.zip"
+          if errorlevel 1 (
+            echo Unable to unlock: incorrect key or modified encrypted file.
+            pause
+            exit /b 3
+          )
+          powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -LiteralPath 'DyberPet-Python-Preloaded-Ready.zip' -DestinationPath 'DyberPet-Python-Preloaded-Ready' -ErrorAction Stop"
+          if errorlevel 1 (
+            echo ZIP extracted failed.
+            pause
+            exit /b 4
+          )
+          echo Ready: DyberPet-Python-Preloaded-Ready\Run-DyberPet.cmd
+          pause
+          '@
+          [System.IO.File]::WriteAllText((Join-Path $stage "Unlock-My-Preloaded-DyberPet.cmd"),$script,(New-Object System.Text.ASCIIEncoding))
+
+          # Do not leak source art through artifacts or CI logs.
+          Get-ChildItem -LiteralPath $stage -File | Select-Object Name,Length
+      - name: Upload ENCRYPTED character-inclusive Windows package (NO PLAINTEXT ART)
+        uses: actions/upload-artifact@v4
+        with:
+          name: personal65-python-real-art-encrypted
+          path: |
+            preload/DyberPet-Python-RealArt-Encrypted.ekp
+            preload/DyberPet-Offline-Unlock.exe
+            preload/Unlock-My-Preloaded-DyberPet.cmd
+            preload/NO_ART_PUBLIC_SUMMARY.json
+          if-no-files-found: error
+          retention-days: 7
