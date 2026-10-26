@@ -128,7 +128,9 @@ $launcher = if ($Backend -eq "rust") {
 [System.IO.File]::WriteAllText((Join-Path $package "Run-DyberPet.cmd"), $launcher, (New-Object System.Text.ASCIIEncoding))
 
 # Verify the FROZEN helper can enumerate exactly the same 65 fixed-source characters.
-$reportPath = Join-Path $env:RUNNER_TEMP ("personal65-plan-" + $Backend + ".json")
+$smokeDir = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { Join-Path $root "build/personal65-qa" }
+New-Item -ItemType Directory -Force -Path $smokeDir | Out-Null
+$reportPath = Join-Path $smokeDir ("personal65-plan-" + $Backend + ".json")
 & $helper --output $reportPath
 if ($LASTEXITCODE -ne 0) { throw "Frozen personal source planner failed" }
 $report = Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -139,7 +141,7 @@ if ($report.summary.selected_profiles -ne 123 -or
 }
 if ($report.summary.already_installed_structurally -ne 0) { throw "Creator art was prebundled" }
 
-$mascotReportPath = Join-Path $env:RUNNER_TEMP ("personal-mascots-" + $Backend + ".json")
+$mascotReportPath = Join-Path $smokeDir ("personal-mascots-" + $Backend + ".json")
 & $helper --mascots --role-root $roles --output $mascotReportPath
 if ($LASTEXITCODE -ne 0) { throw "Frozen mascot source planner failed" }
 $mascots = Get-Content -LiteralPath $mascotReportPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -151,7 +153,7 @@ if ($mascots.summary.mascot_templates -ne 2 -or
 
 # Verify packaged EXE and REQUIRE_RUST on the actual native compiled mode.
 $env:QT_QPA_PLATFORM = "offscreen"
-$env:DYBERPET_SMOKE_REPORT = Join-Path $env:RUNNER_TEMP ("personal65-desktop-smoke-" + $Backend + ".json")
+$env:DYBERPET_SMOKE_REPORT = Join-Path $smokeDir ("personal65-desktop-smoke-" + $Backend + ".json")
 Push-Location $package
 try {
     & $exe --assistant-smoke
