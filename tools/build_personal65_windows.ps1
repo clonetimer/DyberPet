@@ -156,13 +156,11 @@ if ($mascots.summary.mascot_templates -ne 2 -or
 # Verify packaged EXE and REQUIRE_RUST on the actual native compiled mode.
 $env:QT_QPA_PLATFORM = "offscreen"
 $env:DYBERPET_SMOKE_REPORT = Join-Path $smokeDir ("personal65-desktop-smoke-" + $Backend + ".json")
-Push-Location $package
-try {
-    & $exe --assistant-smoke
-    if ($LASTEXITCODE -ne 0) { throw "Frozen desktop assistant smoke failed" }
-} finally {
-    Pop-Location
-}
+# PyInstaller --noconsole is a Windows GUI executable: PowerShell '&' may return
+# before it exits. Start-Process -Wait makes missing-report checks deterministic.
+$smokeProcess = Start-Process -FilePath $exe -ArgumentList "--assistant-smoke" -WorkingDirectory $package -Wait -PassThru
+if ($smokeProcess.ExitCode -ne 0) { throw "Frozen desktop assistant smoke failed: $($smokeProcess.ExitCode)" }
+if (-not (Test-Path -LiteralPath $env:DYBERPET_SMOKE_REPORT)) { throw "Frozen desktop did not produce its smoke report" }
 $smoke = Get-Content -LiteralPath $env:DYBERPET_SMOKE_REPORT -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not $smoke.assistant_dialog -or -not $smoke.assets.ok -or $smoke.native_backend.active -ne $Backend) {
     throw "Desktop helper/Qt/native backend smoke failed for $Backend"
@@ -174,13 +172,8 @@ if ($Backend -eq "rust" -and -not $smoke.native_backend.rust_available) {
 # mascot placeholders from FINAL user package. Never delete imported author art.
 python tools/strip_generated_demo_art.py --role-root $roles --expected 125
 if ($LASTEXITCODE -ne 0) { throw "Failed to remove 125 QA-only chibi placeholders" }
-Push-Location $package
-try {
-    & $exe --personal-package-smoke
-    if ($LASTEXITCODE -ne 0) { throw "Final user binary still contains placeholders" }
-} finally {
-    Pop-Location
-}
+$personalProcess = Start-Process -FilePath $exe -ArgumentList "--personal-package-smoke" -WorkingDirectory $package -Wait -PassThru
+if ($personalProcess.ExitCode -ne 0) { throw "Final user binary still contains placeholders" }
 # Intermediate QA ZIP contains temporary synthesized art and MUST NEVER ship.
 $intermediate = if ($Backend -eq "rust") {
     Join-Path $root "DyberPet-Windows-Rust-Experimental.zip"
