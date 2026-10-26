@@ -35,7 +35,7 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
     def test_new_unverified_lead_filter_has_3_distinct_missing_profiles(self):
         self.dialog.statusFilter.setCurrentIndex(
             self.dialog.statusFilter.findData("lead"))
-        self.assertEqual(self.dialog.results.count(), 3
+        self.assertEqual(self.dialog.results.count(), 3)
         self.assertIn("3 / 125", self.dialog.countLabel.text())
         names = [self.dialog.results.item(i).data(0x0100)
                  for i in range(self.dialog.results.count())]
