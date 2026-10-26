@@ -15,7 +15,7 @@ from tools.character_catalog_search import (
     describe_character_status, query_character_catalog,
 )
 from tools.character_source_coverage import source_coverage
-from tools.community_codex_leads import PROFILE_TO_SLUG
+from tools.community_codex_leads import PROFILE_TO_SLUG, EXTERNAL_SHIMEJI_PAGES
 from tools.react_shimeji_source_leads import CANDIDATES as REACT_CANDIDATES, REPOSITORY as REACT_REPO, REVISION as REACT_REV
 
 
@@ -103,7 +103,8 @@ class CharacterCatalogDialog(QDialog):
             "all" if show_leads else self.statusFilter.currentData(),
             source_lookup=self._source_by_id)
         if show_leads:
-            candidates = set(PROFILE_TO_SLUG) | set(REACT_CANDIDATES)
+            candidates = (set(PROFILE_TO_SLUG) | set(REACT_CANDIDATES) |
+                          set(EXTERNAL_SHIMEJI_PAGES))
             rows = [row for row in rows if row["id"] in candidates and
                     not self._source_by_id.get(row["id"], {}).get("source_found", False)]
         for row in rows:
@@ -119,6 +120,9 @@ class CharacterCatalogDialog(QDialog):
                     (source is None or not source["source_found"]) else "")
             if row["id"] in REACT_CANDIDATES and (source is None or not source["source_found"]):
                 lead += " · Git LFS 动画候选（原文件待核验）"
+            if row["id"] in EXTERNAL_SHIMEJI_PAGES and (
+                    source is None or not source["source_found"]):
+                lead += " · 外部作者 Shimeji 候选（动作存在缺陷，身份待核对）"
             title = f"【{prefix}】{row['name']} · {status}{creator_info}{lead}"
             item = QListWidgetItem(title)
             item.setToolTip(
@@ -143,7 +147,8 @@ class CharacterCatalogDialog(QDialog):
 
     def _refresh_candidate_button(self, *_):
         profile = self.selected_character_id()
-        has_lead = profile in PROFILE_TO_SLUG or profile in REACT_CANDIDATES
+        has_lead = (profile in PROFILE_TO_SLUG or profile in REACT_CANDIDATES
+                    or profile in EXTERNAL_SHIMEJI_PAGES)
         self.communityButton.setEnabled(has_lead)
         self.communityButton.setToolTip(
             "只打开外部来源的图集预览，需逐帧核验后自行下载并导入；不视为已安装或原设验收"
@@ -156,6 +161,9 @@ class CharacterCatalogDialog(QDialog):
         if profile in PROFILE_TO_SLUG:
             candidates["CodexPetDB 社区图集（未校验原画）"] = (
                 "https://codexpetdb.com/en/pets/" + PROFILE_TO_SLUG[profile])
+        if profile in EXTERNAL_SHIMEJI_PAGES:
+            candidates["作者署名的公开 Shimeji 页（动画有缺陷，尚未审核）"] = (
+                EXTERNAL_SHIMEJI_PAGES[profile])
         if profile in REACT_CANDIDATES:
             slug = REACT_CANDIDATES[profile][0]
             candidates["React-Shimeji Git LFS 来源（动画文件尚待下载）"] = (

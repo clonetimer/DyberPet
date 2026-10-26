@@ -19,6 +19,14 @@ except ImportError:
     from character_source_coverage import source_coverage
 
 CATALOG_URL = "https://codexpetdb.com/en/collections/genshin-impact"
+
+# Public *candidate page*, NOT a fixed/approved artist source. The upstream
+# archive is structurally incomplete and has no machine-readable Genshin ID.
+# Its page says Genshin Arataki Itto (credit: Ookami), but the exact images and
+# creator claim still require human verification. Keep out of source_coverage().
+EXTERNAL_SHIMEJI_PAGES = {
+    "genshin_arataki_itto": "https://shimejishop.com/free/arataki-itto-shimeji/",
+}
 CATALOG_DATE = "2026-10-25"
 # These 33 entries have exact, unique profile mappings in our local roster.
 # The separate gi-manekina / gi-manekina-2 entries are not a Genshin

@@ -37,8 +37,8 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
             self.dialog.statusFilter.findData("lead"))
         # Emilie has also been independently verified and promoted, so
         # none of the older community/LFS leads remains truly unpinned.
-        self.assertEqual(self.dialog.results.count(), 0)
-        self.assertIn("0 / 125", self.dialog.countLabel.text())
+        self.assertEqual(self.dialog.results.count(), 1)
+        self.assertIn("1 / 125", self.dialog.countLabel.text())
         names = [self.dialog.results.item(i).data(0x0100)
                  for i in range(self.dialog.results.count())]
         self.assertEqual(len(names), len(set(names)))
@@ -46,7 +46,19 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
         self.assertNotIn("genshin_fischl", names)
         self.assertNotIn("genshin_kaveh", names)
         self.assertNotIn("genshin_citlali", names)
-        self.assertFalse(self.dialog.communityButton.isEnabled())
+        self.assertIn("genshin_arataki_itto", names)
+        self.assertTrue(self.dialog.communityButton.isEnabled())
+
+    def test_itto_candidate_click_only_opens_external_page_not_installer(self):
+        self.dialog.statusFilter.setCurrentIndex(
+            self.dialog.statusFilter.findData("lead"))
+        self.dialog.searchBox.setText("genshin_arataki_itto")
+        self.assertEqual(self.dialog.results.count(), 1)
+        with patch("DyberPet.DyberSettings.character_catalog_dialog.QDesktopServices") as web:
+            self.dialog.communityButton.click()
+            self.assertEqual(web.openUrl.call_count, 1)
+            self.assertEqual(web.openUrl.call_args.args[0].toString(),
+                             "https://shimejishop.com/free/arataki-itto-shimeji/")
 
     def test_single_and_multiple_explicit_preview_routes(self):
         self.dialog.statusFilter.setCurrentIndex(
