@@ -1,9 +1,7 @@
 name: Private Personal65 Python and Rust hybrid Release
 
 on:
-  push:
-    branches:
-      - "release/personal65-python-rust-20261026"
+  # Manual-only because this account currently rejects hosted runner jobs before startup.
   workflow_dispatch:
 
 permissions:
