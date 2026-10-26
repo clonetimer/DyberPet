@@ -26,7 +26,7 @@ class ReactShimejiLeadTests(unittest.TestCase):
         for entry in report["characters"]:
             self.assertEqual(
                 entry["existing_fixed_source"],
-                entry["id"] in {"genshin_alhaitham", "genshin_kaveh", "genshin_freminet", "genshin_columbina"})
+                entry["id"] in {"genshin_alhaitham", "genshin_kaveh", "genshin_freminet", "genshin_columbina", "genshin_amber", "genshin_fischl"})
             verified = entry["id"] in {"genshin_amber", "genshin_fischl"}
             self.assertEqual(entry["full_lfs_art_downloaded_and_hashed"], verified)
             self.assertEqual(entry["native_install_tested_in_ci"], verified)
