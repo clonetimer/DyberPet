@@ -11,8 +11,8 @@ try:
     from .install_creator_mascots import UPSTREAM, REPO, PINNED_REVISION, install_creator_mascot
     from .mascot_library import scan_mascot_library
 except ImportError:
-    from install_creator_mascots import UPSTREAM, REPO, PINNED_REVISION, install_creator_mascot
-    from mascot_library import scan_mascot_library
+    from tools.install_creator_mascots import UPSTREAM, REPO, PINNED_REVISION, install_creator_mascot
+    from tools.mascot_library import scan_mascot_library
 
 
 def plan_mascot_sources(role_root, *, inventory=None):
