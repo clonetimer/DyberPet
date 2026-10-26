@@ -102,6 +102,10 @@ def rank_installed_role_variants(role_root, folders):
         raise ValueError("Unsafe installed role root")
     if not isinstance(folders, (list, tuple)) or len(folders) > 40:
         raise ValueError("Expected at most 40 installed creator role folders")
+    if any(not isinstance(x, str) or not x or len(x) > 120 or
+           x in (".", "..") or "/" in x or chr(92) in x or chr(0) in x
+           for x in folders):
+        raise ValueError("Invalid installed role folder name")
     if len(set(folders)) != len(folders):
         raise ValueError("Repeated local creator-art folder")
     ranked = []
