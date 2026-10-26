@@ -149,13 +149,43 @@ class InteractionCoverageTests(unittest.TestCase):
                                           mascot_snapshot=masc)
         self.assertEqual(result["summary"]["template_total"], 3)
         self.assertEqual(result["summary"]["roles_with_creator_art"], 1)
+        self.assertEqual(result["summary"]["broken_creator_asset_folder_count"], 0)
         row = result["characters"][0]
+        self.assertEqual(row["playable_creator_role_count"], 1)
         self.assertEqual(row["actual_action_names"], ["idle", "jump"])
         self.assertIn("jump", row["action_categories_present_in_art"])
         self.assertIn("greet", row["action_categories_missing_in_art"])
         self.assertFalse(row["runtime_unlock_qa_verified"])
         self.assertFalse(row["character_likeness_qa_verified"])
         self.assertFalse(result["characters"][1]["original_creator_art_present"])
+
+    def test_mixed_valid_and_broken_creator_folders_count_only_playable_sources(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for name in ("Good", "Empty", "BadPNG"):
+                (root / name).mkdir()
+            (root / "Good" / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            _source_frames(root / "Good", ("wave",))
+            (root / "BadPNG" / "act_conf.json").write_text(
+                json.dumps({"jump": {"images": "jump"}}), encoding="utf-8")
+            bad = root / "BadPNG" / "action"
+            bad.mkdir()
+            (bad / "jump_0.png").write_bytes(b"not-a-png" * 10)
+            gen = {"characters": [{"profile": "genshin_kaveh", "name": "卡维",
+                   "installed_folders": [
+                       {"folder": name, "is_original_demo": False}
+                       for name in ("Good", "Empty", "BadPNG")]}]}
+            audit = interaction_coverage(root, genshin_snapshot=gen,
+                                         mascot_snapshot={"mascots": []})
+        row = audit["characters"][0]
+        self.assertEqual(row["imported_creator_role_count"], 3)
+        self.assertEqual(row["playable_creator_role_count"], 1)
+        self.assertEqual(row["creator_folders_with_broken_actions"], 2)
+        self.assertTrue(row["original_creator_art_present"])
+        self.assertEqual(row["actual_action_names"], ["wave"])
+        self.assertEqual(audit["summary"]["broken_creator_asset_folder_count"], 2)
+        self.assertEqual(audit["summary"]["roles_with_creator_art"], 1)
 
     def test_missing_or_unsafe_config_is_reported_not_counted_as_animation(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -167,6 +197,11 @@ class InteractionCoverageTests(unittest.TestCase):
             result = interaction_coverage(root, genshin_snapshot=gen,
                                           mascot_snapshot={"mascots": []})
         self.assertEqual(result["summary"]["roles_with_read_errors"], 1)
+        self.assertEqual(result["summary"]["roles_with_creator_art"], 0)
+        self.assertEqual(result["summary"]["roles_with_creator_folder_but_no_playable_actions"], 1)
+        self.assertEqual(result["summary"]["broken_creator_asset_folder_count"], 1)
+        self.assertEqual(result["characters"][0]["playable_creator_role_count"], 0)
+        self.assertFalse(result["characters"][0]["original_creator_art_present"])
         self.assertEqual(result["summary"]["roles_with_at_least_one_interaction"], 0)
         self.assertFalse(result["characters"][0]["action_categories_present_in_art"])
 
