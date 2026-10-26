@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "repository": "CarbonNeuron/react-shimeji",
+  "revision": "35b507062be71e8b9dbea6d20b77a9901dfe9114",
+  "note": "Two original Git LFS modules independently downloaded and SHA256-verified in GitHub CI on 2026-10-26, parsed without executing TypeScript, 46 authentic atlas frames each and native role import tested. crawl/fall each have only one distinct sprite pose; actual movement, original-game visual resemblance, voice and rights await human QA.",
+  "sources": {
+    "amber": {
+      "profile": "genshin_amber",
+      "slug": "amber-ef95b4",
+      "sha256": "5f5e95242604640a48ae340f097063cf01ea17460ec1818a9c8ba768f88c426d",
+      "verified_bytes": 783823,
+      "atlas_frames": 46,
+      "native_actions": 10,
+      "action_quality_pending": [
+        "crawl",
+        "fall"
+      ],
+      "visual_likeness_verified": false,
+      "physical_runtime_motion_qa_verified": false
+    },
+    "fischl": {
+      "profile": "genshin_fischl",
+      "slug": "fischl-f4f4f5",
+      "sha256": "1e238f494fe023babc20421832b21509182d39ab0c7fa7650942acca6c5530dc",
+      "verified_bytes": 703235,
+      "atlas_frames": 46,
+      "native_actions": 10,
+      "action_quality_pending": [
+        "crawl",
+        "fall"
+      ],
+      "visual_likeness_verified": false,
+      "physical_runtime_motion_qa_verified": false
+    }
+  }
+}
