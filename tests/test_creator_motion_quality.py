@@ -45,6 +45,15 @@ class RealPixelPoseRiskTests(unittest.TestCase):
             self.assertFalse(r["summary"]["original_art_modified"])
             self.assertEqual(before,{p.name:p.read_bytes() for p in (role/"action").glob("*.png")})
 
+    def test_single_idle_pose_is_not_falsely_reported_as_failed_motion(self):
+        with TemporaryDirectory() as d:
+            root=Path(d)/"res"/"role"
+            role=fixture(root)
+            report=analyze_creator_actions(root,role.name)
+            idle=next(x for x in report["actions"] if x["action"]=="default")
+            self.assertFalse(idle["movement_expected"])
+            self.assertEqual(idle["risk_indicators"], [])
+
     def test_first_two_equal_but_later_pose_differs_reported(self):
         with TemporaryDirectory() as d:
             root=Path(d)/"res"/"role"
