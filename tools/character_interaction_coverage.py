@@ -90,6 +90,49 @@ def _original_art_action_names(root, folder):
     return valid
 
 
+def rank_installed_role_variants(role_root, folders):
+    """Prioritize actually decodable and category-rich local artwork versions.
+
+    This only selects a default for PREVIEW. It never activates a role, swaps
+    a saved role, changes personal settings, or certifies sprite likeness.
+    Unusable alternatives remain visible, with a reason for their placement.
+    """
+    root = Path(role_root).expanduser()
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("Unsafe installed role root")
+    if not isinstance(folders, (list, tuple)) or len(folders) > 40:
+        raise ValueError("Expected at most 40 installed creator role folders")
+    if len(set(folders)) != len(folders):
+        raise ValueError("Repeated local creator-art folder")
+    ranked = []
+    for folder in folders:
+        try:
+            actions, broken = _action_inventory(root, folder)
+            live = [x["id"] for x in available_interactions(actions)
+                    if x["available"]]
+            status = "first_frames_decodable" if actions else "no_playable_actions"
+            ranked.append({
+                "folder": folder, "status": status, "interaction_categories": live,
+                "available_interaction_count": len(live),
+                "action_name_count": len(actions),
+                "broken_action_count": len(broken),
+                "preview_only": True,
+                "manual_appearance_review_required": True,
+            })
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            ranked.append({
+                "folder": folder, "status": "invalid_installed_sprite",
+                "interaction_categories": [], "available_interaction_count": 0,
+                "action_name_count": 0, "broken_action_count": 0,
+                "reason": str(exc)[:160], "preview_only": True,
+                "manual_appearance_review_required": True,
+            })
+    return sorted(ranked, key=lambda x: (
+        -int(x["status"] == "first_frames_decodable"),
+        -x["available_interaction_count"], -x["action_name_count"],
+        x["broken_action_count"], x["folder"].casefold()))
+
+
 def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=None):
     root = Path(role_root).expanduser()
     if root.is_symlink():
@@ -150,6 +193,15 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
             "original_creator_art_present": bool(playable_folders),
             "actual_action_names": sorted(all_names),
             "creator_role_variants": variants,
+            "suggested_preview_variant": next((
+                x["folder"] for x in sorted(
+                    variants,
+                    key=lambda v: (
+                        -int(v["status"] == "has_decodable_first_frames"),
+                        -len(v["available_category_ids"]),
+                        -len(v["installed_action_names"]), v["folder"].casefold()))
+                if x["status"] == "has_decodable_first_frames"), None),
+            "suggestion_is_interaction_only_not_likeness": True,
             "action_categories_in_every_usable_version": [
                 k for k in ordered if k in common],
             "action_categories_only_in_some_versions": [
