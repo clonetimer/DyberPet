@@ -15,7 +15,7 @@ from tools.character_interaction_coverage import rank_installed_role_variants
 def coverage():
     return {"characters": [
         {"id": "genshin_a", "name": "A", "source_candidates": [
-            {"provider": "react_lfs", "source_key": "manual", "url": "https://a.test/manual"},
+            {"provider": "unverified_lfs", "source_key": "manual", "url": "https://a.test/manual"},
             {"provider": "native", "source_key": "nativeA", "url": "https://a.test/native"},
             {"provider": "codex", "source_key": "codexA", "url": "https://a.test/codex"},
             {"provider": "shimeji", "source_key": "shimejiA", "url": "https://a.test/shimeji"},

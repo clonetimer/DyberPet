@@ -1,0 +1,62 @@
+name: Verified Amber and Fischl creator LFS native integration
+
+on:
+  push:
+    branches: [feat/pinned-react-lfs-amber-fischl-20261026]
+  pull_request:
+    paths:
+      - "tools/install_verified_react_lfs.py"
+      - "tools/personal_source_batch.py"
+      - "tools/build_personal65_windows.ps1"
+      - "tests/test_verified_react_lfs_installer.py"
+      - "tests/test_personal_source_batch.py"
+      - ".github/workflows/react-lfs-auto-verified.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dyberpet-verified-react-lfs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Pillow for literal-only native atlas decoder
+        run: python -m pip install "Pillow>=11,<13"
+      - name: Exact source integrity, consent and planner regression
+        run: |
+          python -m unittest discover -s tests -p "test_verified_react_lfs_installer.py" -v
+          python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
+          python -m unittest discover -s tests -p "test_creator_fallback_variant_ranking.py" -v
+      - name: All 65 source-pinned Genshin roles now have an opt-in installer, without downloading art
+        run: |
+          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.personal_source_batch import plan_personal_sources; from tools.react_shimeji_source_leads import verified_lfs_sources; t=TemporaryDirectory(); r=plan_personal_sources(Path(t.name)/'fresh'); s=r['summary']; print(s); assert s['selected_profiles']==123 and s['ready_for_opt_in']==65 and s['manual_import_only']==0 and s['missing_source']==58; assert len(verified_lfs_sources())==2"
+  original-bytes-integration:
+    runs-on: ubuntu-latest
+    needs: offline
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "Pillow>=11,<13"
+      - name: Opt-in CI verification of full pinned Git-LFS original bytes
+        run: |
+          python tools/probe_missing_react_lfs.py --all
+      - name: Actually install both exact-SHA Genshin roles in a throwaway personal directory
+        run: |
+          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.install_verified_react_lfs import install_verified_react_lfs; from tools.genshin_library import scan_genshin_library; t=TemporaryDirectory(); r=Path(t.name)/'roles'; r.mkdir(); a=install_verified_react_lfs('amber',r,confirmed=True); b=install_verified_react_lfs('fischl',r,confirmed=True); report=scan_genshin_library(r); print('VERIFIED_REACT_AUTO_INSTALLED='+str(report['summary']['personal_art_profile_count'])); assert a['full_lfs_sha256_verified'] and b['full_lfs_sha256_verified'] and report['summary']['personal_art_profile_count']==2"
+      - name: No third-party sprites uploaded
+        run: |
+          python -c "from pathlib import Path; assert not list(Path('res/role').glob('SourceVerified*')); print('ORIGINAL_ASSET_UPLOAD=false')"
