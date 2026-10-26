@@ -57,7 +57,7 @@ class CreatorQBoardQtTests(unittest.TestCase):
                 dialog.filter.setCurrentIndex(5)
                 self.assertEqual(len(dialog._cards), 18)
                 self.assertIn("本人Q版审核通过 0", dialog.counter.text())
-                self.assertTrue(dialog._cards[0].findChildren.__call__)
+                self.assertTrue(dialog._cards[0].title() == "安柏")
             finally:
                 dialog.close()
 
