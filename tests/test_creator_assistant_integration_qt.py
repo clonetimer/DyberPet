@@ -242,8 +242,12 @@ class CatalogGapExportTests(unittest.TestCase):
                                   return_value=0) as opened:
                     ns["_previewJustInstalledCreatorArt"](fake, "CreatorOne")
                     self.assertEqual(opened.call_count, 1)
-                    self.assertEqual(opened.call_args.args[0].action.currentData(),
-                                     "wave")
+                # PySide6's Qt exec wrapper does not expose a Python self
+                # argument through mock.call_args; check a concrete viewer.
+                actual = NativeFramePreviewDialog(
+                    root, ["CreatorOne"], fake)
+                self.assertEqual(actual.action.currentData(), "wave")
+                actual.close()
                 warnings.assert_not_called()
                 ns["_previewJustInstalledCreatorArt"](fake, "../wrong")
                 warnings.assert_called_once()
