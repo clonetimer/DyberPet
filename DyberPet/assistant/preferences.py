@@ -32,7 +32,8 @@ def defaults() -> dict:
             "bubble_enabled": True,
             "auto_speak": False,
             "motion_enabled": True,
-            "personas": {}}
+            "personas": {},
+            "interaction_favorites": {}}
 
 
 def validate(raw) -> dict:
@@ -63,6 +64,17 @@ def validate(raw) -> dict:
                 or not isinstance(key, str) or key not in PERSONAS):
             raise ValueError("Invalid character persona mapping")
     result["personas"] = dict(persona)
+    from .role_interactions import INTERACTION_CATEGORIES
+    valid = {key for key, _label, _aliases in INTERACTION_CATEGORIES}
+    favorites = raw.get("interaction_favorites", {})
+    if not isinstance(favorites, dict) or len(favorites) > 150:
+        raise ValueError("Invalid character interaction favorites")
+    for character, category in favorites.items():
+        if (not isinstance(character, str) or not 1 <= len(character) <= 120 or
+                any(x in character for x in ("/", chr(92), chr(0))) or
+                category not in valid):
+            raise ValueError("Invalid character favorite entry")
+    result["interaction_favorites"] = dict(favorites)
     return result
 
 

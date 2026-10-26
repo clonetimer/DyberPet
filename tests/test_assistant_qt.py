@@ -179,6 +179,31 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog.interaction_button.click()
         self.assertEqual(requests, ["wave", "左右散步"])
 
+    def test_favorite_real_interaction_never_borrows_a_previous_role_action(self):
+        requests = []
+        self.dialog.action_requested.connect(requests.append)
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.set_actions(["wave", "jump"])
+        self.dialog.favorite_action_button.click()
+        self.assertEqual(self.dialog._prefs["interaction_favorites"]["咕嘎"], "greet")
+        self.dialog.play_favorite_button.click()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_actions(["jump"])
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.play_favorite_interaction()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_character("Doro")
+        self.dialog.set_actions(["wave"])
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.favorite_action_button.click()
+        self.dialog.play_favorite_button.click()
+        self.assertEqual(requests, ["wave", "wave"])
+        self.dialog.set_character("咕嘎")
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.set_actions(["wave"])
+        self.dialog.play_favorite_button.click()
+        self.assertEqual(requests, ["wave", "wave", "wave"])
+
     def test_random_real_interaction_uses_only_current_role_and_avoids_repeats(self):
         received = []
         self.dialog.action_requested.connect(received.append)

@@ -156,6 +156,14 @@ class PetAssistantDialog(QDialog):
         action_row.addWidget(self.interaction_button)
         action_row.addWidget(self.random_action_button)
         form.addRow("主动互动（仅已解锁原生动作）", action_row)
+        favorite_row = QHBoxLayout()
+        self.favorite_action_button = QPushButton("收藏当前真实互动", self)
+        self.favorite_action_button.clicked.connect(self.favorite_current_interaction)
+        self.play_favorite_button = QPushButton("播放本角色收藏", self)
+        self.play_favorite_button.clicked.connect(self.play_favorite_interaction)
+        favorite_row.addWidget(self.favorite_action_button)
+        favorite_row.addWidget(self.play_favorite_button)
+        form.addRow("角色专属动作收藏", favorite_row)
         inspect_row = QHBoxLayout()
         self.interaction_audit_button = QPushButton("检查本角色互动缺口", self)
         self.interaction_audit_button.clicked.connect(self.show_interaction_audit)
@@ -343,6 +351,42 @@ class PetAssistantDialog(QDialog):
         self.random_action_button.setToolTip(
             "用户点击后随机执行当前桌宠已经解锁的真实动作；不连续重复"
             if choices else "当前桌宠尚无已解锁的真实互动动作")
+        self._refresh_favorite_buttons()
+
+    def _refresh_favorite_buttons(self):
+        selected = requested_action(self._interaction_plan, self.interaction_menu.currentData())
+        self.favorite_action_button.setEnabled(
+            selected is not None and selected in self._unlocked_actions)
+        category = self._prefs["interaction_favorites"].get(self.character_name)
+        current = requested_action(self._interaction_plan, category)
+        can_play = current is not None and current in self._unlocked_actions
+        self.play_favorite_button.setEnabled(can_play)
+        self.play_favorite_button.setToolTip(
+            "只播放当前角色已解锁的收藏动画：" + current if can_play
+            else "本角色没有已解锁的收藏动作；切换素材后需重新核对")
+
+    def favorite_current_interaction(self):
+        """Explicit click: store a real unlocked category for this role alone."""
+        category = self.interaction_menu.currentData()
+        selected = requested_action(self._interaction_plan, category)
+        if selected is None or selected not in self._unlocked_actions:
+            self.status.setText("动作未解锁，未收藏。")
+            return
+        self._prefs["interaction_favorites"][self.character_name] = category
+        self._refresh_favorite_buttons()
+        self.status.setText("已收藏本角色真实动作：" + selected +
+                            "（点击保存助手设置后持久保留）")
+
+    def play_favorite_interaction(self):
+        """A favorite cannot unlock a stale/foreign role action."""
+        category = self._prefs["interaction_favorites"].get(self.character_name)
+        selected = requested_action(self._interaction_plan, category)
+        if selected is not None and selected in self._unlocked_actions:
+            self.action_requested.emit(selected)
+            self.status.setText("已请求本角色收藏的原生动作：" + selected)
+        else:
+            self.status.setText("本角色收藏动作当前不可用，未执行。")
+            self._refresh_favorite_buttons()
 
     def play_manual_interaction(self):
         """Only real user clicks emit an action; PetWidget validates it again."""
