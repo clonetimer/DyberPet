@@ -29,6 +29,20 @@ class StageTwoVerifiedChibiAlternatesTests(unittest.TestCase):
             return {"folder": name, "profile": (
                 "genshin_wrong" if wrong_identity else "genshin_" + kind)}
 
+        def normalize(staging, name, *, output_folder):
+            self.assertTrue(name.startswith("SourceShimeji"))
+            self.assertTrue(output_folder.startswith("SourceCanvasR5"))
+            folder = staging / output_folder
+            folder.mkdir()
+            (folder / "PERSONAL_IMPORT.json").write_text(
+                '{"selected_profile":"genshin_'+name.replace("SourceShimeji","").lower()+'"}')
+            return {
+                "folder": output_folder,
+                "profile": "genshin_"+name.replace("SourceShimeji","").lower(),
+                "only_transparent_canvas_added": True,
+                "source_original_bytes_preserved": True,
+            }
+
         def inspect(staging, folder):
             return {
                 "silhouette_width_height_ratio": 0.71,
@@ -50,25 +64,26 @@ class StageTwoVerifiedChibiAlternatesTests(unittest.TestCase):
         def mascot(_):
             return {"summary": {"imported_creator_art_count": 2}}
 
-        return root, install, inspect, scan, mascot
+        return root, install, inspect, scan, mascot, normalize
 
     def test_adds_two_candidate_versions_without_changing_original_art(self):
         with TemporaryDirectory() as d:
-            root, install, inspect, scan, mascot = self._fixtures(Path(d))
+            root, install, inspect, scan, mascot, normalize = self._fixtures(Path(d))
             with patch("tools.install_r5_q_review_alternates.scan_genshin_library",
                        side_effect=scan), patch(
                        "tools.install_r5_q_review_alternates.scan_mascot_library",
                        side_effect=mascot):
                 result = stage_r5_original_alternatives(
                     root, confirmed=True, install=install, measure=inspect,
-                    full_audit=lambda role: {"summary": {"animation_structure_passed": True}})
+                    full_audit=lambda role: {"summary": {"animation_structure_passed": True}},
+                    normalize=normalize)
             self.assertEqual(result["additional_original_author_versions"], 2)
             self.assertEqual(result["unchanged_distinct_genshin_profiles"], 63)
             self.assertEqual(result["user_q_approved"], 0)
             self.assertFalse(result["overwrote_existing_source_art"])
             self.assertEqual((root/"OriginalPersonalArtist"/"source.txt").read_text(), "ORIGINAL")
-            self.assertTrue((root/"SourceShimejiAyaka").is_dir())
-            self.assertTrue((root/"SourceShimejiVenti").is_dir())
+            self.assertTrue((root/"SourceCanvasR5Ayaka").is_dir())
+            self.assertTrue((root/"SourceCanvasR5Venti").is_dir())
 
     def test_bad_shape_aborts_before_modifying_existing_install(self):
         with TemporaryDirectory() as d:
@@ -94,7 +109,7 @@ class StageTwoVerifiedChibiAlternatesTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "identity"):
                     stage_r5_original_alternatives(
                         root, confirmed=True, install=install, measure=inspect)
-                (root / "SourceShimejiAyaka").mkdir()
+                (root / "SourceCanvasR5Ayaka").mkdir()
                 with self.assertRaisesRegex(ValueError, "overwrite"):
                     stage_r5_original_alternatives(
                         root, confirmed=True, install=install, measure=inspect)
