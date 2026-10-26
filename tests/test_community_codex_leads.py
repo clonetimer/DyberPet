@@ -27,9 +27,9 @@ class CommunityRoleLeadsTests(unittest.TestCase):
             self.assertFalse(row["distributable"])
             self.assertTrue(row["candidate_url"].startswith("https://codexpetdb.com/en/pets/"))
         pinned = source_coverage()["summary"]
-        self.assertEqual(pinned["characters_with_pinned_sources"], 59)
-        self.assertEqual(pinned["characters_without_pinned_sources"], 64)
-        self.assertEqual(pinned["pinned_source_options"], 82)
+        self.assertEqual(pinned["characters_with_pinned_sources"], 61)
+        self.assertEqual(pinned["characters_without_pinned_sources"], 62)
+        self.assertEqual(pinned["pinned_source_options"], 84)
 
     def test_names_are_correct_and_nonroster_manekina_is_excluded(self):
         self.assertEqual(PROFILE_TO_SLUG["genshin_kaveh"], "gi-kaveh")
