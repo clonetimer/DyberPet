@@ -48,3 +48,14 @@ res/role/守岸人
 
 # Local-only creator art installed from pinned remote sources. Never commit these by default.
 /res/role/Source*/
+
+# Personal65 local build outputs and virtual environment (never push local art or binaries)
+/.venv-personal65/
+/wheelhouse/
+/DyberPet-Personal65-Windows-*.zip
+/DyberPet-Windows-Personal-PR5.zip
+/DyberPet-Windows-Rust-Experimental.zip
+/SHA256SUMS.txt
+/personal-role-plan.json
+/personal-first-2.json
+/personal-full-install.json
