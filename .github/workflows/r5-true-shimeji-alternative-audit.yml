@@ -1,0 +1,68 @@
+name: R5 two alternate original-artist PNG native audits
+
+on:
+  push:
+    paths:
+      - ".github/workflows/r5-true-shimeji-alternative-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-shimeji-sprite-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "Pillow>=11,<13"
+      - name: Acquire exact-pinned real original Ayaka/Venti Shimeji and audit every PNG
+        run: |
+          python - <<'PY'
+          import tempfile,json
+          from pathlib import Path
+          from tools.install_artist_shimeji import install_artist_shimeji
+          from tools.artist_animation_audit import audit_native_character
+          from tools.creator_standee_triage import triage_one_creator
+          from tools.genshin_library import scan_genshin_library
+          from tools.normalize_creator_canvas import create_lossless_canvas_candidate
+          with tempfile.TemporaryDirectory(prefix="r5-authentic-original-") as temporary:
+              root=Path(temporary)/"res"/"role"
+              root.mkdir(parents=True)
+              broken=[]
+              for slug in ("ayaka","venti"):
+                  art=install_artist_shimeji(slug,root,confirmed=True)
+                  native=audit_native_character(root/art["folder"])
+                  risk=triage_one_creator(root,art["folder"])
+                  derived=create_lossless_canvas_candidate(root,art["folder"])
+                  after=audit_native_character(root/derived["folder"])
+                  fixed_risk=triage_one_creator(root,derived["folder"])
+                  print("R5_FULL_SOURCE_PNG_Q_ALTERNATE="+json.dumps({
+                      "profile":art["profile"],
+                      "role_folder":art["folder"],
+                      "full_native_png_structure_passed":native["summary"]["animation_structure_passed"],
+                      "full_frame_count":native["summary"]["original_frames_inspected"],
+                      "frame_quality_categories":native["summary"]["issue_categories"],
+                      "silhouette_ratio":risk["silhouette_width_height_ratio"],
+                      "automated_risks":risk["risk_indicators"],
+                      "official_likeness_certified":False,
+                      "transparent_canvas_padding_candidate":derived["folder"],
+                      "all_original_visible_pixels_preserved":derived["only_transparent_canvas_added"],
+                      "complete_derived_native_qa_passed":after["summary"]["animation_structure_passed"],
+                      "derived_risk_indicators":fixed_risk["risk_indicators"],
+                  },ensure_ascii=False))
+                  if (not after["summary"]["animation_structure_passed"] or
+                          fixed_risk["risk_indicators"] or
+                          not derived["source_original_bytes_preserved"]):
+                      broken.append(slug)
+              g=scan_genshin_library(root)
+              assert g["summary"]["personal_art_profile_count"]==2
+              print("R5_FULL_FRAME_PROBLEM_SOURCES="+",".join(broken))
+              assert not broken, "Original author alternatives still need motion canvas/sequence review"
+              print("R5_TWO_LOSSLESS_PADDED_WIDER_ALTERNATE_CANDIDATES_NATIVE_QA_PASSED=true")
+          PY
+      - name: Confirm no creator PNG art was copied into this repository or artifact
+        run: python -c "from pathlib import Path; assert not list(Path('res/role').glob('Source*')); print('NO_AUTHOR_IMAGES_DISTRIBUTED=true')"
