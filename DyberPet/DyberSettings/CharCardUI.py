@@ -307,13 +307,15 @@ class CharInterface(ScrollArea):
 
         # Keep existing role management layout: one compact choice determines
         # whether user selects an unpacked role folder or a native MOD ZIP.
+        from tools.install_pinned_codexpetdb import listed_packages
+        verified_source_count = len(listed_packages()["sources"])
         options = ["个人本地导入：角色文件夹 / Codex / GIF / PNG", "个人本地导入：原生角色 ZIP",
                    "生成原创 Q 版示例角色（不需下载素材）",
                    "浏览角色合集来源（网页手动获取，不自动下载）",
                     "个人本地导入：Shimeji 原画 ZIP（仅提取图片）",
                     "个人本地导入：Codex 动画 ZIP（仅提取图集）",
                      "个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）",
-                     "个人使用：下载 SHA-256 固定的十六位原神角色原画 ZIP",
+                     f"个人使用：下载 SHA-256 固定的{verified_source_count}位原神角色原画 ZIP",
                      "个人本地导入：已下载的 SHA-256 固定原画 ZIP（断网可用）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
