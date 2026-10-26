@@ -76,11 +76,24 @@ def shared_native_interactions(left_actions, right_actions):
     """Map only actually matching interaction *semantics*, never union them."""
     a = {x["id"]: x for x in available_interactions(left_actions) if x["available"]}
     b = {x["id"]: x for x in available_interactions(right_actions) if x["available"]}
-    return [{
+    shared = [{
         "category": k, "label": x["label"],
         "left_native_action": x["action"],
         "right_native_action": b[k]["action"],
     } for k, x in a.items() if k in b]
+    # Falling, dragging and landing are critical desktop-pet experiences but
+    # aren't among the 12 generic clickable interaction categories. Permit
+    # ONLY exact native action names that exist in BOTH actual artist packs.
+    left = set(left_actions)
+    right = set(right_actions)
+    for native, label in (("drag", "拖拽动作"), ("fall", "下落动作"),
+                          ("landing", "落地动作"), ("onfloor", "落地待机")):
+        if native in left and native in right:
+            shared.append({
+                "category": "native_" + native, "label": label,
+                "left_native_action": native, "right_native_action": native,
+            })
+    return shared
 
 
 class CreatorVariantSideBySideDialog(QDialog):
