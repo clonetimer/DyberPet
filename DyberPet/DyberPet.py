@@ -29,6 +29,7 @@ from DyberPet.bubbleManager import BubbleManager
 from DyberPet.assistant.character_motion import style_for, GROUND
 from DyberPet.assistant.speech_sync import available_talk_action
 from DyberPet.assistant.preferences import load as load_assistant_preferences
+from DyberPet.assistant.native_groups import load_runtime_group_snapshot
 
 # initialize settings
 import DyberPet.settings as settings
@@ -891,6 +892,10 @@ class PetWidget(QWidget):
                     self.act_menu.removeAction(self.select_acts[act_index])
                     self.select_acts.remove(self.select_acts[act_index])
 
+        # FV/affection changes must update the *already open* assistant.
+        # Its old shortcut buttons must not survive a newly locked group.
+        if getattr(self, "_pet_assistant", None) is not None:
+            self._sync_assistant_actions()
 
     def _set_Statusmenu(self):
 
@@ -1027,6 +1032,7 @@ class PetWidget(QWidget):
             Action(QIcon(os.path.join(basedir,'res/icons/dashboard.svg')), self.tr('Dashboard'), triggered=self._show_dashboard),
             Action(QIcon(os.path.join(basedir,'res/icons/SystemPanel.png')), self.tr('System'), triggered=self._show_controlPanel),
             Action(FIF.EDIT, self.tr('Desktop Pet Assistant (Files / Voice / Persona)'), triggered=self._show_pet_assistant),
+            Action(FIF.HEART, self.tr('播放本角色已保存的互动'), triggered=self._assistant_play_saved_favorite),
         ])
         self.StatMenu.addSeparator()
 
@@ -1072,18 +1078,54 @@ class PetWidget(QWidget):
     def _sync_assistant_actions(self):
         try:
             options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
-            unlocked = [key for key, value in options.items()
-                        if isinstance(value, dict) and value.get("unlocked")]
-            self._pet_assistant.set_actions(unlocked)
-        except (AttributeError, KeyError):
-            self._pet_assistant.set_actions([])
+            playable, plan = load_runtime_group_snapshot(
+                Path(basedir) / "res" / "role", self.curr_pet_name,
+                options, self.pet_conf.act_dict.keys())
+            self._pet_assistant.set_actions(
+                playable, verified_group_interactions=plan)
+        except (AttributeError, KeyError, TypeError, ValueError, OSError):
+            self._pet_assistant.set_actions([], verified_group_interactions=[])
 
     def _assistant_play_action(self, name):
-        """Never trigger a locked or nonexistent animation."""
-        available = settings.act_data.allAct_params.get(self.curr_pet_name, {})
-        if (name in available and isinstance(available[name], dict)
-                and available[name].get("unlocked")):
+        """Final PetWidget dispatch gate; reject stale/foreign/invalid groups.
+
+        GUI and favorites are read-only hints. Always revalidate the current
+        role's actual native images, group references and live FV lock right
+        before the Animation/Interaction worker receives a command.
+        """
+        options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+        try:
+            playable, _plan = load_runtime_group_snapshot(
+                Path(basedir) / "res" / "role", self.curr_pet_name,
+                options, self.pet_conf.act_dict.keys())
+        except (AttributeError, KeyError, TypeError, ValueError, OSError):
+            return
+        if isinstance(name, str) and name in playable:
             self._show_act(name)
+
+    def _assistant_play_saved_favorite(self):
+        """One-click context action for this character's *saved*, unlocked sprite.
+
+        The menu never trusts cached GUI state: it loads preferences and
+        checks the live native group snapshot immediately before dispatch.
+        No fallback to another character, image key or fake motion.
+        """
+        from DyberPet.assistant.role_interactions import requested_action
+        try:
+            category = load_assistant_preferences()["interaction_favorites"].get(
+                self.curr_pet_name)
+            options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+            playable, plan = load_runtime_group_snapshot(
+                Path(basedir) / "res" / "role", self.curr_pet_name,
+                options, self.pet_conf.act_dict.keys())
+            native_group = requested_action(plan, category)
+            if native_group is not None and native_group in playable:
+                self._assistant_play_action(native_group)
+                return
+        except (AttributeError, KeyError, TypeError, ValueError, OSError):
+            pass
+        self._assistant_notice_bubble(
+            "当前角色无可播放的已保存互动；请在桌宠助手中收藏并保存。")
 
     def _assistant_speech_started(self, character, message):
         """React to local TTS playback, never to arbitrary model tool calls."""
@@ -1092,7 +1134,13 @@ class PetWidget(QWidget):
         self._assistant_voice_active = True
         self._assistant_reply_bubble(message)
         options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
-        talk = available_talk_action(options)
+        try:
+            playable, _ = load_runtime_group_snapshot(
+                Path(basedir) / "res" / "role", self.curr_pet_name,
+                options, self.pet_conf.act_dict.keys())
+        except (AttributeError, KeyError, TypeError, ValueError, OSError):
+            playable = frozenset()
+        talk = available_talk_action(options, playable_groups=playable)
         if talk is not None:
             self._assistant_play_action(talk)
 

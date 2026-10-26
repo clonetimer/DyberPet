@@ -16,8 +16,13 @@ def _normalize(name: str) -> str:
     return "".join(c for c in name.casefold().strip() if c not in "-_ \t")
 
 
-def available_talk_action(action_config: dict) -> str | None:
-    """Select only an already unlocked user-visible native action."""
+def available_talk_action(action_config: dict, *, playable_groups=None) -> str | None:
+    """Select only an unlocked speech-group, optionally intersecting PetWidget.
+
+    A group with "talk" in its name is not necessarily playable by the
+    engine's "actlist" channel; only current native random_act groups can
+    be used for live TTS gestures.
+    """
     if not isinstance(action_config, dict):
         return None
     for name, config in action_config.items():
@@ -25,6 +30,7 @@ def available_talk_action(action_config: dict) -> str | None:
                 and config.get("unlocked") is True
                 and config.get("act_type") in (
                     "random_act", "customized", "accessory_act")
-                and _normalize(name) in _ALLOWED):
+                and _normalize(name) in _ALLOWED
+                and (playable_groups is None or name in playable_groups)):
             return name
     return None

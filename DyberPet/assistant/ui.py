@@ -6,6 +6,7 @@ permissions or triggers filesystem actions. No network calls on the Qt thread.
 from __future__ import annotations
 
 import uuid
+import json
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
@@ -20,6 +21,9 @@ from .persona import (
     chat_local, list_local_models, AssistantServiceError,
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
+from .readiness import inspect_readiness, readiness_text
+from .role_personas import persona_for_local_role
+from .role_interactions import available_interactions, requested_action, choose_random_real_action
 from .guga_audio import record_local_clip, play_local_clip, load_local_clip
 from .character_fidelity import (
     inspect_guga_role, inspect_character_role, inspect_mini_character_role,
@@ -71,6 +75,9 @@ class PetAssistantDialog(QDialog):
         self.voice_engine_ready.connect(self._on_voice_engine_ready)
         self._ppl_snapshot = ""
         self._session_generation = 0
+        self._unlocked_actions = set()
+        self._interaction_plan = []
+        self._last_random_action = None
         try:
             self._prefs = load_preferences()
             self._prefs_error = ""
@@ -79,6 +86,7 @@ class PetAssistantDialog(QDialog):
             self._prefs_error = str(exc)
         self._build_ui()
         self._apply_preferences()
+        self._set_curated_role_persona()
         self._sync_guga_controls()
         if self._prefs_error:
             self.status.setText("旧配置未加载（未覆盖原文件）：" + self._prefs_error)
@@ -93,7 +101,8 @@ class PetAssistantDialog(QDialog):
         form = QFormLayout()
         self.persona = QComboBox()
         for key, item in PERSONAS.items():
-            self.persona.addItem(item.name, key)
+            if not key.startswith("genshin_"):
+                self.persona.addItem(item.name, key)
         initial = resolve_profile(self.character_name)
         if initial and initial.key in PERSONAS:
             self.persona.setCurrentIndex(self.persona.findData(initial.key))
@@ -135,9 +144,44 @@ class PetAssistantDialog(QDialog):
         form.addRow(self.auto_speak)
         form.addRow(self.motion_enabled)
         form.addRow("交互成功时播放已解锁动作", self.action_menu)
+        # Manual character-specific interactions, separate from model replies.
+        self.interaction_menu = QComboBox(self)
+        self.interaction_button = QPushButton("让当前桌宠执行", self)
+        self.interaction_button.clicked.connect(self.play_manual_interaction)
+        self.random_action_button = QPushButton("随机真实互动", self)
+        self.random_action_button.clicked.connect(self.play_random_interaction)
+        self.interaction_menu.currentIndexChanged.connect(self._refresh_interaction_button)
+        action_row = QHBoxLayout()
+        action_row.addWidget(self.interaction_menu, 1)
+        action_row.addWidget(self.interaction_button)
+        action_row.addWidget(self.random_action_button)
+        form.addRow("主动互动（仅已解锁原生动作）", action_row)
+        favorite_row = QHBoxLayout()
+        self.favorite_action_button = QPushButton("收藏当前真实互动", self)
+        self.favorite_action_button.clicked.connect(self.favorite_current_interaction)
+        self.play_favorite_button = QPushButton("播放本角色收藏", self)
+        self.play_favorite_button.clicked.connect(self.play_favorite_interaction)
+        favorite_row.addWidget(self.favorite_action_button)
+        favorite_row.addWidget(self.play_favorite_button)
+        form.addRow("角色专属动作收藏", favorite_row)
+        inspect_row = QHBoxLayout()
+        self.interaction_audit_button = QPushButton("检查本角色互动缺口", self)
+        self.interaction_audit_button.clicked.connect(self.show_interaction_audit)
+        self.action_preview_button = QPushButton("预览已安装的真实动画帧", self)
+        self.action_preview_button.clicked.connect(self.preview_installed_actions)
+        inspect_row.addWidget(self.interaction_audit_button)
+        inspect_row.addWidget(self.action_preview_button)
+        form.addRow(inspect_row)
+        self.interaction_export_button = QPushButton("导出当前角色互动缺口 JSON", self)
+        self.interaction_export_button.clicked.connect(self.export_interaction_audit)
+        form.addRow(self.interaction_export_button)
+        self.set_actions([])
         self.save_pref_button = QPushButton("保存助手设置（不保存聊天记录与人设快照）")
         self.save_pref_button.clicked.connect(self.save_preferences)
         form.addRow(self.save_pref_button)
+        self.readiness_button = QPushButton("本机功能自检（无联网／录音）")
+        self.readiness_button.clicked.connect(self.show_readiness)
+        form.addRow(self.readiness_button)
         body.addLayout(form)
 
         self.chat_log = QPlainTextEdit()
@@ -215,6 +259,42 @@ class PetAssistantDialog(QDialog):
         self.status.setWordWrap(True)
         body.addWidget(self.status)
 
+    def show_readiness(self):
+        """Only inspect local configuration and optional packages; never activate devices."""
+        try:
+            report = inspect_readiness(
+                voice_model=self.voice_model.text().strip(),
+                llm_endpoint=self.llm_endpoint.text().strip(),
+                llm_model=self.llm_model.text().strip(),
+                ppl_enabled=self.ppl_enabled.isChecked(),
+                ppl_endpoint=self.ppl_endpoint.text().strip(),
+            )
+            QMessageBox.information(self, "桌宠助手 · 本机功能自检",
+                                    readiness_text(report))
+        except (OSError, ValueError, ImportError) as exc:
+            self._job_error("本机功能自检失败：" + str(exc))
+
+    def _set_curated_role_persona(self):
+        """Load a role's own offline persona, but keep explicit user overrides."""
+        current = self.character_name
+        special = resolve_profile(current)
+        if special and special.key in PERSONAS:
+            default = special.key
+        else:
+            default = persona_for_local_role(current, self.role_root) or "companion"
+        selected = self._prefs["personas"].get(current, default)
+        if selected not in PERSONAS:
+            selected = default
+        # Keep one current Genshin persona option, not a 123-item menu.
+        for i in range(self.persona.count() - 1, -1, -1):
+            key = self.persona.itemData(i)
+            if isinstance(key, str) and key.startswith("genshin_"):
+                self.persona.removeItem(i)
+        if selected.startswith("genshin_"):
+            self.persona.addItem(PERSONAS[selected].name, selected)
+        index = self.persona.findData(selected)
+        self.persona.setCurrentIndex(max(0, index))
+
     def set_character(self, name: str):
         if self.character_name == name:
             return
@@ -222,18 +302,15 @@ class PetAssistantDialog(QDialog):
         self.character_name = name
         self.setWindowTitle("桌宠助手 · " + name)
         self._sync_guga_controls()
-        profile = resolve_profile(name)
-        persona = profile.key if profile and profile.key in PERSONAS else "companion"
-        self.persona.setCurrentIndex(max(0, self.persona.findData(persona)))
+        self._set_curated_role_persona()
         self.chat_log.appendPlainText("已切换当前桌宠：" + name)
-        saved = self._prefs["personas"].get(name)
-        if saved in PERSONAS:
-            self.persona.setCurrentIndex(self.persona.findData(saved))
         self._last_reply = ""
         self._ppl_snapshot = ""  # Persona snapshots belong to the previous character
+        self._last_random_action = None
+        self.set_actions([])  # No stale unlocked actions from previous character.
 
-    def set_actions(self, names):
-        """Only accept actual currently-unlocked animations from PetWidget."""
+    def set_actions(self, names, *, verified_group_interactions=None):
+        """Expose only runtime group actions, not arbitrary native PNG frame keys."""
         previous = self.action_menu.currentData()
         self.action_menu.clear()
         self.action_menu.addItem("无额外动作", "")
@@ -241,6 +318,204 @@ class PetAssistantDialog(QDialog):
             self.action_menu.addItem(name, name)
         matched = self.action_menu.findData(previous)
         self.action_menu.setCurrentIndex(max(0, matched))
+        self._unlocked_actions = set(self.action_menu.itemData(i)
+            for i in range(1, self.action_menu.count()))
+        if self._last_random_action not in self._unlocked_actions:
+            self._last_random_action = None
+        previous_kind = self.interaction_menu.currentData()
+        if verified_group_interactions is None:
+            # Standalone dialog tests retain the original simple-name behavior.
+            self._interaction_plan = available_interactions(self._unlocked_actions)
+        else:
+            by_id = {x["id"]: x for x in verified_group_interactions
+                     if isinstance(x, dict) and isinstance(x.get("id"), str)}
+            self._interaction_plan = []
+            for entry in available_interactions([]):
+                matched = by_id.get(entry["id"], {})
+                selected = matched.get("action")
+                ready = (matched.get("available") is True and
+                         isinstance(selected, str) and
+                         selected in self._unlocked_actions)
+                self._interaction_plan.append({
+                    **entry, "action": selected if ready else None,
+                    "available": bool(ready)})
+        self.interaction_menu.blockSignals(True)
+        self.interaction_menu.clear()
+        for entry in self._interaction_plan:
+            suffix = " · " + entry["action"] if entry["available"] else " · 本角色暂无此动作"
+            self.interaction_menu.addItem(entry["label"] + suffix, entry["id"])
+        desired = self.interaction_menu.findData(previous_kind)
+        if desired < 0 or not self._interaction_plan[desired]["available"]:
+            desired = next((i for i, entry in enumerate(self._interaction_plan)
+                            if entry["available"]), 0)
+        self.interaction_menu.setCurrentIndex(desired)
+        self.interaction_menu.blockSignals(False)
+        self._refresh_interaction_button()
+
+    def _refresh_interaction_button(self, *_):
+        selected = requested_action(self._interaction_plan,
+                                   self.interaction_menu.currentData())
+        self.interaction_button.setEnabled(selected in self._unlocked_actions
+                                           if selected else False)
+        self.interaction_button.setToolTip(
+            "只播放当前角色已解锁的真实动作，不会补造不存在的动画" if selected
+            else "当前角色没有这种动作；请导入更完整的原作者动画素材")
+        choices = [entry["action"] for entry in self._interaction_plan
+                   if entry["available"] and entry["action"] in self._unlocked_actions]
+        self.random_action_button.setEnabled(bool(choices))
+        self.random_action_button.setToolTip(
+            "用户点击后随机执行当前桌宠已经解锁的真实动作；不连续重复"
+            if choices else "当前桌宠尚无已解锁的真实互动动作")
+        self._refresh_favorite_buttons()
+
+    def _refresh_favorite_buttons(self):
+        selected = requested_action(self._interaction_plan, self.interaction_menu.currentData())
+        self.favorite_action_button.setEnabled(
+            selected is not None and selected in self._unlocked_actions)
+        category = self._prefs["interaction_favorites"].get(self.character_name)
+        current = requested_action(self._interaction_plan, category)
+        can_play = current is not None and current in self._unlocked_actions
+        self.play_favorite_button.setEnabled(can_play)
+        self.play_favorite_button.setToolTip(
+            "只播放当前角色已解锁的收藏动画：" + current if can_play
+            else "本角色没有已解锁的收藏动作；切换素材后需重新核对")
+
+    def favorite_current_interaction(self):
+        """Explicit click: store a real unlocked category for this role alone."""
+        category = self.interaction_menu.currentData()
+        selected = requested_action(self._interaction_plan, category)
+        if selected is None or selected not in self._unlocked_actions:
+            self.status.setText("动作未解锁，未收藏。")
+            return
+        self._prefs["interaction_favorites"][self.character_name] = category
+        self._refresh_favorite_buttons()
+        self.status.setText("已收藏本角色真实动作：" + selected +
+                            "（点击保存助手设置后持久保留）")
+
+    def play_favorite_interaction(self):
+        """A favorite cannot unlock a stale/foreign role action."""
+        category = self._prefs["interaction_favorites"].get(self.character_name)
+        selected = requested_action(self._interaction_plan, category)
+        if selected is not None and selected in self._unlocked_actions:
+            self.action_requested.emit(selected)
+            self.status.setText("已请求本角色收藏的原生动作：" + selected)
+        else:
+            self.status.setText("本角色收藏动作当前不可用，未执行。")
+            self._refresh_favorite_buttons()
+
+    def play_manual_interaction(self):
+        """Only real user clicks emit an action; PetWidget validates it again."""
+        selected = requested_action(self._interaction_plan,
+                                   self.interaction_menu.currentData())
+        if selected is not None and selected in self._unlocked_actions:
+            self.action_requested.emit(selected)
+            self.status.setText("已请求当前桌宠执行原有动作：" + selected)
+        else:
+            self.status.setText("该角色尚无可用的对应动画；未执行任何动作。")
+
+    def play_random_interaction(self):
+        """A user click only; never run this from model text or timer."""
+        action = choose_random_real_action(
+            self._interaction_plan, previous=self._last_random_action)
+        if action is not None and action in self._unlocked_actions:
+            self.action_requested.emit(action)
+            self._last_random_action = action
+            self.status.setText("已请求当前桌宠执行真实动作：" + action)
+        else:
+            self.status.setText("当前角色无已解锁真实动画，未执行随机互动。")
+
+    def show_interaction_audit(self):
+        """Read only current role's action registry, never fabricate assets."""
+        from tools.character_interaction_coverage import inspect_selected_role_interactions
+        from .role_interactions import INTERACTION_CATEGORIES
+        try:
+            report = inspect_selected_role_interactions(
+                self.role_root, self.character_name,
+                unlocked_actions=self._unlocked_actions,
+                runtime_group_plan=self._interaction_plan)
+        except (OSError, ValueError) as exc:
+            self._job_error("互动素材检查失败：" + str(exc))
+            return
+        titles = {key: label for key, label, _aliases in INTERACTION_CATEGORIES}
+        status = {
+            "not_installed": "当前目录没有安装本角色的动画文件",
+            "builtin_demo_not_original_art": "程序演示角色，不属于原设作者素材",
+            "imported_artist_claim_not_verified": "本机有导入收据，来源与人物外观尚未人工核验",
+            "unverified_local_role": "本机角色来源身份未明确核验",
+        }.get(report["status"], "来源状态未知")
+        good = report["currently_unlocked_categories"]
+        still_missing = report["missing_categories"]
+        configured_but_missing = report.get("configured_but_unplayable_actions", [])
+        installed_but_locked = sorted(
+            set(report["installed_action_categories"]) - set(good))
+        lines = [
+            "当前桌宠：" + self.character_name,
+            "素材状态：" + status,
+            "安装的动作名称：" + ("、".join(report["on_disk_action_names"]) or "无"),
+            "仅有配置、缺少 PNG 帧：" + ("、".join(configured_but_missing) or "无"),
+            "有素材但当前未解锁：" + (
+                "、".join(titles.get(k, k) for k in installed_but_locked) or "无"),
+            "当前引擎可执行动作组：" + (
+                "、".join(f"{titles.get(k,k)} → {group}" for k, group
+                         in report.get("runtime_action_group_mapping", {}).items()) or "无"),
+            "可触发的互动类别：" + (
+                "、".join(titles.get(k, k) for k in good) or "无"),
+            "尚无对应真实动作的类别：" + (
+                "、".join(titles.get(k, k) for k in still_missing) or "无"),
+            "注意：动作配置可用不代表已完成原画身份、人设声音或真机连续播放验收。",
+            "演示素材及仅有角色名称的模板不计作原设美术完成。",
+        ]
+        QMessageBox.information(self, "当前角色互动覆盖 · 只读检查", "\n".join(lines))
+
+    def export_interaction_audit(self):
+        """Save an honest read-only snapshot for per-character manual QA."""
+        from tools.character_interaction_coverage import inspect_selected_role_interactions
+        try:
+            # Gather before opening the save dialog; do not create a success file
+            # when the current role is missing or its action config is unsafe.
+            report = inspect_selected_role_interactions(
+                self.role_root, self.character_name,
+                unlocked_actions=self._unlocked_actions,
+                runtime_group_plan=self._interaction_plan)
+        except (OSError, ValueError) as exc:
+            self._job_error("角色互动报告无法生成：" + str(exc))
+            return
+        report["inspection_scope"] = "current_role_native_frames_plus_verified_runtime_groups"
+        report["human_original_likeness_verified"] = False
+        report["manual_playback_verified"] = False
+        # The chosen character remains the only source of truth. No model text
+        # or remote script can write or approve this record.
+        destination, _ = QFileDialog.getSaveFileName(
+            self, "导出当前角色互动缺口", "role_interaction_audit.json",
+            "JSON Files (*.json)")
+        if not destination:
+            return
+        path = Path(destination).expanduser()
+        if path.suffix.lower() != ".json" or path.is_symlink():
+            self._job_error("只允许保存到普通的 JSON 报告文件")
+            return
+        try:
+            path.write_text(
+                json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8")
+        except OSError as exc:
+            self._job_error("保存角色互动报告失败：" + str(exc))
+            return
+        self.status.setText("已导出当前角色互动缺口（不代表人工原设验收）：" + path.name)
+
+    def preview_installed_actions(self):
+        """Preview actual installed frames; do not generate surrogate sprites."""
+        try:
+            path = self._role_path()
+            if path.is_symlink() or not path.is_dir():
+                raise ValueError("当前人物尚无可预览的本地角色目录")
+            from DyberPet.DyberSettings.mascot_preview_dialog import MascotActionPreview
+            demo = ((path / "BUILTIN_CHIBI_DEMO.json").is_file() or
+                    (path / "BUILTIN_MASCOT_DEMO.json").is_file())
+            preview = MascotActionPreview(path, original_demo=demo, parent=self)
+            preview.exec()
+        except (OSError, ValueError) as exc:
+            self._job_error("角色动画预览失败：" + str(exc))
 
     def _emit_selected_animation(self):
         action = self.action_menu.currentData()

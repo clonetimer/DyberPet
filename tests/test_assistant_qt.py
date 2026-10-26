@@ -34,6 +34,223 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog.set_character("Doro")
         self.assertEqual(self.dialog.persona.currentData(), "doro")
 
+    def test_readiness_button_is_read_only_and_does_not_touch_microphone(self):
+        self.assertIn("本机功能自检", self.dialog.readiness_button.text())
+        with patch("DyberPet.assistant.ui.inspect_readiness") as report, \
+             patch.object(QMessageBox, "information") as display:
+            report.return_value = {"checks": [
+                {"feature": "语音播报", "status": "disabled", "detail": "未启用"}]}
+            self.dialog.readiness_button.click()
+            self.assertTrue(display.called)
+            self.assertEqual(report.call_count, 1)
+            self.assertFalse(report.call_args.kwargs["ppl_enabled"])
+            self.assertIn("只读", display.call_args.args[2])
+        self.assertIsNone(self.dialog._job)
+
+    def test_role_interaction_export_is_explicit_and_never_claims_human_qa(self):
+        import json
+        from tools import character_interaction_coverage
+        file_path = Path(self.tmp.name) / "role_interaction_audit.json"
+        result = {
+            "role": "咕嘎", "status": "imported_artist_claim_not_verified",
+            "on_disk_action_names": ["wave"],
+            "installed_action_categories": ["greet"],
+            "currently_unlocked_categories": ["greet"],
+            "missing_categories": ["sleep"],
+            "art_likeness_qa_passed": False,
+        }
+        self.dialog.set_actions(["wave"])
+        with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
+                          return_value=result) as checker, \
+             patch("DyberPet.assistant.ui.QFileDialog.getSaveFileName",
+                   return_value=("", "")) as picker:
+            self.dialog.interaction_export_button.click()
+            self.assertEqual(checker.call_count, 1)
+            self.assertEqual(checker.call_args.kwargs["unlocked_actions"], {"wave"})
+            self.assertEqual(picker.call_count, 1)
+            self.assertFalse(file_path.exists())
+
+        with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
+                          return_value=result), \
+             patch("DyberPet.assistant.ui.QFileDialog.getSaveFileName",
+                   return_value=(str(file_path), "JSON Files (*.json)")):
+            self.dialog.interaction_export_button.click()
+        saved = json.loads(file_path.read_text("utf-8"))
+        self.assertEqual(saved["role"], "咕嘎")
+        self.assertEqual(saved["currently_unlocked_categories"], ["greet"])
+        self.assertFalse(saved["human_original_likeness_verified"])
+        self.assertFalse(saved["manual_playback_verified"])
+        self.assertIn("不代表人工原设验收", self.dialog.status.text())
+        self.dialog.set_character("Doro")
+        with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
+                          return_value={**result, "role": "Doro"}) as checker, \
+             patch("DyberPet.assistant.ui.QFileDialog.getSaveFileName",
+                   return_value=(str(file_path.with_suffix(".txt")), "Text")):
+            self.dialog.interaction_export_button.click()
+            self.assertEqual(checker.call_args.args[1], "Doro")
+            self.assertFalse(file_path.with_suffix(".txt").exists())
+
+    def test_exact_persona_changes_with_imported_role_identity(self):
+        import json
+        root = Path(self.tmp.name) / "personal_roles"
+        root.mkdir()
+        for folder, character in (("SourceKaveh", "genshin_kaveh"),
+                                  ("SourceKirara", "genshin_kirara")):
+            d = root / folder
+            d.mkdir()
+            (d / "PERSONAL_IMPORT.json").write_text(
+                json.dumps({"selected_profile": character}), encoding="utf-8")
+        self.dialog.role_root = root
+        self.dialog._prefs["personas"].pop("SourceKaveh", None)
+        self.dialog._prefs["personas"].pop("SourceKirara", None)
+        self.dialog.set_character("SourceKaveh")
+        self.assertEqual(self.dialog.persona.currentData(), "genshin_kaveh")
+        self.dialog.set_character("SourceKirara")
+        self.assertEqual(self.dialog.persona.currentData(), "genshin_kirara")
+        self.assertLessEqual(self.dialog.persona.count(), 10)
+        self.assertEqual(self.dialog.persona.findData("genshin_kaveh"), -1)
+        self.dialog.set_character("UnmappedCharacter")
+        self.assertEqual(self.dialog.persona.currentData(), "companion")
+        self.assertEqual(self.dialog.persona.findData("genshin_kirara"), -1)
+
+    def test_current_role_gap_button_reads_only_selected_role_and_zeroes_stale_actions(self):
+        self.assertIn("互动缺口", self.dialog.interaction_audit_button.text())
+        self.dialog.set_actions(["wave"])
+        report = {
+            "role": "咕嘎", "status": "imported_artist_claim_not_verified",
+            "on_disk_action_names": ["wave"],
+            "installed_action_categories": ["greet"],
+            "currently_unlocked_categories": ["greet"],
+            "missing_categories": ["sleep"],
+            "art_likeness_qa_passed": False,
+        }
+        from tools import character_interaction_coverage  # ensure lazy-loaded module exists
+        with patch.object(character_interaction_coverage, "inspect_selected_role_interactions",
+                          return_value=report) as inspector, \
+             patch.object(QMessageBox, "information") as message:
+            self.dialog.interaction_audit_button.click()
+            self.assertEqual(inspector.call_count, 1)
+            self.assertEqual(inspector.call_args.args[1], "咕嘎")
+            self.assertEqual(inspector.call_args.kwargs["unlocked_actions"], {"wave"})
+            self.assertIsInstance(inspector.call_args.kwargs["runtime_group_plan"], list)
+            self.assertIn("打招呼", message.call_args.args[2])
+            self.assertIn("未人工核验", message.call_args.args[2])
+            self.dialog.set_character("Doro")
+            self.dialog.interaction_audit_button.click()
+            self.assertEqual(inspector.call_args.args[1], "Doro")
+            self.assertEqual(inspector.call_args.kwargs["unlocked_actions"], set())
+
+    def test_preview_reuses_actual_local_role_frames_and_marks_demo_as_demo(self):
+        root = Path(self.tmp.name) / "pet_roles"
+        folder = root / "咕嘎"
+        folder.mkdir(parents=True)
+        self.dialog.role_root = root
+        with patch("DyberPet.DyberSettings.mascot_preview_dialog.MascotActionPreview") as preview:
+            self.dialog.action_preview_button.click()
+            self.assertEqual(preview.call_count, 1)
+            self.assertEqual(preview.call_args.args[0].resolve(), folder.resolve())
+            self.assertFalse(preview.call_args.kwargs["original_demo"])
+            preview.return_value.exec.assert_called_once()
+            (folder / "BUILTIN_MASCOT_DEMO.json").write_text("{}", encoding="utf-8")
+            self.dialog.action_preview_button.click()
+            self.assertTrue(preview.call_args.kwargs["original_demo"])
+
+    def test_real_group_commands_are_routed_to_petwidget_not_frame_names(self):
+        from DyberPet.assistant.native_groups import runtime_group_interactions
+        commands = []
+        self.dialog.action_requested.connect(commands.append)
+        params = {
+            label: {"unlocked": True, "act_type": "random_act"}
+            for label in ("打招呼", "左右散步", "蹦一蹦")}
+        groups = [{"name": "打招呼", "act_list": ["wave"]},
+                  {"name": "左右散步", "act_list": ["left_walk", "right_walk"]},
+                  {"name": "蹦一蹦", "act_list": ["jump"]}]
+        plan = runtime_group_interactions(params, groups,
+                                          {"wave", "left_walk", "right_walk", "jump"})
+        self.dialog.set_actions(list(params), verified_group_interactions=plan)
+        self.assertTrue(self.dialog.interaction_button.isEnabled())
+        self.dialog.interaction_button.click()
+        self.assertEqual(commands, ["打招呼"])
+        self.dialog.interaction_menu.setCurrentIndex(
+            self.dialog.interaction_menu.findData("walk"))
+        self.dialog.favorite_action_button.click()
+        self.dialog.play_favorite_button.click()
+        self.assertEqual(commands, ["打招呼", "左右散步"])
+        plan = runtime_group_interactions(params, groups, {"wave", "jump"})
+        self.dialog.set_actions(list(params), verified_group_interactions=plan)
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.play_favorite_interaction()
+        self.assertEqual(len(commands), 2)
+
+    def test_character_specific_manual_actions_use_only_unlocked_animation(self):
+        requests = []
+        self.dialog.action_requested.connect(requests.append)
+        self.dialog.set_actions(["wave", "jump", "idle", "lookaround"])
+        self.assertTrue(self.dialog.interaction_button.isEnabled())
+        self.assertEqual(self.dialog.interaction_menu.currentData(), "greet")
+        self.dialog.interaction_button.click()
+        self.assertEqual(requests, ["wave"])
+        idx = self.dialog.interaction_menu.findData("talk")
+        self.assertGreaterEqual(idx, 0)
+        self.dialog.interaction_menu.setCurrentIndex(idx)
+        self.assertFalse(self.dialog.interaction_button.isEnabled())
+        self.dialog.play_manual_interaction()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_character("Doro")
+        self.assertFalse(self.dialog.interaction_button.isEnabled())
+        self.dialog.play_manual_interaction()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_actions(["左右散步", "打招呼"])
+        self.assertTrue(self.dialog.interaction_button.isEnabled())
+        self.dialog.interaction_menu.setCurrentIndex(
+            self.dialog.interaction_menu.findData("walk"))
+        self.dialog.interaction_button.click()
+        self.assertEqual(requests, ["wave", "左右散步"])
+
+    def test_favorite_real_interaction_never_borrows_a_previous_role_action(self):
+        requests = []
+        self.dialog.action_requested.connect(requests.append)
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.set_actions(["wave", "jump"])
+        self.dialog.favorite_action_button.click()
+        self.assertEqual(self.dialog._prefs["interaction_favorites"]["咕嘎"], "greet")
+        self.dialog.play_favorite_button.click()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_actions(["jump"])
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.play_favorite_interaction()
+        self.assertEqual(requests, ["wave"])
+        self.dialog.set_character("Doro")
+        self.dialog.set_actions(["wave"])
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.favorite_action_button.click()
+        self.dialog.play_favorite_button.click()
+        self.assertEqual(requests, ["wave", "wave"])
+        self.dialog.set_character("咕嘎")
+        self.assertFalse(self.dialog.play_favorite_button.isEnabled())
+        self.dialog.set_actions(["wave"])
+        self.dialog.play_favorite_button.click()
+        self.assertEqual(requests, ["wave", "wave", "wave"])
+
+    def test_random_real_interaction_uses_only_current_role_and_avoids_repeats(self):
+        received = []
+        self.dialog.action_requested.connect(received.append)
+        self.assertFalse(self.dialog.random_action_button.isEnabled())
+        self.dialog.set_actions(["wave", "jump", "idle"])
+        self.assertTrue(self.dialog.random_action_button.isEnabled())
+        self.dialog.random_action_button.click()
+        self.dialog.random_action_button.click()
+        self.assertEqual(set(received), {"wave", "jump"})
+        self.assertNotEqual(received[0], received[1])
+        self.dialog.set_character("Doro")
+        self.assertFalse(self.dialog.random_action_button.isEnabled())
+        self.dialog.play_random_interaction()
+        self.assertEqual(len(received), 2)
+        self.dialog.set_actions(["climb"])
+        self.dialog.random_action_button.click()
+        self.assertEqual(received[-1], "climb")
+        self.assertEqual(self.dialog._last_random_action, "climb")
+
     def test_bubble_signals_and_stale_character_responses(self):
         replies, notices = [], []
         self.dialog.reply_ready.connect(replies.append)

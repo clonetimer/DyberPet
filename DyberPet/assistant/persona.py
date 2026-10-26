@@ -111,6 +111,40 @@ PERSONAS = {
 }
 
 
+
+def _register_curated_genshin_personas():
+    """One offline persona per roster ID, never derived from downloaded art.
+
+    These are lightweight *non-official* text profiles based only on our own
+    chibi configuration and independently written original dialogue.
+    """
+    from tools.chibi_profiles import CHIBI_PROFILES
+    count = 0
+    for key, entry in sorted(CHIBI_PROFILES.items()):
+        if not key.startswith("genshin_"):
+            continue
+        title = entry["name"]
+        cues = entry["dialogue"]
+        greeting = cues.get("pat_random_1", "")
+        focus = cues.get("pat_focus", "")
+        PERSONAS[key] = Persona(
+            key, title + " · 非官方 Q 版",
+            "你是以《原神》的" + title +
+            "为灵感设计的非官方Q版桌宠伙伴。"
+            "保留这个人物与其他桌宠不同的口吻和小兴趣，但不要编造官方背景。"
+            "只使用原创、简短、自然的中文句子；本地原创互动参考："
+            + str(greeting)[:100] + "；" + str(focus)[:100] + "。",
+            "不引用大段游戏原作台词，不冒称拥有原配音或官方剧情。"
+            "不声称已通过角色形象、语音或版权审核，也不能替用户操作文件。"
+        )
+        count += 1
+    if count != 123:
+        raise ValueError("All 123 curated Genshin role text profiles required")
+
+
+_register_curated_genshin_personas()
+
+
 def session_id(character_name: str, identity: str = "desktop_user") -> str:
     digest = hashlib.sha256(
         f"{identity}\x00{character_name}".encode("utf-8")).hexdigest()[:24]

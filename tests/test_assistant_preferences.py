@@ -28,6 +28,19 @@ class AssistantPreferencesTests(unittest.TestCase):
         self.assertEqual(load(self.file), prefs)
         self.assertEqual(list(self.file.parent.glob("*.tmp")), [])
 
+    def test_per_role_favorite_categories_are_validated_and_saved(self):
+        prefs = defaults()
+        prefs["interaction_favorites"] = {"咕嘎": "greet", "Doro": "jump"}
+        save(prefs, self.file)
+        self.assertEqual(load(self.file)["interaction_favorites"], prefs["interaction_favorites"])
+        for bad in ({"../Other": "jump"}, {"Doro": "madeup"},
+                    {"Doro": None}, {"Doro": ["greet"]}, {"Doro": {}}):
+            raw = defaults()
+            raw["interaction_favorites"] = bad
+            with self.assertRaises(ValueError):
+                validate(raw)
+        self.assertEqual(load(self.file), prefs)
+
     def test_reject_external_endpoint_and_never_replace_valid_file(self):
         initial = defaults()
         save(initial, self.file)

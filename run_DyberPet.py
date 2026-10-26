@@ -395,9 +395,19 @@ def _assistant_package_smoke():
     # the *frozen* EXE/ELF; this does not download art or publish images.
     from tools.install_artist_genshin import ROLES as original_genshin
     from tools.install_artist_codex import SOURCES as codex_art
+    from tools.install_artist_shimeji import source_manifest
     from tools.install_creator_mascots import UPSTREAM as mascot_art
+    from tools.character_source_coverage import source_coverage
+    from tools.install_nanopet_shimeji import source_manifest as nano_manifest
+    from tools.install_external_codex import source_manifest as external_manifest
+    creator = source_coverage()["summary"]
     report["public_art_sources_ready"] = (
-        len(original_genshin) == 3 and len(codex_art) == 12
+        len(original_genshin) == 3 and len(codex_art) == 15
+        and len(source_manifest()["roles"]) == 8
+        and creator["template_count"] == 123
+        and len(nano_manifest()["roles"]) == 17
+        and len(external_manifest()["sources"]) == 11
+        and creator["characters_with_pinned_sources"] >= 59
         and {"guga", "doro"}.issubset(mascot_art))
     if not report["public_art_sources_ready"]:
         raise RuntimeError("Pinned original-art installers missing from executable")
@@ -480,10 +490,21 @@ def _assistant_package_smoke():
         try:
             selector.show()
             app.processEvents()
-            if (not selector.isVisible() or selector.results.count()!=0 or
-                    selector.statusFilter.currentData()!="personal"):
-                raise RuntimeError("Low-fidelity demos unexpectedly recommended")
+            if (not selector.isVisible() or selector.results.count()!=creator["characters_with_pinned_sources"] or
+                    selector.statusFilter.currentData()!="source"):
+                raise RuntimeError("Default catalog count must match verified pinned creator-art source registry")
+            if any("作者来源" not in selector.results.item(i).text()
+                   for i in range(selector.results.count())):
+                raise RuntimeError("Source filter exposed an unverified demo without author provenance")
+            # A creator source must NOT be confused with the installed role:
+            # an untouched portable build has 125 temporary QA demos only.
+            selector.statusFilter.setCurrentIndex(
+                selector.statusFilter.findData("personal"))
+            app.processEvents()
+            if selector.results.count()!=0:
+                raise RuntimeError("Uninstalled creator candidates falsely marked as installed")
             selector.statusFilter.setCurrentIndex(selector.statusFilter.findData("all"))
+            selector.familyFilter.setCurrentIndex(selector.familyFilter.findData("all"))
             selector.searchBox.setText("Lisa")
             app.processEvents()
             if (selector.results.count()!=1 or

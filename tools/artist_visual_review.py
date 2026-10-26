@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, UnidentifiedImageError
 ACTIONS = ("default", "left", "right", "patpat", "drag", "fall", "on_floor")
 MAX_FRAME_BYTES = 8 * 1024 * 1024
 MAX_PIXELS_SIDE = 4096
-MAX_ROWS = 7
+MAX_ROWS = 16
 
 
 def _read_json(path):
@@ -53,8 +53,10 @@ def create_native_art_review(folder, *, output=None):
     actions = _read_json(role / "act_conf.json")
     rows = []
     seen = set()
-    for entry in ACTIONS:
-        name = pet.get(entry)
+    # Include every available real artist action (wave/jump/rest/etc.), not
+    # only the legacy seven pet_conf triggers. Skip repeated references.
+    for entry in ACTIONS + tuple(k for k in sorted(actions) if k not in ACTIONS):
+        name = pet.get(entry) if entry in ACTIONS else entry
         if not isinstance(name, str) or name in seen:
             continue
         config = actions.get(name)

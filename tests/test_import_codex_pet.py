@@ -45,7 +45,9 @@ class ImportCodexPetTests(unittest.TestCase):
         role = json.loads((out / "pet_conf.json").read_text(encoding="utf-8"))
         acts = json.loads((out / "act_conf.json").read_text(encoding="utf-8"))
         self.assertEqual(role["default"], "idle")
-        self.assertEqual(role["patpat"], "wave")
+        self.assertEqual(role["patpat"], "idle")
+        self.assertIn("wave", acts)  # Greeting still exists as a distinct gesture
+        self.assertNotIn("patpat", acts)  # A wave cannot stand in for creator-made petting
         self.assertTrue(acts["right_walk"]["need_move"])
         self.assertEqual(len(list((out / "action").glob("idle_*.png"))), 1)
         with Image.open(out / "action" / "idle_0.png") as image:
@@ -63,6 +65,16 @@ class ImportCodexPetTests(unittest.TestCase):
             self.assertEqual(icon.convert("RGBA").getpixel((0, 0))[3], 0)
         with Image.open(out / "info" / "cover.png") as cover:
             self.assertEqual(cover.size, (300, 169))
+
+    def test_wave_only_atlas_never_fakes_petting_interaction(self):
+        self.make_atlas(populated_rows=[0, 3])
+        role = convert(self.source, self.dest, preset="guga")
+        actions = json.loads((role / "act_conf.json").read_text("utf-8"))
+        pet = json.loads((role / "pet_conf.json").read_text("utf-8"))
+        self.assertIn("wave", actions)
+        self.assertNotIn("patpat", actions)
+        self.assertEqual(pet["patpat"], "idle")
+        self.assertTrue(any(x["name"] == "打招呼" for x in pet["random_act"]))
 
     def test_artist_source_retains_exact_pixels_and_persona_without_shifts(self):
         """The real-source path must ignore generic chibi ground correction."""

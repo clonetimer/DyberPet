@@ -45,9 +45,54 @@ on:
       - "DyberPet/DyberSettings/character_catalog_dialog.py"
       - "tests/test_character_catalog_search.py"
       - "tests/test_character_progress.py"
+      - "tests/test_linux_catalog_registry_count.py"
+      - "tools/linux_gui_smoke.py"
       - "tools/install_creator_mascots.py"
       - "tools/install_artist_genshin.py"
       - "tools/install_artist_codex.py"
+      - "tools/install_artist_shimeji.py"
+      - "tools/artist_shimeji_sources.json"
+      - "tools/install_nanopet_shimeji.py"
+      - "tools/install_personal_shimeji_zip.py"
+      - "tools/probe_shimejishop_itto.py"
+      - "tests/test_shimejishop_itto.py"
+      - "tools/artist_animation_audit.py"
+      - "tools/install_pinned_codexpetdb.py"
+      - "tools/discover_new_codexpetdb_pins.py"
+      - "tools/probe_live_missing_codexpetdb.py"
+      - "tests/test_new_codexpetdb_discovery.py"
+      - "tools/codexpetdb_next_zip_probe.json"
+      - "tools/codexpetdb_batch3_zip_probe.json"
+      - "tools/codexpetdb_batch4_zip_probe.json"
+      - "tools/codexpetdb_pending_zip_leads.json"
+      - "tools/verify_pending_codexpetdb.py"
+      - "tests/test_pending_source_probes.py"
+      - "tools/codexpetdb_pinned_zip_leads.json"
+      - "tools/artist_visual_review.py"
+      - "tools/install_personal_codex_zip.py"
+      - "tools/community_codex_leads.py"
+      - "tools/react_shimeji_source_leads.py"
+      - "tools/install_pinned_react_shimeji.py"
+      - "tools/probe_missing_react_lfs.py"
+      - "tools/nanopet_shimeji_sources.json"
+      - "tools/external_codex_art_sources.json"
+      - "tools/install_external_codex.py"
+      - "tests/test_external_codex_sources.py"
+      - "tests/test_nanopet_shimeji_sources.py"
+      - "tests/test_personal_shimeji_zip.py"
+      - "tests/test_artist_animation_audit.py"
+      - "tests/test_pinned_codexpetdb.py"
+      - "tests/test_pinned_gui_dispatch.py"
+      - "tests/test_personal_codex_zip.py"
+      - "tests/test_community_codex_leads.py"
+      - "tests/test_react_shimeji_leads.py"
+      - "tests/test_pinned_react_shimeji.py"
+      - "tests/test_missing_react_lfs_probe.py"
+      - "tests/test_react_shimeji_qt.py"
+      - "tools/character_source_coverage.py"
+      - "tools/creator_art_preference.py"
+      - "tests/test_creator_art_preferences.py"
+      - "tests/test_artist_shimeji_sources.py"
       - "tests/test_artist_codex_install.py"
       - "tests/test_artist_genshin_install.py"
       - "tests/test_creator_mascot_fetch.py"
@@ -114,9 +159,54 @@ on:
       - "DyberPet/DyberSettings/character_catalog_dialog.py"
       - "tests/test_character_catalog_search.py"
       - "tests/test_character_progress.py"
+      - "tests/test_linux_catalog_registry_count.py"
+      - "tools/linux_gui_smoke.py"
       - "tools/install_creator_mascots.py"
       - "tools/install_artist_genshin.py"
       - "tools/install_artist_codex.py"
+      - "tools/install_artist_shimeji.py"
+      - "tools/artist_shimeji_sources.json"
+      - "tools/install_nanopet_shimeji.py"
+      - "tools/install_personal_shimeji_zip.py"
+      - "tools/probe_shimejishop_itto.py"
+      - "tests/test_shimejishop_itto.py"
+      - "tools/artist_animation_audit.py"
+      - "tools/install_pinned_codexpetdb.py"
+      - "tools/discover_new_codexpetdb_pins.py"
+      - "tools/probe_live_missing_codexpetdb.py"
+      - "tests/test_new_codexpetdb_discovery.py"
+      - "tools/codexpetdb_next_zip_probe.json"
+      - "tools/codexpetdb_batch3_zip_probe.json"
+      - "tools/codexpetdb_batch4_zip_probe.json"
+      - "tools/codexpetdb_pending_zip_leads.json"
+      - "tools/verify_pending_codexpetdb.py"
+      - "tests/test_pending_source_probes.py"
+      - "tools/codexpetdb_pinned_zip_leads.json"
+      - "tools/artist_visual_review.py"
+      - "tools/install_personal_codex_zip.py"
+      - "tools/community_codex_leads.py"
+      - "tools/react_shimeji_source_leads.py"
+      - "tools/install_pinned_react_shimeji.py"
+      - "tools/probe_missing_react_lfs.py"
+      - "tools/nanopet_shimeji_sources.json"
+      - "tools/external_codex_art_sources.json"
+      - "tools/install_external_codex.py"
+      - "tests/test_external_codex_sources.py"
+      - "tests/test_nanopet_shimeji_sources.py"
+      - "tests/test_personal_shimeji_zip.py"
+      - "tests/test_artist_animation_audit.py"
+      - "tests/test_pinned_codexpetdb.py"
+      - "tests/test_pinned_gui_dispatch.py"
+      - "tests/test_personal_codex_zip.py"
+      - "tests/test_community_codex_leads.py"
+      - "tests/test_react_shimeji_leads.py"
+      - "tests/test_pinned_react_shimeji.py"
+      - "tests/test_missing_react_lfs_probe.py"
+      - "tests/test_react_shimeji_qt.py"
+      - "tools/character_source_coverage.py"
+      - "tools/creator_art_preference.py"
+      - "tests/test_creator_art_preferences.py"
+      - "tests/test_artist_shimeji_sources.py"
       - "tests/test_artist_codex_install.py"
       - "tests/test_artist_genshin_install.py"
       - "tests/test_creator_mascot_fetch.py"
@@ -158,7 +248,7 @@ jobs:
       - name: Install image dependency
         run: python -m pip install "Pillow>=10,<13"
       - name: Compile modified Python modules
-        run: python -m py_compile tools/chibi_clip_map.py tools/render_chibi_blender.py tools/audit_character_sources.py tools/character_pipeline.py tools/install_native_role.py DyberPet/conf.py tools/import_codex_pet.py tools/import_chibi_animations.py tools/chibi_layout.py tools/chibi_profiles.py tools/genshin_library.py tools/genshin_roster.py tools/genshin_complete_roster.py tools/genshin_batch.py tools/create_original_mascot.py tools/generate_builtin_chibi_demos.py tools/generate_mascot_demos.py tools/mascot_library.py tools/role_family.py tests/test_role_family_ownership.py tools/personal_role_import.py tools/chibi_preview.py DyberPet/DyberSettings/CharCardUI.py DyberPet/DyberSettings/mascot_preview_dialog.py tools/role_action_preview.py tools/character_catalog_search.py DyberPet/DyberSettings/character_catalog_dialog.py tests/test_character_catalog_search.py tests/test_mascot_live_preview.py tests/test_qt_character_loader.py
+        run: python -m py_compile tools/creator_art_preference.py tools/character_source_coverage.py tests/test_creator_art_preferences.py tools/chibi_clip_map.py tools/render_chibi_blender.py tools/audit_character_sources.py tools/character_pipeline.py tools/install_native_role.py DyberPet/conf.py tools/import_codex_pet.py tools/import_chibi_animations.py tools/chibi_layout.py tools/chibi_profiles.py tools/genshin_library.py tools/genshin_roster.py tools/genshin_complete_roster.py tools/genshin_batch.py tools/create_original_mascot.py tools/generate_builtin_chibi_demos.py tools/generate_mascot_demos.py tools/mascot_library.py tools/role_family.py tests/test_role_family_ownership.py tools/personal_role_import.py tools/chibi_preview.py DyberPet/DyberSettings/CharCardUI.py DyberPet/DyberSettings/mascot_preview_dialog.py tools/role_action_preview.py tools/character_catalog_search.py DyberPet/DyberSettings/character_catalog_dialog.py tests/test_character_catalog_search.py tests/test_mascot_live_preview.py tests/test_qt_character_loader.py
       - name: Check standalone Windows-friendly CLI
         run: python tools/import_codex_pet.py --help
       - name: Check GIF/PNG importer CLI
@@ -189,6 +279,28 @@ jobs:
         run: python tools/render_chibi_blender.py --help
       - name: Check lightweight creator spritesheet source CLI
         run: python tools/install_artist_codex.py --help
+      - name: Review pinned Shimeji source definitions
+        run: |
+          python tools/install_artist_shimeji.py --help
+          python tools/install_nanopet_shimeji.py --help
+          python tools/install_external_codex.py --help
+          python -m unittest discover -s tests -p "test_external_codex_sources.py" -v
+          python tools/character_source_coverage.py --missing-only > missing-creator-sources.json
+          python -m unittest discover -s tests -p "test_nanopet_shimeji_sources.py" -v
+          python -m unittest discover -s tests -p "test_personal_shimeji_zip.py" -v
+          python -m unittest discover -s tests -p "test_shimejishop_itto.py" -v
+          python -m unittest discover -s tests -p "test_artist_animation_audit.py" -v
+          python -m unittest discover -s tests -p "test_pinned_codexpetdb.py" -v
+          python -m unittest discover -s tests -p "test_pending_source_probes.py" -v
+          python -m unittest discover -s tests -p "test_new_codexpetdb_discovery.py" -v
+          python -m unittest discover -s tests -p "test_pinned_gui_dispatch.py" -v
+          python -m unittest discover -s tests -p "test_personal_codex_zip.py" -v
+          python -m unittest discover -s tests -p "test_community_codex_leads.py" -v
+          python -m unittest discover -s tests -p "test_react_shimeji_leads.py" -v
+          python -m unittest discover -s tests -p "test_pinned_react_shimeji.py" -v
+          python -m unittest discover -s tests -p "test_missing_react_lfs_probe.py" -v
+          python -m unittest discover -s tests -p "test_artist_shimeji_sources.py" -v
+          python -m unittest discover -s tests -p "test_creator_art_preferences.py" -v
       - name: Test Git-pinned 6-role Codex source registry
         run: python -m unittest discover -s tests -p "test_artist_codex_install.py" -v
       - name: Check artist-source personal installer CLI
@@ -236,6 +348,100 @@ jobs:
               assert geometry["aligned_frames_per_action"]=={},key
               print("REAL_ART_PIXELS_VALIDATED",key,report)
           PY
+      - name: Download genuine Shimeji frames and exercise native actions
+        shell: bash
+        run: |
+          for role in albedo venti; do
+            python tools/install_artist_shimeji.py "$role" --role-root "$RUNNER_TEMP/shimeji-source-qa" --accept-personal-use
+          done
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from tools.install_native_role import validate_native_role
+          from PIL import Image
+          root=Path(os.environ["RUNNER_TEMP"])/"shimeji-source-qa"
+          for kind in ("albedo", "venti"):
+              role=root/("SourceShimeji"+kind.title())
+              report=validate_native_role(role)
+              assert report["images"]>=10 and report["actions"]>=5,(kind,report)
+              receipt=json.loads((role/"PERSONAL_IMPORT.json").read_text("utf-8"))
+              assert receipt["source_kind"]=="creator_shimeji_frames"
+              assert receipt["likeness_manually_reviewed"] is False
+              for name in ("stand_0.png","drag_0.png","fall_0.png","walk_0.png"):
+                  with Image.open(role/"action"/name) as img:
+                      img.verify()
+              print("REAL_SHIMEJI_FRAMES_VALIDATED",kind,report)
+          PY
+      - name: Download 2 new Genshin identities from NanoPet author-credited Shimeji
+        shell: bash
+        run: |
+          for role in aether-by-tenkotenmeo zhongli-by-vol-tuna; do
+            python tools/install_nanopet_shimeji.py "$role" --role-root "$RUNNER_TEMP/nanopet-author-qa" --accept-personal-use
+          done
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from PIL import Image
+          from tools.install_native_role import validate_native_role
+          root=Path(os.environ["RUNNER_TEMP"])/"nanopet-author-qa"
+          roles={"aether-by-tenkotenmeo":"genshin_traveler_aether",
+                 "zhongli-by-vol-tuna":"genshin_zhongli"}
+          for source,profile in roles.items():
+              folder="SourceNano"+"".join(w.title() for w in source.replace("-by-","-").split("-"))
+              role=root/folder
+              meta=json.loads((role/"PERSONAL_IMPORT.json").read_text("utf-8"))
+              assert meta["selected_profile"]==profile
+              assert meta["all_original_frames_preserved"]>=45
+              assert not meta["likeness_manually_reviewed"]
+              assert validate_native_role(role)["actions"]>=8
+              for file in ("stand_0.png","walk_0.png","drag_0.png","fall_0.png"):
+                  with Image.open(role/"action"/file) as im: im.verify()
+              print("REAL_NANOPET_AUTHOR_FRAMES_OK",source)
+          PY
+      - name: Download independent Linnea creator sprite atlas; verify native Qt compatible frames
+        shell: bash
+        run: |
+          python tools/install_external_codex.py linnea --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python tools/install_external_codex.py sandrone --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python tools/install_external_codex.py keqing_chibi --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python tools/install_external_codex.py keqing_classic --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python tools/install_external_codex.py sayu_cozy --role-root "$RUNNER_TEMP/external-art-qa" --accept-personal-use
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from PIL import Image
+          from tools.install_native_role import validate_native_role
+          root=Path(os.environ["RUNNER_TEMP"])/"external-art-qa"/"SourceExternalLinnea"
+          meta=json.loads((root/"PERSONAL_IMPORT.json").read_text("utf-8"))
+          assert meta["selected_profile"]=="genshin_linnea",meta
+          assert meta["source_pixel_integrity_verified"] is True
+          assert not meta["likeness_manually_reviewed"]
+          role=validate_native_role(root)
+          assert role["images"]>=6 and role["actions"]>=2,role
+          for fn in ("pet_conf.json","act_conf.json","IMPORT_REPORT.json"):
+              assert (root/fn).is_file(),fn
+          for file in list((root/"action").glob("*.png"))[:5]:
+              with Image.open(file) as im: im.verify()
+          print("REAL_INDEPENDENT_LINNEA_FRAMES_OK",role)
+          sandrone=Path(os.environ["RUNNER_TEMP"])/"external-art-qa"/"SourceExternalSandrone"
+          info=json.loads((sandrone/"PERSONAL_IMPORT.json").read_text("utf-8"))
+          assert info["selected_profile"]=="genshin_sandrone"
+          assert info["source_pixel_integrity_verified"] is True
+          assert not info["likeness_manually_reviewed"]
+          checked=validate_native_role(sandrone)
+          assert checked["images"]>=6 and checked["actions"]>=2,checked
+          print("REAL_SANDRONE_AUTHOR_FRAMES_OK",checked)
+          for kind in ("KeqingChibi", "KeqingClassic"):
+              keqing=Path(os.environ["RUNNER_TEMP"])/"external-art-qa"/("SourceExternal"+kind)
+              receipt=json.loads((keqing/"PERSONAL_IMPORT.json").read_text("utf-8"))
+              assert receipt["selected_profile"]=="genshin_keqing",receipt
+              assert receipt["source_pixel_integrity_verified"]
+              assert not receipt["likeness_manually_reviewed"]
+              q=validate_native_role(keqing)
+              assert q["actions"]>=2 and q["images"]>=6,q
+              assert (keqing/"ANIMATION_PREVIEW.png").is_file()
+              print("REAL_AUTHOR_KEQING_OK",kind,q)
+          PY
       # No artifact upload: author-created character images are temporary CI input.
 
   qt-loader-smoke:
@@ -252,7 +458,9 @@ jobs:
       - name: Exercise real QPixmap and PetConfig role loader
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests -p "test_qt_character_loader.py" -v
+        run: |
+          python -m unittest discover -s tests -p "test_qt_character_loader.py" -v
+          python -m unittest discover -s tests -p "test_react_shimeji_qt.py" -v
 
   package-original-role:
     name: downloadable-original-role
@@ -298,3 +506,174 @@ jobs:
           path: StarSprout-Original-Role.zip
           if-no-files-found: error
           retention-days: 14
+
+  provider-zip-integrity:
+    name: Public CodexPetDB r1 ZIP integrity (non-gating candidate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Prepare PNG atlas verifier
+        run: python -m pip install Pillow
+      - name: Discover unpinned genuine Genshin role revisions (no art installed)
+        continue-on-error: true
+        timeout-minutes: 2
+        run: python tools/discover_new_codexpetdb_pins.py --limit 25
+      - name: Download each SHA-pinned creator ZIP once, then install from verified local cache
+        timeout-minutes: 5
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from tools.install_pinned_codexpetdb import (
+              get_verified_package, inspect_codex_zip, install_pinned_codexpetdb
+          )
+          tmp = Path(os.environ["RUNNER_TEMP"])
+          root = tmp / "petdb-creator-qa"
+          cache = tmp / "petdb-one-download-only"
+          cache.mkdir(parents=True, exist_ok=True)
+          installed = []
+          for key in ("kaveh", "kinich", "kirara", "alhaitham"):
+              payload, record = get_verified_package(key)
+              local = cache / (record["slug"] + ".zip")
+              local.write_bytes(payload)  # Already matched exact SHA-256 and file length.
+              bundle = inspect_codex_zip(local)
+              assert bundle["manifest"]["id"] == record["slug"]
+              role = install_pinned_codexpetdb(
+                  key, root, confirmed=True, archive=local)
+              installed.append(role)
+              receipt = json.loads((role / "PERSONAL_IMPORT.json").read_text("utf-8"))
+              report = json.loads((role / "ACTION_PIXEL_AUDIT.json").read_text("utf-8"))
+              assert receipt["source_zip_sha256_verified"] == record["sha256"]
+              assert (role / "ANIMATION_PREVIEW.png").exists()
+              assert not report["summary"]["character_visual_likeness_verified"]
+              assert report["summary"]["original_frames_inspected"] > 0
+              print("VERIFIED_SOURCE_AND_NATIVE_IMPORT", key, len(payload), report["summary"])
+          assert len(installed) == 4
+          assert {json.loads((r / "PERSONAL_IMPORT.json").read_text("utf-8"))[
+              "selected_profile"] for r in installed} == {
+              "genshin_kaveh", "genshin_kinich",
+              "genshin_kirara", "genshin_alhaitham"
+          }
+          PY
+
+  new-creator-zip-probe:
+    name: Four new creator ZIPs verified and converted (non-gating candidate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PNG/WebP decoder
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Independently verify original ZIP SHA, identity, pixels and native import
+        timeout-minutes: 8
+        run: python tools/verify_pending_codexpetdb.py
+
+  next-creator-zip-probe:
+    name: Next four Genshin ZIP byte and animation verification (non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install original atlas decoding dependency
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Verify four genuinely missing characters, never redistribute art
+        timeout-minutes: 8
+        run: python tools/verify_pending_codexpetdb.py --candidate-file tools/codexpetdb_batch4_zip_probe.json
+
+  missing-original-lfs-probe:
+    name: Amber and Fischl full LFS bytes and native animation probe (non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install local original-image parser
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Require real upstream bytes, SHA-256, PNG poses and native role installation
+        timeout-minutes: 5
+        run: python tools/probe_missing_react_lfs.py --all
+    # Third-party images are not uploaded or committed, even on success.
+
+  live-missing-source-probe:
+    name: Live exact-roster Genshin ZIP discovery (non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install atlas decoder
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Verify new public ZIP bytes, identity, all PNG frames and native role
+        timeout-minutes: 9
+        run: python tools/probe_live_missing_codexpetdb.py --limit 6
+    # No third-party artwork is stored or redistributed.
+
+  genshin-shimejis-xyz-discovery:
+    name: Unpinned Shimeji collection identity scan (non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install local sprite manifest parser requirements
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Run strict offline parser regressions
+        run: python -m unittest discover -s tests -p "test_shimejis_xyz_missing.py" -v
+      - name: Fetch only published Genshin collection and enumerate unmatched identities
+        timeout-minutes: 2
+        run: python tools/probe_shimejis_xyz_missing.py
+    # Leads are NOT pinned sources; no artwork or cookies uploaded.
+
+  itto-external-shimeji-probe:
+    name: Itto original third-party ZIP structural QA (non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install original PNG decoder
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Download publisher archive, check exact PNG bytes and native animations
+        timeout-minutes: 5
+        run: python tools/probe_shimejishop_itto.py
+    # No third-party art is committed, republished or promoted from this probe.

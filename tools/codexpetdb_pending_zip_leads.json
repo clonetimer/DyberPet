@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "provider": "CodexPetDB",
+  "status": "catalog_metadata_only_not_verified",
+  "note": "Charlotte and Columbina were independently ZIP/native-install verified in CI 40202206664. Emilie r1 returned HTTP 404 and is NOT promoted. Replace Emilie with Iansan for a new four-source probe; Gaming remains unverified until this probe passes.",
+  "sources": {
+    "charlotte": {
+      "profile": "genshin_charlotte",
+      "slug": "gi-charlotte",
+      "revision": "019f8c74-b91e-72ca-8048-23e161ad33f0",
+      "sha256": "92d97b0006ccc445ba3a5152ba47cd9043be4131fec79f135d27a4808031ac2c",
+      "verified_bytes": 835499,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-charlotte/download"
+    },
+    "columbina": {
+      "profile": "genshin_columbina",
+      "slug": "gi-columbina",
+      "revision": "019f8c75-9128-72bb-9e32-4bf8ccb14a1c",
+      "sha256": "de19c4e905396dbfa927b73c9f547308b4c9da8276d4d0e8ab6b3e1e2e5dfed1",
+      "verified_bytes": 1212976,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-columbina/download"
+    },
+    "gaming": {
+      "profile": "genshin_gaming",
+      "slug": "gi-gaming",
+      "revision": "019f8c77-da6a-771f-bd64-21b7dda6eab5",
+      "sha256": "f00be7bb6d324a870fd6e3cd391500526d34da24e9fbd4e9675314f6187c0826",
+      "verified_bytes": 1141319,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-gaming/download"
+    },
+    "iansan": {
+      "profile": "genshin_iansan",
+      "slug": "gi-iansan",
+      "revision": "019f8c78-23ec-72cd-abf0-fa9d370c3c58",
+      "sha256": "b1a7ae810d7226581882e23de180e2725e15038360caca7e0624e9043411e5c6",
+      "verified_bytes": 783798,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-iansan/download"
+    }
+  }
+}
