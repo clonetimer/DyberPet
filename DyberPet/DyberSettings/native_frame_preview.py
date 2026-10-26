@@ -297,7 +297,12 @@ class NativeFramePreviewDialog(QDialog):
         if not isinstance(folder, str):
             self.quality_status.setText("候选角色：未完成逐版本Q版审核")
             return
-        state = load_local_quality_review(self._root, folder, full_audit=False)
+        try:
+            state = load_local_quality_review(self._root, folder, full_audit=False)
+        except (OSError, ValueError):
+            self.quality_status.setText(
+                "本版本可逐帧预览；本机Q版审核只能保存到标准 res/role 目录。")
+            return
         labels = {
             "unreviewed_candidate": "待人工验收：仍为候选素材",
             "rejected_standee": "不推荐：本人已标记为立牌/细长立绘",
