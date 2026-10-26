@@ -12,13 +12,15 @@ from PIL import Image
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QHBoxLayout, QLabel, QPushButton, QSlider,
-    QVBoxLayout,
+    QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
+    QLineEdit, QMessageBox, QPushButton, QSlider, QVBoxLayout,
 )
 
 from tools.artist_animation_audit import (
     _frames_for_action, _read_config, MAX_ACTIONS, MAX_PIXELS, MAX_SIDE)
 from tools.character_interaction_coverage import _safe_installed_role
+from tools.creator_art_manual_review import (
+    GRADES, create_manual_review_receipt, save_manual_review)
 
 
 def safe_animation_inventory(role_root, folder):
@@ -89,6 +91,25 @@ class NativeFramePreviewDialog(QDialog):
         controls.addWidget(self.next)
         controls.addWidget(self.status)
         layout.addLayout(controls)
+        review = QHBoxLayout()
+        self.grade = QComboBox(self)
+        for label in GRADES:
+            self.grade.addItem(label, label)
+        review.addWidget(QLabel("原设外观", self))
+        review.addWidget(self.grade)
+        self.compared = QCheckBox("已人工对照原设", self)
+        self.motion_checked = QCheckBox("已人工检查动作", self)
+        review.addWidget(self.compared)
+        review.addWidget(self.motion_checked)
+        layout.addLayout(review)
+        self.review_note = QLineEdit(self)
+        self.review_note.setMaxLength(500)
+        self.review_note.setPlaceholderText("差异说明：发饰/服装/动作等（不填也可）")
+        layout.addWidget(self.review_note)
+        self.export_review = QPushButton("导出本版本人工核对记录 JSON", self)
+        self.export_review.clicked.connect(self._export_review)
+        layout.addWidget(self.export_review)
+        self._visited = {}
         self._clock = QTimer(self)
         self._clock.setInterval(150)
         self._clock.timeout.connect(self._advance)
@@ -104,6 +125,10 @@ class NativeFramePreviewDialog(QDialog):
     def _load_version(self, *_):
         self._clock.stop()
         self.play.setText("播放")
+        self.grade.setCurrentIndex(0)
+        self.compared.setChecked(False)
+        self.motion_checked.setChecked(False)
+        self.review_note.clear()
         # Validate every frame before the GUI offers to play this variant.
         try:
             self._inventory = safe_animation_inventory(
@@ -117,6 +142,7 @@ class NativeFramePreviewDialog(QDialog):
             self.canvas.setText("无法打开此作者动画：" + str(exc)[:170])
             self.status.setText("版本不可用")
             self.play.setEnabled(False)
+            self.export_review.setEnabled(False)
             # Clearing a QComboBox emits currentIndexChanged(-1). Without
             # suppressing that notification _select_action replaces the
             # useful source-error status with a misleading empty 0/0.
@@ -125,6 +151,7 @@ class NativeFramePreviewDialog(QDialog):
             self.action.blockSignals(False)
             return
         self.play.setEnabled(True)
+        self.export_review.setEnabled(True)
         self.action.blockSignals(True)
         self.action.clear()
         for name in self._inventory:
@@ -170,6 +197,35 @@ class NativeFramePreviewDialog(QDialog):
         self.frame_slider.setValue(self._index)
         self.frame_slider.blockSignals(False)
         self.status.setText(f"{self._index + 1} / {len(self._frames)}")
+        folder = self.version.currentData()
+        action = self.action.currentData()
+        if isinstance(folder, str) and isinstance(action, str):
+            self._visited.setdefault(folder, {}).setdefault(action, set()).add(
+                self._index)
+
+    def _export_review(self):
+        folder = self.version.currentData()
+        if not folder or not self._inventory:
+            return
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "保存本人逐版本视觉与动作核对",
+            "DyberPet_manual_review_" + folder + ".json", "JSON 文件 (*.json)")
+        if not filename:
+            return
+        try:
+            receipt = create_manual_review_receipt(
+                self._root, folder, self._inventory,
+                self._visited.get(folder, {}), self.grade.currentData(),
+                self.compared.isChecked(), self.motion_checked.isChecked(),
+                self.review_note.text())
+            save_manual_review(filename, receipt)
+        except (OSError, ValueError, TypeError) as exc:
+            QMessageBox.warning(self, "人工核对记录未保存", str(exc))
+            return
+        QMessageBox.information(
+            self, "记录已保存",
+            "仅保存本人对当前版本的视觉评价与已显示帧数；"
+            "不能代替官方形象、授权或实际桌面验收。")
 
     def _toggle_play(self):
         if self._clock.isActive():

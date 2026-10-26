@@ -115,6 +115,48 @@ class CatalogGapExportTests(unittest.TestCase):
             finally:
                 viewer.close()
 
+    def test_local_visual_review_cannot_claim_approval_without_manual_compare(self):
+        from PIL import Image
+        from tools.creator_art_manual_review import create_manual_review_receipt
+        from DyberPet.DyberSettings.native_frame_preview import NativeFramePreviewDialog
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            folder = root / "Original"
+            (folder / "action").mkdir(parents=True)
+            (folder / "pet_conf.json").write_text(
+                json.dumps({"default": "wave"}), encoding="utf-8")
+            (folder / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            for idx in range(3):
+                Image.new("RGBA", (40, 50), (idx * 60, 120, 90, 255)).save(
+                    folder / "action" / f"wave_{idx}.png")
+            dlg = NativeFramePreviewDialog(root, ["Original"])
+            try:
+                dlg.grade.setCurrentIndex(1)
+                with self.assertRaisesRegex(ValueError, "对照"):
+                    create_manual_review_receipt(
+                        root, "Original", dlg._inventory, dlg._visited["Original"],
+                        dlg.grade.currentData(), False, False)
+                dlg.compared.setChecked(True)
+                dlg._advance()
+                dlg._advance()
+                record = create_manual_review_receipt(
+                    root, "Original", dlg._inventory, dlg._visited["Original"],
+                    dlg.grade.currentData(), dlg.compared.isChecked(), False)
+                self.assertEqual(record["viewer_frame_coverage"],
+                                 {"displayed": 3, "total": 3})
+                self.assertEqual(record["human_visual_grade"], "A 原设较吻合")
+                self.assertFalse(record["official_art_approval"])
+                before = record["source_byte_snapshot_sha256"]
+                Image.new("RGBA", (40, 50), (2, 2, 2, 255)).save(
+                    folder / "action" / "wave_2.png")
+                changed = create_manual_review_receipt(
+                    root, "Original", dlg._inventory, dlg._visited["Original"],
+                    "未评价", False, False)
+                self.assertNotEqual(before, changed["source_byte_snapshot_sha256"])
+            finally:
+                dlg.close()
+
     def test_demo_role_and_linked_frame_refused_for_visual_quality_review(self):
         from DyberPet.DyberSettings.native_frame_preview import safe_animation_inventory
         with tempfile.TemporaryDirectory() as td:
