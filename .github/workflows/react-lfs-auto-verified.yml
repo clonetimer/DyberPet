@@ -54,6 +54,9 @@ jobs:
       - name: Opt-in CI verification of full pinned Git-LFS original bytes
         run: |
           python tools/probe_missing_react_lfs.py --all
+      - name: Actually install both exact-SHA Genshin roles in a throwaway personal directory
+        run: |
+          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.install_verified_react_lfs import install_verified_react_lfs; from tools.genshin_library import scan_genshin_library; t=TemporaryDirectory(); r=Path(t.name)/'roles'; r.mkdir(); a=install_verified_react_lfs('amber',r,confirmed=True); b=install_verified_react_lfs('fischl',r,confirmed=True); report=scan_genshin_library(r); print('VERIFIED_REACT_AUTO_INSTALLED='+str(report['summary']['personal_art_profile_count'])); assert a['full_lfs_sha256_verified'] and b['full_lfs_sha256_verified'] and report['summary']['personal_art_profile_count']==2"
       - name: No third-party sprites uploaded
         run: |
           python -c "from pathlib import Path; assert not list(Path('res/role').glob('SourceVerified*')); print('ORIGINAL_ASSET_UPLOAD=false')"
