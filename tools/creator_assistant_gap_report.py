@@ -13,6 +13,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Direct `python tools/creator_assistant_gap_report.py` must also find the
+# project package, even when PYTHONPATH is not configured on Windows.
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from tools.character_source_coverage import source_coverage
 from tools.character_interaction_coverage import interaction_coverage
 
