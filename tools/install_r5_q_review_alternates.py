@@ -17,16 +17,20 @@ import os
 from tools.install_artist_shimeji import install_artist_shimeji
 from tools.creator_standee_triage import triage_one_creator
 from tools.artist_animation_audit import audit_native_character
+from tools.normalize_creator_canvas import create_lossless_canvas_candidate
 from tools.genshin_library import scan_genshin_library
 from tools.mascot_library import scan_mascot_library
 
 KNOWN = (("genshin_ayaka", "ayaka"), ("genshin_venti", "venti"))
 EXPECTED = {"genshin_ayaka": "SourceShimejiAyaka",
             "genshin_venti": "SourceShimejiVenti"}
+DERIVED = {"genshin_ayaka": "SourceCanvasR5Ayaka",
+           "genshin_venti": "SourceCanvasR5Venti"}
 
 
 def stage_r5_original_alternatives(role_root, *, confirmed=False,
-                                   install=None, measure=None, full_audit=None):
+                                   install=None, measure=None, full_audit=None,
+                                   normalize=None):
     if not confirmed:
         raise ValueError("Explicit source download and personal-use consent required")
     root = Path(role_root).expanduser()
@@ -35,6 +39,7 @@ def stage_r5_original_alternatives(role_root, *, confirmed=False,
     install = install or install_artist_shimeji
     measure = measure or triage_one_creator
     full_audit = full_audit or audit_native_character
+    normalize = normalize or create_lossless_canvas_candidate
     # This tool ONLY augments an existing R4 personal installation. It never
     # builds a partial replacement bundle or silently deletes earlier art.
     before = scan_genshin_library(root)
@@ -43,7 +48,7 @@ def stage_r5_original_alternatives(role_root, *, confirmed=False,
             mascots_before["summary"]["imported_creator_art_count"] != 2):
         raise ValueError("R4 personal 63 Genshin + two mascots base is required")
     if any((root / name).exists() or (root / name).is_symlink()
-           for name in EXPECTED.values()):
+           for name in DERIVED.values()):
         raise ValueError("An R5 creator source target already exists; never overwrite")
     checked = []
     with tempfile.TemporaryDirectory(prefix=".r5-real-art-",
@@ -64,13 +69,25 @@ def stage_r5_original_alternatives(role_root, *, confirmed=False,
                 raise ValueError("Alternative still yields a high-narrow standee silhouette risk")
             if measured.get("weak_movement_action_evidence"):
                 raise ValueError("Alternative has weak/repeated movement PNGs")
-            native_audit = full_audit(staging / expected)
+            # The untouched author source has inconsistent PNG canvas sizes
+            # in several actions. Create a SEPARATE author-pixel-preserving
+            # candidate with bottom-anchored transparent padding only.
+            derived_name = DERIVED[profile]
+            padded = normalize(staging, expected, output_folder=derived_name)
+            if (padded["folder"] != derived_name or padded["profile"] != profile
+                    or padded["only_transparent_canvas_added"] is not True
+                    or padded["source_original_bytes_preserved"] is not True):
+                raise ValueError("Non-lossless or mismatched derived artist source")
+            native_audit = full_audit(staging / derived_name)
             if native_audit["summary"]["animation_structure_passed"] is not True:
-                raise ValueError("Alternative has incomplete or duplicate native action sequences")
+                raise ValueError("Padded candidate still has malformed native action sequences")
             checked.append({
-                "profile": profile, "folder": expected,
+                "profile": profile, "folder": derived_name,
+                "original_source_folder": expected,
                 "silhouette_width_height_ratio": measured["silhouette_width_height_ratio"],
-                "native_frame_source_original": True,
+                "real_author_visible_pixels_unchanged": True,
+                "source_originals_preserved_inside_version": True,
+                "transparent_canvas_padding_only": True,
                 "human_q_likeness_verified": False,
                 "author_redistribution_rights_verified": False,
             })
@@ -90,6 +107,7 @@ def stage_r5_original_alternatives(role_root, *, confirmed=False,
     return {
         "scope": "opt-in_candidate_versions_only_not_chibi_approval",
         "additional_original_author_versions": len(checked),
+        "derived_visible_pixel_preserving_candidates": len(checked),
         "unchanged_distinct_genshin_profiles": after["summary"]["personal_art_profile_count"],
         "unchanged_mascot_profiles": mascots_after["summary"]["imported_creator_art_count"],
         "original_sources": checked,
