@@ -14,12 +14,14 @@ from pathlib import Path
 from tools.character_interaction_coverage import _safe_installed_role
 
 GRADES = ("未评价", "A 原设较吻合", "B 部分差异", "C 明显不符")
+CHIBI_FORMS = ("未评价", "圆润Q版", "立牌/细长立绘", "其他不合格")
 MAX_NOTE_LENGTH = 500
 MAX_REVIEW_BYTES = 512 * 1024 * 1024  # bounded explicit, local-only review export
 
 
 def create_manual_review_receipt(role_root, folder, inventory, visited, grade,
-                                 compared_to_reference, motion_checked, notes=""):
+                                 compared_to_reference, motion_checked, notes="",
+                                 chibi_form="未评价", desktop_checked=False):
     """Build a review report, never silently confer an official QA status."""
     role = _safe_installed_role(Path(role_root).expanduser(), folder)
     if not isinstance(inventory, dict) or not inventory:
@@ -30,6 +32,10 @@ def create_manual_review_receipt(role_root, folder, inventory, visited, grade,
         raise ValueError("人工确认字段必须明确勾选")
     if grade != "未评价" and not compared_to_reference:
         raise ValueError("评级前请确认已亲自对照角色原设形象")
+    if chibi_form not in CHIBI_FORMS or not isinstance(desktop_checked, bool):
+        raise ValueError("非法Q版体态/桌面播放评审状态")
+    if chibi_form != "未评价" and not compared_to_reference:
+        raise ValueError("判定Q版或立牌型前，必须亲自对照角色原设")
     if not isinstance(notes, str) or len(notes) > MAX_NOTE_LENGTH:
         raise ValueError("评审备注过长")
     frames = {}
@@ -80,6 +86,9 @@ def create_manual_review_receipt(role_root, folder, inventory, visited, grade,
         "human_original_reference_compared": compared_to_reference,
         "human_visual_grade": grade,
         "human_motion_review_confirmed": motion_checked,
+        "human_chibi_form": chibi_form,
+        "human_desktop_playback_checked": desktop_checked,
+        "q_style_requires_manual_inspection": True,
         "human_note": notes.strip(),
         "original_game_identity_independently_verified": False,
         "official_art_approval": False,
