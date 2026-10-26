@@ -79,6 +79,8 @@ class CharacterCatalogDialog(QDialog):
         self.communityButton.clicked.connect(self._open_community_candidate)
         self.manageButton = QPushButton("管理原神素材关联", self)
         self.manageButton.clicked.connect(self._open_manage)
+        self.previewOriginalButton = QPushButton("预览本机原画逐帧动作", self)
+        self.previewOriginalButton.clicked.connect(self._preview_original_frames)
         self.openButton = QPushButton("查看角色 / 预览动作", self)
         self.openButton.clicked.connect(self._select)
         close = QPushButton("关闭", self)
@@ -86,6 +88,7 @@ class CharacterCatalogDialog(QDialog):
         buttons.addWidget(self.installArtistButton)
         buttons.addWidget(self.communityButton)
         buttons.addWidget(self.manageButton)
+        buttons.addWidget(self.previewOriginalButton)
         buttons.addStretch(1)
         buttons.addWidget(self.openButton)
         buttons.addWidget(close)
@@ -161,6 +164,13 @@ class CharacterCatalogDialog(QDialog):
         profile = self.selected_character_id()
         has_lead = (profile in PROFILE_TO_SLUG or profile in REACT_CANDIDATES
                     or profile in EXTERNAL_SHIMEJI_PAGES)
+        row = next((entry for entry in self._entries if entry["id"] == profile), None)
+        preview_ready = bool(self._role_root is not None and row is not None
+                             and row.get("personal_art_structurally_installed"))
+        self.previewOriginalButton.setEnabled(preview_ready)
+        self.previewOriginalButton.setToolTip(
+            "选择本机已安装的真实作者素材版本，查看每个动作的每一帧 PNG；只读、不联网"
+            if preview_ready else "必须先安装并关联真实作者素材，不使用演示简笔画")
         self.communityButton.setEnabled(has_lead)
         self.communityButton.setToolTip(
             "只打开外部来源的图集预览，需逐帧核验后自行下载并导入；不视为已安装或原设验收"
@@ -193,6 +203,34 @@ class CharacterCatalogDialog(QDialog):
                 return
             url = candidates[label]
         QDesktopServices.openUrl(QUrl(url))
+
+    def _preview_original_frames(self):
+        """Open a read-only, actual-PNG frame player for current character."""
+        if self._role_root is None or not self.selected_character_id():
+            return
+        try:
+            from tools.genshin_library import scan_genshin_library
+            from tools.mascot_library import scan_mascot_library
+            from DyberPet.DyberSettings.native_frame_preview import (
+                NativeFramePreviewDialog)
+            profile = self.selected_character_id()
+            if profile.startswith("genshin_"):
+                report = scan_genshin_library(self._role_root)
+                item = next((r for r in report["characters"]
+                             if r["profile"] == profile), None)
+                folders = [f["folder"] for f in item["installed_folders"]
+                           if not f["is_original_demo"]] if item else []
+            elif profile.startswith("mascot_"):
+                report = scan_mascot_library(self._role_root)
+                item = next((r for r in report["mascots"]
+                             if "mascot_" + r["key"] == profile), None)
+                folders = [f["folder"] for f in item["imported_creator_art"]] if item else []
+            else:
+                folders = []
+            dialog = NativeFramePreviewDialog(self._role_root, folders, self)
+            dialog.exec()
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            QMessageBox.warning(self, "无法预览本机作者动画", str(exc))
 
     def _export_gap_report(self):
         """Explicit export only: never alter source images or character saves."""

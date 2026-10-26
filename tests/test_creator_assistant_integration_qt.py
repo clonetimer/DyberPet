@@ -57,5 +57,52 @@ class CatalogGapExportTests(unittest.TestCase):
                 dialog.close()
 
 
+
+    def test_installed_original_frames_scrub_and_preview_distinguishes_variants(self):
+        from DyberPet.DyberSettings.native_frame_preview import (
+            NativeFramePreviewDialog, safe_animation_inventory)
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for folder in ("CreatorWave", "CreatorJump"):
+                role = root / folder
+                (role / "action").mkdir(parents=True)
+                act = "wave" if folder == "CreatorWave" else "jump"
+                (role / "act_conf.json").write_text(
+                    json.dumps({act: {"images": act}}), encoding="utf-8")
+                for n in range(3):
+                    Image.new("RGBA", (60, 70),
+                              (n * 70, 40, 120, 255)).save(
+                              role / "action" / f"{act}_{n}.png")
+            viewer = NativeFramePreviewDialog(root, ["CreatorWave", "CreatorJump"])
+            try:
+                self.assertEqual(viewer.action.currentData(), "wave")
+                self.assertEqual(viewer.status.text(), "1 / 3")
+                viewer._advance()
+                self.assertEqual(viewer.status.text(), "2 / 3")
+                viewer.version.setCurrentIndex(1)
+                self.assertEqual(viewer.action.currentData(), "jump")
+                self.assertEqual(viewer.status.text(), "1 / 3")
+                viewer.play.click()
+                self.assertTrue(viewer._clock.isActive())
+                viewer.play.click()
+                self.assertFalse(viewer._clock.isActive())
+                self.assertEqual(len(safe_animation_inventory(
+                    root, "CreatorWave")["wave"]), 3)
+            finally:
+                viewer.close()
+
+    def test_demo_role_and_linked_frame_refused_for_visual_quality_review(self):
+        from DyberPet.DyberSettings.native_frame_preview import safe_animation_inventory
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            role = root / "Demo"
+            role.mkdir()
+            (role / "BUILTIN_CHIBI_DEMO.json").write_text("{}")
+            with self.assertRaisesRegex(ValueError, "演示形象"):
+                safe_animation_inventory(root, "Demo")
+            with self.assertRaises(ValueError):
+                safe_animation_inventory(root, "../outside")
+
 if __name__ == "__main__":
     unittest.main()

@@ -47,3 +47,8 @@ python tools/creator_assistant_gap_report.py --role-root res/role --deep-frame-a
 ## 2026-10-26 · 当前角色互动作业报告纠正名称空间混用
 
 `act_conf.json` 的 `wave`、`jump` 等是**原生 PNG 动画键**；正在运行的 PetWidget 将 `pet_conf.random_act` 中的中文**动作组名**传给 `Interaction_worker.start_interact('actlist', ...)`。如果报告直接取两者名称的交集，会将真实可执行动作误报为未解锁。本轮导出和弹窗使用同一份实时校验通过的 `runtime_group_plan`，单独列出 `runtime_action_group_mapping`、`runtime_group_evidence_available`、`currently_unlocked_categories`；素材动作列依然只表示原画存在，不能代表已解锁或形象验收。离线非 GUI 调用保留旧名称报告兼容行为。
+
+
+## 2026-10-26：本机真实作者动作逐帧预览
+
+全部角色库里选中已安装真实素材的人物，点击「预览本机原画逐帧动作」；界面支持切换已关联的创作者版本、逐个选择动作、上一帧/下一帧、拖动帧位置与自动循环播放。所见为**当前本机来源的原始 PNG**，而非自动生成的原神替代形象；从未安装、仅素材网页、演示角色不能假装已经存在原画。所有序列先经过本地索引完整性及 PNG 解码检查，文件大小和像素数量受限，不下载、不修改素材、不写验收状态。实际桌面鼠标交互、人物服饰原设忠实度、声音仍需单独审核。
