@@ -50,11 +50,32 @@ CANDIDATES = {
 }
 
 
+
+def verified_lfs_sources():
+    """Return only full-byte/CI-verified source records, never pointer leads."""
+    catalog = json.loads(Path(__file__).with_name(
+        "react_lfs_verified_sources.json").read_text(encoding="utf-8"))
+    if catalog.get("schema") != 1 or len(catalog.get("sources", {})) != 2:
+        raise ValueError("Unexpected original-LFS source registry")
+    mapped = {}
+    for key, entry in catalog["sources"].items():
+        profile = entry["profile"]
+        if profile not in CANDIDATES or profile in mapped:
+            raise ValueError("Verified source has no exact roster identity")
+        upstream = CANDIDATES[profile]
+        if (upstream[0] != entry["slug"] or
+                upstream[1] != entry["sha256"] or
+                upstream[2] != entry["verified_bytes"] or
+                catalog["revision"] != REVISION or
+                catalog["repository"] != REPOSITORY):
+            raise ValueError("Verified source attestation disagrees with upstream LFS pointer")
+        mapped[profile] = entry
+    return mapped
+
+
 def react_shimeji_lead_report():
     pinned = {x["id"]: x["source_found"] for x in source_coverage()["characters"]}
-    verified = json.loads(Path(__file__).with_name(
-        "react_lfs_verified_sources.json").read_text(encoding="utf-8"))["sources"]
-    verified_profiles = {entry["profile"] for entry in verified.values()}
+    verified_profiles = set(verified_lfs_sources())
     rows = []
     for profile, (slug, oid, size, pointer_blob, preview_blob) in sorted(CANDIDATES.items()):
         if profile not in CHIBI_PROFILES or not profile in pinned:
