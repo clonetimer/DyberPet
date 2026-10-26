@@ -11,6 +11,7 @@ SOURCE_STYLE = {
     "codex": (1, "原作者图集·细节待核对", "unreviewed_codex_atlas"),
     "independent_codex": (1, "独立作者图集·细节待核对", "unreviewed_codex_atlas"),
     "codexpetdb_zip": (1, "第三方 ZIP 来源SHA已核验·原设待看图", "unreviewed_codex_atlas"),
+    "react_lfs": (1, "Git LFS 原始PNG已校验·部分动作待验收", "unreviewed_codex_atlas"),
     "shimeji": (2, "小型 Shimeji·可接受备选", "acceptable_small_shimeji"),
     "nano_shimeji": (2, "小型 Shimeji·可接受备选", "acceptable_small_shimeji"),
 }
@@ -19,6 +20,7 @@ INSTALL_MODE_PROVIDER = {
     "artist_codex": "codex",
     "artist_external_codex": "independent_codex",
     "pinned_codexpetdb": "codexpetdb_zip",
+    "react_shimeji_lfs": "react_lfs",
     "artist_shimeji": "shimeji",
     "artist_nano": "nano_shimeji",
 }
