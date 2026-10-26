@@ -67,7 +67,9 @@ class RolePersonaTests(unittest.TestCase):
             options, groups, {"idle", "wave", "wait", "left_walk", "right_walk", "jump"})
         self.assertIn("打招呼", ready)
         self.assertNotIn("蹦一蹦", ready)
-        self.assertNotIn("假动作", ready) if "missing" in ready else None
+        # Non-semantic but genuinely loaded random-act groups remain available
+        # in the explicit raw action menu; they are never called a greeting.
+        self.assertIn("假动作", ready)
         self.assertNotIn("talk", ready)
 
     def test_fv_unlock_refreshes_assistant_action_buttons_in_real_main_source(self):
