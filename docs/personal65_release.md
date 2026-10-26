@@ -7,7 +7,7 @@
 - **Python**：完整 PySide6/Python 桌宠，无 Rust 依赖。
 - **RustHybrid**：桌宠 UI、语音、文件操作仍由 Python/PySide6 负责；Rust 仅以 PyO3 加速校验和资源索引。启动脚本设置 `DYBERPET_NATIVE_BACKEND=rust`，打包的真实 EXE smoke 必须报告 `native_backend.active=rust`。
 - 两个压缩包是便携版，解压**整个目录**；不是单文件程序，不是纯 Rust 重写，也不是传统 Setup.exe 安装包。
-- 65 指 **123 个原神模板中已有固定素材来源的 65 个角色**，并非已经完成 65 个原画包预装、原声或人工美术验收。另有 58 个角色尚无固定来源。
+- 65 指 **123 个原神模板中已有固定素材来源的 65 个角色（另外提供咕嘎、Doro 两只吉祥物的本地导入入口）**，并非已经完成 65 个原画包预装、原声或人工美术验收。另有 58 个角色尚无固定来源。
 - 第三方图片、语音不会进入 GitHub Release。仓库 Private 不自动许可复制或再分发他人素材。
 
 ## 如果 Releases 已生成
@@ -18,6 +18,8 @@
 - `DyberPet-Personal65-Windows-RustHybrid.zip`
 
 解压到新的空目录，避免覆盖旧版本和个人资料。双击 **`Run-DyberPet.cmd`** 启动。RustHybrid 如果原生模块丢失，程序会拒绝假装成 Rust 成功运行。
+
+咕嘎/Doro：解压后双击 **`Install-Guga-Doro.cmd`**，先生成两只角色的来源与安装状态清单。在确认各自作者的个人使用条件后，输入 `INSTALL`，安装程序会在本机下载固定哈希的创作者图集并转换为原生动作。咕嘎与 Doro 不计入 65 个原神角色来源，角色仍需在 GUI 中进行外观和动作人工验收；真实原画、原声没有预装。
 
 角色导入步骤：
 
