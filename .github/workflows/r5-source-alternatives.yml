@@ -1,0 +1,38 @@
+name: R5 pinned Q art alternates inventory (no downloads)
+
+on:
+  push:
+    paths:
+      - ".github/workflows/r5-source-alternatives.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Count independently pinned author candidates for all 15 actual silhouette-risk role IDs
+        run: |
+          python - <<'PY'
+          from tools.character_source_coverage import source_coverage
+          priority = ("alyosha","amber","ayaka","baizhu","charlotte","chevreuse",
+                      "chiori","dehya","freminet","furina","illuga","odette",
+                      "sandrone","venti","yoimiya")
+          roles={x["id"]: x for x in source_coverage()["characters"]}
+          num_multi=0
+          for name in priority:
+              role=roles["genshin_"+name]
+              candidates=role["source_candidates"]
+              print("R5_Q_ALTERNATES:"+name+"="+str(len(candidates))+";providers="+",".join(
+                  o["provider"]+":"+o["source_key"] for o in candidates))
+              num_multi += int(len(candidates)>1)
+          print("R5_REAL_Q_RISK_PROFILES_WITH_PINNED_ALTERNATIVES="+str(num_multi))
+          assert all(roles["genshin_"+x]["source_candidate_count"]>=1 for x in priority)
+          PY
