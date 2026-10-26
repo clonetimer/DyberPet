@@ -16,6 +16,7 @@ import os
 
 from tools.install_artist_shimeji import install_artist_shimeji
 from tools.creator_standee_triage import triage_one_creator
+from tools.artist_animation_audit import audit_native_character
 from tools.genshin_library import scan_genshin_library
 from tools.mascot_library import scan_mascot_library
 
@@ -25,7 +26,7 @@ EXPECTED = {"genshin_ayaka": "SourceShimejiAyaka",
 
 
 def stage_r5_original_alternatives(role_root, *, confirmed=False,
-                                   install=None, measure=None):
+                                   install=None, measure=None, full_audit=None):
     if not confirmed:
         raise ValueError("Explicit source download and personal-use consent required")
     root = Path(role_root).expanduser()
@@ -33,6 +34,7 @@ def stage_r5_original_alternatives(role_root, *, confirmed=False,
         raise ValueError("Role root missing or linked")
     install = install or install_artist_shimeji
     measure = measure or triage_one_creator
+    full_audit = full_audit or audit_native_character
     # This tool ONLY augments an existing R4 personal installation. It never
     # builds a partial replacement bundle or silently deletes earlier art.
     before = scan_genshin_library(root)
@@ -62,6 +64,9 @@ def stage_r5_original_alternatives(role_root, *, confirmed=False,
                 raise ValueError("Alternative still yields a high-narrow standee silhouette risk")
             if measured.get("weak_movement_action_evidence"):
                 raise ValueError("Alternative has weak/repeated movement PNGs")
+            native_audit = full_audit(staging / expected)
+            if native_audit["summary"]["animation_structure_passed"] is not True:
+                raise ValueError("Alternative has incomplete or duplicate native action sequences")
             checked.append({
                 "profile": profile, "folder": expected,
                 "silhouette_width_height_ratio": measured["silhouette_width_height_ratio"],
