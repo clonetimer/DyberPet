@@ -6,7 +6,9 @@ param(
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $root
-$env:DYBERPET_QA_KEEP_ABSTRACT_ART = "0"
+# Keep temporary demo art only during the deep frozen Qt/action smoke.
+# It MUST be stripped after that smoke and before user ZIP creation.
+$env:DYBERPET_QA_KEEP_ABSTRACT_ART = "1"
 $env:DYBERPET_NATIVE_BACKEND = $Backend
 if ($Backend -eq "rust") {
     $env:DYBERPET_REQUIRE_RUST = "1"
@@ -168,6 +170,27 @@ if (-not $smoke.assistant_dialog -or -not $smoke.assets.ok -or $smoke.native_bac
 if ($Backend -eq "rust" -and -not $smoke.native_backend.rust_available) {
     throw "Rust extension not available in frozen executable"
 }
+# After deep Qt smoke, eliminate all 123 generic Genshin + 2 generic
+# mascot placeholders from FINAL user package. Never delete imported author art.
+python tools/strip_generated_demo_art.py --role-root $roles --expected 125
+if ($LASTEXITCODE -ne 0) { throw "Failed to remove 125 QA-only chibi placeholders" }
+Push-Location $package
+try {
+    & $exe --personal-package-smoke
+    if ($LASTEXITCODE -ne 0) { throw "Final user binary still contains placeholders" }
+} finally {
+    Pop-Location
+}
+# Intermediate QA ZIP contains temporary synthesized art and MUST NEVER ship.
+$intermediate = if ($Backend -eq "rust") {
+    Join-Path $root "DyberPet-Windows-Rust-Experimental.zip"
+} else {
+    Join-Path $root "DyberPet-Windows-Personal-PR5.zip"
+}
+if (Test-Path -LiteralPath $intermediate) {
+    Remove-Item -LiteralPath $intermediate -Force
+}
+
 $metaPath = Join-Path $package "PERSONAL65_BUILD_INFO.json"
 @{
     source_commit = (git rev-parse HEAD).Trim()
