@@ -1,0 +1,58 @@
+name: Local role-embedded package contract
+
+on:
+  push:
+    branches: [feat/personal65-local-offline-embed-20261026]
+    paths:
+      - tools/local_offline_bundle.py
+      - tools/personal_source_batch.py
+      - tools/Make-Personal65-Offline.ps1
+      - tests/test_local_offline_bundle.py
+      - tests/test_personal_source_batch.py
+      - .github/workflows/local-offline-bundle.yml
+  pull_request:
+    paths:
+      - tools/local_offline_bundle.py
+      - tools/personal_source_batch.py
+      - tools/Make-Personal65-Offline.ps1
+      - tests/test_local_offline_bundle.py
+      - tests/test_personal_source_batch.py
+      - .github/workflows/local-offline-bundle.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dyberpet-local-embed-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-safe:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install offline PNG structural parser
+        run: python -m pip install Pillow==12.0.0
+      - name: Verify encrypted-free local ZIP, no-save policy, and explicit opt-in
+        run: |
+          python -m unittest discover -s tests -p "test_local_offline_bundle.py" -v
+          python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
+      - name: Verify imported roles are never masqueraded as 65 complete without inventory
+        run: |
+          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.personal_source_batch import plan_personal_sources; t=TemporaryDirectory(); report=plan_personal_sources(Path(t.name)/'absent'); s=report['summary']; assert s['selected_profiles']==123,s; assert s['already_installed_structurally']==0,s; print(s)"
+      - name: Check PowerShell parser (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $errors = $null
+          $tokens = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path (Get-Location) "tools/Make-Personal65-Offline.ps1"), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -gt 0) { $errors | Out-String | Write-Error; exit 1 }
