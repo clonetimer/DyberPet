@@ -72,7 +72,7 @@ class CharacterCatalogDialog(QDialog):
         self.disclaimer.setWordWrap(True)
         layout.addWidget(self.disclaimer)
 
-        buttons = QHBoxLayout()
+        source_buttons = QHBoxLayout()
         self.installArtistButton = QPushButton("安装真实作者素材", self)
         self.installArtistButton.clicked.connect(self._install_artist)
         self.importForRoleButton = QPushButton("导入本人物已有的原画 ZIP", self)
@@ -87,9 +87,13 @@ class CharacterCatalogDialog(QDialog):
         self.openButton.clicked.connect(self._select)
         close = QPushButton("关闭", self)
         close.clicked.connect(self.reject)
-        buttons.addWidget(self.installArtistButton)
-        buttons.addWidget(self.importForRoleButton)
-        buttons.addWidget(self.communityButton)
+        # Separate acquisition and local interaction operations: seven
+        # full-width Chinese buttons cannot fit a normal desktop dialog row.
+        source_buttons.addWidget(self.installArtistButton)
+        source_buttons.addWidget(self.importForRoleButton)
+        source_buttons.addWidget(self.communityButton)
+        layout.addLayout(source_buttons)
+        buttons = QHBoxLayout()
         buttons.addWidget(self.manageButton)
         buttons.addWidget(self.previewOriginalButton)
         buttons.addStretch(1)
