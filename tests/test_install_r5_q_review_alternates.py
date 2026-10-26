@@ -60,7 +60,8 @@ class StageTwoVerifiedChibiAlternatesTests(unittest.TestCase):
                        "tools.install_r5_q_review_alternates.scan_mascot_library",
                        side_effect=mascot):
                 result = stage_r5_original_alternatives(
-                    root, confirmed=True, install=install, measure=inspect)
+                    root, confirmed=True, install=install, measure=inspect,
+                    full_audit=lambda role: {"summary": {"animation_structure_passed": True}})
             self.assertEqual(result["additional_original_author_versions"], 2)
             self.assertEqual(result["unchanged_distinct_genshin_profiles"], 63)
             self.assertEqual(result["user_q_approved"], 0)
