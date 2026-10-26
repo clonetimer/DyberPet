@@ -151,13 +151,19 @@ def verify_linux_gui():
         # Exercise the real 125-item searchable catalogue against the X11 Qt
         # display, with genuine native demo assets in frozen mode.
         from DyberPet.DyberSettings.character_catalog_dialog import CharacterCatalogDialog
+        from tools.character_source_coverage import source_coverage
+        expected_source_count = source_coverage()["summary"]["characters_with_pinned_sources"]
         search_dialog = CharacterCatalogDialog(progress, parent=window)
         try:
             search_dialog.show()
             app.processEvents()
-            if (not search_dialog.isVisible() or search_dialog.results.count()!=59 or
-                    search_dialog.statusFilter.currentData()!="source"):
-                raise RuntimeError("X11 default catalog must show 59 fixed-source candidates")
+            if (not search_dialog.isVisible() or
+                    search_dialog.results.count() != expected_source_count or
+                    search_dialog.statusFilter.currentData() != "source"):
+                raise RuntimeError(
+                    "X11 source catalog disagrees with verified source registry: "
+                    f"shown={search_dialog.results.count()}, "
+                    f"expected={expected_source_count}")
             if any("作者来源" not in search_dialog.results.item(i).text()
                    for i in range(search_dialog.results.count())):
                 raise RuntimeError("X11 source catalog lacks creator provenance")
@@ -245,6 +251,7 @@ def verify_linux_gui():
             "full_character_coverage_templates": progress["summary"]["template_total"],
             "full_character_coverage_ready": progress["summary"]["native_preview_ready"],
             "character_catalog_searchable": True,
+            "character_catalog_fixed_source_count": expected_source_count,
             "character_catalog_english_search": True,
             "character_catalog_mascot_filter": True,
             "character_catalog_demo_count": expected_count,
