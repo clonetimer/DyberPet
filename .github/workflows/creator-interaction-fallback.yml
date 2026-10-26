@@ -1,0 +1,52 @@
+name: Creator fallback and real interaction gates
+
+on:
+  push:
+    branches:
+      - feat/creator-fallback-interaction-variants-20261026
+  pull_request:
+    paths:
+      - "tools/personal_source_batch.py"
+      - "tools/character_interaction_coverage.py"
+      - "DyberPet/DyberSettings/character_catalog_dialog.py"
+      - "DyberPet/DyberSettings/native_frame_preview.py"
+      - "tests/test_creator_fallback_variant_ranking.py"
+      - "tests/test_native_interaction_preview_shortcuts.py"
+      - ".github/workflows/creator-interaction-fallback.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dyberpet-creator-fallback-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fallback-and-qt:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install minimal real-art and Qt dependencies
+        run: python -m pip install "Pillow>=11,<13" "PySide6>=6.7,<7"
+      - name: Confirm pinned backup options and no-fake interaction ranking
+        run: |
+          python -m unittest discover -s tests -p "test_creator_fallback_variant_ranking.py" -v
+          python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
+          python -m unittest discover -s tests -p "test_personal_mascot_batch.py" -v
+          python -m unittest discover -s tests -p "test_native_interaction_preview_shortcuts.py" -v
+      - name: All 123 character templates remain intact
+        run: |
+          python -c "from tools.character_source_coverage import source_coverage; r=source_coverage(); x=r['summary']; print(x); assert x['template_count']==123; assert x['characters_with_pinned_sources']>=65"
+      - name: Confirm no third-party creator art was downloaded or committed by tests
+        run: |
+          python -c "from pathlib import Path; p=Path('res/role'); unauthorized=[x for x in p.glob('Source*') if x.is_dir()]; assert not unauthorized,unauthorized; print('NO_CREATOR_ART_IN_CI=true')"
