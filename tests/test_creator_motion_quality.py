@@ -70,7 +70,7 @@ class RealPixelPoseRiskTests(unittest.TestCase):
             root=Path(d)/"res"/"role"
             role=fixture(root)
             (role/"BUILTIN_CHIBI_DEMO.json").write_text("{}")
-            with self.assertRaisesRegex(ValueError,"Demo"):
+            with self.assertRaisesRegex(ValueError,"[Dd]emo"):
                 analyze_creator_actions(root,role.name)
             (role/"BUILTIN_CHIBI_DEMO.json").unlink()
             (role/"action"/"walk_3.png").write_bytes(b"invalid")
