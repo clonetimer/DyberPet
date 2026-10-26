@@ -167,7 +167,7 @@ def make_gap_report(role_root, *, pinned_report=None, installed_report=None,
             "Pinned public sources are NOT installed art. The optional deep audit checks "
             "each available PNG sequence for decoding and structural issues. Neither "
             "first-frame checks nor this deep audit establish actual desktop playback, "
-            "character identity, original likeness, 
+            "character identity, original likeness, "
             "voice, distribution rights or actual Windows/Linux GUI acceptance. "
             "Built-in demos never count as original creator art."
         ),
