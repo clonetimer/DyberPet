@@ -28,6 +28,9 @@ $installerArgs = @(
     "--specpath", (Join-Path $root "build/role-installer-spec"),
     "--collect-data", "tools",
     "--hidden-import", "tools.personal_source_batch",
+    "--hidden-import", "tools.personal_mascot_batch",
+    "--hidden-import", "tools.install_creator_mascots",
+    "--hidden-import", "tools.mascot_library",
     "--hidden-import", "tools.install_artist_genshin",
     "--hidden-import", "tools.install_artist_codex",
     "--hidden-import", "tools.install_artist_shimeji",
@@ -84,6 +87,34 @@ $cmd = '@echo off' + "`r`n" + 'cd /d "%~dp0"' + "`r`n" +
        'pause' + "`r`n"
 [System.IO.File]::WriteAllText((Join-Path $package "Install-65-Roles.cmd"), $cmd, (New-Object System.Text.ASCIIEncoding))
 
+# Guga and Doro are two ADDITIONAL mascot sources; not part of the 65 Genshin count.
+# Keep both artist atlases off GitHub and outside the portable archive.
+$mascotMenu = @'
+$ErrorActionPreference = "Stop"
+Set-Location $PSScriptRoot
+$tool = Join-Path $PSScriptRoot "DyberPet-Role-Installer.exe"
+$roleDir = Join-Path $PSScriptRoot "res/role"
+New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot "data") | Out-Null
+$plan = Join-Path $PSScriptRoot "data/personal-guga-doro-plan.json"
+& $tool --mascots --role-root $roleDir --output $plan
+if ($LASTEXITCODE -ne 0) { throw "Mascot source planning failed" }
+Write-Host "Guga and Doro: 2 pinned creator fan-art sources, NOT preinstalled original art." -ForegroundColor Yellow
+Write-Host "Artist reuse/voice rights are separate; check source conditions before opt-in."
+$confirm = Read-Host "Type INSTALL to download creator fan-art to this PC, or anything else to cancel"
+if ($confirm -cne "INSTALL") { Write-Host "Cancelled; no mascot art fetched."; exit 0 }
+$report = Join-Path $PSScriptRoot "data/personal-guga-doro-install-report.json"
+& $tool --mascots --role-root $roleDir --install --accept-personal-use --output $report
+$exit = $LASTEXITCODE
+Write-Host "Report: $report"
+if ($exit -ne 0) { Write-Warning "Some mascot sources failed; inspect report." }
+exit $exit
+'@
+[System.IO.File]::WriteAllText((Join-Path $package "Install-Guga-Doro.ps1"), $mascotMenu, (New-Object System.Text.UTF8Encoding($false)))
+$mascotCmd = '@echo off' + "`r`n" + 'cd /d "%~dp0"' + "`r`n" +
+            'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-Guga-Doro.ps1"' + "`r`n" +
+            'pause' + "`r`n"
+[System.IO.File]::WriteAllText((Join-Path $package "Install-Guga-Doro.cmd"), $mascotCmd, (New-Object System.Text.ASCIIEncoding))
+
 $launcher = if ($Backend -eq "rust") {
     '@echo off' + "`r`n" + 'cd /d "%~dp0"' + "`r`n" +
     'set "DYBERPET_NATIVE_BACKEND=rust"' + "`r`n" +
@@ -107,6 +138,16 @@ if ($report.summary.selected_profiles -ne 123 -or
     throw "Expected 65 pinned-source profiles, 58 uncovered, and 123 total: $($report.summary | ConvertTo-Json -Compress)"
 }
 if ($report.summary.already_installed_structurally -ne 0) { throw "Creator art was prebundled" }
+
+$mascotReportPath = Join-Path $env:RUNNER_TEMP ("personal-mascots-" + $Backend + ".json")
+& $helper --mascots --role-root $roles --output $mascotReportPath
+if ($LASTEXITCODE -ne 0) { throw "Frozen mascot source planner failed" }
+$mascots = Get-Content -LiteralPath $mascotReportPath -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($mascots.summary.mascot_templates -ne 2 -or
+    $mascots.summary.ready_for_opt_in -ne 2 -or
+    $mascots.summary.installed_creator_profiles -ne 0) {
+    throw "Guga/Doro real artist art was already bundled or mascot installer unusable"
+}
 
 # Verify packaged EXE and REQUIRE_RUST on the actual native compiled mode.
 $env:QT_QPA_PLATFORM = "offscreen"
