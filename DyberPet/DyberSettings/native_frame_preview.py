@@ -117,7 +117,12 @@ class NativeFramePreviewDialog(QDialog):
             self.canvas.setText("无法打开此作者动画：" + str(exc)[:170])
             self.status.setText("版本不可用")
             self.play.setEnabled(False)
+            # Clearing a QComboBox emits currentIndexChanged(-1). Without
+            # suppressing that notification _select_action replaces the
+            # useful source-error status with a misleading empty 0/0.
+            self.action.blockSignals(True)
             self.action.clear()
+            self.action.blockSignals(False)
             return
         self.play.setEnabled(True)
         self.action.blockSignals(True)
