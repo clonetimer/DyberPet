@@ -10,6 +10,8 @@ on:
       - DyberPet/DyberSettings/native_frame_preview.py
       - DyberPet/DyberSettings/character_catalog_dialog.py
       - tests/test_creator_chibi_quality.py
+      - tests/test_creator_standee_triage.py
+      - tools/creator_standee_triage.py
       - .github/workflows/chibi-standee-r4.yml
 
 permissions:
@@ -41,12 +43,14 @@ jobs:
       - run: python -m pip install "Pillow>=11,<13" "PySide6>=6.7,<7"
       - name: Verify Q eligibility never silently inferred and source edits revoke prior review
         run: python -m unittest discover -s tests -p "test_creator_chibi_quality.py" -v
+      - name: Verify standee and weak-motion heuristics never auto-approve or fail artwork
+        run: python -m unittest discover -s tests -p "test_creator_standee_triage.py" -v
       - name: Existing creator interaction and native frame UI regressions
         run: |
           python -m unittest discover -s tests -p "test_native_interaction_preview_shortcuts.py" -v
           python -m unittest discover -s tests -p "test_creator_fallback_variant_ranking.py" -v
           python -m unittest discover -s tests -p "test_character_catalog_search.py" -v
       - name: Validate Python/Qt code compiles
-        run: python -m compileall -q tools/creator_chibi_quality.py tools/creator_art_manual_review.py DyberPet/DyberSettings/native_frame_preview.py DyberPet/DyberSettings/character_catalog_dialog.py
+        run: python -m compileall -q tools/creator_chibi_quality.py tools/creator_art_manual_review.py tools/creator_standee_triage.py DyberPet/DyberSettings/native_frame_preview.py DyberPet/DyberSettings/character_catalog_dialog.py
       - name: Verify no external artwork added to the source PR
         run: python -c "from pathlib import Path; assert not list(Path('res/role').glob('Source*')); print('NO_THIRD_PARTY_ART_COMMITTED=true')"
