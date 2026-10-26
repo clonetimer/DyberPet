@@ -176,6 +176,7 @@ def summarize_local_quality(role_root, profile_folders):
         classification = (
             "user_q_standard_eligible" if "user_q_standard_eligible" in statuses else
             "rejected_standee" if "rejected_standee" in statuses else
+            "rejected_visual" if "rejected_visual" in statuses else
             "rejected_motion" if "rejected_motion" in statuses else
             "unreviewed_candidate")
         rows[profile] = {"status": classification, "variants": versions}
@@ -186,6 +187,8 @@ def summarize_local_quality(role_root, profile_folders):
                     x["status"] == "user_q_standard_eligible" for x in rows.values()),
                 "rejected_standee_profiles": sum(
                     x["status"] == "rejected_standee" for x in rows.values()),
+                "rejected_visual_profiles": sum(
+                    x["status"] == "rejected_visual" for x in rows.values()),
                 "rejected_motion_profiles": sum(
                     x["status"] == "rejected_motion" for x in rows.values()),
                 "pending_or_unreviewed": sum(
