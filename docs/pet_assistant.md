@@ -176,3 +176,8 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 ## 2026-10-26 · 原作者 ZIP 到真实桌宠交互指令的闭环验证
 
 新增网络非门禁作业 `creator-zip-runtime-integration`，在 GitHub CI 临时目录中下载**烟绯与艾梅莉埃**两份已固定 ZIP，复核压缩包的 SHA-256 与字节数，实际导入原作者图集，检查 PNG 帧审计和原生角色动作，然后模拟已解锁/上锁两种状态来验证桌宠引擎的真正动作组指令（如 `打招呼`、`左右散步`、`蹦一蹦`）。特意移除 `wave` 帧时，禁止仍声称可用“打招呼”。这只证实运行链路和数据结构，**不能替代真人逐帧原设视觉审查、实际桌面显示或声线验收**；第三方原画仅保留在 CI 临时工作区，不随项目发布。网络不可用时该独立验证不能称为通过。
+
+
+## 2026-10-26：播放入口再次校验（防止角色切换/素材更新绕过菜单）
+
+旧实现仅在按钮生成时检查 `pet_conf.random_act` 和已加载原生帧，真正执行 `_assistant_play_action` 时却只检查 `unlocked` 字段，用户切换角色、撤换 PNG 或修改解锁状态可能令先前菜单过期。现 `load_runtime_group_snapshot` 同时生成当前真正可执行的所有原生动作组清单（包括“自定义游戏”等不能匹配12种语义的普通组）与语义快捷菜单映射；**按钮展示、收藏与最终 PetWidget 指令执行**统一检查当前角色目录、实时 FV 状态、`random_act` 组类型和引用的全部已载入动作名。不允许将 `accessory_act`、原生 PNG 键或过期动作组送入 `start_interact('actlist', ...)`。添加从真实 `PetWidget._assistant_play_action` AST 提取的跨人物、锁定状态、删除配置、缺帧回归。真人原画/声线验收与这个软件安全修复仍相互独立。

@@ -29,7 +29,7 @@ from DyberPet.bubbleManager import BubbleManager
 from DyberPet.assistant.character_motion import style_for, GROUND
 from DyberPet.assistant.speech_sync import available_talk_action
 from DyberPet.assistant.preferences import load as load_assistant_preferences
-from DyberPet.assistant.native_groups import load_runtime_group_interactions
+from DyberPet.assistant.native_groups import load_runtime_group_snapshot
 
 # initialize settings
 import DyberPet.settings as settings
@@ -1077,20 +1077,29 @@ class PetWidget(QWidget):
     def _sync_assistant_actions(self):
         try:
             options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
-            unlocked = [key for key, value in options.items()
-                        if isinstance(value, dict) and value.get("unlocked")]
-            plan = load_runtime_group_interactions(
+            playable, plan = load_runtime_group_snapshot(
                 Path(basedir) / "res" / "role", self.curr_pet_name,
                 options, self.pet_conf.act_dict.keys())
-            self._pet_assistant.set_actions(unlocked, verified_group_interactions=plan)
+            self._pet_assistant.set_actions(
+                playable, verified_group_interactions=plan)
         except (AttributeError, KeyError, TypeError, ValueError, OSError):
             self._pet_assistant.set_actions([], verified_group_interactions=[])
 
     def _assistant_play_action(self, name):
-        """Never trigger a locked or nonexistent animation."""
-        available = settings.act_data.allAct_params.get(self.curr_pet_name, {})
-        if (name in available and isinstance(available[name], dict)
-                and available[name].get("unlocked")):
+        """Final PetWidget dispatch gate; reject stale/foreign/invalid groups.
+
+        GUI and favorites are read-only hints. Always revalidate the current
+        role's actual native images, group references and live FV lock right
+        before the Animation/Interaction worker receives a command.
+        """
+        options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+        try:
+            playable, _plan = load_runtime_group_snapshot(
+                Path(basedir) / "res" / "role", self.curr_pet_name,
+                options, self.pet_conf.act_dict.keys())
+        except (AttributeError, KeyError, TypeError, ValueError, OSError):
+            return
+        if isinstance(name, str) and name in playable:
             self._show_act(name)
 
     def _assistant_speech_started(self, character, message):

@@ -1,5 +1,7 @@
 """Native gait dispatch and TTS speech-start visual synchronization contracts."""
 import ast
+import json
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -7,6 +9,7 @@ from unittest.mock import MagicMock
 
 from DyberPet.assistant.character_motion import is_authored_gait_frame
 from DyberPet.assistant.speech_sync import available_talk_action
+from DyberPet.assistant.native_groups import load_runtime_group_snapshot
 
 
 class TalkActionSelectionTests(unittest.TestCase):
@@ -71,6 +74,59 @@ class NativeGaitSignalTests(unittest.TestCase):
         impl(worker, native)
         self.assertEqual(worker.sig_move_anim.items[-1], (5, 0.0))
         self.assertEqual(len(worker.sig_move_native_gait.items), 1)
+
+
+class ActualPetDispatchGateTests(unittest.TestCase):
+    def test_live_group_dispatch_rechecks_current_persona_and_loaded_frames(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            roles = root / "res" / "role"
+            for role, action in (("GugaArt", "wave"), ("DoroArt", "jump")):
+                folder = roles / role
+                folder.mkdir(parents=True)
+                (folder / "pet_conf.json").write_text(json.dumps({
+                    "random_act": [{"name": "打招呼", "act_list": [action]},
+                                   {"name": "自定义游戏", "act_list": [action]}]}),
+                    encoding="utf-8")
+            options = {
+                role: {"打招呼": {"unlocked": True, "act_type": "random_act"},
+                       "自定义游戏": {"unlocked": True, "act_type": "random_act"},
+                       "其他附件": {"unlocked": True, "act_type": "accessory_act"}}
+                for role in ("GugaArt", "DoroArt")
+            }
+            settings = types.SimpleNamespace(
+                act_data=types.SimpleNamespace(allAct_params=options))
+            method = method_from_source(
+                "DyberPet.py", "PetWidget", "_assistant_play_action",
+                {"settings": settings, "Path": Path, "basedir": td,
+                 "load_runtime_group_snapshot": load_runtime_group_snapshot})
+            played = []
+            pet = types.SimpleNamespace(
+                curr_pet_name="GugaArt",
+                pet_conf=types.SimpleNamespace(act_dict={"wave": object()}),
+                _show_act=played.append)
+            method(pet, "打招呼")
+            method(pet, "自定义游戏")
+            method(pet, "其他附件")  # unlocked, but NOT an executable actlist
+            method(pet, "wave")  # raw sprites cannot be dispatched as group
+            self.assertEqual(played, ["打招呼", "自定义游戏"])
+            settings.act_data.allAct_params["GugaArt"]["打招呼"]["unlocked"] = False
+            method(pet, "打招呼")
+            self.assertEqual(len(played), 2)
+            pet.curr_pet_name = "DoroArt"
+            pet.pet_conf.act_dict = {"jump": object()}
+            method(pet, "打招呼")  # no semantic shortcut from GugaArt
+            # DoroArt's misleading group title does not imply a greet sprite.
+            self.assertEqual(played[-1], "打招呼")
+            self.assertEqual(len(played), 3)
+            pet.pet_conf.act_dict = {}  # archive replaced, native bytes absent
+            method(pet, "打招呼")
+            self.assertEqual(len(played), 3)
+            pet.curr_pet_name = "GugaArt"
+            pet.pet_conf.act_dict = {"wave": object()}
+            (roles / "GugaArt" / "pet_conf.json").unlink()
+            method(pet, "自定义游戏")  # removal between menu display and click
+            self.assertEqual(len(played), 3)
 
 
 class ActualPetSpeechBridgeTests(unittest.TestCase):

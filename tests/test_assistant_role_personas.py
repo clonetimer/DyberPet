@@ -46,7 +46,8 @@ class RolePersonaTests(unittest.TestCase):
                              "genshin_kirara")
 
     def test_native_group_map_rejects_locked_mixed_and_fake_animations(self):
-        from DyberPet.assistant.native_groups import runtime_group_interactions
+        from DyberPet.assistant.native_groups import (
+    runtime_group_interactions, playable_runtime_group_names)
         options = {
             x: {"unlocked": True, "act_type": "random_act"} for x in
             ("打招呼", "左右散步", "休息", "蹦一蹦", "假动作")}
@@ -62,6 +63,12 @@ class RolePersonaTests(unittest.TestCase):
         self.assertEqual(actions, {"greet": "打招呼", "walk": "左右散步",
                                    "rest": "休息"})
         self.assertNotIn("假动作", actions.values())
+        ready = playable_runtime_group_names(
+            options, groups, {"idle", "wave", "wait", "left_walk", "right_walk", "jump"})
+        self.assertIn("打招呼", ready)
+        self.assertNotIn("蹦一蹦", ready)
+        self.assertNotIn("假动作", ready) if "missing" in ready else None
+        self.assertNotIn("talk", ready)
 
     def test_fv_unlock_refreshes_assistant_action_buttons_in_real_main_source(self):
         # Main application cannot be imported in a pure unit test because it
