@@ -200,6 +200,47 @@ class CatalogGapExportTests(unittest.TestCase):
             finally:
                 viewer.close()
 
+    def test_post_install_creator_animation_review_opens_real_qt_viewer(self):
+        import ast
+        from unittest.mock import MagicMock
+        from PIL import Image
+        import types
+        from DyberPet.DyberSettings.native_frame_preview import NativeFramePreviewDialog
+
+        project = Path(__file__).resolve().parents[1]
+        source = (project / "DyberPet" / "DyberSettings" /
+                  "CharCardUI.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        methods = [n for c in tree.body if isinstance(c, ast.ClassDef)
+                   for n in c.body if isinstance(n, ast.FunctionDef)
+                   and n.name == "_previewJustInstalledCreatorArt"]
+        self.assertEqual(len(methods), 1)
+        body = ast.Module(body=methods, type_ignores=[])
+        ns = {"Path": Path}
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "res" / "role"
+            role = root / "CreatorOne"
+            (role / "action").mkdir(parents=True)
+            (role / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            (role / "pet_conf.json").write_text(
+                json.dumps({"default": "wave"}), encoding="utf-8")
+            for idx in range(2):
+                Image.new("RGBA", (40, 60), (idx * 90, 60, 100, 255)).save(
+                    role / "action" / f"wave_{idx}.png")
+            ns["basedir"] = td
+            exec(compile(body, "<review-handler>", "exec"), ns)
+            fake = MagicMock()
+            with patch.object(NativeFramePreviewDialog, "exec", autospec=True,
+                              return_value=0) as opened:
+                ns["_previewJustInstalledCreatorArt"](fake, "CreatorOne")
+                self.assertEqual(opened.call_count, 1)
+                self.assertEqual(opened.call_args.args[0].action.currentData(),
+                                 "wave")
+            fake._CharCardUI__showSystemNote.assert_not_called()
+            ns["_previewJustInstalledCreatorArt"](fake, "../wrong")
+            fake._CharCardUI__showSystemNote.assert_called()
+
     def test_demo_role_and_linked_frame_refused_for_visual_quality_review(self):
         from DyberPet.DyberSettings.native_frame_preview import safe_animation_inventory
         with tempfile.TemporaryDirectory() as td:

@@ -1266,18 +1266,39 @@ class CharInterface(ScrollArea):
             return
         self.newPetFolder = role_name
         self.__onAddClickedContinue()
-        preview = Path(basedir) / "res" / "role" / role_name / "ANIMATION_PREVIEW.png"
         source_mode = self.chibiThread.mode if self.chibiThread is not None else ""
-        title = ("作者真实动作帧核对（非人工验收通过）"
-                 if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source")
-                 else "角色动作帧预览")
-        message = ("安装成功。是否打开由原作者 PNG 原始帧直接拼成的核对图？"
-                   "请检查脸部、发饰、服装和动作是否确实属于所选角色。"
-                   "预览不等于自动完成形象验收。"
-                   if source_mode in ("artist_genshin", "artist_codex", "artist_shimeji", "artist_nano", "artist_external_codex", "pinned_codexpetdb", "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source")
-                   else "角色已导入。是否打开动作帧预览图，检查动画素材？")
-        if preview.is_file() and self.__showMessageBox(title, message):
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
+        original_modes = {
+            "artist_genshin", "artist_codex", "artist_shimeji",
+            "artist_nano", "artist_external_codex", "pinned_codexpetdb",
+            "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source",
+        }
+        if source_mode in original_modes:
+            # Use the actual installed PNG sequence player, not a static
+            # contact sheet which conceals stalled, missing or repeated frames.
+            if self.__showMessageBox(
+                    "安装完成 · 查看作者原生逐帧动画",
+                    "角色素材已安装到本机。是否立即查看真实动作逐帧播放？"
+                    "可逐项检查脸部、发饰、服装、连贯性与原设差异，"
+                    "并自愿导出 A/B/C 人工核对记录。"
+                    "安装成功不代表人物原设外观或声音已验收通过。"):
+                self._previewJustInstalledCreatorArt(role_name)
+        else:
+            preview = (Path(basedir) / "res" / "role" / role_name /
+                       "ANIMATION_PREVIEW.png")
+            if preview.is_file() and self.__showMessageBox(
+                    "角色动作预览", "角色已导入。是否打开动作帧预览图？"):
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
+
+    def _previewJustInstalledCreatorArt(self, role_name):
+        """Only view the just-installed native PNG assets; never modify art."""
+        try:
+            from .native_frame_preview import NativeFramePreviewDialog
+            dialog = NativeFramePreviewDialog(
+                Path(basedir) / "res" / "role", [role_name], self)
+            dialog.exec()
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            # A partly malformed publisher package should never crash Qt.
+            self.__showSystemNote("作者原画逐帧预览失败：" + str(exc)[:200], 2)
 
     def _onChibiThreadFinished(self):
         self.addButton.setEnabled(True)
