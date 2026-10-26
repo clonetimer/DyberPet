@@ -32,16 +32,16 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
         self.dialog.familyFilter.setCurrentIndex(
             self.dialog.familyFilter.findData("genshin"))
 
-    def test_new_unverified_lead_filter_has_3_distinct_missing_profiles(self):
+    def test_new_unverified_lead_filter_excludes_integrity_verified_amber_and_fischl(self):
         self.dialog.statusFilter.setCurrentIndex(
             self.dialog.statusFilter.findData("lead"))
-        self.assertEqual(self.dialog.results.count(), 3)
-        self.assertIn("3 / 125", self.dialog.countLabel.text())
+        self.assertEqual(self.dialog.results.count(), 1)
+        self.assertIn("1 / 125", self.dialog.countLabel.text())
         names = [self.dialog.results.item(i).data(0x0100)
                  for i in range(self.dialog.results.count())]
         self.assertEqual(len(names), len(set(names)))
-        self.assertIn("genshin_amber", names)
-        self.assertIn("genshin_fischl", names)
+        self.assertNotIn("genshin_amber", names)
+        self.assertNotIn("genshin_fischl", names)
         self.assertNotIn("genshin_kaveh", names)
         self.assertNotIn("genshin_citlali", names)
         self.assertTrue(self.dialog.communityButton.isEnabled())
@@ -49,6 +49,10 @@ class ReactShimejiCatalogQtTests(unittest.TestCase):
     def test_single_and_multiple_explicit_preview_routes(self):
         self.dialog.statusFilter.setCurrentIndex(
             self.dialog.statusFilter.findData("lead"))
+        # Amber now has verified, installable source bytes and must appear
+        # under the full catalog rather than the "unverified lead" filter.
+        self.dialog.statusFilter.setCurrentIndex(
+            self.dialog.statusFilter.findData("all"))
         self.dialog.searchBox.setText("genshin_amber")
         self.assertEqual(self.dialog.results.count(), 1)
         with patch("DyberPet.DyberSettings.character_catalog_dialog.QDesktopServices") as desktop:
