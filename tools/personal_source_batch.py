@@ -63,6 +63,13 @@ def plan_personal_sources(role_root, *, only_profiles=None,
         options = role["source_candidates"]  # Existing source preference ordering.
         supported = next((o for o in options if o["provider"] in INSTALLERS), None)
         chosen = supported or (options[0] if options else None)
+        # Ordered strictly by the existing source preference policy. Never
+        # add unpinned, unmatched, or manual-only candidates as fallback.
+        supported_sources = [
+            {"provider": option["provider"], "source_key": option["source_key"],
+             "source_url": option["url"]}
+            for option in options if option["provider"] in INSTALLERS
+        ]
         status = ("already_installed" if profile in installed else
                   "missing_source" if chosen is None else
                   "manual_import_only" if chosen["provider"] not in INSTALLERS else
@@ -73,6 +80,9 @@ def plan_personal_sources(role_root, *, only_profiles=None,
             "provider": chosen["provider"] if chosen else None,
             "source_key": chosen["source_key"] if chosen else None,
             "source_url": chosen["url"] if chosen else None,
+            "supported_sources": supported_sources,
+            "automatic_source_count": len(supported_sources),
+            "can_retry_pinned_fallback": len(supported_sources) > 1,
             "original_likeness_verified": False,
             "rights_verified_by_tool": False,
             "real_device_playback_verified": False,
@@ -86,6 +96,9 @@ def plan_personal_sources(role_root, *, only_profiles=None,
             "manual_import_only": sum(x["status"] == "manual_import_only" for x in planned),
             "missing_source": sum(x["status"] == "missing_source" for x in planned),
             "local_invalid_folders": len(inventory.get("invalid_local", [])),
+            "roles_with_multiple_auto_sources": sum(
+                x["automatic_source_count"] > 1 for x in planned),
+
         },
         "note": "PINNED SOURCE != INSTALLED/APPROVED ART. Rights, likeness, voice and live playback remain unverified.",
         "characters": planned,
@@ -108,6 +121,8 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
             return getattr(importlib.import_module(module), name)(key, dest, confirmed=True)
     results = []
     count = 0
+    source_attempts = 0
+    fallback_recovered = 0
     for item in plan["characters"]:
         if item["status"] != "ready_for_opt_in":
             continue
@@ -115,20 +130,56 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
             break
         count += 1
         profile, provider, key = item["profile"], item["provider"], item["source_key"]
-        if provider not in INSTALLERS:
+        # Old consumer-generated plans may predate supported_sources; in
+        # that case keep single-source behavior. New plans retry ONLY pinned
+        # sources listed for this SAME character, in preference order.
+        sources = item.get("supported_sources")
+        if sources is None:
+            sources = [{"provider": provider, "source_key": key,
+                        "source_url": item.get("source_url")}]
+        if not isinstance(sources, list) or not sources:
+            raise ValueError("Invalid pinned source plan")
+        if any(not isinstance(x, dict) or
+               x.get("provider") not in INSTALLERS or
+               not isinstance(x.get("source_key"), str) or
+               not x["source_key"] for x in sources):
             raise ValueError("Unrecognized installer in personal plan")
-        try:
-            dispatch(provider, key, root)
-        except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+        attempts = []
+        successful = None
+        # Hard cap retries per character to limit resource exhaustion.
+        for source in sources[:4]:
+            p, k = source["provider"], source["source_key"]
+            source_attempts += 1
+            try:
+                dispatch(p, k, root)
+            except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+                attempts.append({
+                    "provider": p, "source_key": k, "status": "failed",
+                    "reason": type(exc).__name__ + ": " + str(exc)[:240]})
+            else:
+                attempts.append({"provider": p, "source_key": k,
+                                 "status": "installed_unreviewed"})
+                successful = source
+                break
+        if successful is None:
             results.append({"profile": profile, "status": "failed",
-                            "reason": type(exc).__name__ + ": " + str(exc)[:240]})
+                            "reason": attempts[-1]["reason"],
+                            "source_attempts": attempts})
         else:
-            results.append({"profile": profile, "status": "installed_unreviewed",
-                            "provider": provider, "source_key": key})
+            recovered = len(attempts) > 1
+            fallback_recovered += int(recovered)
+            results.append({
+                "profile": profile, "status": "installed_unreviewed",
+                "provider": successful["provider"],
+                "source_key": successful["source_key"],
+                "used_fallback": recovered, "source_attempts": attempts,
+            })
     return {
         "scope": "local_personal_install_only", "attempted": count,
         "installed_unreviewed": sum(x["status"] == "installed_unreviewed" for x in results),
         "failed": sum(x["status"] == "failed" for x in results),
+        "source_attempts": source_attempts,
+        "fallback_recovered_profiles": fallback_recovered,
         "results": results, "no_artwork_uploaded": True,
     }
 

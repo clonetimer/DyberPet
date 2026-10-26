@@ -241,7 +241,16 @@ class CharacterCatalogDialog(QDialog):
                 folders = [f["folder"] for f in item["imported_creator_art"]] if item else []
             else:
                 folders = []
+            if folders:
+                from tools.character_interaction_coverage import (
+                    rank_installed_role_variants)
+                candidates = rank_installed_role_variants(self._role_root, folders)
+                folders = [item["folder"] for item in candidates]
             dialog = NativeFramePreviewDialog(self._role_root, folders, self)
+            if folders and candidates and candidates[0]["available_interaction_count"]:
+                dialog.version.setToolTip(
+                    "按当前素材真实可解码互动类别数排序；"
+                    "这仅用于优先预览，不代表原设形象或语音验收通过。")
             dialog.exec()
         except (OSError, ValueError, KeyError, TypeError) as exc:
             QMessageBox.warning(self, "无法预览本机作者动画", str(exc))
