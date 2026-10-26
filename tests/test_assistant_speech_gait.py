@@ -115,12 +115,13 @@ class ActualPetDispatchGateTests(unittest.TestCase):
             self.assertEqual(len(played), 2)
             pet.curr_pet_name = "DoroArt"
             pet.pet_conf.act_dict = {"jump": object()}
-            method(pet, "打招呼")  # no semantic shortcut from GugaArt
-            # DoroArt's misleading group title does not imply a greet sprite.
-            self.assertEqual(played[-1], "打招呼")
+            method(pet, "打招呼")  # misleading title cannot execute Doro jump
+            self.assertEqual(len(played), 2)
+            method(pet, "自定义游戏")  # still a valid unlocked miscellaneous group
+            self.assertEqual(played[-1], "自定义游戏")
             self.assertEqual(len(played), 3)
             pet.pet_conf.act_dict = {}  # archive replaced, native bytes absent
-            method(pet, "打招呼")
+            method(pet, "自定义游戏")
             self.assertEqual(len(played), 3)
             pet.curr_pet_name = "GugaArt"
             pet.pet_conf.act_dict = {"wave": object()}

@@ -37,6 +37,13 @@ def playable_runtime_group_names(options, groups, loaded_native_names):
         state = options.get(name)
         if (isinstance(state, dict) and state.get("unlocked") is True
                 and state.get("act_type") == "random_act"):
+            # In a named semantic group, reject a mislabeled animation
+            # (e.g. "打招呼" pointing only to a jump sprite). An unnamed/custom
+            # group may still be offered in the explicit raw action menu.
+            declared = _category_for(name)
+            if declared is not None and any(
+                    _category_for(frame) != declared for frame in refs):
+                continue
             ready.add(name)
     return frozenset(ready)
 
