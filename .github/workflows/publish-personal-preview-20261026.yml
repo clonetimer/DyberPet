@@ -1,0 +1,87 @@
+name: Publish DyberPet personal preview
+
+on:
+  push:
+    branches: [release/personal-preview-20261026]
+    paths: [.github/workflows/publish-personal-preview-20261026.yml]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: dyberpet-preview-20261026
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'clonetimer/DyberPet'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: clonetimer/DyberPet
+      RELEASE_TAG: v0.12.0-personal-preview.1
+      SOURCE_SHA: cfa7c52e64d3fbcc0ceb5bb4ac972dea03aa2d48
+      WINDOWS_RUN: "40280075734"
+      LINUX_RUN: "40280075745"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require successful tests for exact source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$SOURCE_SHA^{commit}"
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          for run in "$WINDOWS_RUN" "$LINUX_RUN" 40280075769 40280076114 40280075812; do
+            actual="$(gh api "repos/$GH_REPO/actions/runs/$run" --jq '.head_sha')"
+            state="$(gh api "repos/$GH_REPO/actions/runs/$run" --jq '.conclusion')"
+            test "$actual" = "$SOURCE_SHA"
+            test "$state" = success
+            echo "SAME_SOURCE_CI_PASS run=$run source=$SOURCE_SHA"
+          done
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Release already exists; refuse overwrite"
+            exit 1
+          fi
+      - name: Download verified portable binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          gh run download "$WINDOWS_RUN" -R "$GH_REPO" --name DyberPet-Windows-Personal-PR5 --dir release-assets
+          gh run download "$LINUX_RUN" -R "$GH_REPO" --name DyberPet-Linux-Personal-x86_64 --dir release-assets
+          test -s release-assets/DyberPet-Windows-Personal-PR5.zip
+          test -s release-assets/DyberPet-Linux-Personal-x86_64.tar.gz
+      - name: Verify portable archives and generate checksum manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          win=release-assets/DyberPet-Windows-Personal-PR5.zip
+          linux=release-assets/DyberPet-Linux-Personal-x86_64.tar.gz
+          unzip -t "$win" >/dev/null
+          tar -tzf "$linux" >/dev/null
+          unzip -Z1 "$win" | grep -Eq '(^|/)DyberPet\.exe$'
+          tar -tzf "$linux" | grep -Fx 'DyberPetDesktop/DyberPetDesktop'
+          if unzip -Z1 "$win" | grep -Eq 'BUILTIN_(CHIBI|MASCOT)_DEMO'; then
+            echo "::error::Demo art in Windows package"; exit 1
+          fi
+          if tar -tzf "$linux" | grep -Eq 'BUILTIN_(CHIBI|MASCOT)_DEMO'; then
+            echo "::error::Demo art in Linux package"; exit 1
+          fi
+          cp docs/releases/PERSONAL_PREVIEW_20261026_INSTALL.md release-assets/INSTALL.zh-CN.md
+          (cd release-assets && sha256sum DyberPet-Windows-Personal-PR5.zip DyberPet-Linux-Personal-x86_64.tar.gz INSTALL.zh-CN.md > SHA256SUMS.txt)
+          cat release-assets/SHA256SUMS.txt
+      - name: Publish pre-release and assert tag/assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG"             release-assets/DyberPet-Windows-Personal-PR5.zip             release-assets/DyberPet-Linux-Personal-x86_64.tar.gz             release-assets/INSTALL.zh-CN.md             release-assets/SHA256SUMS.txt             --target "$SOURCE_SHA"             --prerelease             --title "DyberPet Personal Preview 2026-10-26 (Windows/Linux)"             --notes-file docs/releases/PERSONAL_PREVIEW_20261026_NOTES.md
+          got="$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+          test "$got" = "$SOURCE_SHA"
+          count="$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" --jq '.assets | length')"
+          test "$count" -eq 4
+          gh release view "$RELEASE_TAG" --json url,tagName,isPrerelease,assets
