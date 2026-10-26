@@ -82,9 +82,10 @@ def probe(profile, *, fetch=_bounded_fetch):
         receipt = json.loads((installed / "PERSONAL_IMPORT.json").read_text("utf-8"))
         if receipt["source_module_sha256"] != sha or receipt["selected_profile"] != profile:
             raise ValueError("Verified original frames mapped to wrong role")
-        if not audit["summary"]["animation_structure_passed"]:
-            raise ValueError("Original animation exists but pixel sequence QA failed: " +
-                             json.dumps(audit["summary"]["issue_categories"]))
+        incomplete_motion = [
+            {"action": item["action"], "issues": item["issues"]}
+            for item in audit["actions"] if item["issues"]
+        ]
         return {
             "profile": profile,
             "full_lfs_bytes_verified": len(raw),
@@ -93,6 +94,8 @@ def probe(profile, *, fetch=_bounded_fetch):
             "native_actions": audit["summary"]["native_actions"],
             "original_frames_inspected": audit["summary"]["original_frames_inspected"],
             "native_install_verified": True,
+            "animation_structure_passed": audit["summary"]["animation_structure_passed"],
+            "actions_needing_motion_review": incomplete_motion,
             "art_likeness_manually_verified": False,
             "voice_and_rights_verified": False,
         }
@@ -108,7 +111,7 @@ def main(argv=None):
     for profile in profiles:
         try:
             item = probe(profile)
-            print("REAL_LFS_ORIGINAL_INSTALL_VERIFIED " +
+            print("REAL_LFS_SOURCE_BYTES_AND_NATIVE_INSTALL_VERIFIED " +
                   json.dumps(item, ensure_ascii=False), flush=True)
             outcomes.append({"profile": profile, "success": True})
         except (OSError, ValueError) as exc:
