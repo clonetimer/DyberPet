@@ -1,0 +1,50 @@
+name: R6 original-Q dual-version synchronous comparison and interaction QA
+on:
+  push:
+    branches:
+      - feat/r6-side-by-side-original-chibi-qa-20261026
+  pull_request:
+    paths:
+      - DyberPet/DyberSettings/creator_variant_side_by_side.py
+      - DyberPet/DyberSettings/creator_q_review_board.py
+      - tools/build_windows_portable.ps1
+      - tests/test_creator_variant_side_by_side_qt.py
+      - .github/workflows/r6-original-art-ab-comparison.yml
+permissions:
+  contents: read
+concurrency:
+  group: dyberpet-r6-origin-compare-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  true-original-ab:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Linux offscreen Qt libraries
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 libx11-xcb1
+      - run: python -m pip install "Pillow>=11,<13" "PySide6>=6.7,<7"
+      - name: All same-person dual variant safety / actual Qt synchronous source frames
+        run: python -m unittest discover -s tests -p "test_creator_variant_side_by_side_qt.py" -v
+      - name: Existing Q-review board, canvas, and R4 human gate regressions
+        run: |
+          python -m unittest discover -s tests -p "test_creator_q_review_board_qt.py" -v
+          python -m unittest discover -s tests -p "test_normalize_creator_canvas.py" -v
+          python -m unittest discover -s tests -p "test_creator_chibi_quality.py" -v
+          python -m unittest discover -s tests -p "test_native_interaction_preview_shortcuts.py" -v
+      - name: Ensure PyInstaller dynamic Qt gallery can compile
+        run: python -m compileall -q DyberPet/DyberSettings/creator_variant_side_by_side.py DyberPet/DyberSettings/creator_q_review_board.py
+      - name: No external art checked into source
+        run: python -c "from pathlib import Path; assert not list(Path('res/role').glob('Source*')); print('R6_CREATOR_ART_NOT_IN_PUBLIC_GITHUB=true')"
