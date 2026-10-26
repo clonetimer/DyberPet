@@ -11,7 +11,13 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 import tempfile
+
+# A direct Windows/CI `python tools/verify_real_creator_runtime.py` launch
+# must resolve the project package without PYTHONPATH configuration.
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.install_pinned_codexpetdb import (
     get_verified_package, install_pinned_codexpetdb)
