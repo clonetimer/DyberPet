@@ -137,6 +137,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--role-root", type=Path,
                     default=default_role_root())
+    ap.add_argument("--mascots", action="store_true",
+                    help="Plan or explicitly install Guga/Doro original creator fan-art locally")
     ap.add_argument("--profile", action="append", default=None,
                     help="Repeatable genshin_... profile (default: all 123 templates)")
     ap.add_argument("--install", action="store_true",
@@ -149,6 +151,33 @@ def main(argv=None):
                     help="Optional .json plan/report path; never an art archive")
     args = ap.parse_args(argv)
     try:
+        if args.mascots and args.profile:
+            raise ValueError("--mascots and --profile cannot be combined")
+        if args.mascots:
+            try:
+                from .personal_mascot_batch import plan_mascot_sources, install_mascot_plan
+            except ImportError:
+                from tools.personal_mascot_batch import plan_mascot_sources, install_mascot_plan
+            mascot_plan = plan_mascot_sources(args.role_root)
+            if args.install:
+                result = {"plan_summary": mascot_plan["summary"],
+                          "installation": install_mascot_plan(
+                              mascot_plan, args.role_root,
+                              confirmed=args.accept_personal_use)}
+            else:
+                if args.accept_personal_use:
+                    raise ValueError("--accept-personal-use requires --install")
+                result = mascot_plan
+            output = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+            if args.output:
+                if args.output.suffix.lower() != ".json":
+                    raise ValueError("Report must use .json extension")
+                args.output.write_text(output, encoding="utf-8")
+            else:
+                if hasattr(sys.stdout, "reconfigure"):
+                    sys.stdout.reconfigure(encoding="utf-8")
+                print(output, end="")
+            return 0 if not args.install or not result["installation"]["failed"] else 1
         plan = plan_personal_sources(args.role_root, only_profiles=args.profile)
         if args.install:
             result = {"plan_summary": plan["summary"],
