@@ -92,6 +92,29 @@ class CatalogGapExportTests(unittest.TestCase):
             finally:
                 viewer.close()
 
+    def test_switching_to_corrupt_original_variant_does_not_crash_ui(self):
+        from DyberPet.DyberSettings.native_frame_preview import NativeFramePreviewDialog
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            good = root / "Valid"
+            (good / "action").mkdir(parents=True)
+            (good / "act_conf.json").write_text(
+                json.dumps({"idle": {"images": "idle"}}), encoding="utf-8")
+            Image.new("RGBA", (50, 60), (80, 40, 100, 255)).save(
+                good / "action" / "idle_0.png")
+            (root / "Broken").mkdir()
+            viewer = NativeFramePreviewDialog(root, ["Valid", "Broken"])
+            try:
+                viewer.version.setCurrentIndex(1)
+                self.assertIn("版本不可用", viewer.status.text())
+                self.assertFalse(viewer.play.isEnabled())
+                viewer.version.setCurrentIndex(0)
+                self.assertTrue(viewer.play.isEnabled())
+                self.assertEqual(viewer.status.text(), "1 / 1")
+            finally:
+                viewer.close()
+
     def test_demo_role_and_linked_frame_refused_for_visual_quality_review(self):
         from DyberPet.DyberSettings.native_frame_preview import safe_animation_inventory
         with tempfile.TemporaryDirectory() as td:

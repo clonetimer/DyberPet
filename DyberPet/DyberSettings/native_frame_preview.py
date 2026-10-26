@@ -30,12 +30,16 @@ def safe_animation_inventory(role_root, folder):
     if not isinstance(actions, dict) or not 1 <= len(actions) <= MAX_ACTIONS:
         raise ValueError("未找到可核对的原生动作列表")
     inventory = {}
+    total = 0
     for title, conf in sorted(actions.items()):
         if not isinstance(title, str) or not isinstance(conf, dict):
             raise ValueError("损坏的动画定义")
         paths = _frames_for_action(role, conf.get("images"))
         if not paths:
             raise ValueError("动作缺少原画序列：" + title)
+        total += len(paths)
+        if total > 1800:
+            raise ValueError("一次预览中动作帧过多，请检查素材")
         for path in paths:
             with Image.open(path) as img:
                 if (img.format != "PNG" or img.width > MAX_SIDE or
@@ -101,8 +105,21 @@ class NativeFramePreviewDialog(QDialog):
         self._clock.stop()
         self.play.setText("播放")
         # Validate every frame before the GUI offers to play this variant.
-        self._inventory = safe_animation_inventory(
-            self._root, self.version.currentData())
+        try:
+            self._inventory = safe_animation_inventory(
+                self._root, self.version.currentData())
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            # Qt signal handlers must not let a broken third-party folder
+            # abort the desktop process. Show a reviewable problem instead.
+            self._inventory = {}
+            self._frames = []
+            self.canvas.clear()
+            self.canvas.setText("无法打开此作者动画：" + str(exc)[:170])
+            self.status.setText("版本不可用")
+            self.play.setEnabled(False)
+            self.action.clear()
+            return
+        self.play.setEnabled(True)
         self.action.blockSignals(True)
         self.action.clear()
         for name in self._inventory:
