@@ -1032,6 +1032,7 @@ class PetWidget(QWidget):
             Action(QIcon(os.path.join(basedir,'res/icons/dashboard.svg')), self.tr('Dashboard'), triggered=self._show_dashboard),
             Action(QIcon(os.path.join(basedir,'res/icons/SystemPanel.png')), self.tr('System'), triggered=self._show_controlPanel),
             Action(FIF.EDIT, self.tr('Desktop Pet Assistant (Files / Voice / Persona)'), triggered=self._show_pet_assistant),
+            Action(FIF.HEART, self.tr('播放本角色已保存的互动'), triggered=self._assistant_play_saved_favorite),
         ])
         self.StatMenu.addSeparator()
 
@@ -1101,6 +1102,30 @@ class PetWidget(QWidget):
             return
         if isinstance(name, str) and name in playable:
             self._show_act(name)
+
+    def _assistant_play_saved_favorite(self):
+        """One-click context action for this character's *saved*, unlocked sprite.
+
+        The menu never trusts cached GUI state: it loads preferences and
+        checks the live native group snapshot immediately before dispatch.
+        No fallback to another character, image key or fake motion.
+        """
+        from DyberPet.assistant.role_interactions import requested_action
+        try:
+            category = load_assistant_preferences()["interaction_favorites"].get(
+                self.curr_pet_name)
+            options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
+            playable, plan = load_runtime_group_snapshot(
+                Path(basedir) / "res" / "role", self.curr_pet_name,
+                options, self.pet_conf.act_dict.keys())
+            native_group = requested_action(plan, category)
+            if native_group is not None and native_group in playable:
+                self._assistant_play_action(native_group)
+                return
+        except (AttributeError, KeyError, TypeError, ValueError, OSError):
+            pass
+        self._assistant_notice_bubble(
+            "当前角色无可播放的已保存互动；请在桌宠助手中收藏并保存。")
 
     def _assistant_speech_started(self, character, message):
         """React to local TTS playback, never to arbitrary model tool calls."""

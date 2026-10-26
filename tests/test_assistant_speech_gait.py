@@ -136,6 +136,53 @@ class ActualPetDispatchGateTests(unittest.TestCase):
             self.assertEqual(len(played), 3)
 
 
+class SavedPetInteractionShortcutTests(unittest.TestCase):
+    def test_context_menu_replays_only_saved_and_current_native_group(self):
+        from DyberPet.assistant.role_interactions import requested_action
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            d = root / "res" / "role" / "OriginalCreator"
+            d.mkdir(parents=True)
+            (d / "pet_conf.json").write_text(json.dumps({
+                "random_act": [{"name": "打招呼", "act_list": ["wave"]}]}),
+                encoding="utf-8")
+            state = {"OriginalCreator": {
+                "打招呼": {"act_type": "random_act", "unlocked": True}}}
+            prefs = {"interaction_favorites": {"OriginalCreator": "greet"}}
+            method = method_from_source(
+                "DyberPet.py", "PetWidget", "_assistant_play_saved_favorite",
+                {"settings": types.SimpleNamespace(
+                    act_data=types.SimpleNamespace(allAct_params=state)),
+                 "load_assistant_preferences": lambda: prefs,
+                 "load_runtime_group_snapshot": load_runtime_group_snapshot,
+                 "requested_action": requested_action,
+                 "Path": Path, "basedir": td})
+            pet = types.SimpleNamespace(
+                curr_pet_name="OriginalCreator",
+                pet_conf=types.SimpleNamespace(act_dict={"wave": object()}),
+                _assistant_play_action=MagicMock(),
+                _assistant_notice_bubble=MagicMock())
+            method(pet)
+            pet._assistant_play_action.assert_called_once_with("打招呼")
+            pet._assistant_play_action.reset_mock()
+            state["OriginalCreator"]["打招呼"]["unlocked"] = False
+            method(pet)
+            pet._assistant_play_action.assert_not_called()
+            pet._assistant_notice_bubble.assert_called()
+            state["OriginalCreator"]["打招呼"]["unlocked"] = True
+            pet.pet_conf.act_dict.clear()
+            method(pet)
+            pet._assistant_play_action.assert_not_called()
+            pet.curr_pet_name = "UnrelatedRole"
+            method(pet)
+            pet._assistant_play_action.assert_not_called()
+
+    def test_saved_interaction_shortcut_is_reachable_from_real_context_menu(self):
+        source = (Path(__file__).resolve().parents[1] /
+                  "DyberPet" / "DyberPet.py").read_text(encoding="utf-8")
+        self.assertIn("self.tr('播放本角色已保存的互动')", source)
+        self.assertIn("triggered=self._assistant_play_saved_favorite", source)
+
 class ActualPetSpeechBridgeTests(unittest.TestCase):
     def test_tts_start_matches_character_and_real_unlocked_action(self):
         start = method_from_source(
