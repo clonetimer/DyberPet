@@ -70,6 +70,8 @@ class CatalogGapExportTests(unittest.TestCase):
                 act = "wave" if folder == "CreatorWave" else "jump"
                 (role / "act_conf.json").write_text(
                     json.dumps({act: {"images": act}}), encoding="utf-8")
+                (role / "pet_conf.json").write_text(
+                    json.dumps({"default": act}), encoding="utf-8")
                 for n in range(3):
                     Image.new("RGBA", (60, 70),
                               (n * 70, 40, 120, 255)).save(
@@ -101,6 +103,8 @@ class CatalogGapExportTests(unittest.TestCase):
             (good / "action").mkdir(parents=True)
             (good / "act_conf.json").write_text(
                 json.dumps({"idle": {"images": "idle"}}), encoding="utf-8")
+            (good / "pet_conf.json").write_text(
+                json.dumps({"default": "idle"}), encoding="utf-8")
             Image.new("RGBA", (50, 60), (80, 40, 100, 255)).save(
                 good / "action" / "idle_0.png")
             (root / "Broken").mkdir()
