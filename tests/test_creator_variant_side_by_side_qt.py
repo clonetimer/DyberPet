@@ -9,7 +9,7 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PIL import Image
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog, QMessageBox
 from DyberPet.DyberSettings.creator_variant_side_by_side import (
     CreatorVariantSideBySideDialog, checked_variant_pair,
     shared_native_interactions,
@@ -133,7 +133,9 @@ class OriginalABTests(unittest.TestCase):
             _original(root,"SourceB","genshin_ayaka",[(50,60,70,255)])
             ui=CreatorVariantSideBySideDialog(root,["SourceA","SourceB"])
             try:
-                with patch("DyberPet.DyberSettings.native_frame_preview.NativeFramePreviewDialog") as view:
+                with patch("DyberPet.DyberSettings.native_frame_preview.NativeFramePreviewDialog") as view, \
+                     patch.object(QMessageBox, "warning", side_effect=AssertionError("Unexpected blocking Qt warning")), \
+                     patch.object(QDialog, "exec", side_effect=AssertionError("Unexpected modal Qt dialog")):
                     instance=view.return_value
                     ui._review(1)
                     view.assert_called_once()
