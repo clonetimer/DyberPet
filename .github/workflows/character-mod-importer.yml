@@ -638,6 +638,25 @@ jobs:
         run: python tools/probe_live_missing_codexpetdb.py --limit 6
     # No third-party artwork is stored or redistributed.
 
+  genshin-shimejis-xyz-discovery:
+    name: Unpinned Shimeji collection identity scan (non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run strict offline parser regressions
+        run: python -m unittest discover -s tests -p "test_shimejis_xyz_missing.py" -v
+      - name: Fetch only published Genshin collection and enumerate unmatched identities
+        timeout-minutes: 2
+        run: python tools/probe_shimejis_xyz_missing.py
+    # Leads are NOT pinned sources; no artwork or cookies uploaded.
+
   itto-external-shimeji-probe:
     name: Itto original third-party ZIP structural QA (non-gating)
     runs-on: ubuntu-latest
