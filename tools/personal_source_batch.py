@@ -20,6 +20,13 @@ except ImportError:
     from genshin_library import scan_genshin_library
 
 # React LFS entries require a user-provided source file, and remain manual-only.
+def default_role_root():
+    """PyInstaller helper installs beside DyberPet.exe, never in _MEIPASS."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent / "res" / "role"
+    return Path(__file__).resolve().parents[1] / "res" / "role"
+
+
 INSTALLERS = {
     "native": ("tools.install_artist_genshin", "install_artist_genshin"),
     "codex": ("tools.install_artist_codex", "install_artist_codex"),
@@ -129,7 +136,7 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--role-root", type=Path,
-                    default=Path(__file__).resolve().parents[1] / "res" / "role")
+                    default=default_role_root())
     ap.add_argument("--profile", action="append", default=None,
                     help="Repeatable genshin_... profile (default: all 123 templates)")
     ap.add_argument("--install", action="store_true",
