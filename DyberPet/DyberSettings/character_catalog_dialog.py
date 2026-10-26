@@ -4,11 +4,13 @@ No network, disk mutation or source-art verification occurs in this UI.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QListWidget,
-    QListWidgetItem, QPushButton, QVBoxLayout,
+    QListWidgetItem, QPushButton, QVBoxLayout, QFileDialog, QMessageBox,
 )
 
 from tools.character_catalog_search import (
@@ -22,8 +24,9 @@ from tools.react_shimeji_source_leads import CANDIDATES as REACT_CANDIDATES, REP
 class CharacterCatalogDialog(QDialog):
     """Non-programmer-friendly browser across 123 Genshin and 2 mascots."""
 
-    def __init__(self, progress_report, parent=None):
+    def __init__(self, progress_report, parent=None, role_root=None):
         super().__init__(parent)
+        self._role_root = Path(role_root).expanduser() if role_root is not None else None
         entries = progress_report["characters"]
         self._entries = list(entries)
         self._source_by_id = {x["id"]: x for x in source_coverage()["characters"]}
@@ -87,6 +90,14 @@ class CharacterCatalogDialog(QDialog):
         buttons.addWidget(self.openButton)
         buttons.addWidget(close)
         layout.addLayout(buttons)
+
+        self.exportGapButton = QPushButton("导出全部角色素材与互动缺口 JSON", self)
+        self.exportGapButton.setToolTip(
+            "只读汇总本机创作者原画和可解码的首帧动作，不会下载素材，"
+            "也不会将原设视觉或实际桌面验收误判为通过")
+        self.exportGapButton.setEnabled(self._role_root is not None)
+        self.exportGapButton.clicked.connect(self._export_gap_report)
+        layout.addWidget(self.exportGapButton)
 
         self.searchBox.textChanged.connect(self._refresh)
         self.familyFilter.currentIndexChanged.connect(self._refresh)
@@ -173,6 +184,31 @@ class CharacterCatalogDialog(QDialog):
                 return
             url = candidates[label]
         QDesktopServices.openUrl(QUrl(url))
+
+    def _export_gap_report(self):
+        """Explicit export only: never alter source images or character saves."""
+        if self._role_root is None:
+            return
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "导出角色素材与互动缺口", "DyberPet_role_gaps.json",
+            "JSON 文件 (*.json)")
+        if not filename:
+            return
+        if Path(filename).suffix.lower() != ".json":
+            QMessageBox.warning(self, "导出未执行", "请选用 .json 文件名。")
+            return
+        try:
+            from tools.creator_assistant_gap_report import (
+                make_gap_report, save_gap_report)
+            report = make_gap_report(self._role_root)
+            save_gap_report(Path(filename), report)
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            QMessageBox.warning(self, "导出失败", str(exc))
+            return
+        QMessageBox.information(
+            self, "导出完成",
+            "已导出可核实的素材和动作状态。"
+            "原设相似度、实际动画播放、音色与来源使用条件仍需人工审核。")
 
     def _select(self):
         selected = self.selected_character_id()

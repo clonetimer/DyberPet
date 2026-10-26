@@ -711,7 +711,8 @@ class CharInterface(ScrollArea):
         except (ValueError,OSError) as exc:
             self.__showSystemNote(self.tr("无法读取全部角色：")+str(exc),2)
             return
-        dialog=CharacterCatalogDialog(progress,parent=self)
+        dialog=CharacterCatalogDialog(progress,parent=self,
+                                      role_root=Path(basedir)/"res"/"role")
         if not dialog.exec():
             return
         selected=dialog.selection

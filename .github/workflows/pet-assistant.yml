@@ -15,6 +15,10 @@ on:
       - "DyberPet/conf.py"
       - "tests/test_assistant_*.py"
       - "tests/test_role_interactions.py"
+      - "tests/test_creator_assistant_integration*.py"
+      - "tools/creator_assistant_gap_report.py"
+      - "DyberPet/DyberSettings/character_catalog_dialog.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
       - "tools/character_interaction_coverage.py"
       - "tests/test_save_snapshot.py"
       - "tests/test_offline_restore.py"
@@ -32,6 +36,10 @@ on:
       - "DyberPet/conf.py"
       - "tests/test_assistant_*.py"
       - "tests/test_role_interactions.py"
+      - "tests/test_creator_assistant_integration*.py"
+      - "tools/creator_assistant_gap_report.py"
+      - "DyberPet/DyberSettings/character_catalog_dialog.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
       - "tools/character_interaction_coverage.py"
       - "tests/test_save_snapshot.py"
       - "tests/test_offline_restore.py"
@@ -65,6 +73,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_assistant_*.py" -v
           python -m unittest discover -s tests -p "test_role_interactions.py" -v
+          python -m unittest discover -s tests -p "test_creator_assistant_integration.py" -v
       - name: Verify full backup and tamper safeguards
         run: python -m unittest discover -s tests -p "test_save_snapshot.py" -v
       - name: Verify offline data restore rollback, tamper and interruption
@@ -82,7 +91,9 @@ jobs:
       - name: Test actual assistant UI offscreen
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests -p "test_assistant_qt.py" -v
+        run: |
+          python -m unittest discover -s tests -p "test_assistant_qt.py" -v
+          python -m unittest discover -s tests -p "test_creator_assistant_integration_qt.py" -v
 
   ppl-real-contract:
     runs-on: ubuntu-latest
