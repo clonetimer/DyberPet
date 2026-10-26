@@ -181,3 +181,6 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 ## 2026-10-26：播放入口再次校验（防止角色切换/素材更新绕过菜单）
 
 旧实现仅在按钮生成时检查 `pet_conf.random_act` 和已加载原生帧，真正执行 `_assistant_play_action` 时却只检查 `unlocked` 字段，用户切换角色、撤换 PNG 或修改解锁状态可能令先前菜单过期。现 `load_runtime_group_snapshot` 同时生成当前真正可执行的所有原生动作组清单（包括“自定义游戏”等不能匹配12种语义的普通组）与语义快捷菜单映射；**按钮展示、收藏与最终 PetWidget 指令执行**统一检查当前角色目录、实时 FV 状态、`random_act` 组类型和引用的全部已载入动作名。不允许将 `accessory_act`、原生 PNG 键或过期动作组送入 `start_interact('actlist', ...)`。添加从真实 `PetWidget._assistant_play_action` AST 提取的跨人物、锁定状态、删除配置、缺帧回归。真人原画/声线验收与这个软件安全修复仍相互独立。
+
+
+**语音动作入口同样受实时动作组约束：** 朗读本机 TTS 时，只有当前人物的 `talk/说话动作` 属于真实、已解锁、全部底层原帧已加载的 `random_act` 组，才能发出动画请求。`customized` 或 `accessory_act` 即使名称中有 talk，也不会错误送入 `actlist`；朗读文本仍正常执行，无真实说话动作时不会伪造口型同步。

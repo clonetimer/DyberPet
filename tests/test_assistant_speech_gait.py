@@ -20,6 +20,12 @@ class TalkActionSelectionTests(unittest.TestCase):
         }), "说话动作")
         self.assertEqual(available_talk_action({
             "talk_loop": {"unlocked": True, "act_type": "customized"}}), "talk_loop")
+        self.assertIsNone(available_talk_action({
+            "talk_loop": {"unlocked": True, "act_type": "customized"}},
+            playable_groups={"another_group"}))
+        self.assertEqual(available_talk_action({
+            "talk": {"unlocked": True, "act_type": "random_act"}},
+            playable_groups={"talk"}), "talk")
 
     def test_no_action_fabricated_from_wrong_names_or_locked_actions(self):
         self.assertIsNone(available_talk_action({
@@ -134,7 +140,9 @@ class ActualPetSpeechBridgeTests(unittest.TestCase):
     def test_tts_start_matches_character_and_real_unlocked_action(self):
         start = method_from_source(
             "DyberPet.py", "PetWidget", "_assistant_speech_started",
-            {"available_talk_action": available_talk_action})
+            {"available_talk_action": available_talk_action,
+             "load_runtime_group_snapshot": lambda *args: ({"talk"}, []),
+             "Path": Path, "basedir": "/unused"})
         end = method_from_source(
             "DyberPet.py", "PetWidget", "_assistant_speech_finished", {})
         class State:
@@ -147,6 +155,7 @@ class ActualPetSpeechBridgeTests(unittest.TestCase):
         start.__globals__["settings"] = settings
         pet = types.SimpleNamespace(
             curr_pet_name="Doro",
+            pet_conf=types.SimpleNamespace(act_dict={"talk": object()}),
             _assistant_reply_bubble=MagicMock(),
             _assistant_play_action=MagicMock())
         start(pet, "派蒙", "not this pet")
@@ -158,15 +167,36 @@ class ActualPetSpeechBridgeTests(unittest.TestCase):
         end(pet, "Doro")
         self.assertFalse(pet._assistant_voice_active)
 
+    def test_voice_must_not_dispatch_customized_or_accessory_talk_without_actlist(self):
+        source = method_from_source(
+            "DyberPet.py", "PetWidget", "_assistant_speech_started",
+            {"available_talk_action": available_talk_action,
+             "load_runtime_group_snapshot": lambda *args: (frozenset(), []),
+             "Path": Path, "basedir": "/unused"})
+        source.__globals__["settings"] = types.SimpleNamespace(
+            act_data=types.SimpleNamespace(allAct_params={
+                "Doro": {"talk": {"unlocked": True, "act_type": "accessory_act"},
+                         "talk_loop": {"unlocked": True, "act_type": "customized"}}}))
+        pet = types.SimpleNamespace(
+            curr_pet_name="Doro", pet_conf=types.SimpleNamespace(
+                act_dict={"talk": object()}),
+            _assistant_reply_bubble=MagicMock(), _assistant_play_action=MagicMock())
+        source(pet, "Doro", "测试语音")
+        pet._assistant_reply_bubble.assert_called_once_with("测试语音")
+        pet._assistant_play_action.assert_not_called()
+
     def test_tts_without_speaking_sprite_does_not_invent_one(self):
         impl = method_from_source(
             "DyberPet.py", "PetWidget", "_assistant_speech_started",
-            {"available_talk_action": available_talk_action})
+            {"available_talk_action": available_talk_action,
+             "load_runtime_group_snapshot": lambda *args: (frozenset(), []),
+             "Path": Path, "basedir": "/unused"})
         impl.__globals__["settings"] = types.SimpleNamespace(
             act_data=types.SimpleNamespace(allAct_params={
                 "派蒙": {"jump": {"unlocked": True, "act_type": "random_act"}}}))
         pet = types.SimpleNamespace(
             curr_pet_name="派蒙",
+            pet_conf=types.SimpleNamespace(act_dict={"jump": object()}),
             _assistant_reply_bubble=MagicMock(),
             _assistant_play_action=MagicMock())
         impl(pet, "派蒙", "短回复")

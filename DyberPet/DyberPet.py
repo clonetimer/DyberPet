@@ -1109,7 +1109,13 @@ class PetWidget(QWidget):
         self._assistant_voice_active = True
         self._assistant_reply_bubble(message)
         options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
-        talk = available_talk_action(options)
+        try:
+            playable, _ = load_runtime_group_snapshot(
+                Path(basedir) / "res" / "role", self.curr_pet_name,
+                options, self.pet_conf.act_dict.keys())
+        except (AttributeError, KeyError, TypeError, ValueError, OSError):
+            playable = frozenset()
+        talk = available_talk_action(options, playable_groups=playable)
         if talk is not None:
             self._assistant_play_action(talk)
 
