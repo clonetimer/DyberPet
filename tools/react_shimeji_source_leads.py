@@ -52,6 +52,9 @@ CANDIDATES = {
 
 def react_shimeji_lead_report():
     pinned = {x["id"]: x["source_found"] for x in source_coverage()["characters"]}
+    verified = json.loads(Path(__file__).with_name(
+        "react_lfs_verified_sources.json").read_text(encoding="utf-8"))["sources"]
+    verified_profiles = {entry["profile"] for entry in verified.values()}
     rows = []
     for profile, (slug, oid, size, pointer_blob, preview_blob) in sorted(CANDIDATES.items()):
         if profile not in CHIBI_PROFILES or not profile in pinned:
@@ -73,10 +76,14 @@ def react_shimeji_lead_report():
             "lfs_pointer_git_blob_sha": pointer_blob,
             "preview_png_git_blob_sha": preview_blob,
             "existing_fixed_source": bool(pinned[profile]),
-            "status": "lfs_pointer_verified_art_uninspected",
-            "full_lfs_art_downloaded_and_hashed": False,
+            "status": ("original_bytes_sha_native_install_verified_motion_pending"
+                       if profile in verified_profiles else
+                       "lfs_pointer_verified_art_uninspected"),
+            "full_lfs_art_downloaded_and_hashed": profile in verified_profiles,
+            "native_install_tested_in_ci": profile in verified_profiles,
+            "motion_action_quality_pending": (["crawl", "fall"] if profile in verified_profiles else []),
             "visual_likeness_qa_passed": False,
-            "native_role_installed": False,
+            "native_role_installed": False,  # never installed by this read-only report
             "redistribution_rights_verified": False,
         })
     return {
@@ -86,7 +93,8 @@ def react_shimeji_lead_report():
             "matched_distinct_genshin_personas": len(rows),
             "new_leads_for_missing_characters": sum(not r["existing_fixed_source"] for r in rows),
             "fixed_source_coverage_unchanged": True,
-            "downloaded_or_installed": 0,
+            "source_origins_verified_in_ci": len(verified_profiles),
+            "downloaded_or_installed": 0,  # local user installs not performed
             "art_qa_passed": 0,
         },
         "characters": rows,
