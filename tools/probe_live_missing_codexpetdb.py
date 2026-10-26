@@ -79,14 +79,17 @@ def probe(limit=6):
         "candidates": len(leads), "checked": min(limit, len(leads)),
         "passed": len(results), "unverified": len(failures),
         "promoted": 0, "human_visual_likeness_approved": 0}, sort_keys=True))
-    return results
+    return results, len(leads)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, default=6)
     args = parser.parse_args(argv)
-    return 0 if probe(args.limit) else 1
+    passed, candidates = probe(args.limit)
+    # When all known public archives have been verified and pinned,
+    # zero *new* candidates is a normal success, not a red CI signal.
+    return 0 if not candidates or passed else 1
 
 
 if __name__ == "__main__":
