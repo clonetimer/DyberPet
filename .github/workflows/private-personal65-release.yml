@@ -1,0 +1,126 @@
+name: Private Personal65 Python and Rust hybrid Release
+
+on:
+  push:
+    branches:
+      - "release/personal65-python-rust-20261026"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dyberpet-private65-release
+  cancel-in-progress: false
+
+jobs:
+  build-windows:
+    name: Windows ${{ matrix.backend }} personal65
+    runs-on: windows-latest
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [python, rust]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install desktop dependencies and build tools
+        run: python -m pip install -r requirements-windows-portable.txt
+      - name: Install optional native toolchain for Rust-only artifact
+        if: matrix.backend == 'rust'
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build Rust native wheel and require actual binary import
+        if: matrix.backend == 'rust'
+        shell: pwsh
+        run: |
+          python -m pip install "maturin>=1.7,<2"
+          if ($LASTEXITCODE -ne 0) { throw "maturin installation failed" }
+          maturin build --release --manifest-path rust/pet_core/Cargo.toml --interpreter python --out wheelhouse
+          if ($LASTEXITCODE -ne 0) { throw "Rust wheel build failed" }
+          python -m pip install --no-index --find-links wheelhouse dyberpet-native-core
+          if ($LASTEXITCODE -ne 0) { throw "Rust wheel install failed" }
+          $env:DYBERPET_NATIVE_BACKEND = "rust"
+          python -c "from DyberPet.assistant.native_bridge import backend_status; s=backend_status(); print(s); assert s['active']=='rust'"
+          if ($LASTEXITCODE -ne 0) { throw "Native bridge is not active Rust" }
+      - name: Test personal character planner offline (no art downloaded)
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Opt-in planner regression failed" }
+      - name: Run Rust/Python parity tests only with built native extension
+        if: matrix.backend == 'rust'
+        shell: pwsh
+        env:
+          DYBERPET_NATIVE_BACKEND: rust
+        run: |
+          python -m unittest discover -s tests -p "test_rust_bridge.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Native integrity regression failed" }
+      - name: Build actual portable app AND local-only role-installer EXEs
+        shell: pwsh
+        run: |
+          & ./tools/build_personal65_windows.ps1 -Backend ${{ matrix.backend }}
+          if ($LASTEXITCODE -ne 0) { throw "Personal65 portable build failed" }
+      - name: Upload verified private binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: personal65-${{ matrix.backend }}
+          path: DyberPet-Personal65-Windows-*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish private prerelease after both builds pass
+    needs: [build-windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: v0.13.0-private65-rc1
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: personal65-*
+          merge-multiple: true
+      - name: Verify exactly the Python and Rust package exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s DyberPet-Personal65-Windows-Python.zip
+          test -s DyberPet-Personal65-Windows-RustHybrid.zip
+          python - <<'PY'
+          import glob
+          files = sorted(glob.glob("DyberPet-Personal65-Windows-*.zip"))
+          assert files == ["DyberPet-Personal65-Windows-Python.zip",
+                           "DyberPet-Personal65-Windows-RustHybrid.zip"], files
+          print("EXACT_TWO_VERIFIED_BUILDS", files)
+          PY
+          sha256sum DyberPet-Personal65-Windows-*.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Refuse Release if repository is no longer Private
+        shell: bash
+        run: |
+          set -euo pipefail
+          visibility=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$visibility" = "true" || { echo "Refusing art-related personal release for a public repository"; exit 1; }
+      - name: Publish or replace draft-independent assets in PRIVATE prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" DyberPet-Personal65-Windows-*.zip SHA256SUMS.txt --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" \
+              DyberPet-Personal65-Windows-*.zip SHA256SUMS.txt \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "DyberPet Personal65 — Python + Rust hybrid (private RC1)" \
+              --prerelease \
+              --latest=false \
+              --notes "PRIVATE PRE-RELEASE. Two Windows x64 standalone portable apps: Python and Rust-hybrid (PyO3 accelerator, PySide6 GUI retained). Same 123 character templates and 65 pinned artist-source candidates, 58 without pinned sources. No third-party artwork or original voice is bundled; choose Install-65-Roles.cmd on your own computer and opt-in after checking each source's terms. Hash verification and source counts do not establish original-game visual likeness, motion realism, sound quality or redistribution permission. This is not a 65-preinstalled-role offline pack; full physical-device acceptance is still pending. Both packages are built from the exact same source SHA; their helper installers operate locally only."
+          fi
+          gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" --json url,assets,isPrerelease | jq .
