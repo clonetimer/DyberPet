@@ -1,0 +1,104 @@
+name: Deliver Personal65 Encrypted Preload In Downloadable Parts
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/personal65-encrypted-cloud-preload-20261026
+    paths:
+      - .github/workflows/personal65-split-encrypted-artifact.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: personal65-python-real-art-encrypted
+          run-id: 40302089542
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Split only already encrypted bytes into 8 small delivery chunks
+        run: |
+          set -euo pipefail
+          mkdir -p chunks
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          source=Path("downloaded/DyberPet-Python-RealArt-Encrypted.ekp")
+          assert source.exists() and source.stat().st_size > 50000000
+          block=58*1024*1024
+          manifest={"source_name":source.name,"source_size_bytes":source.stat().st_size,"sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"parts":[]}
+          with source.open("rb") as inp:
+              for i in range(8):
+                  piece=inp.read(block)
+                  if not piece: break
+                  name=f"part-{i:02d}.bin"
+                  dest=Path("chunks")/name
+                  dest.write_bytes(piece)
+                  manifest["parts"].append({"name":name,"size_bytes":len(piece),"sha256":hashlib.sha256(piece).hexdigest()})
+              assert inp.read(1)==b"", "Unexpected large source: increase part count"
+          assert len(manifest["parts"])==8,manifest
+          Path("chunks/MANIFEST.json").write_text(json.dumps(manifest,indent=2)+"\n")
+          print("ENCRYPTED_SPLIT_COUNT",len(manifest["parts"]))
+          print("ENCRYPTED_SOURCE_SHA256",manifest["sha256"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal65-encrypted-part-00
+          path: chunks/part-00.bin
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal65-encrypted-part-01
+          path: chunks/part-01.bin
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal65-encrypted-part-02
+          path: chunks/part-02.bin
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal65-encrypted-part-03
+          path: chunks/part-03.bin
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal65-encrypted-part-04
+          path: chunks/part-04.bin
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal65-encrypted-part-05
+          path: chunks/part-05.bin
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal65-encrypted-part-06
+          path: chunks/part-06.bin
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal65-encrypted-part-07
+          path: chunks/part-07.bin
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: personal65-encrypted-parts-manifest
+          path: chunks/MANIFEST.json
+          retention-days: 7
+          compression-level: 0
