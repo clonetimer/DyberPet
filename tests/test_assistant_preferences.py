@@ -33,7 +33,8 @@ class AssistantPreferencesTests(unittest.TestCase):
         prefs["interaction_favorites"] = {"咕嘎": "greet", "Doro": "jump"}
         save(prefs, self.file)
         self.assertEqual(load(self.file)["interaction_favorites"], prefs["interaction_favorites"])
-        for bad in ({"../Other": "jump"}, {"Doro": "madeup"}, {"Doro": None}):
+        for bad in ({"../Other": "jump"}, {"Doro": "madeup"},
+                    {"Doro": None}, {"Doro": ["greet"]}, {"Doro": {}}):
             raw = defaults()
             raw["interaction_favorites"] = bad
             with self.assertRaises(ValueError):

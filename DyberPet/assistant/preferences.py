@@ -72,7 +72,7 @@ def validate(raw) -> dict:
     for character, category in favorites.items():
         if (not isinstance(character, str) or not 1 <= len(character) <= 120 or
                 any(x in character for x in ("/", chr(92), chr(0))) or
-                category not in valid):
+                not isinstance(category, str) or category not in valid):
             raise ValueError("Invalid character favorite entry")
     result["interaction_favorites"] = dict(favorites)
     return result
