@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "provider": "CodexPetDB",
-  "note": "28 original publisher ZIPs independently downloaded and fully SHA256/size verified, matched pet.json identity, converted to native DyberPet roles with per-frame pixel audit in GitHub Actions 2026-10-25. Character appearance likeness, voice, Windows physical playback and redistribution rights NOT approved.",
+  "note": "32 publisher ZIPs independently downloaded and fully SHA256/size verified against original packages, matched pet.json identity, converted to native DyberPet roles with per-frame pixel audit in GitHub Actions. New Yanfei/Emilie/Illuga/Zibai passed run 40263186002 (2026-10-26). Character appearance, unique motion semantics, voice, physical playback and reuse rights are NOT manually approved.",
   "sources": {
     "kaveh": {
       "profile": "genshin_kaveh",
@@ -254,6 +254,42 @@
       "verified_bytes": 829501,
       "max_bytes": 3000000,
       "listing_url": "https://codexpetdb.com/en/pets/gi-lohen/download"
+    },
+    "yanfei": {
+      "profile": "genshin_yanfei",
+      "slug": "gi-yanfei",
+      "revision": "019fa763-268a-7464-ab17-f58fd19c5712",
+      "sha256": "761d5821752ca49e14fa84200809582cd9f1abe0363cc9f4eeed1a5b2ab3b10d",
+      "verified_bytes": 1526288,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-yanfei/download"
+    },
+    "emilie": {
+      "profile": "genshin_emilie",
+      "slug": "gi-emilie",
+      "revision": "019f8c76-ff78-7273-98a1-f31ca37a5d1b",
+      "sha256": "8b74e58be3eaf6e1103fb2b0c1af2e28bd4bbe80626510d6ce45d8aedf376444",
+      "verified_bytes": 715013,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-emilie/download"
+    },
+    "illuga": {
+      "profile": "genshin_illuga",
+      "slug": "gi-illuga",
+      "revision": "019f89b0-fdc6-7578-b163-cdd4bbb42d78",
+      "sha256": "25d026d4e8b2aa0e20a02753133c6f854b5e8903b9b0a22c4f3ffe4b17090c9a",
+      "verified_bytes": 788883,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-illuga/download"
+    },
+    "zibai": {
+      "profile": "genshin_zibai",
+      "slug": "gi-zibai",
+      "revision": "019f8cb5-4614-77cf-8092-ce508770ca9f",
+      "sha256": "2be2ebe192b737c95f01061d5c77396bacbbd13273f5455eefa37d9a4de234a0",
+      "verified_bytes": 915460,
+      "max_bytes": 3000000,
+      "listing_url": "https://codexpetdb.com/en/pets/gi-zibai/download"
     }
   }
 }

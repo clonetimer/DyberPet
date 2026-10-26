@@ -13,10 +13,10 @@ import re
 from urllib.request import urlopen, Request
 
 try:
-    from .community_codex_leads import PROFILE_TO_SLUG
+    from .chibi_profiles import CHIBI_PROFILES
     from .character_source_coverage import source_coverage
 except ImportError:
-    from community_codex_leads import PROFILE_TO_SLUG
+    from chibi_profiles import CHIBI_PROFILES
     from character_source_coverage import source_coverage
 
 CATALOG_URL = "https://cdn.codexpetdb.com/catalogs/v1/pets.json"
@@ -51,7 +51,10 @@ def query_unpinned_candidates(*, download=None):
             raise ValueError("Duplicate public package identity")
         by_slug[entry["slug"]] = entry
     findings = []
-    for profile, slug in sorted(PROFILE_TO_SLUG.items()):
+    # New entries published after our initial 33-person shortlist still
+    # count as discoverable. Match only exact 123-roster IDs, never fuzzy names.
+    for profile in sorted(k for k in CHIBI_PROFILES if k.startswith("genshin_")):
+        slug = "gi-" + profile[len("genshin_"):].replace("_", "-")
         if profile in registered or slug not in by_slug:
             continue
         pet = by_slug[slug]
