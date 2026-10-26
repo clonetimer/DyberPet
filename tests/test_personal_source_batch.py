@@ -11,10 +11,10 @@ from tools.personal_source_batch import plan_personal_sources, install_personal_
 def fake_coverage():
     return {"characters": [
         {"id": "genshin_a", "name": "A", "source_candidates": [
-            {"provider": "react_lfs", "source_key": "manual", "url": "https://example.org/manual"},
+            {"provider": "unverified_lfs", "source_key": "manual", "url": "https://example.org/manual"},
             {"provider": "codexpetdb_zip", "source_key": "a", "url": "https://example.org/a"}]},
         {"id": "genshin_b", "name": "B", "source_candidates": [
-            {"provider": "react_lfs", "source_key": "b", "url": "https://example.org/b"}]},
+            {"provider": "unverified_lfs", "source_key": "b", "url": "https://example.org/b"}]},
         {"id": "genshin_c", "name": "C", "source_candidates": []},
         {"id": "genshin_d", "name": "D", "source_candidates": [
             {"provider": "native", "source_key": "d", "url": "https://example.org/d"}]},
