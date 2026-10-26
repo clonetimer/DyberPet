@@ -16,8 +16,8 @@ try:
     from .character_source_coverage import source_coverage
     from .genshin_library import scan_genshin_library
 except ImportError:
-    from character_source_coverage import source_coverage
-    from genshin_library import scan_genshin_library
+    from tools.character_source_coverage import source_coverage
+    from tools.genshin_library import scan_genshin_library
 
 # React LFS entries require a user-provided source file, and remain manual-only.
 def default_role_root():
