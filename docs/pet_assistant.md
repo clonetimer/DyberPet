@@ -151,3 +151,10 @@ tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文�
 - 即使按钮已发出 `action_requested`，实际 `PetWidget` 仍对当下人物动作是否可执行执行二次验证。此功能不证明原设画风、语音或所有动画质量已人工验收。
 
 代码 `DyberPet/assistant/role_interactions.py::choose_random_real_action` 和 `DyberPet/assistant/ui.py::play_random_interaction`；纯逻辑回归 `tests/test_role_interactions.py` 和真实 Qt 点击回归 `tests/test_assistant_qt.py`。
+
+
+### 2026-10-26 · 互动素材静态审计防误报
+
+- 「检查本角色互动缺口」现拒绝角色目录符号链接、`..` 目录穿越和伪造 PNG 文件头；只有可完整解码、尺寸受限的真实 PNG 首帧才计入该动作。
+- 同步覆盖导出和全角色 CLI 统计；损坏素材归入 `configured_but_unplayable_actions` 或 `creator_folders_with_broken_actions`，不会虚增已安装可用动画。
+- 此项仍然**仅验证每项动作的首帧**，不是完整动作序列、原设人物外观、真人声音或 Windows 物理桌面 QA；后续仍需运行 `tools/artist_animation_audit.py` 做逐帧结构检查。

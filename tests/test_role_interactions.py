@@ -205,6 +205,53 @@ class InteractionCoverageTests(unittest.TestCase):
         self.assertEqual(result["summary"]["roles_with_at_least_one_interaction"], 0)
         self.assertFalse(result["characters"][0]["action_categories_present_in_art"])
 
+    def test_png_signature_with_invalid_payload_does_not_count_as_art(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            folder = root / "BrokenPNG"
+            folder.mkdir()
+            (folder / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            (folder / "action").mkdir()
+            (folder / "action" / "wave_0.png").write_bytes(_PNG[:8] + b"\\0" * 100)
+            gen = {"characters": [{"profile": "genshin_sayu", "name": "早柚",
+                     "installed_folders": [{"folder": "BrokenPNG", "is_original_demo": False}]}]}
+            report = interaction_coverage(root, genshin_snapshot=gen,
+                                          mascot_snapshot={"mascots": []})
+            selected = inspect_selected_role_interactions(
+                root, folder.name, unlocked_actions=["wave"])
+        self.assertEqual(report["summary"]["roles_with_creator_art"], 0)
+        self.assertEqual(report["summary"]["broken_creator_asset_folder_count"], 1)
+        self.assertEqual(selected["configured_but_unplayable_actions"], ["wave"])
+        self.assertFalse(selected["installed_action_categories"])
+        self.assertFalse(selected["currently_unlocked_categories"])
+
+    def test_traversal_and_linked_role_directory_cannot_claim_creator_art(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            root = base / "pets"
+            root.mkdir()
+            outsider = base / "Outside"
+            outsider.mkdir()
+            (outsider / "act_conf.json").write_text(
+                json.dumps({"wave": {"images": "wave"}}), encoding="utf-8")
+            _source_frames(outsider, ("wave",))
+            folders = [{"folder": "../Outside", "is_original_demo": False}]
+            alias = root / "Alias"
+            try:
+                alias.symlink_to(outsider, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                pass  # Windows accounts may lack permission to create symlinks.
+            else:
+                folders.append({"folder": "Alias", "is_original_demo": False})
+            gen = {"characters": [{"profile": "genshin_sayu", "name": "早柚",
+                    "installed_folders": folders}]}
+            report = interaction_coverage(root, genshin_snapshot=gen,
+                                          mascot_snapshot={"mascots": []})
+        self.assertEqual(report["summary"]["roles_with_creator_art"], 0)
+        self.assertEqual(report["summary"]["broken_creator_asset_folder_count"], len(folders))
+        self.assertFalse(report["characters"][0]["action_categories_present_in_art"])
+
 class CurrentRoleGapTests(unittest.TestCase):
     def test_current_character_only_reads_install_and_currently_unlocked_actions(self):
         with tempfile.TemporaryDirectory() as td:
