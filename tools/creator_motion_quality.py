@@ -20,9 +20,9 @@ from tools.artist_animation_audit import (
     MAX_TOTAL_FRAMES, MOVEMENT_NAMES, _frames_for_action, _read_config)
 from tools.character_interaction_coverage import _safe_installed_role
 
-MOTION_HINTS = MOVEMENT_NAMES | frozenset((
-    "idle", "onfloor", "left_walk", "right_walk", "walk", "run",
-    "drag", "fall", "landing", "jump", "crawl", "climb", "bounce"))
+# Idle/onfloor are legitimate authored still poses, not motion failures.
+# Existing need_move metadata can elevate additional artist-specific actions.
+MOTION_HINTS = MOVEMENT_NAMES
 
 
 def _pose_signature(path):
