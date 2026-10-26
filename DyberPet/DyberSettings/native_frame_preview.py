@@ -325,7 +325,7 @@ class NativeFramePreviewDialog(QDialog):
             raise ValueError("请先选择能够读取完整原画帧的角色素材")
         if _inventory_stat_snapshot(
                 self._root, folder, self._inventory) != self._snapshots.get(folder):
-            raise ValueError("原画在本次预览后已改变，必须重新打开该版本")
+            raise ValueError("原画在本次预览后已变化，必须重新打开该版本")
         return create_manual_review_receipt(
             self._root, folder, self._inventory,
             self._visited.get(folder, {}), self.grade.currentData(),
