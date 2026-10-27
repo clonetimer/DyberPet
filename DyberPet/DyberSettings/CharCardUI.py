@@ -1654,7 +1654,7 @@ class ChibiImportThread(QThread):
                     if source.get("folder") == new_folder.name and
                        source.get("source_id") == installed.get("source_id")
                 ]
-                if len(matching) != 1 or catalog.get("invalid_local"):
+                if len(matching) != 1:
                     raise ValueError("Selected creator atlas was not accepted by the native mascot library")
             elif self.mode in ("pinned_codexpetdb", "pinned_codexpetdb_local"):
                 from tools.install_pinned_codexpetdb import install_pinned_codexpetdb
