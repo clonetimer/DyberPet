@@ -7,6 +7,7 @@ on:
       - feat/guga-doro-builtin-demos-20261024
     paths:
       - tools/install_creator_mascots.py
+      - tools/creator_motion_quality.py
       - tools/import_codex_pet.py
       - tools/verify_creator_mascots.py
       - tools/role_action_preview.py
@@ -21,6 +22,7 @@ on:
   pull_request:
     paths:
       - tools/install_creator_mascots.py
+      - tools/creator_motion_quality.py
       - tools/import_codex_pet.py
       - tools/verify_creator_mascots.py
       - tools/role_action_preview.py
