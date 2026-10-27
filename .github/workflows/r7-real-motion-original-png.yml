@@ -5,6 +5,8 @@ on:
   pull_request:
     paths:
       - tools/creator_motion_quality.py
+      - tools/creator_motion_alternatives.py
+      - tests/test_creator_motion_alternatives.py
       - tools/creator_reference_cues.py
       - tests/test_creator_reference_cues.py
       - DyberPet/DyberSettings/native_frame_preview.py
@@ -37,6 +39,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 libx11-xcb1
       - run: python -m pip install "Pillow>=11,<13" "PySide6>=6.7,<7"
       - run: python -m unittest discover -s tests -p "test_creator_motion_quality.py" -v
+      - run: python -m unittest discover -s tests -p "test_creator_motion_alternatives.py" -v
       - run: python -m unittest discover -s tests -p "test_creator_reference_cues.py" -v
       - run: python -m unittest discover -s tests -p "test_native_interaction_preview_shortcuts.py" -v
       - run: python -m unittest discover -s tests -p "test_creator_variant_side_by_side_qt.py" -v
