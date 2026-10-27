@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from io import BytesIO
 import tempfile
+import zipfile
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -129,6 +131,34 @@ def download_creator_zip(url, *, opener=urlopen):
     return data
 
 
+def summarize_public_zip_layout(raw):
+    """Unpack NOTHING: list bounded public filename evidence for format fixes."""
+    with zipfile.ZipFile(BytesIO(raw)) as z:
+        members = z.infolist()
+        if len(members) > 1600 or sum(m.file_size for m in members) > 96 * 1024 * 1024:
+            raise ValueError("Original Eula public archive exceeds safe inventory bounds")
+        pngs = []
+        configs = []
+        for item in members:
+            name = item.filename.replace("\\\\", "/")
+            parts = PurePosixPath(name).parts
+            if (".." in parts or len(name) > 240 or name.startswith("/") or
+                    item.file_size > 16 * 1024 * 1024):
+                raise ValueError("Unsafe original creator archive path or member size")
+            low = name.lower()
+            if low.endswith(".png"):
+                pngs.append(name)
+            elif low.endswith((".xml", ".json", ".properties", ".txt")):
+                configs.append(name)
+        return {
+            "original_zip_entry_count": len(members),
+            "original_png_count": len(pngs),
+            "original_png_name_examples": sorted(pngs)[:35],
+            "original_config_name_examples": sorted(configs)[:15],
+            "png_images_without_executing_code": True,
+        }
+
+
 def probe_eula(*, post_loader=None, downloader=None):
     obtain = post_loader if post_loader is not None else fetch_public_post
     post = obtain()
@@ -198,6 +228,10 @@ def probe_eula(*, post_loader=None, downloader=None):
                 "status": "public_creator_attachment_not_standard_shimeji_archive",
                 "original_attachment_exception_class": type(exc).__name__,
                 "source_integrity_verified": False})
+            try:
+                state["original_archive_layout"] = summarize_public_zip_layout(raw)
+            except (BadZipFile, ValueError, OSError):
+                state["original_archive_layout"] = {"safe_zip_layout_readable": False}
             return state
         try:
             role = install_personal_shimeji_zip(
