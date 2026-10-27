@@ -175,19 +175,40 @@ def probe_eula(*, post_loader=None, downloader=None):
                       "source_integrity_verified": False})
         return state
     loader = downloader if downloader is not None else download_creator_zip
-    raw = loader(links[0]["url"])
+    try:
+        raw = loader(links[0]["url"])
+    except (OSError, ValueError, TimeoutError) as exc:
+        state.update({
+            "status": "public_attachment_exists_but_cannot_download_without_credentials",
+            "download_exception_class": type(exc).__name__,
+            "source_integrity_verified": False})
+        return state
     if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_DOWNLOAD:
         raise ValueError("Invalid Eula source bytes")
+    state["original_publisher_file_sha256"] = hashlib.sha256(raw).hexdigest()
+    state["original_publisher_file_bytes"] = len(raw)
     with tempfile.TemporaryDirectory(prefix="dyberpet-original-eula-") as td:
         td = Path(td)
         archive = td / "artist.zip"
         archive.write_bytes(raw)
         try:
             frames = inspect_shimeji_zip(archive)
-        except BadZipFile as exc:
-            raise ValueError("Original artist attachment is not valid ZIP") from exc
-        role = install_personal_shimeji_zip(
-            archive, td / "native", profile=PROFILE, confirmed=True)
+        except (BadZipFile, ValueError, OSError) as exc:
+            state.update({
+                "status": "public_creator_attachment_not_standard_shimeji_archive",
+                "original_attachment_exception_class": type(exc).__name__,
+                "source_integrity_verified": False})
+            return state
+        try:
+            role = install_personal_shimeji_zip(
+                archive, td / "native", profile=PROFILE, confirmed=True)
+        except (ValueError, OSError) as exc:
+            state.update({
+                "status": "original_creator_png_import_not_yet_accepted",
+                "original_attachment_exception_class": type(exc).__name__,
+                "original_png_frames": len(frames),
+                "source_integrity_verified": False})
+            return state
         validated = validate_native_role(role)
         motion = analyze_creator_actions(role.parent, role.name)
         receipt = json.loads(
