@@ -701,5 +701,5 @@ jobs:
         run: python -m unittest discover -s tests -p "test_shimejishop_kaveh.py" -v
       - name: Audit publisher original ZIP once, no EXE execution and no art upload
         timeout-minutes: 5
-        run: python tools/probe_shimejishop_kaveh.py
+        run: python -m tools.probe_shimejishop_kaveh
     # Already existing Kaveh source coverage remains unchanged at 65/123.
