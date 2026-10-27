@@ -12,8 +12,9 @@ from PIL import Image
 
 from tools.character_source_coverage import source_coverage
 from tools.install_nanopet_shimeji import (source_manifest, install_nanopet_shimeji,
-                                           GROUPS)
+                                           GROUPS, EXTRA_GROUPS, mapped_groups)
 from tools.install_native_role import validate_native_role
+from DyberPet.assistant.native_groups import runtime_group_interactions
 
 
 class NanoPetArtistTests(unittest.TestCase):
@@ -27,6 +28,80 @@ class NanoPetArtistTests(unittest.TestCase):
         self.assertEqual(GROUPS["onfloor"], (21,))
         self.assertNotIn("pat", GROUPS)
         self.assertTrue(all(n not in GROUPS["stand"] for n in (31, 32, 33, 38)))
+
+    def test_17_authored_source_versions_offer_only_complete_shimeji_gestures(self):
+        archive = source_manifest()
+        self.assertEqual(len(archive["roles"]), 17)
+        self.assertEqual(len({r["profile"] for r in archive["roles"].values()}), 16)
+        self.assertEqual(EXTRA_GROUPS["lookaround"],
+                         (26, 15, 27, 16, 28, 17, 29))
+        self.assertEqual(EXTRA_GROUPS["ceiling_crawl"], (23, 24, 25))
+        self.assertEqual(EXTRA_GROUPS["edge_sit"], (30, 31, 32, 33))
+        self.assertEqual(EXTRA_GROUPS["jump_pose"], (22,))
+        self.assertNotIn("pat", mapped_groups(range(1, 47)))
+        full = mapped_groups(range(1, 47))
+        self.assertEqual(len(full), len(GROUPS) + len(EXTRA_GROUPS))
+        # Aether source is 45 PNGs, WITHOUT source-authored shime29.
+        aether = archive["roles"]["aether-by-tenkotenmeo"]["files"]
+        by_id = {int(name.removeprefix("shime").replace(".png", "").replace("_", ""))
+                 for name in aether}
+        self.assertNotIn(29, by_id)
+        no_head_turn = mapped_groups(by_id)
+        self.assertNotIn("lookaround", no_head_turn)
+        for action in ("ceiling_crawl", "edge_sit", "window_carry", "jump_pose"):
+            self.assertIn(action, no_head_turn)
+
+    def test_full_original_gestures_and_actual_petwidget_semantic_dispatch(self):
+        raw = self.image_bytes()
+        blob = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\\0" + raw).hexdigest()
+        for omit in (None, 29):
+            with self.subTest(missing_original_shime29=omit), tempfile.TemporaryDirectory() as td:
+                indexes = [i for i in range(1, 47) if i != omit]
+                files = {f"shime{i}.png": {"sha": blob, "size": len(raw)}
+                         for i in indexes}
+                manifest = {
+                    "repository": "Poseima/nano-pet", "revision": "b" * 40,
+                    "asset_root": "NanoPetAssets/genshin-impact",
+                    "roles": {"aether-by-tenkotenmeo": {
+                        "name": "空", "profile": "genshin_traveler_aether",
+                        "artist": "tenkotenmeo",
+                        "upstream_dir": "genshin-impact-aether-by-tenkotenmeo",
+                        "files": files}}
+                }
+                root = Path(td)
+                installed = install_nanopet_shimeji(
+                    "aether-by-tenkotenmeo", root, confirmed=True,
+                    manifest=manifest, downloader=lambda url, spec: raw)
+                native = root / installed["folder"]
+                actions = json.loads((native/"act_conf.json").read_text("utf-8"))
+                pet = json.loads((native/"pet_conf.json").read_text("utf-8"))
+                receipt = json.loads((native/"PERSONAL_IMPORT.json").read_text("utf-8"))
+                self.assertIn("ceiling_crawl", actions)
+                self.assertIn("edge_sit", actions)
+                self.assertIn("jump_pose", actions)
+                self.assertFalse(receipt["source_authored_petting_animation"])
+                self.assertFalse(receipt["source_authored_animated_jump"])
+                self.assertEqual(receipt["all_original_frames_preserved"], len(indexes))
+                self.assertEqual((native/"source_frames"/"shime22.png").read_bytes(), raw)
+                self.assertEqual("lookaround" in actions, omit is None)
+                self.assertEqual(installed["native_observe_shortcut"], omit is None)
+                for group in pet["random_act"]:
+                    if group["name"] == "散步":
+                        self.assertEqual(group["act_list"],
+                                         ["left_walk", "right_walk"])
+                opts = {g["name"]: {"act_type": "random_act", "unlocked": True}
+                        for g in pet["random_act"]}
+                gestures = {
+                    item["id"]: item for item in runtime_group_interactions(
+                        opts, pet["random_act"], actions.keys())
+                }
+                for category in ("walk", "rest"):
+                    self.assertTrue(gestures[category]["available"], category)
+                self.assertEqual(gestures["observe"]["available"], omit is None)
+                self.assertFalse(gestures["jump"]["available"])
+                # Any original sprite missing => no fabricated head-turn action.
+                if omit == 29:
+                    self.assertIn("lookaround", receipt["missing_optional_source_sequences"])
 
     def test_archived_genshin_character_sources_are_real_frames(self):
         r = source_manifest()
