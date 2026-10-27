@@ -6,6 +6,8 @@ on:
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tests/test_creator_batch_gui_contract.py"
       - "tools/personal_install_journal.py"
+      - "tools/creator_launch_choice.py"
+      - "tests/test_creator_launch_choice.py"
       - "tests/test_personal_install_journal.py"
       - "tests/test_personal_install_recovery.py"
       - "tests/test_personal_source_batch.py"
@@ -19,6 +21,8 @@ on:
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tests/test_creator_batch_gui_contract.py"
       - "tools/personal_install_journal.py"
+      - "tools/creator_launch_choice.py"
+      - "tests/test_creator_launch_choice.py"
       - "tests/test_personal_install_journal.py"
       - "tests/test_personal_install_recovery.py"
       - "tests/test_personal_source_batch.py"
@@ -48,6 +52,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_personal_install_recovery.py" -v
       - name: Validate GUI batch opt-in, stop and source-bounded receipts
         run: python -m unittest discover -s tests -p "test_creator_batch_gui_contract.py" -v
+      - name: Verify native-art receipt and next-start selection without runtime hot switch
+        run: python -m unittest discover -s tests -p "test_creator_launch_choice.py" -v
       - name: Test consent, source selection, and no-artwork guarantees
         run: python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
       - name: Test real 123-profile source planning without download or install
