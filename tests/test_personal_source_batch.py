@@ -57,8 +57,16 @@ class PersonalSourceBatchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Explicit"):
                 install_personal_plan(report, temp, dispatch=fake)
             self.assertEqual(calls, [])
+            progress = []
             result = install_personal_plan(
-                report, temp, confirmed=True, max_roles=1, dispatch=fake)
+                report, temp, confirmed=True, max_roles=1, dispatch=fake,
+                inventory_reader=lambda _: {"characters": [
+                    {"profile": "genshin_a", "installed_folders": [
+                        {"is_original_demo": False}]}], "invalid_local": []},
+                progress=progress.append)
+            self.assertTrue(result["post_install_inventory_checked"])
+            self.assertTrue(result["results"][0]["post_install_validation_passed"])
+            self.assertEqual(progress[-1]["status"], "installed_unreviewed")
             self.assertEqual(result["attempted"], 1)
             self.assertEqual(result["installed_unreviewed"], 1)
             self.assertEqual(calls[0][1], "a")
@@ -78,6 +86,34 @@ class PersonalSourceBatchTests(unittest.TestCase):
                 report, temp, confirmed=True, dispatch=fail)
             self.assertEqual(outcome["failed"], 1)
             self.assertIn("network offline", outcome["results"][0]["reason"])
+
+    def test_successful_import_return_is_not_a_valid_installed_character(self):
+        with tempfile.TemporaryDirectory() as temp:
+            plan = plan_personal_sources(
+                temp, coverage=fake_coverage(), inventory=fake_inventory())
+            progress = []
+            outcome = install_personal_plan(
+                plan, temp, confirmed=True, max_roles=1,
+                dispatch=lambda *_: None, progress=progress.append)
+            self.assertEqual(outcome["installed_unreviewed"], 0)
+            self.assertEqual(outcome["failed"], 1)
+            self.assertTrue(outcome["results"][0]["post_install_validation_failed"])
+            self.assertTrue(outcome["post_install_inventory_checked"])
+            self.assertEqual(progress[-1]["status"], "failed")
+
+    def test_inventory_scan_failure_must_not_claim_installed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            plan = plan_personal_sources(
+                temp, coverage=fake_coverage(), inventory=fake_inventory())
+            def fail_scan(_root):
+                raise ValueError("broken binding metadata")
+            outcome = install_personal_plan(
+                plan, temp, confirmed=True, max_roles=1,
+                dispatch=lambda *_: None, inventory_reader=fail_scan)
+            self.assertEqual(outcome["installed_unreviewed"], 0)
+            self.assertEqual(outcome["failed"], 1)
+            self.assertFalse(outcome["post_install_inventory_checked"])
+            self.assertIn("broken binding", outcome["post_install_inventory_error"])
 
     def test_symlink_target_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp:

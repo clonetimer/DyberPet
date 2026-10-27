@@ -50,7 +50,8 @@ def plan_mascot_sources(role_root, *, inventory=None):
     }
 
 
-def install_mascot_plan(plan, role_root, *, confirmed=False, installer=None):
+def install_mascot_plan(plan, role_root, *, confirmed=False, installer=None,
+                        inventory_reader=None, progress=None):
     if not confirmed:
         raise ValueError("Confirm creator-source conditions and local personal use")
     root = Path(role_root).expanduser()
@@ -61,6 +62,8 @@ def install_mascot_plan(plan, role_root, *, confirmed=False, installer=None):
     for row in plan["mascots"]:
         if row["status"] != "ready_for_opt_in":
             continue
+        if progress is not None:
+            progress({"stage": "role_start", "key": row["key"]})
         try:
             result = installer(row["key"], root, confirmed=True)
             if not isinstance(result, dict) or result.get("kind") != row["key"]:
@@ -71,10 +74,36 @@ def install_mascot_plan(plan, role_root, *, confirmed=False, installer=None):
         except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
             results.append({"key": row["key"], "status": "failed",
                             "reason": f"{type(exc).__name__}: {str(exc)[:200]}"})
+    verify = scan_mascot_library if inventory_reader is None else inventory_reader
+    verified = set()
+    inventory_error = None
+    try:
+        current = verify(root)
+        verified = {entry["key"] for entry in current["mascots"]
+                    if entry.get("imported_creator_art")}
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+        inventory_error = type(exc).__name__ + ": " + str(exc)[:180]
+    for result in results:
+        if result["status"] == "installed_unreviewed":
+            if result["key"] not in verified:
+                result["status"] = "failed"
+                result["post_install_validation_failed"] = True
+                result["reason"] = ("Local inventory verification unavailable: " + inventory_error
+                                    if inventory_error else
+                                    "Mascot importer returned, but valid creator artwork is not "
+                                    "registered for the requested mascot")
+            else:
+                result["post_install_validation_passed"] = True
+        if progress is not None:
+            progress({"stage": "role_verified", "key": result["key"],
+                      "status": result["status"]})
     return {
         "scope": "local_only_mascot_install",
         "installed_unreviewed": sum(x["status"] == "installed_unreviewed" for x in results),
         "failed": sum(x["status"] == "failed" for x in results),
         "no_art_uploaded": True,
+        "post_install_inventory_checked": inventory_error is None,
+        "post_install_inventory_error": inventory_error,
+        "post_install_recognized_mascots": len(verified),
         "results": results,
     }

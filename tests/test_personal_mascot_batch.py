@@ -38,10 +38,30 @@ class MascotPersonalBatchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Confirm"):
                 install_mascot_plan(report, temp, installer=fake)
             self.assertFalse(seen)
-            outcome = install_mascot_plan(report, temp, confirmed=True, installer=fake)
+            progress = []
+            def after(_):
+                return {"mascots": [
+                    {"key": "guga", "imported_creator_art": [{"folder": "SourceGuga"}]},
+                    {"key": "doro", "imported_creator_art": [{"folder": "SourceDoro"}]}]}
+            outcome = install_mascot_plan(
+                report, temp, confirmed=True, installer=fake,
+                inventory_reader=after, progress=progress.append)
+            self.assertTrue(outcome["post_install_inventory_checked"])
+            self.assertEqual(progress[-1]["status"], "installed_unreviewed")
             self.assertEqual(seen, [("guga", True)])
             self.assertEqual(outcome["installed_unreviewed"], 1)
             self.assertTrue(outcome["no_art_uploaded"])
+
+    def test_noop_mascot_installer_must_not_count_as_real_art(self):
+        with TemporaryDirectory() as temp:
+            report = plan_mascot_sources(temp, inventory=self._inventory())
+            outcome = install_mascot_plan(
+                report, temp, confirmed=True,
+                installer=lambda kind, *_a, **_kw: {
+                    "kind": kind, "actions": 10, "frames": 70})
+            self.assertEqual(outcome["installed_unreviewed"], 0)
+            self.assertEqual(outcome["failed"], 1)
+            self.assertTrue(outcome["results"][0]["post_install_validation_failed"])
 
     def test_bad_or_failed_install_is_reported(self):
         with TemporaryDirectory() as temp:

@@ -107,8 +107,8 @@ def plan_personal_sources(role_root, *, only_profiles=None,
 
 
 def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
-                          dispatch=None):
-    """Install chosen sources locally, logging individual failures without overwrite."""
+                          dispatch=None, inventory_reader=None, progress=None):
+    """Install sources and reconcile every claimed success against actual local art."""
     if not confirmed:
         raise ValueError("Explicit --accept-personal-use confirmation required")
     root = Path(role_root).expanduser()
@@ -131,6 +131,8 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
             break
         count += 1
         profile, provider, key = item["profile"], item["provider"], item["source_key"]
+        if progress is not None:
+            progress({"stage": "role_start", "profile": profile, "index": count})
         # Old consumer-generated plans may predate supported_sources; in
         # that case keep single-source behavior. New plans retry ONLY pinned
         # sources listed for this SAME character, in preference order.
@@ -151,16 +153,25 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
         for source in sources[:4]:
             p, k = source["provider"], source["source_key"]
             source_attempts += 1
+            if progress is not None:
+                progress({"stage": "source_start", "profile": profile,
+                          "provider": p, "attempt": len(attempts) + 1})
             try:
                 dispatch(p, k, root)
             except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
                 attempts.append({
                     "provider": p, "source_key": k, "status": "failed",
                     "reason": type(exc).__name__ + ": " + str(exc)[:240]})
+                if progress is not None:
+                    progress({"stage": "source_failed", "profile": profile,
+                              "provider": p, "attempt": len(attempts)})
             else:
                 attempts.append({"provider": p, "source_key": k,
                                  "status": "installed_unreviewed"})
                 successful = source
+                if progress is not None:
+                    progress({"stage": "source_returned", "profile": profile,
+                              "provider": p, "pending_inventory_check": True})
                 break
         if successful is None:
             results.append({"profile": profile, "status": "failed",
@@ -175,12 +186,50 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
                 "source_key": successful["source_key"],
                 "used_fallback": recovered, "source_attempts": attempts,
             })
+    # Installer functions may return without throwing even if a role was not
+    # actually registered, its frames were rejected, or the identity differs.
+    # Rescan the real native role catalogue exactly once after the batch.
+    # Do not turn a successful function return into a false installed count.
+    verify = scan_genshin_library if inventory_reader is None else inventory_reader
+    verification_error = None
+    invalid_after = None
+    recognized = set()
+    try:
+        updated = verify(root)
+        recognized = {
+            entry["profile"] for entry in updated["characters"]
+            if any(not folder.get("is_original_demo", False)
+                   for folder in entry.get("installed_folders", []))
+        }
+        invalid_after = len(updated.get("invalid_local", []))
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+        verification_error = type(exc).__name__ + ": " + str(exc)[:180]
+    for result in results:
+        if result["status"] == "installed_unreviewed":
+            if result["profile"] not in recognized:
+                result["status"] = "failed"
+                result["post_install_validation_failed"] = True
+                result["reason"] = ("Local inventory verification unavailable: " + verification_error
+                                    if verification_error else
+                                    "Installer returned, but no structurally valid creator art was "
+                                    "recognized for this exact character")
+            else:
+                result["post_install_validation_passed"] = True
+        if progress is not None:
+            progress({"stage": "role_verified", "profile": result["profile"],
+                      "status": result["status"]})
     return {
         "scope": "local_personal_install_only", "attempted": count,
         "installed_unreviewed": sum(x["status"] == "installed_unreviewed" for x in results),
         "failed": sum(x["status"] == "failed" for x in results),
         "source_attempts": source_attempts,
-        "fallback_recovered_profiles": fallback_recovered,
+        "fallback_recovered_profiles": sum(
+            item["status"] == "installed_unreviewed" and item.get("used_fallback", False)
+            for item in results),
+        "post_install_inventory_checked": verification_error is None,
+        "post_install_inventory_error": verification_error,
+        "post_install_invalid_folders": invalid_after,
+        "post_install_recognized_creator_profiles": len(recognized),
         "results": results, "no_artwork_uploaded": True,
     }
 
@@ -232,10 +281,19 @@ def main(argv=None):
                 from tools.personal_mascot_batch import plan_mascot_sources, install_mascot_plan
             mascot_plan = plan_mascot_sources(args.role_root)
             if args.install:
+                def mascot_progress(event):
+                    if event["stage"] == "role_start":
+                        message = f"Installing {event['key']} creator artwork ..."
+                    else:
+                        message = f"Verified {event['key']}: {event['status']}"
+                    # JSON goes to --output file; stdout is safe for Windows PowerShell progress.
+                    # Without --output, emit progress on stderr to keep stdout valid JSON.
+                    print(message, file=sys.stdout if args.output else sys.stderr, flush=True)
                 result = {"plan_summary": mascot_plan["summary"],
                           "installation": install_mascot_plan(
                               mascot_plan, args.role_root,
-                              confirmed=args.accept_personal_use)}
+                              confirmed=args.accept_personal_use,
+                              progress=mascot_progress)}
             else:
                 if args.accept_personal_use:
                     raise ValueError("--accept-personal-use requires --install")
@@ -252,10 +310,28 @@ def main(argv=None):
             return 0 if not args.install or not result["installation"]["failed"] else 1
         plan = plan_personal_sources(args.role_root, only_profiles=args.profile)
         if args.install:
+            total = min(plan["summary"]["ready_for_opt_in"],
+                        args.max_roles if args.max_roles is not None else
+                        plan["summary"]["ready_for_opt_in"])
+            def show_progress(event):
+                stage, profile = event["stage"], event["profile"]
+                if stage == "role_start":
+                    message = f"[{event['index']}/{total}] Installing {profile}"
+                elif stage == "source_start":
+                    message = f"  source {event['attempt']}: {event['provider']} ..."
+                elif stage == "source_failed":
+                    message = f"  source {event['attempt']} failed; trying next pinned source"
+                elif stage == "source_returned":
+                    message = "  download/import returned; checking actual role inventory at end"
+                else:
+                    message = f"  verified {profile}: {event['status']}"
+                # JSON goes to --output file; stdout is safe for Windows PowerShell progress.
+                # Without --output, emit progress on stderr to keep stdout valid JSON.
+                print(message, file=sys.stdout if args.output else sys.stderr, flush=True)
             result = {"plan_summary": plan["summary"],
                       "installation": install_personal_plan(
                           plan, args.role_root, confirmed=args.accept_personal_use,
-                          max_roles=args.max_roles)}
+                          max_roles=args.max_roles, progress=show_progress)}
         else:
             if args.accept_personal_use:
                 ap.error("--accept-personal-use requires --install")

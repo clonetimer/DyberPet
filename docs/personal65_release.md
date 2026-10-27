@@ -31,6 +31,14 @@
 
 如果某项来源失败，请保留报告；安装器不会覆盖已有真实角色。界面可手动导入现有 ZIP 等个人文件。不允许将本机原画文件加入下一次 Release。
 
+### 安装成功数量的复核和进度提示
+
+新版 `Install-65-Roles.cmd` 会逐角色打印安装编号、来源尝试、失败后固定来源回退及完成后的角色库复核情况；`Install-Guga-Doro.cmd` 同样报告两位吉祥物的最终状态。网络来源下载成功、安装器函数正常返回，**不等于**角色已经完成安装。安装批次结束后会重新扫描 `res/role`，匹配到同一人物身份且原生动画结构有效，才计入 `installed_unreviewed`。
+
+报告新字段 `post_install_inventory_checked` 表示扫描是否成功，`post_install_recognized_creator_profiles` 表示本机当前可识别的不同原神角色总数；失败记录中 `post_install_validation_failed` 表示原本返回成功、但实际没有认出有效对应素材。咕嘎/Doro 报告有对应的 `post_install_recognized_mascots`。即使文件成功安装，**原设相似度、动作自然性、声线及真机使用仍未通过自动验收**。
+
+若显示 `failed`，先查看 JSON 报告，确认真实角色文件存在、导入凭据与身份一致；修复后可重新运行安装器，仅处理仍未安装的目标。已有角色和存档不会被安装器自动覆盖。
+
 ## GitHub 托管构建被拒时：在本机一次构建两个包
 
 GitHub Actions 在私有仓库需要有可用额度/账户计费设置。若看到两个 Windows 任务**瞬间失败且没有任何执行步骤**，应优先排查账户 Billing / Actions Budget，不能判定程序构建失败。在该限制解决前，使用自己的 Windows PC 构建（本地执行不会消耗 GitHub-hosted runner 分钟）。
