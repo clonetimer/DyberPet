@@ -208,7 +208,9 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
         validation = validate_native_role(stage)
         receipt = {
             "mode": "personal_local_only",
-            "source_kind": "user_selected_shimeji_zip",
+            "source_kind": (
+                "sha256_pinned_original_eula_author_shimeji" if extended_eula_source
+                else "user_selected_shimeji_zip"),
             "selected_profile": profile,
             "source_archive_sha256": _sha256_file(source),
             "all_original_frames_preserved": len(original),
@@ -222,7 +224,11 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
                 if extended_eula_source else []),
             "extended_animation_xml_semantics_manually_reviewed": False,
             "mapped_original_frame_groups": sorted(groups),
-            "source_upstream_identity_verified": False,
+            "source_upstream_identity_verified": extended_eula_source,
+            "original_artist_creator_id": "saylamars" if extended_eula_source else None,
+            "original_creator_public_post": (
+                "https://saylamars.fanbox.cc/posts/8264436"
+                if extended_eula_source else None),
             "source_rights_verified": False,
             "likeness_manually_reviewed": False,
             "real_windows_qa_verified": False,
