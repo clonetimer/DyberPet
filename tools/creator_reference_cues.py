@@ -48,6 +48,32 @@ REVIEWED_EXAMPLES = {
 }
 
 
+# Four early Genshin templates live directly in chibi_profiles rather than
+# the later GENSHIN_ROSTER. No extra creator PNG was personally inspected for
+# these roster-only checklists (Nahida has the R8 independent example).
+BASE_TEMPLATE_CUES = {
+    "genshin_paimon": {
+        "visual_checks": ("白色短发及深色星形发饰", "披风与金色装饰",
+                          "漂浮姿态及衣装轮廓"),
+        "motion_checks": ("漂浮待机时头饰是否错位", "说话/动作是否和静态立牌区分"),
+    },
+    "genshin_klee": {
+        "visual_checks": ("红色帽子与白色四叶草图案", "浅金短发及精灵耳",
+                          "红白童装与小背包"),
+        "motion_checks": ("跑跳动作的不同可见姿态", "帽子、书包有无裁断"),
+    },
+    "genshin_furina": {
+        "visual_checks": ("蓝白双配色发型", "蓝白法庭礼服与礼帽",
+                          "蓝色饰物、长燕尾装饰"),
+        "motion_checks": ("礼帽/服装装饰的多帧完整性", "是否有不同人物版本混入"),
+    },
+    "genshin_nahida": {
+        "visual_checks": REVIEWED_EXAMPLES["genshin_nahida"]["look_for"],
+        "motion_checks": REVIEWED_EXAMPLES["genshin_nahida"]["specific_review_risks"],
+    },
+}
+
+
 def cues_for_local_role(role_root, folder):
     """Provide informative cues only for a source-bound installed Genshin role.
 
@@ -77,7 +103,11 @@ def cues_for_local_role(role_root, folder):
         return None
     dossier = GENSHIN_ROSTER.get(profile[len("genshin_"):])
     if dossier is None:
-        return None
+        from tools.chibi_profiles import CHIBI_PROFILES
+        base = BASE_TEMPLATE_CUES.get(profile)
+        if base is None or profile not in CHIBI_PROFILES:
+            return None
+        dossier = {"name": CHIBI_PROFILES[profile]["name"], **base}
     example = REVIEWED_EXAMPLES.get(profile)
     if example is None:
         return {
