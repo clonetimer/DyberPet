@@ -99,6 +99,28 @@ class NanoPetArtistTests(unittest.TestCase):
                     self.assertTrue(gestures[category]["available"], category)
                 self.assertEqual(gestures["observe"]["available"], omit is None)
                 self.assertFalse(gestures["jump"]["available"])
+                # A user upgrading an already imported creator source must
+                # retain the previous artwork, config and default pet intact.
+                previous_config = (native / "act_conf.json").read_bytes()
+                with self.assertRaises(FileExistsError):
+                    install_nanopet_shimeji(
+                        "aether-by-tenkotenmeo", root, confirmed=True,
+                        manifest=manifest, downloader=lambda url, spec: raw)
+                updated = install_nanopet_shimeji(
+                    "aether-by-tenkotenmeo", root, confirmed=True,
+                    install_as_new_variant=True,
+                    manifest=manifest, downloader=lambda url, spec: raw)
+                upgraded = root / updated["folder"]
+                self.assertTrue(updated["new_variant_of_existing_original"])
+                self.assertNotEqual(upgraded, native)
+                self.assertEqual((native / "act_conf.json").read_bytes(),
+                                 previous_config)
+                self.assertEqual((upgraded / "source_frames" / "shime22.png").read_bytes(), raw)
+                self.assertEqual(len([d for d in root.iterdir() if d.is_dir()]), 2)
+                # The GUI passes opt-in variant install without overwriting.
+                gui = (Path(__file__).resolve().parents[1] / "DyberPet" /
+                       "DyberSettings" / "CharCardUI.py").read_text("utf-8")
+                self.assertIn("install_as_new_variant=True", gui)
                 # Any original sprite missing => no fabricated head-turn action.
                 if omit == 29:
                     self.assertIn("lookaround", receipt["missing_optional_source_sequences"])
