@@ -70,6 +70,22 @@ class CompleteOriginalFrameGates(unittest.TestCase):
             self.assertEqual(_action_inventory(root, "Invisible"),
                              (["rest"], ["wave"]))
 
+    def test_shared_frame_prefix_aliases_use_the_same_verified_sequence(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            role = make_role(root, "Shared", {"wave": 2, "rest": 1})
+            config = json.loads((role / "act_conf.json").read_text("utf-8"))
+            config["greet"] = {"images": "wave"}
+            (role / "act_conf.json").write_text(
+                json.dumps(config), encoding="utf-8")
+            self.assertEqual(_action_inventory(root, "Shared")[0],
+                             ["wave", "rest", "greet"])
+            # The aliases must both become unavailable when the final PNG
+            # is corrupted: a decoded wave_0 alone is not sufficient.
+            (role / "action" / "wave_1.png").write_bytes(b"not-a-real-png")
+            self.assertEqual(_action_inventory(root, "Shared"),
+                             (["rest"], ["wave", "greet"]))
+
     def test_valid_one_frame_motion_is_structurally_loadable_not_motion_approved(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
