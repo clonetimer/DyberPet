@@ -735,3 +735,77 @@ jobs:
           PY
     # All third-party ZIP/PNG bytes are deleted with the temporary workspace.
     # Already existing Kaveh source coverage remains unchanged at 65/123.
+
+  nanopet-genuine-source-gestures:
+    name: Original Zhongli and Aether Shimeji runtime gestures (non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install original-PNG decoder
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Run strict local complete-gesture and no-fabrication tests
+        run: python -m unittest discover -s tests -p "test_nanopet_shimeji_sources.py" -v
+      - name: Fetch only two pinned source versions, run installed native group dispatch
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from tools.install_nanopet_shimeji import install_nanopet_shimeji, source_manifest
+          from tools.creator_motion_quality import analyze_creator_actions
+          from DyberPet.assistant.native_groups import runtime_group_interactions
+          registry = source_manifest()
+          for key, profile, observe in (
+              ("zhongli-by-vol-tuna", "genshin_zhongli", True),
+              ("aether-by-tenkotenmeo", "genshin_traveler_aether", False),
+          ):
+              with TemporaryDirectory(prefix="nano-r22-original-") as td:
+                  root = Path(td) / "role"
+                  result = install_nanopet_shimeji(key, root, confirmed=True)
+                  role = root / result["folder"]
+                  receipt = json.loads((role / "PERSONAL_IMPORT.json").read_text("utf-8"))
+                  actions = json.loads((role / "act_conf.json").read_text("utf-8"))
+                  pet = json.loads((role / "pet_conf.json").read_text("utf-8"))
+                  motion = analyze_creator_actions(root, result["folder"])
+                  assert result["profile"] == profile
+                  assert receipt["selected_profile"] == profile
+                  assert result["source_original_frames"] == len(registry["roles"][key]["files"])
+                  assert receipt["verified_exact_source_frame_bytes"]
+                  assert result["native_observe_shortcut"] is observe
+                  opts = {g["name"]: {"act_type": "random_act", "unlocked": True}
+                          for g in pet["random_act"]}
+                  mapped = {x["id"]: x for x in runtime_group_interactions(
+                      opts, pet["random_act"], actions)}
+                  assert mapped["walk"]["available"] and mapped["rest"]["available"]
+                  assert mapped["observe"]["available"] is observe
+                  assert not mapped["jump"]["available"] and not mapped["pet"]["available"]
+                  gesture_rows = [
+                      {"action": a["action"], "frames": a["frame_count"],
+                       "visible_poses": a["unique_visible_poses"],
+                       "risks": a["risk_indicators"]}
+                      for a in motion["actions"]
+                      if a["action"] in ("lookaround", "edge_sit", "ceiling_crawl",
+                                         "window_carry", "jump_pose")]
+                  print("REAL_NANOPET_AUTHORED_GESTURES", json.dumps({
+                      "key": key, "profile": profile, "verified_sha1_blob_source": True,
+                      "frame_count": result["source_original_frames"],
+                      "native_actions": result["actions"],
+                      "actual_runtime_walk": True, "actual_runtime_observe": observe,
+                      "creator_gestures": gesture_rows,
+                      "human_visual_likeness_approved": False,
+                      "physical_desktop_playback_approved": False,
+                      "rights_verified": False,
+                      "source_art_redistributed": False,
+                  }, ensure_ascii=False), flush=True)
+          PY
+    # The source artwork is kept only in disposable job-local storage,
+    # never as a repo file, uploaded artifact, or promised release asset.
