@@ -31,7 +31,9 @@ AUTHOR_POST = "https://saylamars.fanbox.cc/posts/" + POST_ID
 API_URL = "https://api.fanbox.cc/post.info?postId=" + POST_ID
 MAX_METADATA = 512 * 1024
 MAX_DOWNLOAD = 32 * 1024 * 1024
-PUBLISHER_DOMAINS = frozenset(("downloads.fanbox.cc", "api.fanbox.cc"))
+PUBLISHER_DOMAINS = frozenset((
+    "downloads.fanbox.cc", "api.fanbox.cc", "fanbox.pixiv.net",
+))
 EXTENSIONS = frozenset((".zip",))
 
 
@@ -91,7 +93,14 @@ def extract_public_eula_post(reply):
     if not isinstance(content, dict):
         raise ValueError("No publicly accessible original attachment listing")
     candidates = []
-    for f in content.get("files", [])[:25]:
+    # FANBOX article uploads live under fileMap, not files. In this public
+    # format the keys are article-specific IDs; only values are creator files.
+    entries = content.get("files", [])
+    file_map = content.get("fileMap", {})
+    if not isinstance(entries, list) or not isinstance(file_map, dict):
+        raise ValueError("Invalid public file listing")
+    entries = entries[:25] + list(file_map.values())[:25]
+    for f in entries:
         if not isinstance(f, dict):
             continue
         name = str(f.get("name", ""))[:180]
@@ -142,6 +151,15 @@ def probe_eula(*, post_loader=None, downloader=None):
         page = wrapper.get("post", wrapper) if isinstance(wrapper, dict) else None
         content = page.get("body") if isinstance(page, dict) else None
         if isinstance(content, dict):
+            field_map = content.get("fileMap", {})
+            if isinstance(field_map, dict):
+                state["public_filemap_entries"] = len(field_map)
+            blocks = content.get("blocks", [])
+            if isinstance(blocks, list):
+                state["public_block_types"] = sorted(set(
+                    str(row.get("type", ""))[:30] for row in blocks[:80]
+                    if isinstance(row, dict)
+                ))
             # Diagnostic ONLY: output field names of the public article, not
             # external URLs, download tokens, signed asset IDs or credentials.
             allowed = {"text", "blocks", "files", "fileMap", "imageMap",
