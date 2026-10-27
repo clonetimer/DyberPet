@@ -9,6 +9,8 @@ on:
       - "tools/build_personal65_windows.ps1"
       - "tools/build_windows_portable.ps1"
       - "tools/personal_source_batch.py"
+      - "tools/install_pinned_kaveh_shimeji.py"
+      - "tests/test_pinned_kaveh_shimeji.py"
       - "tools/personal_install_journal.py"
       - "tools/creator_launch_choice.py"
       - "tests/test_creator_launch_choice.py"
@@ -81,6 +83,8 @@ jobs:
       - name: Test personal character planner offline (no art downloaded)
         shell: pwsh
         run: |
+          python -m unittest discover -s tests -p "test_pinned_kaveh_shimeji.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Kaveh exact-source no-redistribution contract failed" }
           python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Opt-in planner regression failed" }
           python -m unittest discover -s tests -p "test_personal_install_journal.py" -v
