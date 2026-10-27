@@ -42,6 +42,27 @@ GROUPS = {
     "landing": (18, 19),
     "climb": (12, 13, 14),
 }
+# Extra source-authored Shimeji poses. shime38-46 encode duplication, NOT petting.
+# The Aether variant lacks original shime29, so its head-turn stays unavailable.
+EXTRA_GROUPS = {
+    "lookaround": (26, 15, 27, 16, 28, 17, 29),
+    "ceiling_crawl": (23, 24, 25),
+    "edge_sit": (30, 31, 32, 33),
+    "window_carry": (34, 35, 36),
+    "jump_pose": (22,),  # still pose; not a full jump animation
+}
+
+
+def mapped_groups(available_indices):
+    """Never invent absent poses or splice sprites from another creator."""
+    groups = dict(GROUPS)
+    available = set(available_indices)
+    for name, indices in EXTRA_GROUPS.items():
+        if set(indices).issubset(available):
+            groups[name] = indices
+    return groups
+
+
 MAX_ROLE_BYTES = 14 * 1024 * 1024
 
 
@@ -123,8 +144,9 @@ def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_d
             raw = downloader(prefix + filename, item["files"][filename])
             source_data[index] = raw
             (originals_dir / filename).write_bytes(raw)
+        groups = mapped_groups(source_data)
         acts = {}
-        for group, indexes in GROUPS.items():
+        for group, indexes in groups.items():
             for dest_index, source_index in enumerate(indexes):
                 (actions_dir / f"{group}_{dest_index}.png").write_bytes(source_data[source_index])
         def action(images, moving=None):
@@ -144,6 +166,10 @@ def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_d
             "landing": action("landing"),
             "rest": action("sit"),
         })
+        for name in EXTRA_GROUPS:
+            if name in groups:
+                acts[name] = action(name)
+
         dims = struct.unpack(">II", source_data[1][16:24])
         pet = {
             "width": dims[0], "height": dims[1], "scale": 1.0, "refresh": 5,
@@ -154,9 +180,17 @@ def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_d
             "patpat": "default",  # no source-guaranteed pat animation in standard Shimeji
             "random_act": [
                 {"name": "待机", "act_list": ["default"], "act_prob": 1.0, "act_type": [2, 0]},
-                {"name": "行走", "act_list": ["left_walk", "right_walk", "default"],
+                # The old mixed idle + walk refs were refused by the
+                # native semantic-group dispatcher. Use actual walking frames.
+                {"name": "散步", "act_list": ["left_walk", "right_walk"],
                  "act_prob": 0.1, "act_type": [3, 1]},
-            ],
+                {"name": "休息", "act_list": ["rest"],
+                 "act_prob": 0.1, "act_type": [2, 0]},
+            ] + (
+                [{"name": "观察", "act_list": ["lookaround"],
+                  "act_prob": 0.1, "act_type": [2, 0]}]
+                if "lookaround" in groups else []
+            ),
         }
         (stage / "act_conf.json").write_text(
             json.dumps(acts, ensure_ascii=False, indent=2)+"\n", encoding="utf-8")
@@ -171,7 +205,13 @@ def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_d
             "source_kind": "artist_shimeji_png_archive",
             "verified_exact_source_frame_bytes": True,
             "all_original_frames_preserved": len(source_data),
-            "mapped_original_frame_groups": list(GROUPS),
+            "mapped_original_frame_groups": list(groups),
+            "missing_optional_source_sequences": [
+                k for k in EXTRA_GROUPS if k not in groups
+            ],
+            "real_author_lookaround_available": "lookaround" in groups,
+            "source_authored_petting_animation": False,
+            "source_authored_animated_jump": False,
             "source_rights_verified": False,
             "likeness_manually_reviewed": False,
             "physical_windows_qa_verified": False,
@@ -189,6 +229,8 @@ def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_d
     return {"profile": item["profile"], "folder": destination.name,
             "source_original_frames": len(source_data),
             "actions": checked["actions"], "frames": checked["images"],
+            "native_observe_shortcut": "lookaround" in groups,
+            "available_original_extra_groups": [k for k in EXTRA_GROUPS if k in groups],
             "original_source_pixels_preserved": True,
             "likeness_manually_reviewed": False}
 
