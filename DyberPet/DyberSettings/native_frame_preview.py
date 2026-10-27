@@ -20,6 +20,7 @@ from tools.artist_animation_audit import (
     _frames_for_action, _read_config, MAX_ACTIONS, MAX_PIXELS, MAX_SIDE)
 from tools.character_interaction_coverage import _safe_installed_role
 from tools.creator_motion_quality import analyze_creator_actions
+from tools.creator_reference_cues import cues_for_local_role, cue_text
 from DyberPet.assistant.role_interactions import available_interactions
 from tools.creator_art_manual_review import (
     GRADES, CHIBI_FORMS, create_manual_review_receipt, save_manual_review)
@@ -82,6 +83,10 @@ class NativeFramePreviewDialog(QDialog):
         note = QLabel("逐版本、逐帧查看本机真实 PNG；可解码不代表外观、动作或授权验收通过。")
         note.setWordWrap(True)
         layout.addWidget(note)
+        self.identity_cues = QLabel(self)
+        self.identity_cues.setWordWrap(True)
+        self.identity_cues.setText(cue_text(None))
+        layout.addWidget(self.identity_cues)
         self.version = QComboBox(self)
         for folder in self._folders:
             self.version.addItem(folder, folder)
@@ -196,6 +201,20 @@ class NativeFramePreviewDialog(QDialog):
             if self._snapshots.get(folder) != metadata:
                 self._visited[folder] = {}
             self._snapshots[folder] = metadata
+            # A source receipt maps the current character identity; a
+            # reference checklist NEVER auto-approves Q style or source art.
+            try:
+                cues = cues_for_local_role(self._root, folder)
+                self.identity_cues.setText(cue_text(cues))
+                if cues is not None:
+                    self.identity_cues.setToolTip(
+                        "原画核对示例（不是本地版本认证）：" + cues["reference"])
+                else:
+                    self.identity_cues.setToolTip("")
+            except (OSError, ValueError, TypeError, KeyError):
+                # Guidance is optional and must never disable a valid pet.
+                self.identity_cues.setText(cue_text(None))
+                self.identity_cues.setToolTip("")
             # Read ALL original action frames. This is informational risk
             # evidence only and NEVER a substitute for the creator/Q review.
             try:
@@ -216,6 +235,8 @@ class NativeFramePreviewDialog(QDialog):
             self._inventory = {}
             self._frames = []
             self._motion_risks = {}
+            self.identity_cues.setText(cue_text(None))
+            self.identity_cues.setToolTip("")
             self.motion_risk_label.setText("无法完整分析当前版本的作者动作帧")
             self.canvas.clear()
             self.canvas.setText("无法打开此作者动画：" + str(exc)[:170])
@@ -247,17 +268,32 @@ class NativeFramePreviewDialog(QDialog):
     def _refresh_interaction_shortcuts(self):
         actions = available_interactions(self._inventory.keys())
         total = 0
+        flagged = 0
         for item in actions:
             button = self.interaction_buttons[item["id"]]
             usable = bool(item["available"])
+            evidence = self._motion_risks.get(item["action"]) if usable else None
+            risks = evidence.get("risk_indicators", []) if evidence else []
+            is_risky = bool(risks)
+            # The button may preview a weak original movement, but must not
+            # count the mere presence of one PNG as polished multi-pose art.
+            button.setText(item["label"] + (" ⚠" if is_risky else ""))
             button.setEnabled(usable)
-            button.setToolTip(
-                "预览当前版本的真实 PNG 动作：" + item["action"]
-                if usable else "该素材版本没有可用的对应动作，未作合成")
+            if not usable:
+                tooltip = "该素材版本没有可用的对应动作，未作合成"
+            elif is_risky:
+                tooltip = ("真实原画动作：" + item["action"] + "；姿态风险：" +
+                           "、".join(risks) + "。可检查/播放，但未经自然运动验收")
+            else:
+                tooltip = "预览当前版本的真实 PNG 动作：" + item["action"]
+            button.setToolTip(tooltip)
             total += int(usable)
+            flagged += int(is_risky)
         self.interaction_summary.setText(
-            f"本素材版本可预览 {total} / {len(actions)} 类真实互动；"
-            "不可用的按钮保持禁用（不是多个版本的动作总和）。")
+            f"本素材版本可预览 {total} / {len(actions)} 类原生互动，"
+            f"其中 {flagged} 类发现逐帧运动风险（按钮带⚠）；"
+            "仅表示具备原画入口，不代表动作自然或人工验收通过。"
+            "缺失动作保持禁用，不合并其他角色版本的动作。")
 
     def _preview_interaction(self, category):
         choices = available_interactions(self._inventory.keys())
