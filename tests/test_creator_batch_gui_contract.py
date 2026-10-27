@@ -45,7 +45,8 @@ class BulkArtistGuiContractTests(unittest.TestCase):
 
     def test_off_thread_exact_inventory_and_no_background_ui_updates(self):
         worker = self.classes["CreatorBatchImportThread"]
-        self.assertIn("QThread", ast.unparse(worker.bases))
+        self.assertTrue(any(isinstance(base, ast.Name) and base.id == "QThread"
+                            for base in worker.bases))
         func = next(n for n in worker.body if isinstance(n, ast.FunctionDef)
                     and n.name == "run")
         body = ast.unparse(func)
