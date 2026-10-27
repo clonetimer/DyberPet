@@ -72,6 +72,42 @@ class PersonalSourceBatchTests(unittest.TestCase):
             self.assertEqual(calls[0][1], "a")
             self.assertTrue(result["no_artwork_uploaded"])
 
+    def test_graceful_stop_after_current_person_preserves_completed_work(self):
+        with tempfile.TemporaryDirectory() as temp:
+            coverage = fake_coverage()
+            # Two sources on different characters: cancellation may not
+            # interrupt an active copy or leave an incomplete role folder.
+            coverage["characters"][0]["source_candidates"] = [
+                {"provider": "native", "source_key": "a", "url": "https://example.org/a"}]
+            coverage["characters"][3]["source_candidates"] = [
+                {"provider": "native", "source_key": "d", "url": "https://example.org/d"}]
+            plan = plan_personal_sources(
+                temp, coverage=coverage,
+                inventory={"characters": [], "invalid_local": []})
+            state = {"stop": False}
+            calls = []
+            def dispatch(provider, key, root):
+                calls.append(key)
+                state["stop"] = True
+            outcome = install_personal_plan(
+                plan, temp, confirmed=True, dispatch=dispatch,
+                should_stop=lambda: state["stop"],
+                inventory_reader=lambda _root: {"characters": [
+                    {"profile": "genshin_a", "installed_folders": [
+                        {"is_original_demo": False}]}], "invalid_local": []})
+            self.assertEqual(calls, ["a"])
+            self.assertEqual(outcome["attempted"], 1)
+            self.assertTrue(outcome["stopped_by_user"])
+            self.assertEqual(outcome["installed_unreviewed"], 1)
+            self.assertEqual(outcome["failed"], 0)
+            # Cancellation before any download must keep the root uncreated.
+            initial = install_personal_plan(
+                plan, temp, confirmed=True, dispatch=dispatch,
+                should_stop=lambda: True,
+                inventory_reader=lambda _root: {"characters": [], "invalid_local": []})
+            self.assertTrue(initial["stopped_by_user"])
+            self.assertEqual(initial["attempted"], 0)
+
     def test_unknown_roles_and_individual_install_failures(self):
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaisesRegex(ValueError, "Unknown role"):
