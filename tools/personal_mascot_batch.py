@@ -8,14 +8,16 @@ import json
 from pathlib import Path
 
 try:
-    from .install_creator_mascots import UPSTREAM, REPO, PINNED_REVISION, install_creator_mascot
+    from .install_creator_mascots import UPSTREAM, DORO_VARIANTS, REPO, PINNED_REVISION, install_creator_mascot
     from .mascot_library import scan_mascot_library
 except ImportError:
-    from tools.install_creator_mascots import UPSTREAM, REPO, PINNED_REVISION, install_creator_mascot
+    from tools.install_creator_mascots import UPSTREAM, DORO_VARIANTS, REPO, PINNED_REVISION, install_creator_mascot
     from tools.mascot_library import scan_mascot_library
 
 
-def plan_mascot_sources(role_root, *, inventory=None):
+def plan_mascot_sources(role_root, *, inventory=None, doro_variant="classic"):
+    if doro_variant not in DORO_VARIANTS:
+        raise ValueError("Unrecognized Doro creator art variant")
     root = Path(role_root).expanduser()
     if root.is_symlink() or (root.exists() and not root.is_dir()):
         raise ValueError("Mascot role root must be a real directory")
@@ -25,11 +27,21 @@ def plan_mascot_sources(role_root, *, inventory=None):
     names = {row["key"]: row["display_name"] for row in inventory["mascots"]}
     roles = []
     for key in ("guga", "doro"):
-        item = UPSTREAM[key]
+        variant = doro_variant if key == "doro" else "classic"
+        item = DORO_VARIANTS[variant] if key == "doro" else UPSTREAM[key]
+        existing = next((entry for entry in inventory["mascots"] if entry["key"] == key), {})
+        if key == "doro" and variant != "classic":
+            # A legacy Doro version must not count as the *new* V2 variant.
+            is_installed = any(x.get("source_id") == item["id"]
+                               for x in existing.get("imported_creator_art", []))
+        else:
+            is_installed = key in installed
         roles.append({
             "key": key,
             "name": names[key],
-            "status": "already_installed" if key in installed else "ready_for_opt_in",
+            "source_variant": variant,
+            "source_id": item["id"],
+            "status": "already_installed" if is_installed else "ready_for_opt_in",
             "source": f"https://github.com/{REPO}/tree/{PINNED_REVISION}/pets/{item['id']}",
             "source_kind": "creator_fan_art",
             "original_likeness_verified": False,
@@ -65,10 +77,19 @@ def install_mascot_plan(plan, role_root, *, confirmed=False, installer=None,
         if progress is not None:
             progress({"stage": "role_start", "key": row["key"]})
         try:
-            result = installer(row["key"], root, confirmed=True)
+            # A real optional alternative uses a separate exact source ID.
+            # Keep legacy installers callable for unchanged classic sources.
+            if row.get("source_variant") == "handdrawn_v2":
+                result = installer(row["key"], root, confirmed=True,
+                                   variant="handdrawn_v2")
+            else:
+                result = installer(row["key"], root, confirmed=True)
             if not isinstance(result, dict) or result.get("kind") != row["key"]:
                 raise ValueError("Mascot installer returned mismatched identity")
-            results.append({"key": row["key"], "status": "installed_unreviewed",
+            results.append({"key": row["key"],
+                            "source_variant": row.get("source_variant", "classic"),
+                            "source_id": row.get("source_id"),
+                            "status": "installed_unreviewed",
                             "native_actions": result.get("actions"),
                             "native_frames": result.get("frames")})
         except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
@@ -76,16 +97,25 @@ def install_mascot_plan(plan, role_root, *, confirmed=False, installer=None,
                             "reason": f"{type(exc).__name__}: {str(exc)[:200]}"})
     verify = scan_mascot_library if inventory_reader is None else inventory_reader
     verified = set()
+    recognized_versions = set()
     inventory_error = None
     try:
         current = verify(root)
         verified = {entry["key"] for entry in current["mascots"]
                     if entry.get("imported_creator_art")}
+        recognized_versions = {
+            (entry["key"], folder.get("source_id"))
+            for entry in current["mascots"]
+            for folder in entry.get("imported_creator_art", [])
+        }
     except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
         inventory_error = type(exc).__name__ + ": " + str(exc)[:180]
     for result in results:
         if result["status"] == "installed_unreviewed":
-            if result["key"] not in verified:
+            variant_missing = (
+                result.get("source_variant") == "handdrawn_v2" and
+                (result["key"], result["source_id"]) not in recognized_versions)
+            if result["key"] not in verified or variant_missing:
                 result["status"] = "failed"
                 result["post_install_validation_failed"] = True
                 result["reason"] = ("Local inventory verification unavailable: " + inventory_error
@@ -105,5 +135,6 @@ def install_mascot_plan(plan, role_root, *, confirmed=False, installer=None,
         "post_install_inventory_checked": inventory_error is None,
         "post_install_inventory_error": inventory_error,
         "post_install_recognized_mascots": len(verified),
+        "post_install_recognized_source_variants": len(recognized_versions),
         "results": results,
     }
