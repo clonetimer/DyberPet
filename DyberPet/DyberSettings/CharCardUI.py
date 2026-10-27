@@ -1942,8 +1942,12 @@ class ChibiImportThread(QThread):
                     self.preset, self.output_root, confirmed=True)
             elif self.mode == "artist_nano":
                 from tools.install_nanopet_shimeji import install_nanopet_shimeji
+                # Explicitly selected artist source: install a *separate*
+                # current-gesture variant if this user has an older import.
+                # Preserve all existing role sprites and their save state.
                 installed = install_nanopet_shimeji(
-                    self.preset, self.output_root, confirmed=True)
+                    self.preset, self.output_root, confirmed=True,
+                    install_as_new_variant=True)
                 new_folder = self.output_root / installed["folder"]
             elif self.mode == "artist_external_codex":
                 from tools.install_external_codex import install_external_codex
