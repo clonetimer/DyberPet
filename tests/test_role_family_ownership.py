@@ -151,7 +151,7 @@ class CrossFamilyOwnershipTests(unittest.TestCase):
             "selected_profile": "doro", "source_id": "doro--lingxiaotian",
             "source_kind": "curated_creator_spritesheet",
         }), encoding="utf-8")
-        with self.assertRaisesRegex(ValueError, "identity"):
+        with self.assertRaisesRegex(ValueError, "source ID must match"):
             known_mascot_family(folder)
 
     def test_incorrect_source_id_never_moves_to_genshin_unmapped_list(self):
