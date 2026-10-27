@@ -69,3 +69,96 @@ class PersonalInstallJournal:
         finally:
             if temporary.exists():
                 temporary.unlink()
+
+
+# Read only our exact journal filenames, never arbitrary local JSON. The
+# format is intentionally small: personal art pixels are never recorded.
+_JOURNAL_PATTERN = __import__("re").compile(
+    r"^personal65-batch-[0-9]{8}-[0-9]{6}-[0-9a-f]{8}\\.json$")
+_MAX_READ_BYTES = 4 * 1024 * 1024
+_MAX_CHARACTERS = 123
+
+
+def latest_install_journal(directory):
+    """Read the newest valid, bounded, NON-LINKED R14+ journal or return None.
+
+    Invalid, unfinished temporary, old legacy and symlinked files are ignored.
+    The result contains only local attempt metadata; no external fetching.
+    """
+    root = Path(directory)
+    if not root.exists():
+        return None
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("Personal journal directory must not be linked")
+    items = []
+    for p in root.iterdir():
+        if (_JOURNAL_PATTERN.fullmatch(p.name) and not p.is_symlink()
+                and p.is_file()):
+            items.append(p)
+    for path in sorted(items, key=lambda p: p.name, reverse=True)[:50]:
+        try:
+            if not 10 <= path.stat().st_size <= _MAX_READ_BYTES:
+                continue
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(doc, dict) or doc.get("schema") != 1:
+                continue
+            if type(doc.get("finished")) is not bool:
+                continue
+            records = doc.get("completed_character_attempts")
+            if not isinstance(records, list) or len(records) > _MAX_CHARACTERS:
+                continue
+            if not isinstance(doc.get("plan_summary"), dict):
+                continue
+            if any(
+                    not isinstance(r, dict)
+                    or not isinstance(r.get("profile"), str)
+                    or r.get("status") not in
+                    ("failed", "pending_inventory_validation")
+                    for r in records):
+                continue
+            if doc["finished"]:
+                final = doc.get("final_installation")
+                if not isinstance(final, dict):
+                    continue
+                results = final.get("results")
+                if not isinstance(results, list) or len(results) > _MAX_CHARACTERS:
+                    continue
+            else:
+                if doc.get("final_installation") is not None:
+                    continue
+            return {"path": str(path), "finished": doc["finished"],
+                    "attempts": len(records),
+                    "final_installation": doc.get("final_installation"),
+                    "plan_summary": doc["plan_summary"]}
+        except (OSError, UnicodeError, ValueError, TypeError,
+                json.JSONDecodeError):
+            continue
+    return None
+
+
+def restartable_profiles(journal, current_plan):
+    """Select only currently uninstalled profiles with approved pinned installers.
+
+    When an old run was interrupted, resume everything *currently pending*
+    according to fresh native-art inventory. For finished runs, retry only
+    recorded failures. A forged or stale receipt can never select a new source.
+    """
+    if not isinstance(journal, dict):
+        raise ValueError("No validated local journal")
+    characters = current_plan.get("characters")
+    if not isinstance(characters, list):
+        raise ValueError("Invalid current source planning")
+    permitted = {c["profile"] for c in characters
+                 if c.get("status") == "ready_for_opt_in"}
+    if not journal.get("finished"):
+        return sorted(permitted)
+    final = journal.get("final_installation")
+    if not isinstance(final, dict):
+        raise ValueError("Final receipt is missing")
+    return sorted({
+        row["profile"]
+        for row in final.get("results", [])
+        if isinstance(row, dict) and row.get("status") == "failed"
+        and isinstance(row.get("profile"), str)
+        and row["profile"] in permitted
+    })
