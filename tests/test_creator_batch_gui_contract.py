@@ -111,7 +111,9 @@ class BulkArtistGuiContractTests(unittest.TestCase):
         body = self.methods["_onCreatorBatchDone"]
         self.assertIn("journal_path", body)
         self.assertIn("installed_unreviewed", body)
-        self.assertIn("verified_native_folders", body)
+        # Native folder receipts are now checked against FRESH inventory in
+        # tools.creator_launch_choice, rather than read directly by this GUI.
+        self.assertIn("verified_new_artist_folders(", body)
         self.assertIn("QInputDialog.getItem(", body)
         self.assertIn("self._previewJustInstalledCreatorArt(", body)
         self.assertIn("不代表原设形象", body)
