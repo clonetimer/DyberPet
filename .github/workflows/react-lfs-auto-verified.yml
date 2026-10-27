@@ -40,7 +40,7 @@ jobs:
           python -m unittest discover -s tests -p "test_creator_fallback_variant_ranking.py" -v
       - name: All 65 source-pinned Genshin roles now have an opt-in installer, without downloading art
         run: |
-          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.personal_source_batch import plan_personal_sources; from tools.react_shimeji_source_leads import verified_lfs_sources; t=TemporaryDirectory(); r=plan_personal_sources(Path(t.name)/'fresh'); s=r['summary']; print(s); assert s['selected_profiles']==123 and s['ready_for_opt_in']==65 and s['manual_import_only']==0 and s['missing_source']==58; assert len(verified_lfs_sources())==2"
+          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.personal_source_batch import plan_personal_sources; from tools.react_shimeji_source_leads import verified_lfs_sources; t=TemporaryDirectory(); r=plan_personal_sources(Path(t.name)/'fresh'); s=r['summary']; print(s); assert s['selected_profiles']==123 and s['ready_for_opt_in']==66 and s['manual_import_only']==0 and s['missing_source']==57; assert len(verified_lfs_sources())==2"
   original-bytes-integration:
     runs-on: ubuntu-latest
     needs: offline
