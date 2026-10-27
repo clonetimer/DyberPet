@@ -809,6 +809,9 @@ class CharInterface(ScrollArea):
         from tools.install_nanopet_shimeji import source_manifest as nano_manifest
         from tools.install_external_codex import source_manifest as external_manifest
         from tools.install_pinned_codexpetdb import listed_packages, fixed_archive_url
+        from tools.install_pinned_kaveh_shimeji import (
+            SOURCE_KEY as KAVEH_KEY, ARCHIVE_SHA256 as KAVEH_SHA,
+            PUBLISHER_PAGE as KAVEH_PAGE)
         from tools.react_shimeji_source_leads import (
             verified_lfs_sources, REPOSITORY as REACT_REPO, REVISION as REACT_REV)
         shimeji = source_manifest()
@@ -834,6 +837,8 @@ class CharInterface(ScrollArea):
             f"② LFS 原始 PNG 已核验 · {row['slug']} · 动作待验收": ("react_shimeji_lfs", profile)
             for profile, row in verified_react.items()
         })
+        labels["③ 卡维 ilewdha · 真实 PNG 原画 ZIP · 匍匐/坠落单帧待验收"] = (
+            "pinned_kaveh_shimeji", KAVEH_KEY)
         if only_profile:
             def mapped_profile(source):
                 mode, key = source
@@ -849,6 +854,8 @@ class CharInterface(ScrollArea):
                     return petdb[key]["profile"]
                 if mode == "react_shimeji_lfs":
                     return key
+                if mode == "pinned_kaveh_shimeji":
+                    return "genshin_kaveh"
                 return external["sources"][key]["profile"]
             labels = {name: source for name, source in labels.items()
                       if mapped_profile(source) == only_profile}
@@ -907,6 +914,8 @@ class CharInterface(ScrollArea):
                       + "/public/assets/" + kind)
         elif mode == "pinned_codexpetdb":
             source = fixed_archive_url(petdb[kind])
+        elif mode == "pinned_kaveh_shimeji":
+            source = KAVEH_PAGE
         elif mode == "artist_nano":
             source = ("https://github.com/" + nano["repository"]
                       + "/tree/" + nano["revision"] + "/" + nano["asset_root"]
@@ -915,9 +924,15 @@ class CharInterface(ScrollArea):
             row = external["sources"][kind]
             source = ("https://github.com/" + row["repository"]
                       + "/tree/" + row["revision"] + "/" + row["directory"])
+        kaveh_note = (
+            "ZIP 固定 SHA-256：" + KAVEH_SHA +
+            "\\n真实动作中匍匐和坠落各只有一帧；原设造型、画师使用条件及实机交互尚未验收。\\n"
+            "这是卡维已有固定来源外的候选，不增加已覆盖人物。\\n"
+            if mode == "pinned_kaveh_shimeji" else ""
+        )
         if not self.__showMessageBox(
                 "本机安装公开作者动画",
-                f"来源：{source}\n"
+                f"来源：{source}\n" + kaveh_note
                 "确认后下载固定版本原始动画，并安装为独立角色。"
                 "不会覆盖现有桌宠或用户存档。"
                 "公开素材与人物形象的人工验收是两回事；安装后请先预览。继续吗？"):
@@ -1562,6 +1577,7 @@ class CharInterface(ScrollArea):
             "pinned_codexpetdb_local", "react_shimeji_lfs", "creator_source",
             "shimeji_zip", "codex_zip", "codex",
             "native_zip", "native_folder", "animations",
+            "pinned_kaveh_shimeji",
         }
         if source_mode in original_modes:
             # Use the actual installed PNG sequence player, not a static
@@ -1920,6 +1936,10 @@ class ChibiImportThread(QThread):
                 installed = install_artist_shimeji(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
+            elif self.mode == "pinned_kaveh_shimeji":
+                from tools.install_pinned_kaveh_shimeji import install_pinned_kaveh_shimeji
+                new_folder = install_pinned_kaveh_shimeji(
+                    self.preset, self.output_root, confirmed=True)
             elif self.mode == "artist_nano":
                 from tools.install_nanopet_shimeji import install_nanopet_shimeji
                 installed = install_nanopet_shimeji(
