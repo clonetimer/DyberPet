@@ -108,6 +108,39 @@ class PersonalSourceBatchTests(unittest.TestCase):
             self.assertTrue(initial["stopped_by_user"])
             self.assertEqual(initial["attempted"], 0)
 
+    def test_checkpoint_occurs_per_character_before_final_catalog_and_preview_binds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            inventory = {"characters": [], "invalid_local": []}
+            plan = plan_personal_sources(
+                tmp, coverage=fake_coverage(), inventory=inventory)
+            saved = []
+            calls = []
+            def dispatch(provider, key, root):
+                calls.append(key)
+            def checkpoint(item):
+                saved.append(item)
+                # A still-in-progress role NEVER has approved art until scan.
+                self.assertNotIn("post_install_validation_passed", item)
+                self.assertIn(item["status"],
+                              ("pending_inventory_validation", "failed"))
+            verified = lambda _: {"characters": [
+                {"profile": "genshin_a", "installed_folders": [
+                    {"folder": "SourceNahida", "is_original_demo": False}]},
+                {"profile": "genshin_d", "installed_folders": [
+                    {"folder": "SourceD", "is_original_demo": False}]},
+            ], "invalid_local": []}
+            out = install_personal_plan(
+                plan, tmp, confirmed=True, dispatch=dispatch,
+                checkpoint=checkpoint, inventory_reader=verified)
+            self.assertEqual(len(saved), 2)
+            self.assertEqual([p["index"] for p in saved], [1, 2])
+            self.assertEqual(out["installed_unreviewed"], 2)
+            self.assertEqual(
+                [r["verified_native_folders"] for r in out["results"]],
+                [["SourceNahida"], ["SourceD"]])
+            self.assertTrue(all(r["post_install_validation_passed"]
+                                for r in out["results"]))
+
     def test_unknown_roles_and_individual_install_failures(self):
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaisesRegex(ValueError, "Unknown role"):
