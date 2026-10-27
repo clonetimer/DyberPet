@@ -49,8 +49,15 @@ class PinnedCreatorFallbackTests(unittest.TestCase):
                 return {"profile": "genshin_a", "folder": "CreatorA"}
             with self.assertRaisesRegex(ValueError, "Explicit"):
                 install_personal_plan(plan, temp, dispatch=fake)
+            # Fake dispatch does not create actual PNGs. Supply a synthetic
+            # post-install inventory instead of pretending an empty directory
+            # passes the new production catalogue reconciliation contract.
+            after = lambda _: {"characters": [
+                {"profile": "genshin_a", "installed_folders": [
+                    {"is_original_demo": False}]}], "invalid_local": []}
             result = install_personal_plan(plan, temp, dispatch=fake,
-                                           confirmed=True, max_roles=1)
+                                           confirmed=True, max_roles=1,
+                                           inventory_reader=after)
             self.assertEqual(result["attempted"], 1)
             self.assertEqual(result["source_attempts"], 2)
             self.assertEqual(result["fallback_recovered_profiles"], 1)
