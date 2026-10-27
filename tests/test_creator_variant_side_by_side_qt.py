@@ -9,12 +9,22 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PIL import Image
-from PySide6.QtWidgets import QApplication, QDialog, QMessageBox
-from DyberPet.DyberSettings.creator_variant_side_by_side import (
-    CreatorVariantSideBySideDialog, checked_variant_pair,
-    shared_native_interactions,
-    display_pixmap_for_comparison,
-)
+try:
+    from PySide6.QtWidgets import QApplication, QDialog, QMessageBox
+except ModuleNotFoundError as exc:
+    if exc.name != "PySide6":
+        raise
+    # Pure importer CI installs Pillow without Qt; dedicated GUI gates do
+    # install PySide6 and must execute the full real-Qt assertions below.
+    QApplication = None
+    QDialog = None
+    QMessageBox = None
+if QApplication is not None:
+    from DyberPet.DyberSettings.creator_variant_side_by_side import (
+        CreatorVariantSideBySideDialog, checked_variant_pair,
+        shared_native_interactions,
+        display_pixmap_for_comparison,
+    )
 
 def _original(root, folder, profile, colors, *, action_name="left_walk"):
     role = root / folder
@@ -34,6 +44,7 @@ def _original(root, folder, profile, colors, *, action_name="left_walk"):
     return role
 
 
+@unittest.skipUnless(QApplication is not None, "Qt not installed in importer-only matrix")
 class OriginalABTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
