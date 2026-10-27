@@ -46,6 +46,14 @@ class CreatorSourcesTests(unittest.TestCase):
                     self.assertEqual(len(x["archive_sha256"]), 64)
                     self.assertTrue(x["byte_integrity_tested_in_ci"])
                     self.assertFalse(x["artist_character_likeness_verified"])
+                elif x["provider"] == "pinned_eula_creator":
+                    # This one creator source is pinned to the artist's own
+                    # verified FANBOX ZIP, not a GitHub mirror.
+                    self.assertEqual(
+                        x["url"], "https://saylamars.fanbox.cc/posts/8264436")
+                    self.assertEqual(len(x["archive_sha256"]), 64)
+                    self.assertEqual(x["verified_numbered_original_pngs"], 109)
+                    self.assertFalse(x["artist_character_likeness_verified"])
                 else:
                     self.assertTrue(x["url"].startswith("https://github.com/"))
                 self.assertFalse(x["asset_is_bundled"])
