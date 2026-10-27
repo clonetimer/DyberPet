@@ -23,6 +23,7 @@ from tools.genshin_library import _profile_of
 from tools.role_family import known_mascot_family
 from tools.creator_chibi_quality import load_local_quality_review
 from tools.creator_motion_quality import analyze_creator_actions
+from tools.creator_motion_alternatives import compare_motion_evidence
 from tools.creator_reference_cues import cues_for_local_role, cue_text
 from tools.genshin_role_bindings import binding_status, load_bindings
 from DyberPet.assistant.role_interactions import available_interactions
@@ -115,6 +116,7 @@ class CreatorVariantSideBySideDialog(QDialog):
         self._pixels = [None, None]
         self._tick = 0
         self._playing = False
+        self._recommendation_index = None
         self.setWindowTitle("同人物原画 A/B 对照 · Q版圆润体态与立牌风险")
         self.setMinimumSize(950, 610)
         body = QVBoxLayout(self)
@@ -179,6 +181,17 @@ class CreatorVariantSideBySideDialog(QDialog):
         self.apply_shared = QPushButton("两侧同步切到该动作", self)
         shared.addWidget(self.apply_shared)
         body.addLayout(shared)
+        # Only source-authored *pose evidence* is compared. The user, not the
+        # software, decides whether the picture looks like the true character.
+        self.motion_recommendation = QLabel(
+            "请选择两套素材都具备的真实动作，检查可用替代版本", self)
+        self.motion_recommendation.setWordWrap(True)
+        body.addWidget(self.motion_recommendation)
+        self.review_recommended = QPushButton(
+            "逐帧核查姿态更丰富的版本（不更换当前桌宠）", self)
+        self.review_recommended.setEnabled(False)
+        self.review_recommended.clicked.connect(self._review_recommended)
+        body.addWidget(self.review_recommended)
         mode = QHBoxLayout()
         mode.addWidget(QLabel("画面呈现方式：", self))
         self.crop_mode = QComboBox(self)
@@ -223,6 +236,7 @@ class CreatorVariantSideBySideDialog(QDialog):
         self.next.clicked.connect(self._advance)
         self.slider.valueChanged.connect(self._slider_seek)
         self.apply_shared.clicked.connect(self._choose_shared)
+        self.shared.currentIndexChanged.connect(self._refresh_recommendation)
         self.crop_mode.currentIndexChanged.connect(self._render_both)
         self._load(0)
         self._load(1)
@@ -334,6 +348,43 @@ class CreatorVariantSideBySideDialog(QDialog):
             self.shared.setToolTip("两个版本没有同类别的原生动作；可分别选择动作比较")
         else:
             self.shared.setToolTip("只映射双方真实存在的动作类别，绝不补动作")
+        self._refresh_recommendation()
+
+    def _refresh_recommendation(self, *_):
+        self._recommendation_index = None
+        item = self.shared.currentData()
+        if not isinstance(item, dict) or not all(self._inventories):
+            note = "尚无双方都已安装的同一类别原画动作可供逐帧对比"
+        elif self.choices[0].currentData() == self.choices[1].currentData():
+            note = "请选择不同作者素材版本，不能比较同一目录"
+        else:
+            record = compare_motion_evidence(
+                self._motion[0].get(item["left_native_action"]),
+                self._motion[1].get(item["right_native_action"]))
+            note = record["text"]
+            self._recommendation_index = record["candidate_index"]
+            if self._recommendation_index is not None:
+                folder = self.choices[self._recommendation_index].currentData()
+                note += " 候选来源目录：" + str(folder)
+        self.motion_recommendation.setText(note)
+        self.review_recommended.setEnabled(self._recommendation_index is not None)
+
+    def _review_recommended(self):
+        index = self._recommendation_index
+        if index not in (0, 1):
+            return
+        item = self.shared.currentData()
+        if not isinstance(item, dict):
+            return
+        current = compare_motion_evidence(
+            self._motion[0].get(item["left_native_action"]),
+            self._motion[1].get(item["right_native_action"]))
+        if current["candidate_index"] != index:
+            self._refresh_recommendation()
+            return
+        # Only a preview of the exact original creator version. No switching,
+        # downloading, file copying or persistent user choice is performed.
+        self._review(index)
 
     def _choose_shared(self):
         selected = self.shared.currentData()
@@ -352,6 +403,7 @@ class CreatorVariantSideBySideDialog(QDialog):
         self._tick = 0
         for i in range(2):
             self._refresh_motion_note(i)
+        self._refresh_recommendation()
         self._render_both()
 
     def _render_both(self):
