@@ -18,6 +18,7 @@ from pathlib import Path
 import tempfile
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
+from zipfile import BadZipFile
 
 from tools.install_personal_shimeji_zip import (
     inspect_shimeji_zip, install_personal_shimeji_zip)
@@ -56,7 +57,10 @@ def probe_kaveh(*, downloader=None):
         workspace = Path(tmp)
         zip_path = workspace / "candidate.zip"
         zip_path.write_bytes(raw)
-        frames = inspect_shimeji_zip(zip_path)
+        try:
+            frames = inspect_shimeji_zip(zip_path)
+        except BadZipFile as exc:
+            raise ValueError("Candidate is not a valid Shimeji ZIP") from exc
         role = install_personal_shimeji_zip(
             zip_path, workspace / "private-native",
             profile=PROFILE, confirmed=True)
