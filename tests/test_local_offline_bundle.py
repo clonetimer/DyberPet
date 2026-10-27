@@ -93,5 +93,55 @@ class LocalOfflineBundleTests(unittest.TestCase):
                 self.assertFalse(report["contains_user_imported_art"])
 
 
+    def test_refuse_success_zip_with_no_real_artist_material(self):
+        with TemporaryDirectory() as td:
+            base = Path(td)
+            app = self._fixture(base)
+            output = base / "misleading-65-roles.zip"
+            with patch("tools.local_offline_bundle.scan_genshin_library",
+                       return_value={"summary": {
+                           "personal_art_profile_count": 0,
+                           "unmapped_folder_count": 0,
+                           "invalid_folder_count": 0}}), \
+                 patch("tools.local_offline_bundle.scan_mascot_library",
+                       return_value={"summary": {
+                           "imported_creator_art_count": 0,
+                           "invalid_count": 0}}):
+                with self.assertRaisesRegex(ValueError, "starter-only ZIP"):
+                    create_local_bundle(app, output, confirmed=True)
+            self.assertFalse(output.exists())
+            self.assertFalse((base / "misleading-65-roles.zip.partial").exists())
+
+    def test_refuse_legacy_generated_demo_even_with_real_art(self):
+        with TemporaryDirectory() as td:
+            base = Path(td)
+            app = self._fixture(base)
+            marker = app / "res" / "role" / "SourceValid" / "BUILTIN_CHIBI_DEMO.json"
+            marker.write_text('{"generator":"old-placeholder"}', encoding="utf-8")
+            with patch("tools.local_offline_bundle.scan_genshin_library",
+                       side_effect=fake_genshin), \
+                 patch("tools.local_offline_bundle.scan_mascot_library",
+                       side_effect=fake_mascot):
+                with self.assertRaisesRegex(ValueError, "Generated placeholder"):
+                    create_local_bundle(app, base / "out.zip", confirmed=True)
+            self.assertFalse((base / "out.zip").exists())
+
+    def test_refuse_invalid_role_before_archiving(self):
+        with TemporaryDirectory() as td:
+            base = Path(td)
+            app = self._fixture(base)
+            bad_genshin = {"summary": {
+                "personal_art_profile_count": 2,
+                "unmapped_folder_count": 0,
+                "invalid_folder_count": 1}}
+            with patch("tools.local_offline_bundle.scan_genshin_library",
+                       return_value=bad_genshin), \
+                 patch("tools.local_offline_bundle.scan_mascot_library",
+                       side_effect=fake_mascot):
+                with self.assertRaisesRegex(ValueError, "Invalid local character"):
+                    create_local_bundle(app, base / "bad.zip", confirmed=True)
+            self.assertFalse((base / "bad.zip").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
