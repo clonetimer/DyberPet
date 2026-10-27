@@ -384,7 +384,9 @@ class CreatorVariantSideBySideDialog(QDialog):
             return
         # Only a preview of the exact original creator version. No switching,
         # downloading, file copying or persistent user choice is performed.
-        self._review(index)
+        original_action = (item["left_native_action"] if index == 0
+                           else item["right_native_action"])
+        self._review(index, native_action=original_action)
 
     def _choose_shared(self):
         selected = self.shared.currentData()
@@ -464,7 +466,7 @@ class CreatorVariantSideBySideDialog(QDialog):
         self._playing = True
         self.play.setText("暂停")
 
-    def _review(self, i):
+    def _review(self, i, *, native_action=None):
         folder = self.choices[i].currentData()
         if not folder or not self._frames[i]:
             return
@@ -472,6 +474,13 @@ class CreatorVariantSideBySideDialog(QDialog):
         self._stop()
         try:
             viewer = NativeFramePreviewDialog(self._root, [folder], self)
+            # Focus the exact native movement whose evidence was compared;
+            # do not make users hunt through other actions or versions.
+            if native_action is not None:
+                index = viewer.action.findData(native_action)
+                if index < 0:
+                    raise ValueError("该原画版本已不包含所选动作，无法直接复核")
+                viewer.action.setCurrentIndex(index)
             viewer.exec()
         except (OSError, ValueError, TypeError, KeyError) as exc:
             QMessageBox.warning(self, "逐帧复核失败", str(exc))
