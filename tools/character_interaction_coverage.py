@@ -14,6 +14,9 @@ import re
 from PIL import Image, UnidentifiedImageError
 
 from DyberPet.assistant.role_interactions import available_interactions
+from tools.artist_animation_audit import (
+    _frames_for_action, MAX_TOTAL_FRAMES, MAX_SIDE, MAX_PIXELS,
+)
 
 MAX_ACTION_CONFIG_BYTES = 512 * 1024
 MAX_SPRITE_PIXELS = 4_000_000
@@ -34,12 +37,12 @@ def _safe_installed_role(root, folder):
 
 
 def _action_inventory(root, folder):
-    """Only a safe installed first PNG frame can establish an action exists.
+    """A playable *candidate* needs all original action PNGs to decode.
 
-    A declared action in act_conf is NOT playable when its original files are
-    missing or corrupted. This on-demand check decodes the first frame only:
-    it does not prove full sequence completeness, unique animation, character
-    identity or runtime unlock; those require deeper visual testing.
+    The first frame alone is insufficient: later frames can be absent, linked,
+    truncated or fully transparent. Validate bounded contiguous sequences
+    before advertising an interaction. This does NOT prove original likeness,
+    different poses, natural movement, rights, or actual PetWidget unlocking.
     """
     role = _safe_installed_role(root, folder)
     target = role / "act_conf.json"
@@ -53,6 +56,8 @@ def _action_inventory(root, folder):
     if art.is_symlink() or not art.is_dir():
         raise ValueError("Role has no trusted action PNG directory")
     valid, unusable = [], []
+    inspected = {}  # Native action aliases can share exactly the same PNGs.
+    total_frames = 0
     for name, entry in data.items():
         if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_\u4e00-\u9fff-]{1,80}", name):
             unusable.append(str(name)[:80])
@@ -61,32 +66,52 @@ def _action_inventory(root, folder):
         if not isinstance(prefix, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", prefix):
             unusable.append(name)
             continue
-        original_frame = art / (prefix + "_0.png")
-        if (original_frame.is_symlink() or not original_frame.is_file() or
-                not 32 <= original_frame.stat().st_size <= 8 * 1024 * 1024):
+        if prefix not in inspected:
+            try:
+                frames = _frames_for_action(role, prefix)
+                if not frames:
+                    raise ValueError("Missing original source PNG sequence")
+                # Bound total DISTINCT frames (not repeated action aliases)
+                # even when an imported config declares many action keys.
+                total_frames += len(frames)
+                if total_frames > MAX_TOTAL_FRAMES:
+                    raise ValueError("Too many original animation frames")
+                for frame in frames:
+                    with Image.open(frame) as image:
+                        if (image.format != "PNG" or
+                                not 1 <= image.width <= min(MAX_SIDE, MAX_SPRITE_SIDE) or
+                                not 1 <= image.height <= min(MAX_SIDE, MAX_SPRITE_SIDE) or
+                                image.width * image.height >
+                                min(MAX_PIXELS, MAX_SPRITE_PIXELS)):
+                            raise ValueError("Invalid original PNG frame dimensions")
+                        # PIL.load() must actually decode the IDAT stream.
+                        image.load()
+                        # An invisible middle frame is not a reliable
+                        # user-visible interaction even if the PNG is valid.
+                        if "A" in image.getbands():
+                            visible = image.getchannel("A").getbbox() is not None
+                        elif "transparency" in image.info:
+                            visible = (
+                                image.convert("RGBA").getchannel("A").getbbox()
+                                is not None)
+                        else:
+                            visible = True
+                        if not visible:
+                            raise ValueError("Fully transparent original action frame")
+                inspected[prefix] = True
+            except (OSError, ValueError, TypeError, UnidentifiedImageError):
+                inspected[prefix] = False
+        if inspected[prefix]:
+            valid.append(name)
+        else:
             unusable.append(name)
-            continue
-        # An eight-byte PNG signature does not prove the sprite can decode:
-        # reject forged headers, truncated IDAT streams and decompression bombs.
-        try:
-            with Image.open(original_frame) as image:
-                if (image.format != "PNG" or image.width <= 0 or image.height <= 0 or
-                        image.width > MAX_SPRITE_SIDE or image.height > MAX_SPRITE_SIDE or
-                        image.width * image.height > MAX_SPRITE_PIXELS):
-                    unusable.append(name)
-                    continue
-                image.load()
-        except (OSError, ValueError, UnidentifiedImageError):
-            unusable.append(name)
-            continue
-        valid.append(name)
     return valid, unusable
 
 
 def _original_art_action_names(root, folder):
     valid, broken = _action_inventory(root, folder)
     if not valid:
-        raise ValueError("No configured action has an installed, valid PNG first frame")
+        raise ValueError("No configured action has a complete decodable PNG sequence")
     return valid
 
 
@@ -114,12 +139,16 @@ def rank_installed_role_variants(role_root, folders):
             actions, broken = _action_inventory(root, folder)
             live = [x["id"] for x in available_interactions(actions)
                     if x["available"]]
+            # Keep the legacy status label for older UI consumers, but
+            # explicitly report the stronger full-sequence preflight.
             status = "first_frames_decodable" if actions else "no_playable_actions"
             ranked.append({
                 "folder": folder, "status": status, "interaction_categories": live,
                 "available_interaction_count": len(live),
                 "action_name_count": len(actions),
                 "broken_action_count": len(broken),
+                "complete_png_sequences_checked": True,
+                "physical_runtime_playback_verified": False,
                 "preview_only": True,
                 "manual_appearance_review_required": True,
             })
@@ -128,6 +157,8 @@ def rank_installed_role_variants(role_root, folders):
                 "folder": folder, "status": "invalid_installed_sprite",
                 "interaction_categories": [], "available_interaction_count": 0,
                 "action_name_count": 0, "broken_action_count": 0,
+                "complete_png_sequences_checked": False,
+                "physical_runtime_playback_verified": False,
                 "reason": str(exc)[:160], "preview_only": True,
                 "manual_appearance_review_required": True,
             })
@@ -167,6 +198,7 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
                 variant_actions = available_interactions(names)
                 variants.append({
                     "folder": folder, "status": "has_decodable_first_frames",
+                    "complete_png_sequences_checked": True,
                     "installed_action_names": sorted(names),
                     "available_category_ids": [a["id"] for a in variant_actions
                                                if a["available"]],
@@ -177,6 +209,7 @@ def interaction_coverage(role_root, *, genshin_snapshot=None, mascot_snapshot=No
                 errors.append({"folder": folder, "reason": reason})
                 variants.append({
                     "folder": folder, "status": "unusable_config_or_first_frame",
+                    "complete_png_sequences_checked": False,
                     "installed_action_names": [],
                     "available_category_ids": [],
                     "requires_manual_visual_qa": True, "error": reason,

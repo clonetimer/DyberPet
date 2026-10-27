@@ -23,6 +23,7 @@ on:
       - "DyberPet/DyberSettings/character_catalog_dialog.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tools/character_interaction_coverage.py"
+      - "tests/test_creator_action_full_sequence.py"
       - "tests/test_save_snapshot.py"
       - "tests/test_offline_restore.py"
       - "docs/pet_assistant.md"
@@ -46,6 +47,7 @@ on:
       - "DyberPet/DyberSettings/character_catalog_dialog.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tools/character_interaction_coverage.py"
+      - "tests/test_creator_action_full_sequence.py"
       - "tests/test_save_snapshot.py"
       - "tests/test_offline_restore.py"
       - ".github/workflows/pet-assistant.yml"
@@ -81,6 +83,7 @@ jobs:
           python -m unittest discover -s tests -p "test_assistant_*.py" -v
           python -m unittest discover -s tests -p "test_role_interactions.py" -v
           python -m unittest discover -s tests -p "test_creator_assistant_integration.py" -v
+          python -m unittest discover -s tests -p "test_creator_action_full_sequence.py" -v
       - name: Verify full backup and tamper safeguards
         run: python -m unittest discover -s tests -p "test_save_snapshot.py" -v
       - name: Verify offline data restore rollback, tamper and interruption
