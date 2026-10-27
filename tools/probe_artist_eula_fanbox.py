@@ -242,6 +242,19 @@ def main():
                 ("Unexpected creator post metadata redirect",
                  "publisher_metadata_cross_site_redirect"),
                 ("Invalid creator metadata object", "unexpected_public_metadata_shape"),
+                ("Invalid public file listing", "publisher_attachment_schema_mismatch"),
+                ("Off-publisher original ZIP download redirect",
+                 "publisher_download_cross_site_redirect"),
+                ("Eula ZIP must be an original publisher HTTPS attachment",
+                 "original_attachment_host_not_allowlisted"),
+                ("Creator ZIP missing or oversized", "original_attachment_oversized_or_missing"),
+                ("Invalid Eula source bytes", "creator_asset_bytes_invalid"),
+                ("Original artist attachment is not valid ZIP", "publisher_attachment_non_zip"),
+                ("Not a compatible standard Shimeji archive",
+                 "publisher_attachment_not_standard_shimeji"),
+                ("walk frames are identical", "publisher_animation_pose_missing"),
+                ("Original Eula ZIP/native frame integrity mismatch",
+                 "native_import_source_frame_mismatch"),
             ):
                 if signal in str(exc):
                     reason = code
