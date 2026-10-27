@@ -21,6 +21,7 @@ on:
       - "tests/test_creator_batch_gui_contract.py"
       - "tools/personal_mascot_batch.py"
       - "tools/install_creator_mascots.py"
+      - "tools/creator_motion_quality.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tools/mascot_library.py"
       - "tools/role_family.py"
