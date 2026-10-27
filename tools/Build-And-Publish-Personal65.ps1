@@ -85,7 +85,7 @@ if ($Publish) {
     if ($LASTEXITCODE -eq 0) {
         gh release upload $tag $pythonZip $rustZip $manifest --clobber --repo clonetimer/DyberPet
     } else {
-        gh release create $tag $pythonZip $rustZip $manifest --repo clonetimer/DyberPet --target $sha --title "DyberPet Personal65 - Python and Rust-hybrid (Private RC1)" --prerelease --latest=false --notes "Personal-use prerelease: 65 exact-source candidates across 123 templates (58 missing); these are not 65 preinstalled animated characters. Two Windows x64 portable variants with a local opt-in role installer. Third-party art and original voice are never embedded or uploaded. Visual/voice and physical Windows user tests remain pending."
+        gh release create $tag $pythonZip $rustZip $manifest --repo clonetimer/DyberPet --target $sha --title "DyberPet Personal65 - Python and Rust-hybrid (Private RC1)" --prerelease --latest=false --notes "Personal-use prerelease: 66 exact-source candidates across 123 templates (57 missing); these are not 66 preinstalled animated characters. Two Windows x64 portable variants with a local opt-in role installer. Third-party art and original voice are never embedded or uploaded. Visual/voice and physical Windows user tests remain pending."
     }
     if ($LASTEXITCODE -ne 0) { throw "Private GitHub Release publish failed" }
     gh release view $tag --repo clonetimer/DyberPet --json url,assets,isPrerelease

@@ -77,12 +77,27 @@ def inspect_local_bundle(portable_root):
     mascot = scan_mascot_library(role)
     real_count = genshin["summary"]["personal_art_profile_count"]
     mascot_count = mascot["summary"]["imported_creator_art_count"]
+    # Read the CURRENT frozen-build ledger rather than assuming historic
+    # Personal65 branding always means exactly 65 creator sources.
+    build_info = root / "PERSONAL65_BUILD_INFO.json"
+    source_target = 65  # Older Personal65 binaries lack this metadata.
+    if build_info.is_file():
+        try:
+            metadata = json.loads(build_info.read_text(encoding="utf-8-sig"))
+            source_target = metadata["pinned_source_characters"]
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            raise ValueError("Invalid frozen pinned-source build metadata") from exc
+        if (not isinstance(source_target, int) or isinstance(source_target, bool)
+                or not 1 <= source_target <= 123):
+            raise ValueError("Invalid frozen pinned source target")
     return {
         "format": "dyberpet-local-personal-zip-v1",
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "contains_user_imported_art": real_count > 0 or mascot_count > 0,
         "genshin_installed_distinct_profiles": real_count,
         "genshin_65_source_target_reached": real_count >= 65,
+        "genshin_current_pinned_source_target": source_target,
+        "genshin_all_pinned_sources_target_reached": real_count >= source_target,
         "mascot_creator_art_installed": mascot_count,
         "mascot_two_source_target_reached": mascot_count == 2,
         "unmapped_genshin_folders": genshin["summary"]["unmapped_folder_count"],
@@ -127,7 +142,7 @@ def create_local_bundle(portable_root, output, *, confirmed=False):
     if not manifest["contains_user_imported_art"]:
         raise ValueError(
             "No structurally installed creator artwork found. Run the local "
-            "65-role / Guga-Doro installer first; refusing starter-only ZIP")
+            "source-role / Guga-Doro installer first; refusing starter-only ZIP")
     # The personal package must not silently distribute corrupt role folders.
     if manifest["invalid_genshin_folders"] or manifest["invalid_mascot_folders"]:
         raise ValueError(

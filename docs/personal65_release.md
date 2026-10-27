@@ -180,3 +180,9 @@ python -m tools.install_pinned_eula_shimeji eula_saylamars_original --accept-per
 如已直接从画师获取完全相同的原始 ZIP，附加 `--archive "C:\\Users\\YourUser\\Downloads\\Eula-original.zip"` 可以不联网安装。任何 ZIP 不匹配原始大小或 SHA 都被拒绝，旧角色不会被覆盖。只安装到用户本地角色目录；第三方原画不会进入 GitHub 源码仓库或公开 Windows 包。
 
 **真实来源登记从 65/123 变为 66/123，仍缺 57 位人物来源。** 这仍不是 66 人均已本机安装或通过视觉验收。当前优菈还需要手工比对原设（头发、发饰、服装、表情）和连续动作体验。
+
+## R23-RC：正式 Python / RustHybrid 打包门禁修复
+
+PR #56 之后原画来源覆盖实际变成 **66/123**（尚缺 57）。此前 `build_personal65_windows.ps1` 仍硬要求 `ready_for_opt_in == 65` 与 `missing_source == 58`，造成两种 Windows EXE 都已成功编译，但在冻结包验收阶段被旧断言拦截，没能上传 ZIP。现改为从冻结后的可执行安装助手实际源清单读取覆盖数字，校验合计必须是 123 且不得退回到少于 66 个固定来源。元数据中的人数亦取源清单真实数值，而非历史写死的 65/58。
+
+新包同时提供 `Install-Available-Roles.cmd`（自动从当次清单识别可安装上限），旧的 `Install-65-Roles.cmd` 作为兼容入口仍可运行。为避免用户自行生成离线包时把 65/66 错认成全覆盖，本机 `LOCAL_OFFLINE_BUILD.json` 中新增 `genshin_current_pinned_source_target` 和 `genshin_all_pinned_sources_target_reached`；历史 `genshin_65_source_target_reached` 字段仅为旧版兼容。此改动并未预装第三方原画、声音或完成原设美术/许可验收。
