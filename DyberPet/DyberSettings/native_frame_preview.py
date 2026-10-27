@@ -206,9 +206,15 @@ class NativeFramePreviewDialog(QDialog):
             try:
                 cues = cues_for_local_role(self._root, folder)
                 self.identity_cues.setText(cue_text(cues))
-                if cues is not None:
+                if cues is not None and cues.get("reference"):
                     self.identity_cues.setToolTip(
                         "原画核对示例（不是本地版本认证）：" + cues["reference"])
+                elif cues is not None:
+                    # Most of the 123 role dossiers supply human checklists,
+                    # not a personally opened original-PNG example. Never
+                    # concatenate a null URL or erase the useful checklists.
+                    self.identity_cues.setToolTip(
+                        "仅来自角色档案的检查项目；还未核对本机作者原画")
                 else:
                     self.identity_cues.setToolTip("")
             except (OSError, ValueError, TypeError, KeyError):
