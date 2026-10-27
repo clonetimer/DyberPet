@@ -43,7 +43,7 @@ class CreatorIdentityCueTests(unittest.TestCase):
             with patch("tools.genshin_library._profile_of",
                        return_value="genshin_nahida"):
                 self.assertIsNone(cues_for_local_role(root, "Example"))
-            self.assertIn("人工", cue_text(None))
+            self.assertIn("逐帧检查", cue_text(None))
 
     def test_reject_path_traversal(self):
         with TemporaryDirectory() as td:
