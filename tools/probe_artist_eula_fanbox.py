@@ -152,7 +152,7 @@ def summarize_public_zip_layout(raw):
             low = name.lower()
             if low.endswith(".png"):
                 pngs.append(name)
-                match = re.fullmatch(r"shime([1-9][0-9]*)\\.png",
+                match = re.fullmatch(r"shime([1-9][0-9]*)\.png",
                                      PurePosixPath(low).name)
                 if match:
                     idx = int(match.group(1))
@@ -162,7 +162,7 @@ def summarize_public_zip_layout(raw):
                     with z.open(item) as stream:
                         head = stream.read(24)
                     if (len(head) == 24 and
-                            head[:8] == b"\\x89PNG\\r\\n\\x1a\\n" and
+                            head[:8] == b"\x89PNG\r\n\x1a\n" and
                             head[12:16] == b"IHDR"):
                         dimensions[idx] = list(struct.unpack(">II", head[16:24]))
             elif low.endswith((".xml", ".json", ".properties", ".txt")):
