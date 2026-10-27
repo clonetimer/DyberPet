@@ -107,7 +107,8 @@ def plan_personal_sources(role_root, *, only_profiles=None,
 
 
 def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
-                          dispatch=None, inventory_reader=None, progress=None):
+                          dispatch=None, inventory_reader=None, progress=None,
+                          should_stop=None):
     """Install sources and reconcile every claimed success against actual local art."""
     if not confirmed:
         raise ValueError("Explicit --accept-personal-use confirmation required")
@@ -124,10 +125,16 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
     count = 0
     source_attempts = 0
     fallback_recovered = 0
+    stopped_by_user = False
     for item in plan["characters"]:
         if item["status"] != "ready_for_opt_in":
             continue
         if max_roles is not None and count >= max_roles:
+            break
+        # Cancellation takes effect between complete per-character installs:
+        # never interrupt a partially written native role mid-conversion.
+        if should_stop is not None and should_stop():
+            stopped_by_user = True
             break
         count += 1
         profile, provider, key = item["profile"], item["provider"], item["source_key"]
@@ -220,6 +227,7 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
                       "status": result["status"]})
     return {
         "scope": "local_personal_install_only", "attempted": count,
+        "stopped_by_user": stopped_by_user,
         "installed_unreviewed": sum(x["status"] == "installed_unreviewed" for x in results),
         "failed": sum(x["status"] == "failed" for x in results),
         "source_attempts": source_attempts,

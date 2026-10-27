@@ -5,6 +5,7 @@ from datetime import datetime
 from shutil import copytree, rmtree
 from pathlib import Path
 import subprocess
+import threading
 
 from qfluentwidgets import (ScrollArea, ExpandLayout, SettingCardGroup, InfoBar, FlowLayout,
                             PushSettingCard, PushButton, RoundMenu, Action, MessageBox,
@@ -15,7 +16,7 @@ from qfluentwidgets import FluentIcon as FIF
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QStandardPaths, QSize
 from PySide6.QtGui import QDesktopServices, QIcon, QFont
-from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QCheckBox, QSizePolicy, QHBoxLayout, QSpacerItem, QMessageBox
+from PySide6.QtWidgets import QWidget, QLabel, QApplication, QFileDialog, QInputDialog, QCheckBox, QSizePolicy, QHBoxLayout, QSpacerItem, QMessageBox, QProgressDialog
 
 from .custom_utils import CharCard, CharCardGroup, CharLine
 from DyberPet.conf import CheckCharFiles
@@ -37,6 +38,7 @@ class CharInterface(ScrollArea):
         self.newPetFolder = None
         self.thread = None
         self.chibiThread = None
+        self.batchProgressDialog = None
         self.stateTooltip = None
         self.launchTooltip = None
         self.sizeHintDyber = (sizeHintDyber[0]-100, sizeHintDyber[1])
@@ -88,7 +90,7 @@ class CharInterface(ScrollArea):
             self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
         self.artistSourceButton = PushButton(self.tr("安装作者原画角色"), self, FIF.DOWNLOAD)
         self.artistSourceButton.setToolTip(
-            self.tr("从公开作者作品本机安装原有逐帧动画、Codex 图集和 Shimeji 动作，不生成替代造型"))
+            self.tr("安装指定人物，或一键批量补齐本机能获取的固定来源角色原画；不包含原声"))
         self.mascotButton = PushButton(self.tr("咕嘎 / Doro"), self, FIF.HEART)
         self.mascotButton.setToolTip(
             self.tr("查看企鹅/四足演示角色以及个人导入的对应素材；不冒充作者原设美术"))
@@ -215,7 +217,7 @@ class CharInterface(ScrollArea):
         self.catalogButton.clicked.connect(self._showAllCharacterCatalog)
         self.showDemoRoles.toggled.connect(self._applyDemoRoleVisibility)
         self._applyDemoRoleVisibility()
-        self.artistSourceButton.clicked.connect(self._installArtistGenshin)
+        self.artistSourceButton.clicked.connect(self._chooseCreatorInstallMode)
         self.mascotButton.clicked.connect(self._showMascotLibrary)
         self.panelHelp.clicked.connect(self.__onShowInstruction)
 
@@ -579,6 +581,121 @@ class CharInterface(ScrollArea):
         self.chibiThread.start()
         self.__showSystemNote(
             self.tr("正在本机获取并校验作者图集、转换真实动画；不生成简笔画或伪造动作。"), 1)
+
+    def _chooseCreatorInstallMode(self, *_):
+        """Keep single-role installation, add an explicit bounded batch choice."""
+        if self.chibiThread is not None:
+            self.__showSystemNote("原画安装仍在进行；请先完成或停止当前任务。", 1)
+            return
+        choices = (
+            "批量补齐：本机尚未安装、具有固定作者来源的全部原神人物",
+            "先试装 2 位：核对下载速度、造型和当前角色库",
+            "只安装一位指定人物的原画",
+        )
+        selected, accepted = QInputDialog.getItem(
+            self, "安装作者原画", "请选择安装方式：", list(choices), 0, False)
+        if not accepted:
+            return
+        if selected == choices[2]:
+            self._installArtistGenshin()
+        elif selected in choices[:2]:
+            self._startCreatorBulkImport(max_roles=None if selected == choices[0] else 2)
+
+    def _startCreatorBulkImport(self, *, max_roles=None):
+        """Explicit local-only consent before any creator URL is fetched."""
+        if self.chibiThread is not None:
+            return
+        from tools.character_source_coverage import source_coverage
+        stats = source_coverage()["summary"]
+        count = stats["characters_with_pinned_sources"]
+        if not self.__showMessageBox(
+                "批量安装真实作者原画（个人本机）",
+                f"当前有 {count} 位人物具有固定来源；只有尚未安装的角色才会尝试。"
+                "这不是预装角色包，实际会从创作者来源联网获取、转换原生动画。"
+                "可能耗时较长或因来源限制而失败。仅供自行核对创作者使用条款后的个人使用。"
+                "不会上传或重新分发第三方素材，不自动更改现有桌宠。"
+                "人物形象、原声、动画质量和使用许可仍须独立确认。"
+                "安装后建议重启软件加载新角色。"
+                "确认开始吗？"):
+            return
+        root = Path(basedir) / "res" / "role"
+        self.chibiThread = CreatorBatchImportThread(str(root), max_roles=max_roles)
+        progress = QProgressDialog("正在盘点本机作者原画...", "完成当前人物后停止",
+                                   0, count, self)
+        progress.setWindowTitle("DyberPet · 批量补齐原画")
+        progress.setMinimumDuration(0)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
+        progress.setValue(0)
+        self.batchProgressDialog = progress
+        progress.canceled.connect(self.chibiThread.request_stop)
+        self.chibiThread.progress.connect(self._onCreatorBatchProgress)
+        self.chibiThread.done.connect(self._onCreatorBatchDone)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.finished.connect(self._onCreatorBatchThreadFinished)
+        self.addButton.setEnabled(False)
+        self.artistSourceButton.setEnabled(False)
+        self.chibiThread.start()
+        progress.show()
+
+    def _onCreatorBatchProgress(self, info):
+        dialog = self.batchProgressDialog
+        if dialog is None or not isinstance(info, dict):
+            return
+        stage = info.get("stage")
+        if stage == "batch_plan":
+            count = info.get("ready", 0)
+            dialog.setMaximum(max(1, count))
+            dialog.setLabelText(
+                f"尚待安装 {count} 位具有真实作者来源的角色；"
+                f"已装 {info.get('already', 0)} 位，缺来源 {info.get('missing', 0)} 位。")
+        elif stage == "role_start":
+            n = info.get("index", 0)
+            dialog.setValue(max(0, n - 1))
+            dialog.setLabelText(
+                f"正在安装第 {n} 位：{info.get('profile', '')}。"
+                "点击停止会在当前角色安装结束后生效。")
+        elif stage == "source_failed":
+            dialog.setLabelText(
+                f"{info.get('profile', '')} 原来源失败；"
+                "只尝试属于同一人物的其他固定来源。")
+
+    def _onCreatorBatchDone(self, outcome):
+        dialog = self.batchProgressDialog
+        if dialog is not None:
+            dialog.close()
+            self.batchProgressDialog = None
+        if not isinstance(outcome, dict) or "installation" not in outcome:
+            message = (outcome.get("error", "批量安装未知错误")
+                       if isinstance(outcome, dict) else "批量安装报告缺失")
+            self.__showMessageBox("批量安装未完成", str(message)[:450])
+            return
+        installed = outcome["installation"]
+        # Keep full per-profile errors on THIS PC. Never upload art or reports.
+        receipt_dir = Path(basedir) / "data"
+        report_path = receipt_dir / (
+            "personal65-batch-" + datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")
+        try:
+            receipt_dir.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(
+                json.dumps(outcome, ensure_ascii=False, indent=2), encoding="utf-8")
+            receipt_text = str(report_path)
+        except OSError as exc:
+            receipt_text = "本机报告写入失败：" + str(exc)[:140]
+        stopped = "（用户主动停止）" if installed.get("stopped_by_user") else ""
+        self.__showMessageBox(
+            "真实原画批量安装结果" + stopped,
+            f"尝试 {installed['attempted']} 位；"
+            f"本机结构验证通过 {installed['installed_unreviewed']} 位；"
+            f"失败 {installed['failed']} 位。"
+            "通过表示能够导入当前人物的真实原画，不代表原设/动作人工验收合格。"
+            "新增素材需要重启 DyberPet 后才会作为可选角色加载。"
+            "\n详细逐人物结果：" + receipt_text)
+
+    def _onCreatorBatchThreadFinished(self):
+        if self.batchProgressDialog is not None:
+            self.batchProgressDialog.close()
+            self.batchProgressDialog = None
 
     def _installArtistGenshin(self, only_profile=None):
         """Select genuine source art for one chosen role; never redraw it."""
@@ -1584,6 +1701,46 @@ class FileCopyThread(QThread):
 
         # Emitting progress and done signals as an example
         self.done.emit(True)
+
+
+class CreatorBatchImportThread(QThread):
+    """Local source downloads on a worker; only Qt signals touch the GUI.
+
+    All creator sources are pre-pinned and matched to the right character.
+    Cancellation is cooperative and takes effect between complete characters.
+    """
+    progress = Signal(object)
+    done = Signal(object)
+
+    def __init__(self, output_root, *, max_roles=None):
+        super().__init__()
+        self.output_root = Path(output_root)
+        self.max_roles = max_roles
+        self._stop_requested = threading.Event()
+
+    def request_stop(self):
+        self._stop_requested.set()
+
+    def run(self):
+        try:
+            from tools.personal_source_batch import (
+                plan_personal_sources, install_personal_plan)
+            plan = plan_personal_sources(self.output_root)
+            info = plan["summary"]
+            self.progress.emit({
+                "stage": "batch_plan",
+                "ready": min(info["ready_for_opt_in"], self.max_roles)
+                         if self.max_roles is not None else info["ready_for_opt_in"],
+                "already": info["already_installed_structurally"],
+                "missing": info["missing_source"],
+            })
+            result = install_personal_plan(
+                plan, self.output_root, confirmed=True,
+                max_roles=self.max_roles, progress=self.progress.emit,
+                should_stop=self._stop_requested.is_set)
+            self.done.emit({"plan_summary": info, "installation": result})
+        except Exception as exc:
+            self.done.emit({"error": type(exc).__name__ + ": " + str(exc)[:300]})
 
 
 class ChibiImportThread(QThread):
