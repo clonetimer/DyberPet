@@ -83,7 +83,7 @@ $fullPackCmd = '@echo off' + "`r`n" +
 
 
 $menu = @'
-param([switch]$PreviewOnly, [ValidateRange(1,65)][int]$MaxRoles = 65)
+param([switch]$PreviewOnly, [ValidateRange(1,123)][int]$MaxRoles = 123)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $tool = Join-Path $PSScriptRoot "DyberPet-Role-Installer.exe"
@@ -92,7 +92,10 @@ New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot "data") | Out
 $plan = Join-Path $PSScriptRoot "data/personal65-plan.json"
 & $tool --role-root $roleDir --output $plan
 if ($LASTEXITCODE -ne 0) { throw "Could not enumerate pinned sources" }
-Write-Host "123 character templates; 65 have pinned candidate sources (not 65 preinstalled animations)." -ForegroundColor Yellow
+$manifest = Get-Content -LiteralPath $plan -Raw -Encoding UTF8 | ConvertFrom-Json
+$available = $manifest.summary.ready_for_opt_in + $manifest.summary.already_installed_structurally + $manifest.summary.manual_import_only
+Write-Host "123 character templates; $available have fixed candidate sources (not $available preinstalled animations)." -ForegroundColor Yellow
+$MaxRoles = [Math]::Min($MaxRoles, [int]$available)
 Write-Host "Plan: $plan"
 Write-Host "Art sources have separate creator use conditions; verify them before installing."
 Write-Host "Source integrity is not a likeness, voice, rights, or physical playback approval."
@@ -107,10 +110,15 @@ if ($exit -ne 0) { Write-Warning "Some sources failed. See report for details." 
 exit $exit
 '@
 [System.IO.File]::WriteAllText((Join-Path $package "Install-65-Roles.ps1"), $menu, (New-Object System.Text.UTF8Encoding($false)))
+# Existing shortcut is supported, but avoid hard-coding the historical 65-role
+# count in the new user-facing entry point.
+[System.IO.File]::WriteAllText((Join-Path $package "Install-Available-Roles.ps1"), $menu, (New-Object System.Text.UTF8Encoding($false)))
 $cmd = '@echo off' + "`r`n" + 'cd /d "%~dp0"' + "`r`n" +
        'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-65-Roles.ps1"' + "`r`n" +
        'pause' + "`r`n"
 [System.IO.File]::WriteAllText((Join-Path $package "Install-65-Roles.cmd"), $cmd, (New-Object System.Text.ASCIIEncoding))
+$availableCmd = $cmd.Replace("Install-65-Roles.ps1", "Install-Available-Roles.ps1")
+[System.IO.File]::WriteAllText((Join-Path $package "Install-Available-Roles.cmd"), $availableCmd, (New-Object System.Text.ASCIIEncoding))
 
 # Guga and Doro are two ADDITIONAL mascot sources; not part of the 65 Genshin count.
 # Keep both artist atlases off GitHub and outside the portable archive.
@@ -152,20 +160,25 @@ $launcher = if ($Backend -eq "rust") {
 }
 [System.IO.File]::WriteAllText((Join-Path $package "Run-DyberPet.cmd"), $launcher, (New-Object System.Text.ASCIIEncoding))
 
-# Verify the FROZEN helper can enumerate exactly the same 65 fixed-source characters.
+# Verify packaged executable and its planning ledger agree with the
+# 123-character registry. New creators can increase source coverage without
+# breaking an unrelated EXE build because of a stale equality assertion.
 $smokeDir = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { Join-Path $root "build/personal65-qa" }
 New-Item -ItemType Directory -Force -Path $smokeDir | Out-Null
 $reportPath = Join-Path $smokeDir ("personal65-plan-" + $Backend + ".json")
 & $helper --output $reportPath
 if ($LASTEXITCODE -ne 0) { throw "Frozen personal source planner failed" }
 $report = Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$sourceCount = [int]$report.summary.ready_for_opt_in + [int]$report.summary.manual_import_only + [int]$report.summary.already_installed_structurally
+$missingCount = [int]$report.summary.missing_source
 if ($report.summary.selected_profiles -ne 123 -or
-    $report.summary.missing_source -ne 58 -or
-    $report.summary.ready_for_opt_in -ne 65 -or
+    $sourceCount -lt 66 -or
+    $sourceCount + $missingCount -ne 123 -or
     $report.summary.manual_import_only -ne 0 -or
-    ($report.summary.ready_for_opt_in + $report.summary.manual_import_only + $report.summary.already_installed_structurally) -ne 65) {
-    throw "Expected 65 pinned-source profiles, 58 uncovered, and 123 total: $($report.summary | ConvertTo-Json -Compress)"
+    $report.summary.already_installed_structurally -ne 0) {
+    throw "Frozen source planner inconsistent with the 123-profile registry or R23 floor of 66 pinned sources: $($report.summary | ConvertTo-Json -Compress)"
 }
+Write-Host "Validated $sourceCount pinned-source candidates and $missingCount missing among 123 profiles. Neither implies installed artwork."
 if ($report.summary.already_installed_structurally -ne 0) { throw "Creator art was prebundled" }
 
 # Ensure the frozen role installer knows about the offline archive workflow;
@@ -227,8 +240,8 @@ $metaPath = Join-Path $package "PERSONAL65_BUILD_INFO.json"
     variant = $Backend
     rust_is_optional_python_extension = ($Backend -eq "rust")
     character_templates = 123
-    pinned_source_characters = 65
-    missing_source_characters = 58
+    pinned_source_characters = $sourceCount
+    missing_source_characters = $missingCount
     prebundled_third_party_art = $false
     private_personal_use = $true
     release_is_prerelease = $true
