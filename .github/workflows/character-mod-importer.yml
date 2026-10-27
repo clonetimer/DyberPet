@@ -56,6 +56,8 @@ on:
       - "tools/install_personal_shimeji_zip.py"
       - "tools/probe_shimejishop_itto.py"
       - "tools/probe_shimejishop_kaveh.py"
+      - "tools/install_pinned_kaveh_shimeji.py"
+      - "tests/test_pinned_kaveh_shimeji.py"
       - "tests/test_shimejishop_kaveh.py"
       - "tests/test_shimejishop_itto.py"
       - "tools/artist_animation_audit.py"
@@ -172,6 +174,8 @@ on:
       - "tools/install_personal_shimeji_zip.py"
       - "tools/probe_shimejishop_itto.py"
       - "tools/probe_shimejishop_kaveh.py"
+      - "tools/install_pinned_kaveh_shimeji.py"
+      - "tests/test_pinned_kaveh_shimeji.py"
       - "tests/test_shimejishop_kaveh.py"
       - "tests/test_shimejishop_itto.py"
       - "tools/artist_animation_audit.py"
@@ -294,6 +298,7 @@ jobs:
           python -m unittest discover -s tests -p "test_personal_shimeji_zip.py" -v
           python -m unittest discover -s tests -p "test_shimejishop_itto.py" -v
           python -m unittest discover -s tests -p "test_shimejishop_kaveh.py" -v
+          python -m unittest discover -s tests -p "test_pinned_kaveh_shimeji.py" -v
           python -m unittest discover -s tests -p "test_artist_animation_audit.py" -v
           python -m unittest discover -s tests -p "test_pinned_codexpetdb.py" -v
           python -m unittest discover -s tests -p "test_pending_source_probes.py" -v
@@ -699,7 +704,34 @@ jobs:
         run: python -m pip install "Pillow>=10,<13"
       - name: Offline strict URL, ZIP and no-rights-claim acceptance
         run: python -m unittest discover -s tests -p "test_shimejishop_kaveh.py" -v
-      - name: Audit publisher original ZIP once, no EXE execution and no art upload
+      - name: Verify real pinned ZIP and actually install distinct Kaveh variant locally
         timeout-minutes: 5
-        run: python -m tools.probe_shimejishop_kaveh
+        shell: bash
+        run: |
+          python - <<'PY'
+          import tempfile
+          from pathlib import Path
+          from tools.probe_shimejishop_kaveh import (
+              ARCHIVE, bounded_download, probe_kaveh)
+          from tools.install_pinned_kaveh_shimeji import (
+              ARCHIVE_SHA256, SOURCE_KEY, install_pinned_kaveh_shimeji)
+          from tools.genshin_library import scan_genshin_library
+          raw = bounded_download()
+          evidence = probe_kaveh(downloader=lambda url: raw)
+          assert evidence["archive_sha256"] == ARCHIVE_SHA256
+          assert evidence["walk_pose_evidence_passed"]
+          with tempfile.TemporaryDirectory(prefix="kaveh-r19-real-") as td:
+              root = Path(td) / "role"
+              installed = install_pinned_kaveh_shimeji(
+                  SOURCE_KEY, root, confirmed=True, downloader=lambda url: raw)
+              item = next(row for row in scan_genshin_library(root)["characters"]
+                          if row["profile"] == "genshin_kaveh")
+              assert any(f["folder"] == installed.name and
+                         not f["is_original_demo"]
+                         for f in item["installed_folders"])
+              print("R19_REAL_KAVEH_ALTERNATIVE_INSTALLED", installed.name,
+                    "46 source PNG, 10 configured native actions",
+                    "crawl/fall single-frame risks remain", flush=True)
+          PY
+    # All third-party ZIP/PNG bytes are deleted with the temporary workspace.
     # Already existing Kaveh source coverage remains unchanged at 65/123.
