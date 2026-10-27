@@ -31,6 +31,41 @@ class CreatorIdentityCueTests(unittest.TestCase):
             self.assertFalse(result["all_actions_visually_checked"])
             self.assertIn("绿色", cue_text(result))
 
+    def test_full_roster_templates_can_offer_unapproved_source_bound_checklists(self):
+        from tools.genshin_roster import GENSHIN_ROSTER
+        self.assertEqual(len(GENSHIN_ROSTER), 123)
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "ArtistLocal").mkdir()
+            for character in ("barbara", "ayaka", "varka", "xilonen"):
+                with self.subTest(character=character), patch(
+                        "tools.genshin_library._profile_of",
+                        return_value="genshin_" + character):
+                    cues = cues_for_local_role(root, "ArtistLocal")
+                    self.assertEqual(
+                        cues["checklist_origin"],
+                        "roster_template_not_independent_png_inspection")
+                    self.assertEqual(cues["profile"], "genshin_" + character)
+                    self.assertTrue(cues["look_for"])
+                    self.assertIsNone(cues["reference"])
+                    self.assertIsNone(cues["inspected_png_git_blob"])
+                    self.assertFalse(cues["original_likeness_automatically_approved"])
+                    self.assertIn("未直接检视", cue_text(cues))
+
+    def test_direct_png_example_does_not_upgrade_other_local_versions(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "ArtistLocal").mkdir()
+            with patch("tools.genshin_library._profile_of",
+                       return_value="genshin_xiao"):
+                cues = cues_for_local_role(root, "ArtistLocal")
+                self.assertEqual(
+                    cues["checklist_origin"],
+                    "one_independently_opened_pinned_source_png_example")
+                self.assertTrue(cues["reference_is_an_example_not_a_exact_version_match"])
+                self.assertFalse(cues["original_likeness_automatically_approved"])
+                self.assertIn("本机版本仍须逐帧", cue_text(cues))
+
     def test_unknown_identity_and_generated_demo_never_get_cues(self):
         with TemporaryDirectory() as td:
             root = Path(td)
