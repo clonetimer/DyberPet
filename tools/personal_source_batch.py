@@ -286,7 +286,9 @@ def main(argv=None):
                         message = f"Installing {event['key']} creator artwork ..."
                     else:
                         message = f"Verified {event['key']}: {event['status']}"
-                    print(message, file=sys.stderr, flush=True)
+                    # JSON goes to --output file; stdout is safe for Windows PowerShell progress.
+                    # Without --output, emit progress on stderr to keep stdout valid JSON.
+                    print(message, file=sys.stdout if args.output else sys.stderr, flush=True)
                 result = {"plan_summary": mascot_plan["summary"],
                           "installation": install_mascot_plan(
                               mascot_plan, args.role_root,
@@ -323,7 +325,9 @@ def main(argv=None):
                     message = "  download/import returned; checking actual role inventory at end"
                 else:
                     message = f"  verified {profile}: {event['status']}"
-                print(message, file=sys.stderr, flush=True)
+                # JSON goes to --output file; stdout is safe for Windows PowerShell progress.
+                # Without --output, emit progress on stderr to keep stdout valid JSON.
+                print(message, file=sys.stdout if args.output else sys.stderr, flush=True)
             result = {"plan_summary": plan["summary"],
                       "installation": install_personal_plan(
                           plan, args.role_root, confirmed=args.accept_personal_use,
