@@ -80,6 +80,32 @@ class PinnedEulaSourceTests(unittest.TestCase):
                     SOURCE_KEY, root, confirmed=True)
                 self.assertEqual(role.name, "PersonalShimejiEula")
 
+    def test_66th_source_is_real_and_never_claims_user_install(self):
+        from tools.character_source_coverage import source_coverage
+        from tools.personal_source_batch import INSTALLERS, plan_personal_sources
+        result = source_coverage()
+        self.assertEqual(result["summary"]["characters_with_pinned_sources"], 66)
+        self.assertEqual(result["summary"]["characters_without_pinned_sources"], 57)
+        self.assertEqual(result["summary"]["pinned_source_options"], 89)
+        self.assertIn("pinned_eula_creator", INSTALLERS)
+        eula = next(row for row in result["characters"]
+                    if row["id"] == "genshin_eula")
+        self.assertEqual(eula["source_candidate_count"], 1)
+        self.assertFalse(eula["installed"])
+        self.assertFalse(eula["visual_likeness_qa_passed"])
+        src = eula["recommended_source"]
+        self.assertEqual(src["archive_sha256"], 
+                         "f4952ea151e0ead70b501e9e2637f9dae1194e0da1b5d312046964fc19046803")
+        self.assertFalse(src["artist_character_likeness_verified"])
+        self.assertFalse(src["asset_is_bundled"])
+        with TemporaryDirectory() as td:
+            plan = plan_personal_sources(td, coverage=result,
+                inventory={"characters": [], "invalid_local": []},
+                only_profiles=["genshin_eula"])
+            self.assertEqual(plan["characters"][0]["provider"],
+                             "pinned_eula_creator")
+            self.assertEqual(plan["characters"][0]["status"], "ready_for_opt_in")
+
     def test_archive_sha_is_nonempty_and_has_required_length(self):
         from tools.install_personal_shimeji_zip import EULA_EXTENDED_SOURCE_SHA256
         self.assertEqual(
