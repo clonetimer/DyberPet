@@ -63,6 +63,20 @@ class BulkArtistGuiContractTests(unittest.TestCase):
         self.assertIn("self.chibiThread.progress.connect(", source)
         self.assertIn("self.chibiThread.start()", source)
 
+    def test_new_roles_do_not_dispatch_immediate_change_pet(self):
+        launch = self.methods["__onLaunchClicked"]
+        self.assertIn("self._restart_required_roles", launch)
+        self.assertIn("stage_default_pet(", launch)
+        self.assertLess(launch.index("self._restart_required_roles"),
+                        launch.index("self.change_pet.emit("))
+        register = self.methods["__onAddClickedContinue"]
+        self.assertIn("self._restart_required_roles.add(petFolder)", register)
+        batch = self.methods["_onCreatorBatchDone"]
+        self.assertIn("verified_new_artist_folders(", batch)
+        self.assertIn("stage_default_pet(", batch)
+        self.assertIn("scan_genshin_library(", batch)
+        self.assertIn("self._previewJustInstalledCreatorArt(", batch)
+
     def test_off_thread_exact_inventory_and_no_background_ui_updates(self):
         worker = self.classes["CreatorBatchImportThread"]
         self.assertTrue(any(isinstance(base, ast.Name) and base.id == "QThread"
@@ -97,7 +111,9 @@ class BulkArtistGuiContractTests(unittest.TestCase):
         body = self.methods["_onCreatorBatchDone"]
         self.assertIn("journal_path", body)
         self.assertIn("installed_unreviewed", body)
-        self.assertIn("verified_native_folders", body)
+        # Native folder receipts are now checked against FRESH inventory in
+        # tools.creator_launch_choice, rather than read directly by this GUI.
+        self.assertIn("verified_new_artist_folders(", body)
         self.assertIn("QInputDialog.getItem(", body)
         self.assertIn("self._previewJustInstalledCreatorArt(", body)
         self.assertIn("不代表原设形象", body)

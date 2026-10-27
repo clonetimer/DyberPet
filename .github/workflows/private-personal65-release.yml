@@ -10,6 +10,8 @@ on:
       - "tools/build_windows_portable.ps1"
       - "tools/personal_source_batch.py"
       - "tools/personal_install_journal.py"
+      - "tools/creator_launch_choice.py"
+      - "tests/test_creator_launch_choice.py"
       - "tests/test_personal_install_journal.py"
       - "tests/test_personal_install_recovery.py"
       - "tests/test_creator_batch_gui_contract.py"
@@ -83,6 +85,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Opt-in planner regression failed" }
           python -m unittest discover -s tests -p "test_personal_install_journal.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Durable local per-role progress regression failed" }
+          python -m unittest discover -s tests -p "test_creator_launch_choice.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Newly installed role restart-only acceptance failed" }
           python -m unittest discover -s tests -p "test_personal_install_recovery.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Resume/retry source recovery regression failed" }
           python -m unittest discover -s tests -p "test_creator_batch_gui_contract.py" -v
