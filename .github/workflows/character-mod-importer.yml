@@ -830,9 +830,57 @@ jobs:
         run: python -m pip install "Pillow>=10,<13"
       - name: Strict offline Eula artist identity and signed-URL privacy regressions
         run: python -m unittest discover -s tests -p "test_probe_artist_eula_fanbox.py" -v
-      - name: Inspect ONLY public creator metadata and original publisher file
-        timeout-minutes: 4
-        run: python -m tools.probe_artist_eula_fanbox
-    # The creator may restrict access or serve a nonstandard format.
-    # No cookies/login automation, code execution, publisher URL disclosure,
-    # source archive upload or premature 66th-character counting.
+      - name: Fetch exact ORIGINAL Eula art ONCE, prove native conversion and private installer
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import tempfile
+          from pathlib import Path
+          from tools.probe_artist_eula_fanbox import (
+              fetch_public_post, extract_public_eula_post,
+              download_creator_zip, probe_eula)
+          from tools.install_pinned_eula_shimeji import (
+              install_pinned_eula_shimeji, SOURCE_KEY, ARCHIVE_BYTES)
+          from tools.install_personal_shimeji_zip import EULA_EXTENDED_SOURCE_SHA256
+          from tools.install_native_role import validate_native_role
+          from tools.creator_motion_quality import analyze_creator_actions
+          post = fetch_public_post()
+          sources = extract_public_eula_post(post)
+          assert len(sources) == 1
+          raw = download_creator_zip(sources[0]["url"])
+          assert len(raw) == ARCHIVE_BYTES
+          assert hashlib.sha256(raw).hexdigest() == EULA_EXTENDED_SOURCE_SHA256
+          result = probe_eula(post_loader=lambda: post, downloader=lambda url: raw)
+          assert result["source_integrity_verified"] is True, result["status"]
+          assert result["original_png_frames"] == 109
+          with tempfile.TemporaryDirectory(prefix="private-eula-R23-") as tmp:
+              root = Path(tmp) / "res" / "role"
+              role = install_pinned_eula_shimeji(
+                  SOURCE_KEY, root, confirmed=True,
+                  post_loader=lambda: post, downloader=lambda url: raw)
+              receipt = json.loads((role/"PERSONAL_IMPORT.json").read_text("utf-8"))
+              assert receipt["selected_profile"] == "genshin_eula"
+              assert receipt["verified_extended_eula_author_source"] is True
+              assert receipt["all_original_frames_preserved"] == 109
+              assert receipt["source_archive_sha256"] == EULA_EXTENDED_SOURCE_SHA256
+              assert receipt["source_rights_verified"] is False
+              native = validate_native_role(role)
+              poses = analyze_creator_actions(role.parent, role.name)
+              assert native["actions"] >= 15 and poses["summary"]["all_frames_examined"]
+              assert (role/"source_frames"/"shime110.png").is_file()
+              assert not (role/"Shimeji.exe").exists()
+              print("EULA_ORIGINAL_AUTHOR_LOCAL_INSTALL_PASSED", json.dumps({
+                  "profile": "genshin_eula", "original_frames": 109,
+                  "native_actions": native["actions"],
+                  "zip_sha256": EULA_EXTENDED_SOURCE_SHA256,
+                  "artist_rights_verified": False,
+                  "human_likeness_verified": False,
+                  "physical_windows_qa_verified": False,
+                  "source_art_uploaded": False
+              }), flush=True)
+          PY
+    # Downloads only original public creator bytes into ephemeral job storage.
+    # Does not upload, publish or execute third-party art, executables or XML.
