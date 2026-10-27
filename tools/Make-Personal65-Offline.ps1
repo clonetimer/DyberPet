@@ -19,7 +19,7 @@ $genshinPlan = Join-Path $reportDir "personal65-preinstall-plan.json"
 $mascotPlan = Join-Path $reportDir "mascots-preinstall-plan.json"
 & $helper --role-root $roleRoot --output $genshinPlan
 if ($LASTEXITCODE -ne 0) { throw "Unable to read 65-role source plan. Nothing downloaded." }
-& $helper --mascots --role-root $roleRoot --output $mascotPlan
+& $helper --mascots --doro-v2 --role-root $roleRoot --output $mascotPlan
 if ($LASTEXITCODE -ne 0) { throw "Unable to read Guga/Doro source plan. Nothing downloaded." }
 
 $genshin = Get-Content -LiteralPath $genshinPlan -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -29,11 +29,12 @@ Write-Host "Source-covered character count: $($genshin.summary.selected_profiles
 Write-Host "Available for automatic local installation: $($genshin.summary.ready_for_opt_in)"
 Write-Host "Manual-source only: $($genshin.summary.manual_import_only)"
 Write-Host "No pinned source: $($genshin.summary.missing_source)"
-Write-Host "Guga/Doro: $($mascots.summary.ready_for_opt_in) artist sources ready to install"
+Write-Host "Guga/Doro: $($mascots.summary.ready_for_opt_in) artist sources ready to install (Doro: hand-drawn V2 if not present)"
 Write-Host ""
 Write-Host "Source checksums do not prove rights, likeness, voice or desktop animation quality." -ForegroundColor Yellow
 Write-Host "Check each creator's permitted personal use. No artwork is uploaded by this script."
 Write-Host "Your existing role folders and local saves are never overwritten."
+Write-Host "Doro V2 is an optional separately drawn fan-art version, NOT officially approved; original voice is absent."
 Write-Host ""
 
 if (-not $PackOnly) {
@@ -45,7 +46,7 @@ if (-not $PackOnly) {
         if ($genshinExit -ne 0) { Write-Warning "Not all Genshin sources installed; see $artReport" }
 
         $mascotReport = Join-Path $reportDir "personal65-mascots-install.json"
-        & $helper --mascots --role-root $roleRoot --install --accept-personal-use --output $mascotReport
+        & $helper --mascots --doro-v2 --role-root $roleRoot --install --accept-personal-use --output $mascotReport
         $mascotExit = $LASTEXITCODE
         if ($mascotExit -ne 0) { Write-Warning "Guga/Doro installation may be partial; see $mascotReport" }
     } elseif ($choice -cne "PACK") {
