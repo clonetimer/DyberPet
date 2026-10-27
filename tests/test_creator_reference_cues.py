@@ -33,11 +33,14 @@ class CreatorIdentityCueTests(unittest.TestCase):
 
     def test_full_roster_templates_can_offer_unapproved_source_bound_checklists(self):
         from tools.genshin_roster import GENSHIN_ROSTER
-        self.assertEqual(len(GENSHIN_ROSTER), 123)
+        from tools.chibi_profiles import CHIBI_PROFILES
+        self.assertEqual(len(GENSHIN_ROSTER), 119)
+        all_genshin = [key for key in CHIBI_PROFILES if key.startswith("genshin_")]
+        self.assertEqual(len(all_genshin), 123)
         with TemporaryDirectory() as td:
             root = Path(td)
             (root / "ArtistLocal").mkdir()
-            for character in ("barbara", "ayaka", "varka", "xilonen"):
+            for character in ("barbara", "ayaka", "varka", "xilonen", "paimon", "klee", "furina"):
                 with self.subTest(character=character), patch(
                         "tools.genshin_library._profile_of",
                         return_value="genshin_" + character):
