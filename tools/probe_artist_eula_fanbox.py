@@ -181,8 +181,10 @@ def probe_eula(*, post_loader=None, downloader=None):
 
 
 def main():
+    public_reply = None
     try:
-        report = probe_eula()
+        public_reply = fetch_public_post()
+        report = probe_eula(post_loader=lambda: public_reply)
         print("ORIGINAL_EULA_CREATOR_SOURCE_PROBE " +
               json.dumps(report, ensure_ascii=False, sort_keys=True), flush=True)
         return 0 if report.get("source_integrity_verified") is True else 1
@@ -210,11 +212,26 @@ def main():
                 if signal in str(exc):
                     reason = code
                     break
+        details = {}
+        if reason == "publisher_identity_not_matching" and isinstance(public_reply, dict):
+            post = public_reply.get("body")
+            if isinstance(post, dict):
+                creator = post.get("creatorId")
+                # The creator ID is publicly displayed post metadata, not a
+                # time-limited file URL or an authentication token.
+                if (isinstance(creator, str) and 0 < len(creator) <= 64 and
+                        all(c.isascii() and (c.isalnum() or c in "-_")
+                            for c in creator)):
+                    details["public_post_creator_slug"] = creator
+                details["post_id_matched"] = str(post.get("id")) == POST_ID
+                details["title_mentions_eula"] = (
+                    "eula" in str(post.get("title", "")).lower())
         print("ORIGINAL_EULA_SOURCE_NOT_YET_VERIFIED " + json.dumps({
             "error_type": type(exc).__name__,
             "reason": reason,
             "http_status": getattr(exc, "code", None),
             "creator_page": AUTHOR_POST,
+            "identity_diagnostic": details,
             "source_registry_promoted": False}, sort_keys=True), flush=True)
         return 1
 
