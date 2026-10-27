@@ -73,7 +73,12 @@ def extract_public_eula_post(reply):
     """Strict public artist/identity match. No public file => no source claim."""
     if not isinstance(reply, dict):
         raise ValueError("Invalid source response")
-    post = reply.get("body")
+    wrapper = reply.get("body")
+    if not isinstance(wrapper, dict):
+        raise ValueError("Public Eula post unavailable without sign-in")
+    # Current FANBOX public API uses {"body": {"post": {...}}}, while
+    # older public clients expose the post directly under "body".
+    post = wrapper.get("post", wrapper)
     if not isinstance(post, dict):
         raise ValueError("Public Eula post unavailable without sign-in")
     if str(post.get("id")) != POST_ID or post.get("creatorId") != AUTHOR_ID:
@@ -214,7 +219,8 @@ def main():
                     break
         details = {}
         if reason == "publisher_identity_not_matching" and isinstance(public_reply, dict):
-            post = public_reply.get("body")
+            wrapper = public_reply.get("body")
+            post = wrapper.get("post", wrapper) if isinstance(wrapper, dict) else None
             if isinstance(post, dict):
                 creator = post.get("creatorId")
                 # The creator ID is publicly displayed post metadata, not a
