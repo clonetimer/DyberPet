@@ -281,10 +281,17 @@ def main(argv=None):
                 from tools.personal_mascot_batch import plan_mascot_sources, install_mascot_plan
             mascot_plan = plan_mascot_sources(args.role_root)
             if args.install:
+                def mascot_progress(event):
+                    if event["stage"] == "role_start":
+                        message = f"Installing {event['key']} creator artwork ..."
+                    else:
+                        message = f"Verified {event['key']}: {event['status']}"
+                    print(message, file=sys.stderr, flush=True)
                 result = {"plan_summary": mascot_plan["summary"],
                           "installation": install_mascot_plan(
                               mascot_plan, args.role_root,
-                              confirmed=args.accept_personal_use)}
+                              confirmed=args.accept_personal_use,
+                              progress=mascot_progress)}
             else:
                 if args.accept_personal_use:
                     raise ValueError("--accept-personal-use requires --install")
