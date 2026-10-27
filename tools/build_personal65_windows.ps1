@@ -41,6 +41,8 @@ $installerArgs = @(
     "--hidden-import", "tools.install_external_codex",
     "--hidden-import", "tools.install_pinned_codexpetdb",
     "--hidden-import", "tools.install_pinned_kaveh_shimeji",
+    "--hidden-import", "tools.install_pinned_eula_shimeji",
+    "--hidden-import", "tools.probe_artist_eula_fanbox",
     "--hidden-import", "tools.probe_shimejishop_kaveh",
     "--hidden-import", "tools.install_verified_react_lfs",
     "--hidden-import", "tools.probe_missing_react_lfs",

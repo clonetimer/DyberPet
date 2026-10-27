@@ -109,6 +109,29 @@ def source_coverage():
             "artist_character_likeness_verified": False,
             "physical_runtime_motion_qa_verified": False,
         })
+    # Original creator public ZIP and 109 numbered PNGs independently
+    # SHA-verified in CI, not bundled or visually approved.
+    # Keep this catalog directly runnable as python tools/character_source_coverage.py
+    # on Windows where the package root may not be on sys.path. The public
+    # byte constants are cross-checked against the installer by its tests.
+    EULA_SOURCE = "eula_saylamars_original"
+    EULA_BYTES = 8400168
+    EULA_EXTENDED_SOURCE_SHA256 = (
+        "f4952ea151e0ead70b501e9e2637f9dae1194e0da1b5d312046964fc19046803")
+    record("genshin_eula", "pinned_eula_creator", EULA_SOURCE,
+           "https://saylamars.fanbox.cc/posts/8264436")
+    rows["genshin_eula"]["source_candidates"][-1].update({
+        "archive_sha256": EULA_EXTENDED_SOURCE_SHA256,
+        "verified_zip_bytes": EULA_BYTES,
+        "verified_numbered_original_pngs": 109,
+        "verified_native_actions": 15,
+        "extended_author_frames_preserved_not_semantically_promoted": True,
+        "creator_own_post_verified": True,
+        "artist_character_likeness_verified": False,
+        "rights_verified": False,
+        "physical_desktop_qa_verified": False,
+        "archive_is_bundled": False,
+    })
     for item in rows.values():
         item["source_candidates"].sort(key=lambda c: (c["preference_order"], c["provider"], c["source_key"]))
         item["recommended_source"] = item["source_candidates"][0] if item["source_candidates"] else None

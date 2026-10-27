@@ -14,6 +14,7 @@ SOURCE_STYLE = {
     "react_lfs": (1, "Git LFS 原始PNG已校验·部分动作待验收", "unreviewed_codex_atlas"),
     "shimeji": (2, "小型 Shimeji·可接受备选", "acceptable_small_shimeji"),
     "nano_shimeji": (2, "小型 Shimeji·可接受备选", "acceptable_small_shimeji"),
+    "pinned_eula_creator": (2, "原作者扩展版Shimeji·原设待人工核对", "acceptable_small_shimeji"),
 }
 INSTALL_MODE_PROVIDER = {
     "artist_genshin": "native",
@@ -24,6 +25,7 @@ INSTALL_MODE_PROVIDER = {
     "artist_shimeji": "shimeji",
     "artist_nano": "nano_shimeji",
     "pinned_kaveh_shimeji": "shimeji",
+    "pinned_eula_shimeji": "pinned_eula_creator",
 }
 
 

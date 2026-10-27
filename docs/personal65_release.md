@@ -164,3 +164,19 @@ python -m tools.install_nanopet_shimeji zhongli-by-vol-tuna --accept-personal-us
 ```
 
 这是同一作者原画的**动画映射改进**，不是新画师素材、角色新增或对真实桌面稳定性的自动认证。
+
+## R23 · 优菈 SaylaMars 110-frame Shimeji 原作者资源正式固定（2026-10-27）
+
+画师 SaylaMars 的 [Eula FANBOX 原帖](https://saylamars.fanbox.cc/posts/8264436) 的公开附件已实际下载验证：8,400,168 字节、SHA-256 `f4952ea151e0ead70b501e9e2637f9dae1194e0da1b5d312046964fc19046803`。ZIP 内有 110 张 PNG，109 张对应 `shime1…110` 的不同编号，第一组标准原画全部存在。R23 的**严格来源专用扩展导入器**保留 109 张编号原画字节不变，完整 PNG 解码，但只从已知 Shimeji 原画序列映射 15 个原生动作，其余编号 47…110 保留用于人工审查，不臆测自定义 XML 中的动作语义，也不执行 EXE/JAR。
+
+真实隔离 CI 证实左/右行走、拖拽、攀爬、着地拥有多张不同姿态原画；匍匐和下落仅单帧，仍标记为动作弱项。源文件完整性验收 **不等于** 角色原设形象、美术权益、自然运动、语音或 Windows 实机验收。
+
+首次安装可在桌宠的 **角色管理 → 真实作者素材 → 优菈 SaylaMars** 主动选择，并确认从画师发布页获取的许可条件。CLI 命令：
+
+```powershell
+python -m tools.install_pinned_eula_shimeji eula_saylamars_original --accept-personal-use --role-root res/role
+```
+
+如已直接从画师获取完全相同的原始 ZIP，附加 `--archive "C:\\Users\\YourUser\\Downloads\\Eula-original.zip"` 可以不联网安装。任何 ZIP 不匹配原始大小或 SHA 都被拒绝，旧角色不会被覆盖。只安装到用户本地角色目录；第三方原画不会进入 GitHub 源码仓库或公开 Windows 包。
+
+**真实来源登记从 65/123 变为 66/123，仍缺 57 位人物来源。** 这仍不是 66 人均已本机安装或通过视觉验收。当前优菈还需要手工比对原设（头发、发饰、服装、表情）和连续动作体验。

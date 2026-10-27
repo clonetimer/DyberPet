@@ -32,6 +32,7 @@ INSTALLERS = {
     "codex": ("tools.install_artist_codex", "install_artist_codex"),
     "shimeji": ("tools.install_artist_shimeji", "install_artist_shimeji"),
     "nano_shimeji": ("tools.install_nanopet_shimeji", "install_nanopet_shimeji"),
+    "pinned_eula_creator": ("tools.install_pinned_eula_shimeji", "install_pinned_eula_shimeji"),
     "independent_codex": ("tools.install_external_codex", "install_external_codex"),
     "codexpetdb_zip": ("tools.install_pinned_codexpetdb", "install_pinned_codexpetdb"),
     "react_lfs": ("tools.install_verified_react_lfs", "install_verified_react_lfs"),

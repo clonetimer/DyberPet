@@ -10,6 +10,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from io import BytesIO
+from PIL import Image
 from pathlib import Path
 import re
 import struct
@@ -21,13 +23,13 @@ try:
     from .install_native_role import validate_native_role
     from .artist_visual_review import create_native_art_review
     from .artist_animation_audit import audit_native_character
-    from .install_nanopet_shimeji import GROUPS
+    from .install_nanopet_shimeji import GROUPS, EXTRA_GROUPS, mapped_groups
 except ImportError:
     from chibi_profiles import CHIBI_PROFILES, available_role_folder
     from install_native_role import validate_native_role
     from artist_visual_review import create_native_art_review
     from artist_animation_audit import audit_native_character
-    from install_nanopet_shimeji import GROUPS
+    from install_nanopet_shimeji import GROUPS, EXTRA_GROUPS, mapped_groups
 
 MAX_ENTRIES = 1200
 MAX_ARCHIVE_BYTES = 96 * 1024 * 1024
@@ -35,7 +37,8 @@ MAX_UNCOMPRESSED = 64 * 1024 * 1024
 MAX_SINGLE_PNG = 6 * 1024 * 1024
 MAX_SIDE = 2048
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
-FRAME_NAME = re.compile(r"(?:^|/)shime([1-9][0-9]?)_?\.png$", re.I)
+EULA_EXTENDED_SOURCE_SHA256 = "f4952ea151e0ead70b501e9e2637f9dae1194e0da1b5d312046964fc19046803"
+FRAME_NAME = re.compile(r"(?:^|/)shime([1-9][0-9]{0,2})_?\.png$", re.I)
 
 
 def _png_size(raw):
@@ -47,8 +50,10 @@ def _png_size(raw):
     return width, height
 
 
-def inspect_shimeji_zip(source):
+def inspect_shimeji_zip(source, *, max_source_frame_index=46):
     """Return original image bytes only after ZIP and PNG safety checks."""
+    if max_source_frame_index not in (46, 110):
+        raise ValueError("Only standard 46 or pinned Eula 110 frame indices supported")
     source = Path(source).expanduser()
     if source.is_symlink() or not source.is_file():
         raise ValueError("Select a local regular Shimeji ZIP")
@@ -67,7 +72,7 @@ def inspect_shimeji_zip(source):
             if not match:
                 continue  # EXE/JAR/XML/scripts are never extracted or executed.
             index = int(match.group(1))
-            if index > 46 or index in images:
+            if index > max_source_frame_index or index in images:
                 raise ValueError("Duplicate or out-of-range Shimeji frame index")
             if (m.file_size < 50 or m.file_size > MAX_SINGLE_PNG or
                     m.file_size / max(m.compress_size, 1) > 250):
@@ -95,7 +100,7 @@ def _sha256_file(path):
 
 
 def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=False,
-                                 verified_react_sha=None):
+                                 verified_react_sha=None, extended_eula_source=False):
     if not confirmed:
         raise ValueError("Personal import requires explicit user confirmation")
     if profile not in CHIBI_PROFILES or not profile.startswith("genshin_"):
@@ -105,7 +110,25 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
             re.fullmatch(r"[a-f0-9]{64}", verified_react_sha) is None):
         raise ValueError("Verified React-Shimeji module SHA-256 must be 64 lowercase hex characters")
     source = Path(source).expanduser()
-    original = inspect_shimeji_zip(source)
+    # Only the exact publicly retrieved original artist ZIP may use the
+    # expanded frame-index limit. Never extend other characters on name alone.
+    if extended_eula_source and (
+            profile != "genshin_eula" or
+            _sha256_file(source) != EULA_EXTENDED_SOURCE_SHA256):
+        raise ValueError("Extended Eula source must match the original creator SHA-256")
+    original = inspect_shimeji_zip(
+        source, max_source_frame_index=110 if extended_eula_source else 46)
+    if extended_eula_source:
+        if (len(original) != 109 or 1 not in original or
+                any(i not in original for i in range(1, 47))):
+            raise ValueError("Original Eula extended animation frame inventory mismatched")
+        # Decode every author PNG, including frames not mapped to our native
+        # actions. Bytes saved to source_frames remain unchanged.
+        for idx, raw in original.items():
+            with Image.open(BytesIO(raw)) as pic:
+                if pic.format != "PNG":
+                    raise ValueError("Unrecognized Eula original PNG format")
+                pic.verify()
     root = Path(output_root).expanduser()
     if root.is_symlink():
         raise ValueError("Refusing linked character root")
@@ -135,7 +158,8 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
             return item
 
         groups = {}
-        for name, nums in GROUPS.items():
+        selected_groups = mapped_groups(original) if extended_eula_source else GROUPS
+        for name, nums in selected_groups.items():
             found = [n for n in nums if n in original]
             if found:
                 groups[name] = found
@@ -153,6 +177,10 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
             if group in groups:
                 act[key] = action(group)
 
+        if extended_eula_source:
+            for name in EXTRA_GROUPS:
+                if name in groups:
+                    act[name] = action(name)
         width, height = _png_size(original[1])
         pet = {
             "width": width, "height": height, "scale": 1.0, "refresh": 5,
@@ -165,9 +193,14 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
             "random_act": [
                 {"name": "待机", "act_list": ["default"],
                  "act_prob": 1.0, "act_type": [2, 0]},
-                {"name": "行走", "act_list": ["left_walk", "right_walk"],
+                {"name": "散步", "act_list": ["left_walk", "right_walk"],
                  "act_prob": 0.15, "act_type": [3, 1]},
-            ],
+            ] + ([{"name": "休息", "act_list": ["rest"],
+                   "act_prob": 0.1, "act_type": [2, 0]}]
+                 if "rest" in act and extended_eula_source else []) + (
+                    [{"name": "观察", "act_list": ["lookaround"],
+                      "act_prob": 0.1, "act_type": [2, 0]}]
+                    if "lookaround" in act else []),
         }
         for filename, obj in (("act_conf.json", act), ("pet_conf.json", pet)):
             (stage / filename).write_text(
@@ -175,12 +208,27 @@ def install_personal_shimeji_zip(source, output_root, *, profile, confirmed=Fals
         validation = validate_native_role(stage)
         receipt = {
             "mode": "personal_local_only",
-            "source_kind": "user_selected_shimeji_zip",
+            "source_kind": (
+                "sha256_pinned_original_eula_author_shimeji" if extended_eula_source
+                else "user_selected_shimeji_zip"),
             "selected_profile": profile,
             "source_archive_sha256": _sha256_file(source),
             "all_original_frames_preserved": len(original),
+            "verified_extended_eula_author_source": extended_eula_source,
+            "original_creator_publisher_source_sha256": (
+                EULA_EXTENDED_SOURCE_SHA256 if extended_eula_source else None),
+            "unmapped_extended_author_sprite_count": (
+                len([i for i in original if i > 46]) if extended_eula_source else 0),
+            "extra_author_pose_groups": (
+                [k for k in EXTRA_GROUPS if k in groups]
+                if extended_eula_source else []),
+            "extended_animation_xml_semantics_manually_reviewed": False,
             "mapped_original_frame_groups": sorted(groups),
-            "source_upstream_identity_verified": False,
+            "source_upstream_identity_verified": extended_eula_source,
+            "original_artist_creator_id": "saylamars" if extended_eula_source else None,
+            "original_creator_public_post": (
+                "https://saylamars.fanbox.cc/posts/8264436"
+                if extended_eula_source else None),
             "source_rights_verified": False,
             "likeness_manually_reviewed": False,
             "real_windows_qa_verified": False,
