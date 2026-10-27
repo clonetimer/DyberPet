@@ -28,7 +28,7 @@ class CommunityRoleLeadsTests(unittest.TestCase):
             self.assertFalse(row["distributable"])
             self.assertTrue(row["candidate_url"].startswith("https://codexpetdb.com/en/pets/"))
         pinned = source_coverage()["summary"]
-        self.assertEqual(pinned["characters_with_pinned_sources"], 65)
+        self.assertEqual(pinned["characters_with_pinned_sources"], 66)
         self.assertEqual(pinned["characters_without_pinned_sources"], 58)
         self.assertEqual(pinned["pinned_source_options"], 88)
 
