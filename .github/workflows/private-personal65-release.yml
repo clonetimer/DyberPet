@@ -11,6 +11,7 @@ on:
       - "tools/personal_source_batch.py"
       - "tools/personal_install_journal.py"
       - "tests/test_personal_install_journal.py"
+      - "tests/test_personal_install_recovery.py"
       - "tests/test_creator_batch_gui_contract.py"
       - "tools/personal_mascot_batch.py"
       - "tools/install_creator_mascots.py"
@@ -82,6 +83,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Opt-in planner regression failed" }
           python -m unittest discover -s tests -p "test_personal_install_journal.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Durable local per-role progress regression failed" }
+          python -m unittest discover -s tests -p "test_personal_install_recovery.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Resume/retry source recovery regression failed" }
           python -m unittest discover -s tests -p "test_creator_batch_gui_contract.py" -v
           if ($LASTEXITCODE -ne 0) { throw "GUI batch consent/cancellation contract failed" }
           python -m unittest discover -s tests -p "test_personal_mascot_batch.py" -v
