@@ -53,7 +53,7 @@ class NanoPetArtistTests(unittest.TestCase):
 
     def test_full_original_gestures_and_actual_petwidget_semantic_dispatch(self):
         raw = self.image_bytes()
-        blob = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\\0" + raw).hexdigest()
+        blob = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
         for omit in (None, 29):
             with self.subTest(missing_original_shime29=omit), tempfile.TemporaryDirectory() as td:
                 indexes = [i for i in range(1, 47) if i != omit]
