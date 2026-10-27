@@ -1643,6 +1643,19 @@ class ChibiImportThread(QThread):
                 if installed.get("source_variant") != variant:
                     raise ValueError("Selected Doro source variant was not installed")
                 new_folder = self.output_root / installed["folder"]
+                # A successful network request is not proof a playable mascot
+                # entered the library. Reconcile this exact creator source.
+                from tools.mascot_library import scan_mascot_library
+                catalog = scan_mascot_library(self.output_root)
+                matching = [
+                    source for character in catalog["mascots"]
+                    if character["key"] == self.preset
+                    for source in character.get("imported_creator_art", [])
+                    if source.get("folder") == new_folder.name and
+                       source.get("source_id") == installed.get("source_id")
+                ]
+                if len(matching) != 1 or catalog.get("invalid_local"):
+                    raise ValueError("Selected creator atlas was not accepted by the native mascot library")
             elif self.mode in ("pinned_codexpetdb", "pinned_codexpetdb_local"):
                 from tools.install_pinned_codexpetdb import install_pinned_codexpetdb
                 # self.source is always Path: use selected string registry key,
