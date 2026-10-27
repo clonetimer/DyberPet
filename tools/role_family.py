@@ -10,6 +10,10 @@ from pathlib import Path
 
 MAX_RECEIPT_BYTES = 128 * 1024
 KNOWN_MASCOTS = {"guga": "guga--circus", "doro": "doro--lingxiaotian"}
+KNOWN_MASCOT_SOURCE_IDS = {
+    "guga": frozenset(("guga--circus",)),
+    "doro": frozenset(("doro--lingxiaotian", "doro--godxxy1229")),
+}
 DEMO_GENERATOR = "DyberPet-first-party-mascot-chibi-v1"
 
 
@@ -46,7 +50,7 @@ def known_mascot_family(folder):
     if report is not None and report.get("mascot_preset") is not None:
         kind = report["mascot_preset"]
         if (kind not in KNOWN_MASCOTS
-                or report.get("source_manifest_id") != KNOWN_MASCOTS[kind]):
+                or report.get("source_manifest_id") not in KNOWN_MASCOT_SOURCE_IDS[kind]):
             raise ValueError("Invalid or unknown mascot creator source identity")
         identities.append(kind)
     if not identities:
@@ -63,9 +67,13 @@ def known_mascot_family(folder):
         # profile or another mascot's source ID to cross family boundaries.
         selected = other.get("selected_profile")
         source_id = other.get("source_id")
-        if selected not in (None, identities[0]) or source_id not in (
-                None, KNOWN_MASCOTS[identities[0]]):
+        if selected not in (None, identities[0]) or (
+                source_id is not None and
+                source_id not in KNOWN_MASCOT_SOURCE_IDS[identities[0]]):
             raise ValueError("Mascot source conflicts with personal/Genshin identity")
+        if (report is not None and source_id is not None and
+                source_id != report.get("source_manifest_id")):
+            raise ValueError("Personal mascot source ID must match importer report")
         if selected is not None and other.get("source_kind") not in (
                 None, "curated_creator_spritesheet"):
             raise ValueError("Mascot source kind conflicts with local provenance")
