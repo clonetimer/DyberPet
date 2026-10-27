@@ -932,7 +932,7 @@ class CharInterface(ScrollArea):
         )
         if not self.__showMessageBox(
                 "本机安装公开作者动画",
-                f"来源：{source}\n" + kaveh_note
+                f"来源：{source}\n" + kaveh_note +
                 "确认后下载固定版本原始动画，并安装为独立角色。"
                 "不会覆盖现有桌宠或用户存档。"
                 "公开素材与人物形象的人工验收是两回事；安装后请先预览。继续吗？"):
