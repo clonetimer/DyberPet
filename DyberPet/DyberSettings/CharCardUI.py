@@ -591,6 +591,7 @@ class CharInterface(ScrollArea):
             "批量补齐：本机尚未安装、具有固定作者来源的全部原神人物",
             "先试装 2 位：核对下载速度、造型和当前角色库",
             "只安装一位指定人物的原画",
+            "查看上次进度并续传未完成或失败的真实原画",
         )
         selected, accepted = QInputDialog.getItem(
             self, "安装作者原画", "请选择安装方式：", list(choices), 0, False)
@@ -598,28 +599,63 @@ class CharInterface(ScrollArea):
             return
         if selected == choices[2]:
             self._installArtistGenshin()
+        elif selected == choices[3]:
+            self._resumeCreatorBulkImport()
         elif selected in choices[:2]:
             self._startCreatorBulkImport(max_roles=None if selected == choices[0] else 2)
 
-    def _startCreatorBulkImport(self, *, max_roles=None):
+    def _resumeCreatorBulkImport(self):
+        """Resume only from local R14+ journal and fresh exact native inventory."""
+        from tools.personal_install_journal import (
+            latest_install_journal, restartable_profiles)
+        from tools.personal_source_batch import plan_personal_sources
+        root = Path(basedir) / "res" / "role"
+        try:
+            last = latest_install_journal(Path(basedir) / "data")
+            if last is None:
+                self.__showSystemNote(
+                    "没有找到有效的 R14+ 安装日志。可选择试装两位或批量补齐全部。", 1)
+                return
+            fresh = plan_personal_sources(root)
+            targets = restartable_profiles(last, fresh)
+        except (ValueError, OSError, TypeError, KeyError) as exc:
+            self.__showSystemNote("无法安全读取上次安装记录：" + str(exc)[:180], 2)
+            return
+        if not targets:
+            self.__showSystemNote(
+                "上次失败的角色目前已安装、无自动来源或没有需要重试的人物。", 1)
+            return
+        note = ("上次记录完整；仅重试当时失败的人物。"
+                if last["finished"] else
+                "上次任务意外中断；依据当前角色库继续未安装的人物。")
+        self.__showSystemNote(
+            f"{note}本次待尝试 {len(targets)} 位，先进行来源确认。"
+            f"上次日志：{last['path']}", 1)
+        # The batch worker performs a second *fresh* inventory scan, so even
+        # roles installed since the dialog opened are never downloaded twice.
+        self._startCreatorBulkImport(only_profiles=targets)
+
+    def _startCreatorBulkImport(self, *, max_roles=None, only_profiles=None):
         """Explicit local-only consent before any creator URL is fetched."""
         if self.chibiThread is not None:
             return
         from tools.character_source_coverage import source_coverage
         stats = source_coverage()["summary"]
-        count = stats["characters_with_pinned_sources"]
+        count = (len(only_profiles) if only_profiles is not None
+                 else stats["characters_with_pinned_sources"])
         if not self.__showMessageBox(
                 "批量安装真实作者原画（个人本机）",
-                f"当前有 {count} 位人物具有固定来源；只有尚未安装的角色才会尝试。"
+                f"本次最多选择 {count} 位固定来源人物；只有尚未安装的角色才会尝试。"
                 "这不是预装角色包，实际会从创作者来源联网获取、转换原生动画。"
                 "可能耗时较长或因来源限制而失败。仅供自行核对创作者使用条款后的个人使用。"
                 "不会上传或重新分发第三方素材，不自动更改现有桌宠。"
                 "人物形象、原声、动画质量和使用许可仍须独立确认。"
-                "安装后建议重启软件加载新角色。"
+                "安装后可立即预览作者原画；正式切换桌宠需重启软件。"
                 "确认开始吗？"):
             return
         root = Path(basedir) / "res" / "role"
-        self.chibiThread = CreatorBatchImportThread(str(root), max_roles=max_roles)
+        self.chibiThread = CreatorBatchImportThread(
+            str(root), max_roles=max_roles, only_profiles=only_profiles)
         progress = QProgressDialog("正在盘点本机作者原画...", "完成当前人物后停止",
                                    0, count, self)
         progress.setWindowTitle("DyberPet · 批量补齐原画")
@@ -1729,10 +1765,11 @@ class CreatorBatchImportThread(QThread):
     progress = Signal(object)
     done = Signal(object)
 
-    def __init__(self, output_root, *, max_roles=None):
+    def __init__(self, output_root, *, max_roles=None, only_profiles=None):
         super().__init__()
         self.output_root = Path(output_root)
         self.max_roles = max_roles
+        self.only_profiles = tuple(only_profiles) if only_profiles is not None else None
         self._stop_requested = threading.Event()
 
     def request_stop(self):
@@ -1745,7 +1782,8 @@ class CreatorBatchImportThread(QThread):
             from tools.personal_source_batch import (
                 plan_personal_sources, install_personal_plan)
             from tools.personal_install_journal import PersonalInstallJournal
-            plan = plan_personal_sources(self.output_root)
+            plan = plan_personal_sources(
+                self.output_root, only_profiles=self.only_profiles)
             info = plan["summary"]
             # Checkpoints are LOCAL, beside the portable app in data/.
             try:
