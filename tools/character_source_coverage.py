@@ -111,9 +111,13 @@ def source_coverage():
         })
     # Original creator public ZIP and 109 numbered PNGs independently
     # SHA-verified in CI, not bundled or visually approved.
-    from tools.install_pinned_eula_shimeji import (
-        SOURCE_KEY as EULA_SOURCE, ARCHIVE_BYTES as EULA_BYTES)
-    from tools.install_personal_shimeji_zip import EULA_EXTENDED_SOURCE_SHA256
+    # Keep this catalog directly runnable as python tools/character_source_coverage.py
+    # on Windows where the package root may not be on sys.path. The public
+    # byte constants are cross-checked against the installer by its tests.
+    EULA_SOURCE = "eula_saylamars_original"
+    EULA_BYTES = 8400168
+    EULA_EXTENDED_SOURCE_SHA256 = (
+        "f4952ea151e0ead70b501e9e2637f9dae1194e0da1b5d312046964fc19046803")
     record("genshin_eula", "pinned_eula_creator", EULA_SOURCE,
            "https://saylamars.fanbox.cc/posts/8264436")
     rows["genshin_eula"]["source_candidates"][-1].update({
