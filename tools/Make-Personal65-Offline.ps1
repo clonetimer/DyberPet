@@ -18,7 +18,7 @@ New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
 $genshinPlan = Join-Path $reportDir "personal65-preinstall-plan.json"
 $mascotPlan = Join-Path $reportDir "mascots-preinstall-plan.json"
 & $helper --role-root $roleRoot --output $genshinPlan
-if ($LASTEXITCODE -ne 0) { throw "Unable to read 65-role source plan. Nothing downloaded." }
+if ($LASTEXITCODE -ne 0) { throw "Unable to read pinned-source role plan. Nothing downloaded." }
 & $helper --mascots --doro-v2 --role-root $roleRoot --output $mascotPlan
 if ($LASTEXITCODE -ne 0) { throw "Unable to read Guga/Doro source plan. Nothing downloaded." }
 
@@ -79,8 +79,9 @@ Write-Host "LOCAL OFFLINE PACKAGE CREATED: $archive" -ForegroundColor Green
 Write-Host "SHA256: $($result.sha256)"
 Write-Host "Genshin roles structurally installed: $($result.manifest.genshin_installed_distinct_profiles)"
 Write-Host "Guga/Doro real creator assets installed: $($result.manifest.mascot_creator_art_installed)/2"
-if (-not $result.manifest.genshin_65_source_target_reached) {
-    Write-Warning "This is NOT yet a complete 65/65 art package. Check source installation logs and manual-only entries."
+$target = [int]$result.manifest.genshin_current_pinned_source_target
+if (-not $result.manifest.genshin_all_pinned_sources_target_reached) {
+    Write-Warning "This local package has $($result.manifest.genshin_installed_distinct_profiles)/$target pinned source profiles installed. It is NOT a complete art package; check source installation logs."
 }
 Write-Host "You can unzip this locally into a new folder and run Run-DyberPet.cmd offline."
 Write-Host "Do NOT upload this private art-inclusive ZIP to GitHub or a public service."
