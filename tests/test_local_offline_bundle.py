@@ -62,6 +62,37 @@ class LocalOfflineBundleTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 create_local_bundle(app, output, confirmed=True)
 
+    def test_source_target_uses_frozen_build_count_instead_of_old_65(self):
+        with TemporaryDirectory() as td:
+            app = self._fixture(Path(td))
+            (app / "PERSONAL65_BUILD_INFO.json").write_text(json.dumps({
+                "pinned_source_characters": 66,
+                "missing_source_characters": 57,
+                "character_templates": 123,
+            }), encoding="utf-8")
+            with patch("tools.local_offline_bundle.scan_genshin_library",
+                       return_value={"summary": {
+                           "personal_art_profile_count": 65,
+                           "unmapped_folder_count": 0, "invalid_folder_count": 0}}), \
+                 patch("tools.local_offline_bundle.scan_mascot_library",
+                       side_effect=fake_mascot):
+                result = inspect_local_bundle(app)
+            self.assertEqual(result["genshin_current_pinned_source_target"], 66)
+            self.assertTrue(result["genshin_65_source_target_reached"])
+            self.assertFalse(result["genshin_all_pinned_sources_target_reached"])
+            (app / "PERSONAL65_BUILD_INFO.json").write_text(json.dumps({
+                "pinned_source_characters": 67,
+                "character_templates": 123,
+            }), encoding="utf-8")
+            with patch("tools.local_offline_bundle.scan_genshin_library",
+                       return_value={"summary": {
+                           "personal_art_profile_count": 67,
+                           "unmapped_folder_count": 0, "invalid_folder_count": 0}}), \
+                 patch("tools.local_offline_bundle.scan_mascot_library",
+                       side_effect=fake_mascot):
+                self.assertTrue(
+                    inspect_local_bundle(app)["genshin_all_pinned_sources_target_reached"])
+
     def test_reject_output_inside_app_and_symlink(self):
         with TemporaryDirectory() as td:
             base = Path(td)
