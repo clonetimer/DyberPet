@@ -152,3 +152,15 @@ python -m tools.install_pinned_kaveh_shimeji kaveh_ilewdha --accept-personal-use
 标准 Shimeji 编号动作语义可对照 [Shimeji Sprite Reference](https://github.com/shimeji-ai/Shimeji-AI-Pets/blob/main/animation-reference/SPRITE-REFERENCE.md)。真实图包 SHA/Git blob 已固定；CI 单独尝试实际下载钟离与空的原画，生成本机临时角色与逐动作质量记录，不上传任何第三方 PNG。不能因为图包有真实 46 帧就判断它完全贴合原作人物、动作自然、配音准确或具有分发权。
 
 **覆盖仍为 65/123**。R22 增强已覆盖人物的真实交互，而不是虚报新增 17 位。
+
+### R22 独立原画在线核验和已安装角色升级
+
+隔离的 [NanoPet 两位原画验收](https://github.com/clonetimer/DyberPet/actions/runs/40515166028) 下载并逐帧核对固定版本：钟离为 46 张原始 PNG、15 项原生动作，七帧 `lookaround`、三帧 `ceiling_crawl`、四帧 `edge_sit`、三帧 `window_carry` 各帧姿态均不同；空（旅行者）为 45 张原始 PNG、14 项原生动作，`shime29` 缺失，因此不提供七帧观察互动，但真实散步和休息仍通过原生菜单语义检查。两者的 `jump_pose` 都是一张原画静态姿态，不宣称为连续跳跃。
+
+**已安装旧版也可以升级：** 在桌宠角色管理界面再次手动选择 NanoPet 原作者来源（提示确认），R22 会为同一人物、同一原作者的新版动作配置安全创建**另一独立角色目录**；原有角色目录、状态和图片完全保留。新目录仍使用精确 Git Blob 校验和全部原画帧，升级后手动预览并重启启用。如果是从 Python CLI 执行，则需要明确附加 `--as-new-version`，否则仍拒绝覆盖：
+
+```powershell
+python -m tools.install_nanopet_shimeji zhongli-by-vol-tuna --accept-personal-use --as-new-version --role-root res/role
+```
+
+这是同一作者原画的**动画映射改进**，不是新画师素材、角色新增或对真实桌面稳定性的自动认证。
