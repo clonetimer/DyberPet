@@ -29,7 +29,7 @@ class CommunityRoleLeadsTests(unittest.TestCase):
             self.assertTrue(row["candidate_url"].startswith("https://codexpetdb.com/en/pets/"))
         pinned = source_coverage()["summary"]
         self.assertEqual(pinned["characters_with_pinned_sources"], 66)
-        self.assertEqual(pinned["characters_without_pinned_sources"], 58)
+        self.assertEqual(pinned["characters_without_pinned_sources"], 57)
         self.assertEqual(pinned["pinned_source_options"], 88)
 
     def test_names_are_correct_and_nonroster_manekina_is_excluded(self):
