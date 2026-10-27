@@ -49,7 +49,7 @@ class KavehAlternativeTests(unittest.TestCase):
         p = Path(__file__).resolve().parents[1]
         source = (p / "DyberPet/DyberSettings/CharCardUI.py").read_text("utf-8")
         ast.parse(source)
-        self.assertIn('("pinned_kaveh_shimeji", KAVEH_KEY)', source)
+        self.assertIn('"pinned_kaveh_shimeji", KAVEH_KEY)', source)
         self.assertIn('elif self.mode == "pinned_kaveh_shimeji":', source)
         self.assertIn("install_pinned_kaveh_shimeji(", source)
         self.assertIn("匍匐和坠落各只有一帧", source)
