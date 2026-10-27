@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 from tools.install_creator_mascots import (
-    UPSTREAM, PINNED_REVISION, ROOT,
+    UPSTREAM, DORO_VARIANTS, PINNED_REVISION, ROOT,
     _download_pinned, install_creator_mascot)
 
 
@@ -43,6 +43,26 @@ class RemoteMascotInstallTests(unittest.TestCase):
             self.assertEqual(len(metadata["atlas_sha256"]),64)
             self.assertEqual(len(metadata["manifest_sha256"]),64)
             self.assertLess(metadata["atlas_bytes"],6*1024*1024)
+
+    def test_handdrawn_doro_v2_is_real_sha256_pinned_and_separate(self):
+        v2 = DORO_VARIANTS["handdrawn_v2"]
+        self.assertEqual(v2["id"], "doro--godxxy1229")
+        self.assertEqual(v2["atlas_bytes"], 702066)
+        self.assertEqual(v2["manifest_bytes"], 252)
+        self.assertEqual(v2["atlas_sha256"],
+                         "a22d84a8836f60c535b7bf418eda5d68ba99ca36338f3816fc8a043b77bf3228")
+        self.assertEqual(len(v2["manifest_sha256"]), 64)
+        self.assertNotEqual(v2["atlas_sha256"], UPSTREAM["doro"]["atlas_sha256"])
+        self.assertIn("non-commercial", v2["license"])
+        self.assertIn("Unknown", UPSTREAM["guga"]["license"])
+
+    def test_v2_download_requires_opt_in_and_cannot_replace_guga(self):
+        with self.assertRaisesRegex(ValueError, "confirmation"):
+            install_creator_mascot("doro", self.root, variant="handdrawn_v2")
+        with self.assertRaisesRegex(ValueError, "only available for Doro"):
+            install_creator_mascot("guga", self.root, confirmed=True,
+                                   variant="handdrawn_v2")
+        self.assertFalse(self.root.exists())
 
     def test_checksum_mismatch_blocks_import_with_no_installed_roles(self):
         hits=[]

@@ -240,6 +240,8 @@ def main(argv=None):
                     default=default_role_root())
     ap.add_argument("--mascots", action="store_true",
                     help="Plan or explicitly install Guga/Doro original creator fan-art locally")
+    ap.add_argument("--doro-v2", action="store_true",
+                    help="With --mascots, opt in to separately drawn Doro V2 instead of legacy source")
     ap.add_argument("--profile", action="append", default=None,
                     help="Repeatable genshin_... profile (default: all 123 templates)")
     ap.add_argument("--bundle-output", type=Path,
@@ -257,7 +259,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         if args.bundle_output is not None:
-            if args.install or args.mascots or args.profile or args.output or args.max_roles is not None or args.accept_personal_use:
+            if args.install or args.mascots or args.doro_v2 or args.profile or args.output or args.max_roles is not None or args.accept_personal_use:
                 raise ValueError("--bundle-output cannot be combined with install/planning options")
             try:
                 from .local_offline_bundle import create_local_bundle
@@ -274,12 +276,15 @@ def main(argv=None):
             raise ValueError("--confirm-local-bundle requires --bundle-output")
         if args.mascots and args.profile:
             raise ValueError("--mascots and --profile cannot be combined")
+        if args.doro_v2 and not args.mascots:
+            raise ValueError("--doro-v2 requires --mascots")
         if args.mascots:
             try:
                 from .personal_mascot_batch import plan_mascot_sources, install_mascot_plan
             except ImportError:
                 from tools.personal_mascot_batch import plan_mascot_sources, install_mascot_plan
-            mascot_plan = plan_mascot_sources(args.role_root)
+            mascot_plan = plan_mascot_sources(
+                args.role_root, doro_variant="handdrawn_v2" if args.doro_v2 else "classic")
             if args.install:
                 def mascot_progress(event):
                     if event["stage"] == "role_start":

@@ -122,6 +122,38 @@ class CrossFamilyOwnershipTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "identity"):
                     known_mascot_family(folder)
 
+    def test_doro_handdrawn_v2_is_a_valid_mascot_not_genshin(self):
+        generate_mascot_demos(self.root, ["doro"])
+        folder = self.root / "DemoMascotDoro"
+        (folder / "BUILTIN_MASCOT_DEMO.json").unlink()
+        (folder / "IMPORT_REPORT.json").write_text(json.dumps({
+            "mascot_preset": "doro",
+            "source_manifest_id": "doro--godxxy1229",
+            "source_pixel_integrity_verified": True,
+            "preserve_source_frames": True,
+        }), encoding="utf-8")
+        receipt = folder / "PERSONAL_IMPORT.json"
+        receipt.write_text(json.dumps({
+            "selected_profile": "doro", "source_id": "doro--godxxy1229",
+            "source_kind": "curated_creator_spritesheet",
+            "source_variant": "handdrawn_v2",
+        }), encoding="utf-8")
+        self.assertEqual(known_mascot_family(folder), "doro")
+        summary = scan_mascot_library(self.root)
+        self.assertEqual(summary["summary"]["imported_creator_art_count"], 1)
+        self.assertEqual(summary["mascots"][1]["imported_creator_art"][0]["source_id"],
+                         "doro--godxxy1229")
+        self.assertEqual(scan_genshin_library(self.root)["summary"]["other_family_folder_count"], 1)
+        with self.assertRaisesRegex(ValueError, "Guga/Doro"):
+            associate_existing_role(self.root, folder.name, "genshin_mika",
+                                    confirmed=True)
+        receipt.write_text(json.dumps({
+            "selected_profile": "doro", "source_id": "doro--lingxiaotian",
+            "source_kind": "curated_creator_spritesheet",
+        }), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "source ID must match"):
+            known_mascot_family(folder)
+
     def test_incorrect_source_id_never_moves_to_genshin_unmapped_list(self):
         generate_mascot_demos(self.root,["guga"])
         role=self.root/"DemoMascotGuga"

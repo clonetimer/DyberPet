@@ -25,8 +25,10 @@ def main():
     with tempfile.TemporaryDirectory(prefix="dyberpet-pinned-upstream-") as td:
         root=Path(td)/"role"
         rows=[]
-        for name in ("guga","doro"):
-            record=install_creator_mascot(name,root,confirmed=True)
+        for name, variant in (("guga", "classic"), ("doro", "classic"),
+                              ("doro", "handdrawn_v2")):
+            record=install_creator_mascot(name,root,confirmed=True,
+                                          variant=variant)
             v=validate_native_role(root/record["folder"])
             playback=action_preview_plan(root/record["folder"])
             import_report=json.loads((root/record["folder"]/"IMPORT_REPORT.json").read_text("utf-8"))
@@ -45,16 +47,22 @@ def main():
             if v["actions"]<4 or v["images"]<20:
                 raise RuntimeError("External Codex pet lacks meaningful animation: "+name)
             rows.append({
-                "key":name,"source_id":record["source_id"],
+                "key":name,"source_variant":variant,"source_id":record["source_id"],
                 "actions":v["actions"],"frames":v["images"],
                 "preview_action_count":len(playback["actions"]),
                 "rights_verified":False,
             })
-        inventory=scan_mascot_library(root)["summary"]
+        found=scan_mascot_library(root)
+        inventory=found["summary"]
+        distinct_sources={folder["source_id"]
+                          for mascot in found["mascots"]
+                          for folder in mascot["imported_creator_art"]}
         if (inventory["imported_creator_art_count"]!=2 or
                 inventory["original_demo_count"]!=0 or
-                inventory["invalid_count"]!=0):
-            raise RuntimeError("Exact-source imported mascots are not classified correctly")
+                inventory["invalid_count"]!=0 or
+                distinct_sources!={"guga--circus", "doro--lingxiaotian",
+                                   "doro--godxxy1229"}):
+            raise RuntimeError("Exact-source imported mascot variants were not classified")
         print("MASCOT_PINNED_CREATOR_SOURCE_ACCEPTED",
               json.dumps({"imports":rows,"no_source_art_republished":True},
                          ensure_ascii=False))

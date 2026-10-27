@@ -245,8 +245,11 @@ def convert(source: Path, dest_root: Path, *, preset: str | None = None,
     name = name or (profile_info or {}).get("name") or preset_data.get("name") or manifest.get("displayName") or folder
     # Character identities do not establish art attribution. Restrict the legacy
     # artist defaults to the precise source IDs they were originally based on.
-    credit_ids = {"guga": "guga--circus", "doro": "doro--lingxiaotian"}
-    source_matches = preset in credit_ids and manifest.get("id") == credit_ids[preset]
+    credit_ids = {
+        "guga": frozenset(("guga--circus",)),
+        "doro": frozenset(("doro--lingxiaotian", "doro--godxxy1229")),
+    }
+    source_matches = manifest.get("id") in credit_ids.get(preset, ())
     author = author or (preset_data.get("author") if source_matches else None) or "Unspecified"
     license_name = license_name or (preset_data.get("license") if source_matches else None) or "Unverified; do not redistribute"
     dest_root = dest_root.expanduser().resolve()
