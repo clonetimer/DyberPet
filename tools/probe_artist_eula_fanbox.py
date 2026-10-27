@@ -188,9 +188,31 @@ def main():
         return 0 if report.get("source_integrity_verified") is True else 1
     except (HTTPError, URLError, OSError, ValueError, TypeError, KeyError,
             UnicodeError, TimeoutError) as exc:
-        # HTTPError may carry a signed URL. Never print full exception string.
+        # Public response can be a login stub or a reduced metadata schema.
+        # A PRIVATE token, URL or raw response body must never enter CI logs.
+        reason = "public_artist_source_or_network_unavailable"
+        if isinstance(exc, ValueError):
+            for signal, code in (
+                ("Public Eula post unavailable without sign-in",
+                 "no_anonymous_public_post_metadata"),
+                ("Wrong creator or post identity", "publisher_identity_not_matching"),
+                ("not explicitly about Eula", "public_post_title_not_identified"),
+                ("No publicly accessible original attachment listing",
+                 "no_public_attachment_listing"),
+                ("restricted: no authentication bypass",
+                 "publisher_restricted_access"),
+                ("Missing or excessive public creator metadata",
+                 "publisher_metadata_empty_or_oversized"),
+                ("Unexpected creator post metadata redirect",
+                 "publisher_metadata_cross_site_redirect"),
+                ("Invalid creator metadata object", "unexpected_public_metadata_shape"),
+            ):
+                if signal in str(exc):
+                    reason = code
+                    break
         print("ORIGINAL_EULA_SOURCE_NOT_YET_VERIFIED " + json.dumps({
             "error_type": type(exc).__name__,
+            "reason": reason,
             "http_status": getattr(exc, "code", None),
             "creator_page": AUTHOR_POST,
             "source_registry_promoted": False}, sort_keys=True), flush=True)
