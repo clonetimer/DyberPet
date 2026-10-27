@@ -776,7 +776,7 @@ class CharInterface(ScrollArea):
                             f"将 {selected} 设为下次启动默认桌宠？"
                             "目前的 PetData/ActData 尚未加载新角色；"
                             "不会立即切换，也不会认证原设美术或动作自然性。"
-                            "请正常退出并重新打开 DyberPet 后再体验。"):
+                            "请正常退出程序并重启 DyberPet 后再体验。"):
                         try:
                             stage_default_pet(settings, folder, options.values())
                         except (ValueError, OSError, TypeError) as exc:
