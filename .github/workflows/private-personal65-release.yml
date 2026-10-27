@@ -11,6 +11,7 @@ on:
       - "tools/personal_source_batch.py"
       - "tools/personal_mascot_batch.py"
       - "tools/install_creator_mascots.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
       - "tools/mascot_library.py"
       - "tools/role_family.py"
       - "tools/verify_creator_mascots.py"

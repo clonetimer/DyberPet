@@ -533,28 +533,52 @@ class CharInterface(ScrollArea):
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder.resolve())))
 
     def _installCreatorMascot(self, kind):
-        """One user-confirmed network fetch; all art remains local, not bundled."""
+        """Select a real, fixed-origin mascot atlas, then import off the UI thread."""
         if self.chibiThread is not None:
             return
-        explanation = (
-            "咕嘎图集由 CIRCUS 发布，来源页没有明确再分发许可；"
-            "仅为你自己在本机获取并转换，请尊重创作者的后续使用条款。"
-            if kind == "guga" else
-            "Doro 图集为 legeling 发布的 CC BY-NC 4.0 二创；"
-            "相关游戏人物的权利另行保留。仅下载本机试用，不含原声。"
-        )
+        source_mode = "creator_source"
+        if kind == "doro":
+            variants = [
+                "手绘 V2（推荐试用）：godxxy1229 · 独立作者改绘、更多动画",
+                "经典版：legeling · 原有 Doro 图集",
+            ]
+            selected, accepted = QInputDialog.getItem(
+                self, self.tr("选择 Doro 原画来源"),
+                self.tr("仅安装当前选择的真实原画版本；其他版本和存档保持不变："),
+                variants, 0, False)
+            if not accepted:
+                return
+            source_mode = ("creator_source_v2" if selected == variants[0]
+                           else "creator_source")
+        if kind == "guga":
+            explanation = (
+                "咕嘎图集由 CIRCUS 发布，来源页没有明确再分发许可；"
+                "仅为你自己在本机获取并转换，请尊重创作者的后续使用条款。"
+            )
+        elif source_mode == "creator_source_v2":
+            explanation = (
+                "Doro 手绘 V2 由 godxxy1229 独立绘制动画，仅限非商业使用；"
+                "不是官方原画或原声，相关 NIKKE 角色权利另行保留。"
+                "它将安装到独立文件夹，绝不覆盖你已有的 Doro。"
+            )
+        else:
+            explanation = (
+                "Doro 经典图集为 legeling 发布的 CC BY-NC 4.0 二创；"
+                "相关游戏人物的权利另行保留。仅下载本机试用，不含原声。"
+            )
         if not self.__showMessageBox(
                 self.tr("联网下载独立角色来源图集"),
                 explanation + " 软件会校验固定版本 SHA-256，不会上传本机文件。确认获取？"):
             return
         self.addButton.setEnabled(False)
-        self.chibiThread=ChibiImportThread(
-            kind, os.path.join(basedir,"res","role"),
-            mode="creator_source", profile=None, preset=kind, folder=None)
+        self.chibiThread = ChibiImportThread(
+            kind, os.path.join(basedir, "res", "role"),
+            mode=source_mode, profile=None, preset=kind, folder=None)
         self.chibiThread.done.connect(self._onChibiImportComplete)
         self.chibiThread.finished.connect(self._onChibiThreadFinished)
         self.chibiThread.start()
-        self.__showSystemNote(self.tr("正在本机获取并校验角色作者发布的图集，然后转换动画。"),1)
+        self.__showSystemNote(
+            self.tr("正在本机获取并校验作者图集、转换真实动画；不生成简笔画或伪造动作。"), 1)
 
     def _installArtistGenshin(self, only_profile=None):
         """Select genuine source art for one chosen role; never redraw it."""
@@ -1606,11 +1630,32 @@ class ChibiImportThread(QThread):
                 installed = install_external_codex(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
-            elif self.mode == "creator_source":
+            elif self.mode in ("creator_source", "creator_source_v2"):
                 from tools.install_creator_mascots import install_creator_mascot
+                # Only Doro can use the independent hand-drawn V2 pinned atlas.
+                if self.mode == "creator_source_v2" and self.preset != "doro":
+                    raise ValueError("Doro V2 creator mode is restricted to Doro")
+                variant = ("handdrawn_v2" if self.mode == "creator_source_v2"
+                           else "classic")
                 installed = install_creator_mascot(
-                    self.preset, self.output_root, confirmed=True)
+                    self.preset, self.output_root, confirmed=True,
+                    variant=variant)
+                if installed.get("source_variant") != variant:
+                    raise ValueError("Selected Doro source variant was not installed")
                 new_folder = self.output_root / installed["folder"]
+                # A successful network request is not proof a playable mascot
+                # entered the library. Reconcile this exact creator source.
+                from tools.mascot_library import scan_mascot_library
+                catalog = scan_mascot_library(self.output_root)
+                matching = [
+                    source for character in catalog["mascots"]
+                    if character["key"] == self.preset
+                    for source in character.get("imported_creator_art", [])
+                    if source.get("folder") == new_folder.name and
+                       source.get("source_id") == installed.get("source_id")
+                ]
+                if len(matching) != 1:
+                    raise ValueError("Selected creator atlas was not accepted by the native mascot library")
             elif self.mode in ("pinned_codexpetdb", "pinned_codexpetdb_local"):
                 from tools.install_pinned_codexpetdb import install_pinned_codexpetdb
                 # self.source is always Path: use selected string registry key,

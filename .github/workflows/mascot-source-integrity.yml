@@ -11,6 +11,7 @@ on:
       - tools/verify_creator_mascots.py
       - tools/role_action_preview.py
       - tools/mascot_library.py
+      - DyberPet/DyberSettings/CharCardUI.py
       - tools/role_family.py
       - tools/personal_mascot_batch.py
       - tests/test_role_family_ownership.py
@@ -24,6 +25,7 @@ on:
       - tools/verify_creator_mascots.py
       - tools/role_action_preview.py
       - tools/mascot_library.py
+      - DyberPet/DyberSettings/CharCardUI.py
       - tools/role_family.py
       - tools/personal_mascot_batch.py
       - tests/test_role_family_ownership.py
