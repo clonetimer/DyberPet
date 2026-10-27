@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 import os
+import re
 from pathlib import Path
 import uuid
 
@@ -73,7 +74,7 @@ class PersonalInstallJournal:
 
 # Read only our exact journal filenames, never arbitrary local JSON. The
 # format is intentionally small: personal art pixels are never recorded.
-_JOURNAL_PATTERN = __import__("re").compile(
+_JOURNAL_PATTERN = re.compile(
     r"^personal65-batch-[0-9]{8}-[0-9]{6}-[0-9a-f]{8}\.json$")
 _MAX_READ_BYTES = 4 * 1024 * 1024
 _MAX_CHARACTERS = 123
@@ -100,7 +101,7 @@ def latest_install_journal(directory):
             if not 10 <= path.stat().st_size <= _MAX_READ_BYTES:
                 continue
             doc = json.loads(path.read_text(encoding="utf-8"))
-            if not isinstance(doc, dict) or doc.get("schema") != 1:
+            if not isinstance(doc, dict) or type(doc.get("schema")) is not int or doc["schema"] != 1:
                 continue
             if type(doc.get("finished")) is not bool:
                 continue
