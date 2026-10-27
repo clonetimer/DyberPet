@@ -11,6 +11,7 @@ on:
       - "DyberPet/DyberSettings/character_catalog_dialog.py"
       - "DyberPet/DyberSettings/native_frame_preview.py"
       - "tests/test_creator_fallback_variant_ranking.py"
+      - "tests/test_creator_action_full_sequence.py"
       - "tests/test_native_interaction_preview_shortcuts.py"
       - ".github/workflows/creator-interaction-fallback.yml"
 
@@ -46,6 +47,7 @@ jobs:
       - name: Confirm pinned backup options and no-fake interaction ranking
         run: |
           python -m unittest discover -s tests -p "test_creator_fallback_variant_ranking.py" -v
+          python -m unittest discover -s tests -p "test_creator_action_full_sequence.py" -v
           python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
           python -m unittest discover -s tests -p "test_personal_mascot_batch.py" -v
           python -m unittest discover -s tests -p "test_native_interaction_preview_shortcuts.py" -v
