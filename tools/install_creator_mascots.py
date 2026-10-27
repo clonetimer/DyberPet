@@ -43,6 +43,22 @@ UPSTREAM={
         "license":"CC BY-NC 4.0 fan-art; underlying NIKKE/Dororong IP rights are separate",
     },
 }
+# An additional real author-drawn Doro V2 source. All exact bytes were
+# retrieved from the immutable upstream revision and SHA-256 checked before
+# allowing opt-in. Its source spritesheet (702066 B) was opened and inspected:
+# pink hair, purple eyes, white quadruped and visible expression/pose changes.
+# This is NOT a complete per-frame identity, motion or voice QA approval.
+DORO_HANDDRAWN_V2 = {
+    "id": "doro--godxxy1229", "name": "Doro",
+    "manifest_sha256": "be11aebd66fd08974b13d2b2509ed16631aa30407078da3560b99504aa804fb1",
+    "atlas_sha256": "a22d84a8836f60c535b7bf418eda5d68ba99ca36338f3816fc8a043b77bf3228",
+    "manifest_bytes": 252, "atlas_bytes": 702066,
+    "license": "Author permits non-commercial use only; underlying NIKKE rights remain separate",
+}
+DORO_VARIANTS = {
+    "classic": UPSTREAM["doro"],
+    "handdrawn_v2": DORO_HANDDRAWN_V2,
+}
 MAX_BYTES=6*1024*1024
 
 
@@ -59,13 +75,17 @@ def _download_pinned(url, sha256, expected_bytes, *, opener=urlopen):
 
 
 def install_creator_mascot(kind, output_root, *, confirmed=False,
-                           folder=None, downloader=None):
+                           folder=None, downloader=None, variant="classic"):
     """User-authorized local conversion. Do not call without a click/flag."""
     if not confirmed:
         raise ValueError("Personal-use source confirmation is required")
     if kind not in UPSTREAM:
         raise ValueError("Only reviewed Guga/Doro source IDs supported")
-    selected=UPSTREAM[kind]
+    if kind != "doro" and variant != "classic":
+        raise ValueError("Doro V2 variant is only available for Doro")
+    if variant not in DORO_VARIANTS:
+        raise ValueError("Unknown pinned mascot variant")
+    selected = DORO_VARIANTS[variant] if kind == "doro" else UPSTREAM[kind]
     root=Path(output_root).expanduser()
     if root.is_symlink():
         raise ValueError("Linked role roots are not supported")
@@ -74,7 +94,9 @@ def install_creator_mascot(kind, output_root, *, confirmed=False,
         import re
         if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,39}",folder):
             raise ValueError("Unsafe explicit output folder")
-    folder=folder or available_role_folder(root,"Source"+kind.title())
+    suggested = ("SourceDoroHanddrawnV2" if kind == "doro" and
+                 variant == "handdrawn_v2" else "Source" + kind.title())
+    folder=folder or available_role_folder(root, suggested)
     target=root/folder
     if target.exists() or target.is_symlink():
         raise FileExistsError("Selected role already installed; refusing overwrite")
@@ -109,11 +131,13 @@ def install_creator_mascot(kind, output_root, *, confirmed=False,
                     "source_repository": REPO,
                     "source_commit": PINNED_REVISION,
                     "source_kind": "curated_creator_spritesheet",
+                    "source_variant": variant,
                     "preserve_source_frames": True,
                     "likeness_manually_reviewed": False,
                     "source_rights_verified": False},
                    ensure_ascii=False, indent=2), encoding="utf-8")
     return {"kind":kind,"folder":made.name,"source_id":roleid,
+            "source_variant": variant,
             "actions":info["actions"],"frames":info["images"],
             "downloaded_for_user_only":True,"built_into_app":False,
             "faithful_art_manual_qa_required":True,
@@ -125,12 +149,15 @@ def main(argv=None):
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--mascot",choices=sorted(UPSTREAM),required=True)
     ap.add_argument("--output-root",type=Path,default=Path("res/role"))
+    ap.add_argument("--variant", choices=tuple(DORO_VARIANTS), default="classic",
+                    help="For Doro: optional exact-pinned handdrawn_v2 sprites (no voice)")
     ap.add_argument("--personal-use",action="store_true",
                     help="Consent to fetching this one public creator pet for local use")
     args=ap.parse_args(argv)
     try:
         print(json.dumps(install_creator_mascot(
-            args.mascot,args.output_root,confirmed=args.personal_use),
+            args.mascot,args.output_root,confirmed=args.personal_use,
+            variant=args.variant),
             ensure_ascii=False))
     except (OSError,ValueError,FileNotFoundError) as exc:
         ap.exit(1,"Personal creator download blocked: "+str(exc)+"\n")
