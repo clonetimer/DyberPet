@@ -53,6 +53,7 @@ DORO_HANDDRAWN_V2 = {
     "manifest_sha256": "be11aebd66fd08974b13d2b2509ed16631aa30407078da3560b99504aa804fb1",
     "atlas_sha256": "a22d84a8836f60c535b7bf418eda5d68ba99ca36338f3816fc8a043b77bf3228",
     "manifest_bytes": 252, "atlas_bytes": 702066,
+    "sprite_version": 2,
     "license": "Author permits non-commercial use only; underlying NIKKE rights remain separate",
 }
 DORO_VARIANTS = {
@@ -115,7 +116,7 @@ def install_creator_mascot(kind, output_root, *, confirmed=False,
         manifest=json.loads((source/"pet.json").read_text("utf-8"))
         if (manifest.get("id")!=roleid or
                 manifest.get("spritesheetPath")!="spritesheet.webp" or
-                manifest.get("spriteVersionNumber",1)!=1):
+                manifest.get("spriteVersionNumber",1)!=selected.get("sprite_version",1)):
             raise ValueError("Remote Codex character ID/layout does not match pinned record")
         made=convert(source,root,preset=kind,folder=folder,style="classic",
                      preserve_source_frames=True,
