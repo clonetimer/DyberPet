@@ -16,6 +16,10 @@ on:
       - "tools/Make-Personal65-Offline.ps1"
       - "tests/test_local_offline_bundle.py"
       - "run_DyberPet.py"
+      - "tools/creator_reference_cues.py"
+      - "DyberPet/DyberSettings/native_frame_preview.py"
+      - "tests/test_native_interaction_preview_shortcuts.py"
+      - "tests/test_creator_reference_cues.py"
   workflow_dispatch:
 
 permissions:

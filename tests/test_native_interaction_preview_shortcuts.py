@@ -67,6 +67,31 @@ class NativeInteractionPreviewShortcutTests(unittest.TestCase):
                 dialog._clock.stop()
                 dialog.close()
 
+    def test_weak_single_frame_native_motion_is_warned_not_faked(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            installed = role(root, "CreatorCrawl", ["crawl", "wave"])
+            (installed / "action" / "crawl_1.png").unlink()
+            (installed / "pet_conf.json").write_text(
+                json.dumps({"default": "crawl"}), encoding="utf-8")
+            (installed / "PERSONAL_IMPORT.json").write_text(
+                json.dumps({"selected_profile": "genshin_nahida"}), encoding="utf-8")
+            dialog = NativeFramePreviewDialog(root, ["CreatorCrawl"])
+            try:
+                crawl = dialog.interaction_buttons["crawl"]
+                self.assertTrue(crawl.isEnabled())
+                self.assertIn("⚠", crawl.text())
+                self.assertIn("single_frame_motion", crawl.toolTip())
+                self.assertIn("1 类", dialog.interaction_summary.text())
+                self.assertIn("纳西妲", dialog.identity_cues.text())
+                self.assertNotIn("通过", dialog.identity_cues.text())
+                dialog._preview_interaction("crawl")
+                self.assertEqual(dialog.action.currentData(), "crawl")
+                self.assertEqual(len(dialog._frames), 1)
+            finally:
+                dialog._clock.stop()
+                dialog.close()
+
     def test_corrupted_version_disables_all_real_interactions(self):
         with TemporaryDirectory() as td:
             root = Path(td)
