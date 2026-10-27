@@ -6,6 +6,8 @@ on:
     paths:
       - tools/local_offline_bundle.py
       - tools/personal_source_batch.py
+      - tools/personal_mascot_batch.py
+      - tests/test_personal_mascot_batch.py
       - tools/Make-Personal65-Offline.ps1
       - tests/test_local_offline_bundle.py
       - tests/test_personal_source_batch.py
@@ -14,6 +16,8 @@ on:
     paths:
       - tools/local_offline_bundle.py
       - tools/personal_source_batch.py
+      - tools/personal_mascot_batch.py
+      - tests/test_personal_mascot_batch.py
       - tools/Make-Personal65-Offline.ps1
       - tests/test_local_offline_bundle.py
       - tests/test_personal_source_batch.py
