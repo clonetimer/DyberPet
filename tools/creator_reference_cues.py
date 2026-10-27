@@ -70,17 +70,35 @@ def cues_for_local_role(role_root, folder):
     profile = _profile_of(role)
     if profile is None:
         profile = binding_status(role, load_bindings(root).get(folder))
-    if profile not in REVIEWED_EXAMPLES:
+    # Templates cover the full 123-person selection registry, but supply only
+    # human checklist hints: they are not artwork inspection evidence.
+    from tools.genshin_roster import GENSHIN_ROSTER
+    if not isinstance(profile, str) or not profile.startswith("genshin_"):
         return None
-    item = REVIEWED_EXAMPLES[profile]
+    dossier = GENSHIN_ROSTER.get(profile[len("genshin_"):])
+    if dossier is None:
+        return None
+    example = REVIEWED_EXAMPLES.get(profile)
+    if example is None:
+        return {
+            "profile": profile, "name": dossier["name"],
+            "look_for": list(dossier.get("visual_checks", ())),
+            "specific_review_risks": list(dossier.get("motion_checks", ())),
+            "reference": None, "inspected_png_git_blob": None,
+            "checklist_origin": "roster_template_not_independent_png_inspection",
+            "reference_is_an_example_not_a_exact_version_match": False,
+            "original_likeness_automatically_approved": False,
+            "all_actions_visually_checked": False,
+        }
     return {
         "profile": profile,
-        "name": item["name"],
-        "look_for": list(item["look_for"]),
-        "specific_review_risks": list(item["specific_review_risks"]),
-        "reference": f"https://github.com/{item['source_repo']}/blob/"
-                     f"{item['source_commit']}/{item['inspected_source_file']}",
-        "inspected_png_git_blob": item["source_png_git_blob"],
+        "name": example["name"],
+        "look_for": list(example["look_for"]),
+        "specific_review_risks": list(example["specific_review_risks"]),
+        "reference": f"https://github.com/{example['source_repo']}/blob/"
+                     f"{example['source_commit']}/{example['inspected_source_file']}",
+        "inspected_png_git_blob": example["source_png_git_blob"],
+        "checklist_origin": "one_independently_opened_pinned_source_png_example",
         "reference_is_an_example_not_a_exact_version_match": True,
         "original_likeness_automatically_approved": False,
         "all_actions_visually_checked": False,
@@ -90,8 +108,12 @@ def cues_for_local_role(role_root, folder):
 def cue_text(record):
     """Human-facing guidance, never a visual approval badge."""
     if record is None:
-        return "该人物尚无独立外观特征检查条目；请对照可信原设图片，逐帧检查发型、服饰、头身比例和动态。"
-    return (record["name"] + " · 原画身份对照重点：" +
-            "、".join(record["look_for"]) + "。需重点复核：" +
+        return "未知角色或未绑定来源；请对照可靠原设图片逐帧检查发型、服饰、头身比例和动态。"
+    if record["checklist_origin"] == "roster_template_not_independent_png_inspection":
+        provenance = "角色模板的待核对要点（未直接检视该角色作者PNG）："
+    else:
+        provenance = "已直接查看过一份固定来源样本PNG；本机版本仍须逐帧对照："
+    return (record["name"] + " · " + provenance +
+            "、".join(record["look_for"]) + "。动作检查：" +
             "、".join(record["specific_review_risks"]) +
-            "。这是核对提示，不表示本机原画已符合原设。")
+            "。以上不代表本机版本形象、动态或原设符合性验收通过。")
