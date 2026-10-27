@@ -22,7 +22,10 @@ def current_plan():
 class JournalRecoveryTests(unittest.TestCase):
     def test_incomplete_work_recovers_remaining_native_source_candidates(self):
         with TemporaryDirectory() as temp:
-            j = PersonalInstallJournal(Path(temp) / "data", {"ready_for_opt_in": 4})
+            j = PersonalInstallJournal(
+                Path(temp) / "data", {"ready_for_opt_in": 4},
+                planned_profiles=["genshin_nahida", "genshin_klee",
+                                  "genshin_xiao"])
             j.record_character({"profile": "genshin_nahida", "index": 1,
                                 "status": "pending_inventory_validation"})
             found = latest_install_journal(Path(temp) / "data")
