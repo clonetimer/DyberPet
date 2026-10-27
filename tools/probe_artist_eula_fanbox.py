@@ -226,6 +226,13 @@ def main():
                 details["post_id_matched"] = str(post.get("id")) == POST_ID
                 details["title_mentions_eula"] = (
                     "eula" in str(post.get("title", "")).lower())
+                # Field names only, never values from a publisher response
+                # containing signed file URLs or private attachment tokens.
+                details["public_body_field_names"] = sorted(
+                    str(k) for k in post
+                    if str(k) in ("id", "title", "creatorId", "post", "data",
+                                   "error", "body", "status", "user", "creator",
+                                   "isRestricted", "type", "message"))
         print("ORIGINAL_EULA_SOURCE_NOT_YET_VERIFIED " + json.dumps({
             "error_type": type(exc).__name__,
             "reason": reason,
