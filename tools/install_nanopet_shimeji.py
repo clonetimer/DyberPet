@@ -15,13 +15,13 @@ import struct
 import tempfile
 
 try:
-    from .chibi_profiles import CHIBI_PROFILES
+    from .chibi_profiles import CHIBI_PROFILES, available_role_folder
     from .install_artist_shimeji import _download_png, MAX_PNG_BYTES
     from .install_native_role import validate_native_role
     from .artist_visual_review import create_native_art_review
     from .artist_animation_audit import audit_native_character
 except ImportError:
-    from chibi_profiles import CHIBI_PROFILES
+    from chibi_profiles import CHIBI_PROFILES, available_role_folder
     from install_artist_shimeji import _download_png, MAX_PNG_BYTES
     from install_native_role import validate_native_role
     from artist_visual_review import create_native_art_review
@@ -112,7 +112,7 @@ def source_manifest(path=REGISTRY):
 
 
 def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_download_png,
-                            manifest=None):
+                            manifest=None, install_as_new_variant=False):
     if not confirmed:
         raise ValueError("Explicit user consent required for personal author-art download")
     record = source_manifest() if manifest is None else manifest
@@ -125,8 +125,16 @@ def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_d
     root = root.resolve()
     folder = "SourceNano" + "".join(w.title() for w in kind.replace("-by-", "-").split("-"))
     destination = root / folder
-    if destination.exists() or destination.is_symlink():
-        raise FileExistsError("Original artist role already installed; cannot overwrite")
+    if destination.is_symlink():
+        raise FileExistsError("Linked existing creator-art folder cannot be replaced")
+    previous_exists = destination.exists()
+    if previous_exists:
+        if not install_as_new_variant:
+            raise FileExistsError("Original artist role already installed; cannot overwrite")
+        # A new explicitly requested copy gets its own safely allocated
+        # folder. It never mutates older art, receipts, or saved defaults.
+        folder = available_role_folder(root, folder)
+        destination = root / folder
     root.mkdir(parents=True, exist_ok=True)
     prefix = ("https://raw.githubusercontent.com/" + record["repository"] + "/"
               + record["revision"] + "/" + record["asset_root"] + "/"
@@ -231,6 +239,7 @@ def install_nanopet_shimeji(kind, output_root, *, confirmed=False, downloader=_d
             "actions": checked["actions"], "frames": checked["images"],
             "native_observe_shortcut": "lookaround" in groups,
             "available_original_extra_groups": [k for k in EXTRA_GROUPS if k in groups],
+            "new_variant_of_existing_original": previous_exists,
             "original_source_pixels_preserved": True,
             "likeness_manually_reviewed": False}
 
@@ -241,10 +250,13 @@ def main(argv=None):
     ap.add_argument("--role-root", type=Path,
                     default=Path(__file__).resolve().parents[1] / "res" / "role")
     ap.add_argument("--accept-personal-use", action="store_true")
+    ap.add_argument("--as-new-version", action="store_true",
+                    help="After confirmation, preserve existing role and install new variant")
     args = ap.parse_args(argv)
     try:
         print(json.dumps(install_nanopet_shimeji(
-            args.role, args.role_root, confirmed=args.accept_personal_use),
+            args.role, args.role_root, confirmed=args.accept_personal_use,
+            install_as_new_variant=args.as_new_version),
             ensure_ascii=False, indent=2))
         return 0
     except (OSError, ValueError) as exc:
