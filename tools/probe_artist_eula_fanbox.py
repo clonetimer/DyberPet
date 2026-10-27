@@ -138,6 +138,17 @@ def probe_eula(*, post_loader=None, downloader=None):
         "raw_url_or_artifact_uploaded": False,
     }
     if not links:
+        wrapper = post.get("body") if isinstance(post, dict) else None
+        page = wrapper.get("post", wrapper) if isinstance(wrapper, dict) else None
+        content = page.get("body") if isinstance(page, dict) else None
+        if isinstance(content, dict):
+            # Diagnostic ONLY: output field names of the public article, not
+            # external URLs, download tokens, signed asset IDs or credentials.
+            allowed = {"text", "blocks", "files", "fileMap", "imageMap",
+                       "urlEmbedMap", "links", "type"}
+            state["public_article_format"] = str(page.get("type", ""))[:30]
+            state["public_article_field_names"] = sorted(
+                str(k) for k in content if str(k) in allowed)
         state.update({"status": "public_creator_page_only_no_verified_original_ZIP",
                       "source_integrity_verified": False})
         return state
