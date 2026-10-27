@@ -668,29 +668,46 @@ class CharInterface(ScrollArea):
         if not isinstance(outcome, dict) or "installation" not in outcome:
             message = (outcome.get("error", "批量安装未知错误")
                        if isinstance(outcome, dict) else "批量安装报告缺失")
-            self.__showMessageBox("批量安装未完成", str(message)[:450])
+            journal = outcome.get("journal_path") if isinstance(outcome, dict) else None
+            if journal:
+                message = str(message) + "\n之前已保存的本机检查点：" + journal
+            self.__showMessageBox("批量安装未完成", str(message)[:650])
             return
         installed = outcome["installation"]
-        # Keep full per-profile errors on THIS PC. Never upload art or reports.
-        receipt_dir = Path(basedir) / "data"
-        report_path = receipt_dir / (
-            "personal65-batch-" + datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")
-        try:
-            receipt_dir.mkdir(parents=True, exist_ok=True)
-            report_path.write_text(
-                json.dumps(outcome, ensure_ascii=False, indent=2), encoding="utf-8")
-            receipt_text = str(report_path)
-        except OSError as exc:
-            receipt_text = "本机报告写入失败：" + str(exc)[:140]
+        # The worker saves a validated checkpoint after EACH character, not
+        # only at the end of a potentially lengthy network operation.
+        receipt_text = outcome.get("journal_path") or "未能保存本机检查点"
+        if outcome.get("journal_error"):
+            receipt_text += "；写入警告：" + outcome["journal_error"][:160]
         stopped = "（用户主动停止）" if installed.get("stopped_by_user") else ""
-        self.__showMessageBox(
+        preview_now = self.__showMessageBox(
             "真实原画批量安装结果" + stopped,
             f"尝试 {installed['attempted']} 位；"
             f"本机结构验证通过 {installed['installed_unreviewed']} 位；"
             f"失败 {installed['failed']} 位。"
-            "通过表示能够导入当前人物的真实原画，不代表原设/动作人工验收合格。"
-            "新增素材需要重启 DyberPet 后才会作为可选角色加载。"
-            "\n详细逐人物结果：" + receipt_text)
+            "结构验证通过不代表原设形象、自然动作或声音已经人工验收。"
+            "现在就能逐帧查看刚安装的原画，不必重启；"
+            "但作为可切换桌宠正式启用仍需重启 DyberPet。"
+            "\n逐人物检查点与最终报告：" + receipt_text +
+            "\n现在打开本次成功安装的真实原画预览吗？")
+        if preview_now:
+            # R14: use ONLY post-install, per-profile inventory-verified
+            # native folders. Unknown/demos/failed roles never enter picker.
+            options = {}
+            for row in installed.get("results", []):
+                if row.get("status") != "installed_unreviewed":
+                    continue
+                for folder in row.get("verified_native_folders", []):
+                    options[f"{row['profile']} · {folder}"] = folder
+            if options:
+                selected, accepted = QInputDialog.getItem(
+                    self, "本次新增原画 · 逐帧预览",
+                    "不更换当前桌宠、不生成补帧；请选择要核对的实际作者角色：",
+                    list(options), 0, False)
+                if accepted and selected in options:
+                    self._previewJustInstalledCreatorArt(options[selected])
+            else:
+                self.__showSystemNote("本批没有成功通过原生角色库存核验的新素材。", 1)
 
     def _onCreatorBatchThreadFinished(self):
         if self.batchProgressDialog is not None:
@@ -1722,11 +1739,20 @@ class CreatorBatchImportThread(QThread):
         self._stop_requested.set()
 
     def run(self):
+        journal = None
+        journal_error = None
         try:
             from tools.personal_source_batch import (
                 plan_personal_sources, install_personal_plan)
+            from tools.personal_install_journal import PersonalInstallJournal
             plan = plan_personal_sources(self.output_root)
             info = plan["summary"]
+            # Checkpoints are LOCAL, beside the portable app in data/.
+            try:
+                journal = PersonalInstallJournal(
+                    self.output_root.parent.parent / "data", info)
+            except (OSError, ValueError) as exc:
+                journal_error = "进度保存不可用：" + str(exc)[:170]
             self.progress.emit({
                 "stage": "batch_plan",
                 "ready": min(info["ready_for_opt_in"], self.max_roles)
@@ -1734,13 +1760,33 @@ class CreatorBatchImportThread(QThread):
                 "already": info["already_installed_structurally"],
                 "missing": info["missing_source"],
             })
+            def save_checkpoint(entry):
+                nonlocal journal_error
+                if journal is not None and journal_error is None:
+                    try:
+                        journal.record_character(entry)
+                    except (OSError, ValueError) as exc:
+                        journal_error = "写入中断：" + str(exc)[:170]
             result = install_personal_plan(
                 plan, self.output_root, confirmed=True,
                 max_roles=self.max_roles, progress=self.progress.emit,
-                should_stop=self._stop_requested.is_set)
-            self.done.emit({"plan_summary": info, "installation": result})
+                should_stop=self._stop_requested.is_set,
+                checkpoint=save_checkpoint)
+            if journal is not None and journal_error is None:
+                try:
+                    journal.finalize(result)
+                except (OSError, ValueError) as exc:
+                    journal_error = "最终报告写入失败：" + str(exc)[:170]
+            self.done.emit({
+                "plan_summary": info, "installation": result,
+                "journal_path": str(journal.path) if journal is not None else None,
+                "journal_error": journal_error})
         except Exception as exc:
-            self.done.emit({"error": type(exc).__name__ + ": " + str(exc)[:300]})
+            # If a process/worker fails after some roles, the last atomically
+            # written checkpoint remains on disk even without a final report.
+            self.done.emit({
+                "error": type(exc).__name__ + ": " + str(exc)[:300],
+                "journal_path": str(journal.path) if journal is not None else None})
 
 
 class ChibiImportThread(QThread):

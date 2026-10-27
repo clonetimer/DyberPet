@@ -108,7 +108,7 @@ def plan_personal_sources(role_root, *, only_profiles=None,
 
 def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
                           dispatch=None, inventory_reader=None, progress=None,
-                          should_stop=None):
+                          should_stop=None, checkpoint=None):
     """Install sources and reconcile every claimed success against actual local art."""
     if not confirmed:
         raise ValueError("Explicit --accept-personal-use confirmation required")
@@ -193,6 +193,15 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
                 "source_key": successful["source_key"],
                 "used_fallback": recovered, "source_attempts": attempts,
             })
+        # Save each completed character immediately, before the next fetch.
+        # This event is *provisional*: only the final inventory scan can
+        # confirm actual native files, so journals must not claim QA PASS.
+        if checkpoint is not None:
+            checkpoint({"profile": profile,
+                        "status": "pending_inventory_validation"
+                                  if successful is not None else "failed",
+                        "source_attempts": list(attempts),
+                        "index": count})
     # Installer functions may return without throwing even if a role was not
     # actually registered, its frames were rejected, or the identity differs.
     # Rescan the real native role catalogue exactly once after the batch.
@@ -201,8 +210,16 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
     verification_error = None
     invalid_after = None
     recognized = set()
+    recognized_folders = {}
     try:
         updated = verify(root)
+        recognized_folders = {
+            entry["profile"]: [folder["folder"]
+                for folder in entry.get("installed_folders", [])
+                if not folder.get("is_original_demo", False)
+                and isinstance(folder.get("folder"), str)]
+            for entry in updated["characters"]
+        }
         recognized = {
             entry["profile"] for entry in updated["characters"]
             if any(not folder.get("is_original_demo", False)
@@ -222,6 +239,10 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
                                     "recognized for this exact character")
             else:
                 result["post_install_validation_passed"] = True
+                # Preview only explicitly recognized, still-present native
+                # folders for the exact profile. Never guess from source URL.
+                result["verified_native_folders"] = recognized_folders.get(
+                    result["profile"], [])
         if progress is not None:
             progress({"stage": "role_verified", "profile": result["profile"],
                       "status": result["status"]})
