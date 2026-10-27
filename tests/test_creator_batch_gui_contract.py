@@ -58,13 +58,29 @@ class BulkArtistGuiContractTests(unittest.TestCase):
         self.assertIn("self.done.emit", body)
         self.assertNotIn("QMessageBox", body)
 
-    def test_local_receipt_and_no_false_quality_gate(self):
+    def test_checkpoint_saving_on_worker_thread_and_failure_receipt(self):
+        # Find the batch worker's own run and verify no Qt widgets are touched.
+        klass = self.classes["CreatorBatchImportThread"]
+        method = next(n for n in klass.body if isinstance(n, ast.FunctionDef)
+                      and n.name == "run")
+        run = ast.unparse(method)
+        self.assertIn("PersonalInstallJournal(", run)
+        self.assertIn("checkpoint=save_checkpoint", run)
+        self.assertIn("journal.record_character(", run)
+        self.assertIn("journal.finalize(result)", run)
+        self.assertIn("journal_error", run)
+        self.assertNotIn("QMessageBox", run)
+
+    def test_immediate_preview_only_of_inventory_verified_new_art(self):
         body = self.methods["_onCreatorBatchDone"]
-        self.assertIn("personal65-batch-", body)
-        self.assertIn("json.dumps(", body)
+        self.assertIn("journal_path", body)
         self.assertIn("installed_unreviewed", body)
-        self.assertIn("不代表原设/动作人工验收合格", body)
+        self.assertIn("verified_native_folders", body)
+        self.assertIn("QInputDialog.getItem(", body)
+        self.assertIn("self._previewJustInstalledCreatorArt(", body)
+        self.assertIn("不代表原设形象", body)
         self.assertIn("重启 DyberPet", body)
+        self.assertNotIn("settings.pets.append(", body)
 
 
 if __name__ == "__main__":
