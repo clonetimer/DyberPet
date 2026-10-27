@@ -24,7 +24,8 @@ from urllib.request import Request, urlopen
 from zipfile import BadZipFile
 
 from tools.install_personal_shimeji_zip import (
-    inspect_shimeji_zip, install_personal_shimeji_zip)
+    inspect_shimeji_zip, install_personal_shimeji_zip,
+    EULA_EXTENDED_SOURCE_SHA256)
 from tools.creator_motion_quality import analyze_creator_actions
 from tools.install_native_role import validate_native_role
 
@@ -245,12 +246,17 @@ def probe_eula(*, post_loader=None, downloader=None):
         raise ValueError("Invalid Eula source bytes")
     state["original_publisher_file_sha256"] = hashlib.sha256(raw).hexdigest()
     state["original_publisher_file_bytes"] = len(raw)
+    if state["original_publisher_file_sha256"] != EULA_EXTENDED_SOURCE_SHA256:
+        state.update({
+            "status": "publisher_Eula_zip_differs_from_sha256_locked_original",
+            "source_integrity_verified": False})
+        return state
     with tempfile.TemporaryDirectory(prefix="dyberpet-original-eula-") as td:
         td = Path(td)
         archive = td / "artist.zip"
         archive.write_bytes(raw)
         try:
-            frames = inspect_shimeji_zip(archive)
+            frames = inspect_shimeji_zip(archive, max_source_frame_index=110)
         except (BadZipFile, ValueError, OSError) as exc:
             issues = [
                 ("Duplicate or out-of-range", "duplicate_numbered_frame"),
@@ -278,7 +284,8 @@ def probe_eula(*, post_loader=None, downloader=None):
             return state
         try:
             role = install_personal_shimeji_zip(
-                archive, td / "native", profile=PROFILE, confirmed=True)
+                archive, td / "native", profile=PROFILE, confirmed=True,
+                extended_eula_source=True)
         except (ValueError, OSError) as exc:
             state.update({
                 "status": "original_creator_png_import_not_yet_accepted",
@@ -300,6 +307,7 @@ def probe_eula(*, post_loader=None, downloader=None):
             "source_zip_sha256": hashlib.sha256(raw).hexdigest(),
             "source_zip_size": len(raw),
             "original_png_frames": len(frames),
+            "extended_author_max_frame_index": max(frames),
             "native_actions": validated["actions"],
             "movement_poses": [
                 {"action": a["action"], "frames": a["frame_count"],
