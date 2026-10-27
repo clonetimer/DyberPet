@@ -49,6 +49,17 @@ class DurableJournalTests(unittest.TestCase):
                 journal.record_character({"profile": "genshin_xiao",
                                           "status": "failed"})
 
+    def test_selection_scope_persists_before_first_role(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            journal = PersonalInstallJournal(
+                Path(tmp) / "data", {"selected_profiles": 2},
+                planned_profiles=["genshin_nahida", "genshin_klee"])
+            payload = json.loads(journal.path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["planned_profiles"],
+                             ["genshin_nahida", "genshin_klee"])
+            self.assertFalse(payload["finished"])
+            self.assertEqual(payload["completed_character_attempts"], [])
+
     def test_refuse_linked_report_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
