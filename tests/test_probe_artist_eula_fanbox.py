@@ -45,6 +45,11 @@ class EulaOriginalSourceTests(unittest.TestCase):
         # Actual 2026 public FANBOX endpoint wraps the post in body.post.
         wrapped = {"body": {"post": publisher_post([row])["body"]}}
         self.assertEqual(extract_public_eula_post(wrapped)[0]["url"], link)
+        article = publisher_post()
+        article["body"]["type"] = "article"
+        article["body"]["body"] = {"blocks": [{"type": "file", "fileId": "a"}],
+                                    "fileMap": {"a": row}}
+        self.assertEqual(extract_public_eula_post(article)[0]["url"], link)
         wrong = publisher_post([row])
         wrong["body"]["creatorId"] = "not-the-artist"
         with self.assertRaisesRegex(ValueError, "Wrong creator"):
