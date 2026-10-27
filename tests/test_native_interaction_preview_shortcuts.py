@@ -84,7 +84,7 @@ class NativeInteractionPreviewShortcutTests(unittest.TestCase):
                 self.assertIn("single_frame_motion", crawl.toolTip())
                 self.assertIn("1 类", dialog.interaction_summary.text())
                 self.assertIn("纳西妲", dialog.identity_cues.text())
-                self.assertNotIn("通过", dialog.identity_cues.text())
+                self.assertIn("不代表本机版本", dialog.identity_cues.text())
                 dialog._preview_interaction("crawl")
                 self.assertEqual(dialog.action.currentData(), "crawl")
                 self.assertEqual(len(dialog._frames), 1)
