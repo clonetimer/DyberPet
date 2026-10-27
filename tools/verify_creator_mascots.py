@@ -33,11 +33,23 @@ def main():
             playback=action_preview_plan(root/record["folder"])
             import_report=json.loads((root/record["folder"]/"IMPORT_REPORT.json").read_text("utf-8"))
             provenance=json.loads((root/record["folder"]/"PERSONAL_IMPORT.json").read_text("utf-8"))
+            motion=json.loads((root/record["folder"]/"CREATOR_ORIGINAL_MOTION_QA.json").read_text("utf-8"))
+            pose_risks=[{"action":a["action"],
+                         "risk_indicators":a["risk_indicators"],
+                         "source_frames":a["frame_count"],
+                         "different_visible_poses":a["unique_visible_poses"]}
+                        for a in motion["actions"] if a["risk_indicators"]]
             if (import_report.get("style")!="classic" or
                     import_report.get("preserve_source_frames") is not True or
                     import_report.get("source_pixel_integrity_verified") is not True or
                     provenance.get("display_name") not in ("咕嘎","Doro") or
-                    provenance.get("likeness_manually_reviewed") is not False):
+                    provenance.get("likeness_manually_reviewed") is not False or
+                    provenance.get("motion_original_frames_checked") is not True or
+                    provenance.get("motion_semantics_manually_reviewed") is not False or
+                    motion["summary"]["all_frames_examined"] is not True or
+                    motion["summary"]["actions_inspected"] != v["actions"] or
+                    motion["summary"]["original_art_modified"] is not False or
+                    motion["summary"]["motion_semantics_approved"] is not False):
                 raise RuntimeError("Artist sprite geometry or character provenance was not preserved: "+name)
             walk={x["name"]: x for x in playback["actions"]}
             if (playback["total_frames"]!=v["images"] or
@@ -50,6 +62,10 @@ def main():
                 "key":name,"source_variant":variant,"source_id":record["source_id"],
                 "actions":v["actions"],"frames":v["images"],
                 "preview_action_count":len(playback["actions"]),
+                "original_motion_png_frames_inspected":motion["summary"]["frames_inspected"],
+                "original_motion_pose_risks":pose_risks,
+                "visual_motion_manually_approved":False,
+                "physical_desktop_qa_approved":False,
                 "rights_verified":False,
             })
         found=scan_mascot_library(root)

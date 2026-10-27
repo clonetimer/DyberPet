@@ -19,10 +19,12 @@ try:
     from .chibi_profiles import available_role_folder
     from .import_codex_pet import convert
     from .install_native_role import validate_native_role
+    from .creator_motion_quality import analyze_creator_actions
 except ImportError:
     from chibi_profiles import available_role_folder
     from import_codex_pet import convert
     from install_native_role import validate_native_role
+    from creator_motion_quality import analyze_creator_actions
 
 REPO="legeling/awesome-codex-pet"
 PINNED_REVISION="db2f6306ce78f6559ab27155d7bfaf00bf43809d"
@@ -107,8 +109,12 @@ def install_creator_mascot(kind, output_root, *, confirmed=False,
     # The network and transformation occur in temporary storage. No public
     # upload, telemetry or generic URL/text injection is involved.
     root.mkdir(parents=True,exist_ok=True)
+    # Keep original artist files and native conversion OUT of the live roster
+    # until exact identity, the native config, every original action frame,
+    # and the local-only provenance receipt have been checked.
     with tempfile.TemporaryDirectory(dir=root,prefix=".creator-source-") as staging:
-        source=Path(staging)/roleid
+        temporary=Path(staging)
+        source=temporary/roleid
         source.mkdir()
         for item,key in (("pet.json","manifest"),("spritesheet.webp","atlas")):
             blob=get(f"{url}/{item}",selected[key+"_sha256"],selected[key+"_bytes"])
@@ -118,32 +124,52 @@ def install_creator_mascot(kind, output_root, *, confirmed=False,
                 manifest.get("spritesheetPath")!="spritesheet.webp" or
                 manifest.get("spriteVersionNumber",1)!=selected.get("sprite_version",1)):
             raise ValueError("Remote Codex character ID/layout does not match pinned record")
-        made=convert(source,root,preset=kind,folder=folder,style="classic",
+        stage_roles=temporary/"staged-native"
+        made=convert(source,stage_roles,preset=kind,folder=folder,style="classic",
                      preserve_source_frames=True,
                      source_url=f"https://github.com/{REPO}/tree/{PINNED_REVISION}/pets/{roleid}",
                      license_name=selected["license"])
-    info=validate_native_role(made)
-    # Match the other artist installers: keep a bounded, explicit local
-    # identity receipt. This is provenance, not manual likeness approval.
-    (made / "PERSONAL_IMPORT.json").write_text(
-        json.dumps({"display_name": selected["name"],
-                    "selected_profile": kind,
-                    "source_id": roleid,
-                    "source_repository": REPO,
-                    "source_commit": PINNED_REVISION,
-                    "source_kind": "curated_creator_spritesheet",
-                    "source_variant": variant,
-                    "preserve_source_frames": True,
-                    "likeness_manually_reviewed": False,
-                    "source_rights_verified": False},
-                   ensure_ascii=False, indent=2), encoding="utf-8")
+        if made.parent.resolve()!=stage_roles.resolve() or made.name!=folder:
+            raise ValueError("Converter returned an unexpected role directory")
+        info=validate_native_role(made)
+        # Structural pose evidence is not approval of source likeness,
+        # natural movement, artwork rights, or voice authenticity.
+        motion=analyze_creator_actions(stage_roles,folder)
+        if (motion["summary"]["actions_inspected"]!=info["actions"] or
+                not motion["summary"]["all_frames_examined"]):
+            raise ValueError("Real creator action inventory did not fully reconcile")
+        (made/"CREATOR_ORIGINAL_MOTION_QA.json").write_text(
+            json.dumps(motion,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+        (made/"PERSONAL_IMPORT.json").write_text(
+            json.dumps({"display_name":selected["name"],
+                        "selected_profile":kind,
+                        "source_id":roleid,
+                        "source_repository":REPO,
+                        "source_commit":PINNED_REVISION,
+                        "source_kind":"curated_creator_spritesheet",
+                        "source_variant":variant,
+                        "preserve_source_frames":True,
+                        "motion_original_frames_checked":True,
+                        "motion_risk_actions":[
+                            x["action"] for x in motion["actions"]
+                            if x["risk_indicators"]],
+                        "motion_semantics_manually_reviewed":False,
+                        "likeness_manually_reviewed":False,
+                        "source_rights_verified":False},
+                       ensure_ascii=False,indent=2),encoding="utf-8")
+        if target.exists() or target.is_symlink():
+            raise FileExistsError("Selected role already installed; refusing overwrite")
+        made.rename(target)
+
     return {"kind":kind,"folder":made.name,"source_id":roleid,
             "source_variant": variant,
             "actions":info["actions"],"frames":info["images"],
             "downloaded_for_user_only":True,"built_into_app":False,
             "faithful_art_manual_qa_required":True,
             "permission_to_redistribute_not_granted":True,
-            "voice_included":False}
+            "voice_included":False,
+            "original_motion_qa_recorded":True,
+            "manual_motion_approval":False}
 
 
 def main(argv=None):

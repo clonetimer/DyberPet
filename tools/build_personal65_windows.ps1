@@ -49,6 +49,7 @@ $installerArgs = @(
     "--hidden-import", "tools.install_personal_shimeji_zip",
     "--hidden-import", "tools.install_personal_codex_zip",
     "--hidden-import", "tools.artist_animation_audit",
+    "--hidden-import", "tools.creator_motion_quality",
     "--hidden-import", "tools.genshin_library",
     "--hidden-import", "tools.character_source_coverage",
     "--hidden-import", "PIL",
