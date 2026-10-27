@@ -32,6 +32,26 @@ class BulkArtistGuiContractTests(unittest.TestCase):
         self.assertIn("self._startCreatorBulkImport(", handler)
         self.assertIn("self._installArtistGenshin()", handler)
 
+    def test_resume_last_run_read_only_and_reconfirm_before_download(self):
+        menu = self.methods["_chooseCreatorInstallMode"]
+        self.assertIn("查看上次进度", menu)
+        self.assertIn("self._resumeCreatorBulkImport()", menu)
+        resume = self.methods["_resumeCreatorBulkImport"]
+        self.assertIn("latest_install_journal(", resume)
+        self.assertIn("plan_personal_sources(", resume)
+        self.assertIn("restartable_profiles(", resume)
+        self.assertIn("if not targets:", resume)
+        self.assertIn("self._startCreatorBulkImport(only_profiles=targets)", resume)
+        worker = self.classes["CreatorBatchImportThread"]
+        start = next(x for x in worker.body
+                     if isinstance(x, ast.FunctionDef) and x.name == "run")
+        self.assertIn("only_profiles=self.only_profiles", ast.unparse(start))
+        spawn = self.methods["_startCreatorBulkImport"]
+        self.assertIn("only_profiles=only_profiles", spawn)
+        self.assertIn("if not self.__showMessageBox(", spawn)
+        self.assertLess(spawn.index("if not self.__showMessageBox("),
+                        spawn.index("CreatorBatchImportThread("))
+
     def test_no_remote_download_before_explicit_user_confirmation(self):
         source = self.methods["_startCreatorBulkImport"]
         pos_consent = source.index("if not self.__showMessageBox(")
