@@ -79,3 +79,25 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-And-Publish-Pe
 - Rust 混合版的用户侧性能增益，而不是仅证明原生模块成功载入。
 
 因此，Release 标签应为 **private prerelease RC**，不标为 Stable。
+
+## R10 · Doro 的独立手绘 V2 实际素材（2026-10-27）
+
+**已直接打开和观察真实源图集**：来自
+[awesome-codex-pet / doro--godxxy1229](https://github.com/legeling/awesome-codex-pet/tree/db2f6306ce78f6559ab27155d7bfaf00bf43809d/pets/doro--godxxy1229)
+的 `spritesheet.webp`，确认为 702,066 字节，完整 SHA-256 为
+`a22d84a8836f60c535b7bf418eda5d68ba99ca36338f3816fc8a043b77bf3228`。
+原图可辨粉色头发、紫色眼睛、白色四足身体，存在不同的表情和动作姿态，包括键盘与放大镜的互动画面。**这些只是源图直接观察，不表示配音、原设还原、所有帧播放自然性已通过验收。** 它不是从其他角色伪装而来的原设原图；这是一位独立作者的非商业同人改绘，底层 NIKKE 角色权利另计。
+
+R10 保留原 `doro--lingxiaotian` 作为 classic 来源，不覆盖它；新增一个严格白名单的 `handdrawn_v2` 来源。直接安装命令可使用：
+
+```powershell
+python -m tools.install_creator_mascots --mascot doro --variant handdrawn_v2 --personal-use --output-root res/role
+```
+
+Windows Personal65 便携版中，继续启动 `Make-My-Offline-DyberPet.cmd`，键入 `INSTALL` 后，本机批量角色安装器会为**尚缺此版本**的 Doro 优先使用手绘 V2；经典 Doro 即使已安装，也可以在不同独立文件夹中保留。这项安装发生在用户本机，下载依据固定的两个原图 SHA-256 做校验，不把任何第三方人物原画上传至 GitHub Release。
+
+可在源码中查看：
+`python -m tools.personal_source_batch --mascots --doro-v2 --role-root res/role`
+（只读规划）或显式加 `--install --accept-personal-use`（本地安装）。
+
+`guga` 沿用原固定 CIRCUS 来源，未在 R10 更换或声称新增视觉验收。只有完成真实图像与多姿态的逐帧检查后，才能评估其外观/互动质量。Doro V2 仍不含原声，且不能因新版本源文件 SHA 匹配而认定官方授权或人工最终审核通过。
