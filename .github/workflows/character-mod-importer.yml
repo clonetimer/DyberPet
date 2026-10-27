@@ -56,6 +56,8 @@ on:
       - "tools/install_personal_shimeji_zip.py"
       - "tools/probe_shimejishop_itto.py"
       - "tools/probe_shimejishop_kaveh.py"
+      - "tools/probe_artist_eula_fanbox.py"
+      - "tests/test_probe_artist_eula_fanbox.py"
       - "tools/install_pinned_kaveh_shimeji.py"
       - "tests/test_pinned_kaveh_shimeji.py"
       - "tests/test_shimejishop_kaveh.py"
@@ -174,6 +176,8 @@ on:
       - "tools/install_personal_shimeji_zip.py"
       - "tools/probe_shimejishop_itto.py"
       - "tools/probe_shimejishop_kaveh.py"
+      - "tools/probe_artist_eula_fanbox.py"
+      - "tests/test_probe_artist_eula_fanbox.py"
       - "tools/install_pinned_kaveh_shimeji.py"
       - "tests/test_pinned_kaveh_shimeji.py"
       - "tests/test_shimejishop_kaveh.py"
@@ -809,3 +813,26 @@ jobs:
           PY
     # The source artwork is kept only in disposable job-local storage,
     # never as a repo file, uploaded artifact, or promised release asset.
+
+  independent-original-eula-creator-post:
+    name: Missing character Eula ORIGINAL artist public ZIP (non-gating)
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install source PNG decoder
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Strict offline Eula artist identity and signed-URL privacy regressions
+        run: python -m unittest discover -s tests -p "test_probe_artist_eula_fanbox.py" -v
+      - name: Inspect ONLY public creator metadata and original publisher file
+        timeout-minutes: 4
+        run: python -m tools.probe_artist_eula_fanbox
+    # The creator may restrict access or serve a nonstandard format.
+    # No cookies/login automation, code execution, publisher URL disclosure,
+    # source archive upload or premature 66th-character counting.

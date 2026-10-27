@@ -83,3 +83,13 @@ GitHub Actions [40266080104](https://github.com/clonetimer/DyberPet/actions/runs
 R7 去透明边界姿态审计显示：左右走各 3 帧/3 个不同姿态，攀爬 3/3，拖拽 6/6，着地 2/2；匍匐 `crawl` 1/1 与坠落 `fall` 1/1 均命中 `single_frame_motion`。**完整像素动作结构审计未通过**（`movement_has_no_distinct_frames`），所以不能宣称“10 个高质量动作”或“卡维动作质量已完成”。本轮独立探针只对走路真实姿态多样性放行，不会把整个角色默认为 Q 版/外观/动作/许可合格。
 
 尽管原始下载 SHA 已验证，这份作者素材仍处于**需人审的第二套 Kaveh 候选**，不是可无条件分发的内置资源；现有 CodexPetDB Kaveh 来源不删除或替换。可在许可与原设验收后评估作为严格哈希可选本地下载来源，禁止计作原神角色来源覆盖净增人物。
+
+## R23 · 新缺失人物候选：优菈（Eula），来自原始画师（2026-10-27）
+
+- 人物固定 ID：`genshin_eula`，此前仍属于 **58 位缺来源角色**。
+- 画师直接发布：[SaylaMars 原帖 r/EulaMains](https://www.reddit.com/r/EulaMains/comments/1e808mg/desktop_eula_pet/)；2024-07-20 画师说明自行绘制 Eula 动画并修改 Shimeji 配置，免费发放桌宠。
+- 画师个人发布页：[Eula Shimeji (Desktop Pet), Pixiv FANBOX](https://saylamars.fanbox.cc/posts/8264436)。
+- 额外交叉证据：[作者 HoYoLAB 预告](https://www.hoyolab.com/article/30892460)，作者自己指向同一 FANBOX 原帖。**这种直接作者证据优于第三方镜像，但仍不能替代 ZIP 级哈希和逐帧核验**。
+- `tools/probe_artist_eula_fanbox.py` 检查公开 FANBOX 帖子的作者 ID、帖子 ID、角色名称和公开附件清单；只访问公开接口，不登录、不绕过付费或权限，拒绝外部下载站与不安全重定向。若公开附件直接可获取且为标准 Shimeji ZIP，才在临时目录读取 PNG、核对原始 SHA-256、转换为 Eula 专属原生角色并审计不同动作姿态；绝不执行 ZIP 中的 JAR/EXE。
+- 非门禁 CI 记录结果，无源图上传。若 FANBOX 不向匿名客户端开放下载、ZIP 非标准格式或图片身份未确认，该来源继续标记为 **unverified_candidate**，既不触及现有 65/123 计数，也不自动填充默认角色；后续可由用户按照原帖的下载方法取得原始文件，再走已有的本地 ZIP 安全导入。
+- 2026-10-27 尚无经核实的作者原始 ZIP SHA 和权利许可，**不宣称新第 66 人已经交付**。

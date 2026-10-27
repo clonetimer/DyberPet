@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""R23: check the ORIGINAL creator's public Eula Shimeji attachment, not a mirror.
+
+Eula is currently a missing source in the 123-person Genshin roster. Artist
+SaylaMars directly posted the free desktop pet on FANBOX post 8264436:
+https://www.reddit.com/r/EulaMains/comments/1e808mg/desktop_eula_pet/
+No creator ZIP is assumed available: a page/link is NOT enough to promote a
+source. Do not authenticate, evade access controls, execute JAR/EXE, redistribute
+PNG, or print time-limited signed URLs, cookies or session credentials.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+import tempfile
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
+from zipfile import BadZipFile
+
+from tools.install_personal_shimeji_zip import (
+    inspect_shimeji_zip, install_personal_shimeji_zip)
+from tools.creator_motion_quality import analyze_creator_actions
+from tools.install_native_role import validate_native_role
+
+PROFILE = "genshin_eula"
+AUTHOR_ID = "saylamars"
+POST_ID = "8264436"
+AUTHOR_POST = "https://saylamars.fanbox.cc/posts/" + POST_ID
+API_URL = "https://api.fanbox.cc/post.info?postId=" + POST_ID
+MAX_METADATA = 512 * 1024
+MAX_DOWNLOAD = 32 * 1024 * 1024
+PUBLISHER_DOMAINS = frozenset(("downloads.fanbox.cc", "api.fanbox.cc"))
+EXTENSIONS = frozenset((".zip",))
+
+
+def _publisher_download_url(url):
+    """Reject off-site, unsafe, insecure and injected original file URLs."""
+    if not isinstance(url, str) or len(url) > 4096:
+        return False
+    try:
+        parsed = urlsplit(url)
+        return (parsed.scheme == "https" and
+                parsed.hostname in PUBLISHER_DOMAINS and
+                parsed.username is None and parsed.password is None and
+                parsed.port in (None, 443) and not parsed.fragment)
+    except ValueError:
+        return False
+
+
+def fetch_public_post(*, opener=urlopen):
+    req = Request(API_URL, headers={
+        "Origin": "https://www.fanbox.cc",
+        "Referer": AUTHOR_POST,
+        "User-Agent": "DyberPet-original-creator-public-asset-research/1",
+        "Accept": "application/json",
+    })
+    with opener(req, timeout=20) as stream:
+        final = urlsplit(stream.geturl())
+        if final.scheme != "https" or final.hostname != "api.fanbox.cc":
+            raise ValueError("Unexpected creator post metadata redirect")
+        raw = stream.read(MAX_METADATA + 1)
+    if not 0 < len(raw) <= MAX_METADATA:
+        raise ValueError("Missing or excessive public creator metadata")
+    obj = json.loads(raw.decode("utf-8"))
+    if not isinstance(obj, dict):
+        raise ValueError("Invalid creator metadata object")
+    return obj
+
+
+def extract_public_eula_post(reply):
+    """Strict public artist/identity match. No public file => no source claim."""
+    if not isinstance(reply, dict):
+        raise ValueError("Invalid source response")
+    post = reply.get("body")
+    if not isinstance(post, dict):
+        raise ValueError("Public Eula post unavailable without sign-in")
+    if str(post.get("id")) != POST_ID or post.get("creatorId") != AUTHOR_ID:
+        raise ValueError("Wrong creator or post identity")
+    if "eula" not in str(post.get("title", "")).lower():
+        raise ValueError("Creator post is not explicitly about Eula")
+    if post.get("isRestricted") is True:
+        raise ValueError("Creator post is restricted: no authentication bypass")
+    content = post.get("body")
+    if not isinstance(content, dict):
+        raise ValueError("No publicly accessible original attachment listing")
+    candidates = []
+    for f in content.get("files", [])[:25]:
+        if not isinstance(f, dict):
+            continue
+        name = str(f.get("name", ""))[:180]
+        ext = str(f.get("extension", "")).lower().lstrip(".")
+        url = f.get("url")
+        if (name.lower().endswith(".zip") or ext == "zip") and _publisher_download_url(url):
+            candidates.append({"name": name, "url": url})
+    # Keep post metadata and signed URLs private. Never print raw reply.
+    return candidates
+
+
+def download_creator_zip(url, *, opener=urlopen):
+    if not _publisher_download_url(url):
+        raise ValueError("Eula ZIP must be an original publisher HTTPS attachment")
+    req = Request(url, headers={
+        "Referer": AUTHOR_POST,
+        "User-Agent": "DyberPet-original-creator-public-asset-research/1",
+    })
+    with opener(req, timeout=35) as result:
+        final = result.geturl()
+        if not _publisher_download_url(final):
+            raise ValueError("Off-publisher original ZIP download redirect")
+        data = result.read(MAX_DOWNLOAD + 1)
+    if not isinstance(data, bytes) or not 0 < len(data) <= MAX_DOWNLOAD:
+        raise ValueError("Creator ZIP missing or oversized")
+    return data
+
+
+def probe_eula(*, post_loader=None, downloader=None):
+    obtain = post_loader if post_loader is not None else fetch_public_post
+    post = obtain()
+    links = extract_public_eula_post(post)
+    state = {
+        "scope": "original_Eula_creator_FANBOX_public_file_probe",
+        "profile": PROFILE, "artist_author": AUTHOR_ID,
+        "original_artist_post": AUTHOR_POST,
+        "user_missing_roster_character": True,
+        "public_publisher_zip_links": len(links),
+        "identity_documentation_found": True,
+        "source_registry_promoted": False,
+        "official_character_likeness_verified": False,
+        "rights_verified": False,
+        "physical_desktop_playback_verified": False,
+        "raw_url_or_artifact_uploaded": False,
+    }
+    if not links:
+        state.update({"status": "public_creator_page_only_no_verified_original_ZIP",
+                      "source_integrity_verified": False})
+        return state
+    if len(links) > 1:
+        state.update({"status": "multiple_original_ZIPs_require_manual_choice",
+                      "source_integrity_verified": False})
+        return state
+    loader = downloader if downloader is not None else download_creator_zip
+    raw = loader(links[0]["url"])
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_DOWNLOAD:
+        raise ValueError("Invalid Eula source bytes")
+    with tempfile.TemporaryDirectory(prefix="dyberpet-original-eula-") as td:
+        td = Path(td)
+        archive = td / "artist.zip"
+        archive.write_bytes(raw)
+        try:
+            frames = inspect_shimeji_zip(archive)
+        except BadZipFile as exc:
+            raise ValueError("Original artist attachment is not valid ZIP") from exc
+        role = install_personal_shimeji_zip(
+            archive, td / "native", profile=PROFILE, confirmed=True)
+        validated = validate_native_role(role)
+        motion = analyze_creator_actions(role.parent, role.name)
+        receipt = json.loads(
+            (role / "PERSONAL_IMPORT.json").read_text(encoding="utf-8"))
+        if (receipt["selected_profile"] != PROFILE or
+                receipt["source_archive_sha256"] != hashlib.sha256(raw).hexdigest() or
+                receipt["all_original_frames_preserved"] != len(frames)):
+            raise ValueError("Original Eula ZIP/native frame integrity mismatch")
+        state.update({
+            "status": "original_creator_public_ZIP_structurally_verified",
+            "source_integrity_verified": True,
+            "source_zip_sha256": hashlib.sha256(raw).hexdigest(),
+            "source_zip_size": len(raw),
+            "original_png_frames": len(frames),
+            "native_actions": validated["actions"],
+            "movement_poses": [
+                {"action": a["action"], "frames": a["frame_count"],
+                 "unique_visible_poses": a["unique_visible_poses"],
+                 "risks": a["risk_indicators"]}
+                for a in motion["actions"] if a["movement_expected"]
+            ],
+            "artist_filename_alone_proves_identity": False,
+        })
+        return state
+
+
+def main():
+    try:
+        report = probe_eula()
+        print("ORIGINAL_EULA_CREATOR_SOURCE_PROBE " +
+              json.dumps(report, ensure_ascii=False, sort_keys=True), flush=True)
+        return 0 if report.get("source_integrity_verified") is True else 1
+    except (HTTPError, URLError, OSError, ValueError, TypeError, KeyError,
+            UnicodeError, TimeoutError) as exc:
+        # HTTPError may carry a signed URL. Never print full exception string.
+        print("ORIGINAL_EULA_SOURCE_NOT_YET_VERIFIED " + json.dumps({
+            "error_type": type(exc).__name__,
+            "http_status": getattr(exc, "code", None),
+            "creator_page": AUTHOR_POST,
+            "source_registry_promoted": False}, sort_keys=True), flush=True)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
