@@ -63,6 +63,20 @@ class BulkArtistGuiContractTests(unittest.TestCase):
         self.assertIn("self.chibiThread.progress.connect(", source)
         self.assertIn("self.chibiThread.start()", source)
 
+    def test_new_roles_do_not_dispatch_immediate_change_pet(self):
+        launch = self.methods["__onLaunchClicked"]
+        self.assertIn("self._restart_required_roles", launch)
+        self.assertIn("stage_default_pet(", launch)
+        self.assertLess(launch.index("self._restart_required_roles"),
+                        launch.index("self.change_pet.emit("))
+        register = self.methods["__onAddClickedContinue"]
+        self.assertIn("self._restart_required_roles.add(petFolder)", register)
+        batch = self.methods["_onCreatorBatchDone"]
+        self.assertIn("verified_new_artist_folders(", batch)
+        self.assertIn("stage_default_pet(", batch)
+        self.assertIn("scan_genshin_library(", batch)
+        self.assertIn("self._previewJustInstalledCreatorArt(", batch)
+
     def test_off_thread_exact_inventory_and_no_background_ui_updates(self):
         worker = self.classes["CreatorBatchImportThread"]
         self.assertTrue(any(isinstance(base, ast.Name) and base.id == "QThread"

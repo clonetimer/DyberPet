@@ -41,6 +41,9 @@ class CharInterface(ScrollArea):
         self.batchProgressDialog = None
         self.stateTooltip = None
         self.launchTooltip = None
+        # Imported while running != loaded by PetData/ActData. Do not emit
+        # a runtime switch until the next complete application start.
+        self._restart_required_roles = set()
         self.sizeHintDyber = (sizeHintDyber[0]-100, sizeHintDyber[1])
 
         self.scrollWidget = QWidget()
@@ -222,6 +225,23 @@ class CharInterface(ScrollArea):
         self.panelHelp.clicked.connect(self.__onShowInstruction)
 
     def __onLaunchClicked(self, petname):
+        if petname in self._restart_required_roles:
+            if not self.__showMessageBox(
+                    "新角色需要重启后启用",
+                    "该角色素材已经安装，但当前桌宠运行时尚未加载它的动作和状态。"
+                    "是否将其设为下次启动的默认桌宠？不会立刻替换当前桌宠，"
+                    "请正常退出并重新打开 DyberPet。"):
+                return False
+            try:
+                from tools.creator_launch_choice import stage_default_pet
+                stage_default_pet(settings, petname,
+                                  self._restart_required_roles)
+            except (ValueError, OSError, TypeError) as exc:
+                self.__showSystemNote("保存下次默认桌宠失败：" + str(exc)[:180], 2)
+                return False
+            self.__showSystemNote(
+                "已保存为下次启动的默认桌宠；请正常关闭并重启应用以加载动作。", 0)
+            return True
         # Ignore if it's current char
         if settings.petname == petname:
             settings.default_pet = petname
@@ -643,6 +663,8 @@ class CharInterface(ScrollArea):
         stats = source_coverage()["summary"]
         count = (len(only_profiles) if only_profiles is not None
                  else stats["characters_with_pinned_sources"])
+        if max_roles is not None:
+            count = min(count, max_roles)
         if not self.__showMessageBox(
                 "批量安装真实作者原画（个人本机）",
                 f"本次最多选择 {count} 位固定来源人物；只有尚未安装的角色才会尝试。"
@@ -723,27 +745,50 @@ class CharInterface(ScrollArea):
             f"失败 {installed['failed']} 位。"
             "结构验证通过不代表原设形象、自然动作或声音已经人工验收。"
             "现在就能逐帧查看刚安装的原画，不必重启；"
-            "但作为可切换桌宠正式启用仍需重启 DyberPet。"
+            "也可以选为下次启动的默认桌宠，但必须正常重启后才能启用动作。"
             "\n逐人物检查点与最终报告：" + receipt_text +
-            "\n现在打开本次成功安装的真实原画预览吗？")
+            "\n现在选择本次成功安装的原画，逐帧预览并可设置为下次默认桌宠吗？")
         if preview_now:
-            # R14: use ONLY post-install, per-profile inventory-verified
-            # native folders. Unknown/demos/failed roles never enter picker.
-            options = {}
-            for row in installed.get("results", []):
-                if row.get("status") != "installed_unreviewed":
-                    continue
-                for folder in row.get("verified_native_folders", []):
-                    options[f"{row['profile']} · {folder}"] = folder
+            # Reconcile once again on the GUI side with *fresh* native
+            # inventory. Never trust arbitrary journal strings as folders,
+            # never offer generic demos or stale/misbound creator assets.
+            from tools.creator_launch_choice import (
+                verified_new_artist_folders, stage_default_pet)
+            from tools.genshin_library import scan_genshin_library
+            try:
+                inventory = scan_genshin_library(
+                    Path(basedir) / "res" / "role")
+                options = verified_new_artist_folders(installed, inventory)
+            except (ValueError, OSError, TypeError, KeyError) as exc:
+                self.__showSystemNote(
+                    "无法验证最新本机原画目录：" + str(exc)[:180], 2)
+                return
             if options:
                 selected, accepted = QInputDialog.getItem(
-                    self, "本次新增原画 · 逐帧预览",
-                    "不更换当前桌宠、不生成补帧；请选择要核对的实际作者角色：",
+                    self, "本次新增原画 · 原始动画与下次启动",
+                    "仅显示当前库存仍认可的作者角色；先预览，不立即切换当前桌宠：",
                     list(options), 0, False)
                 if accepted and selected in options:
-                    self._previewJustInstalledCreatorArt(options[selected])
+                    folder = options[selected]
+                    self._previewJustInstalledCreatorArt(folder)
+                    if self.__showMessageBox(
+                            "下次启动使用此角色？",
+                            f"将 {selected} 设为下次启动默认桌宠？"
+                            "目前的 PetData/ActData 尚未加载新角色；"
+                            "不会立即切换，也不会认证原设美术或动作自然性。"
+                            "请正常退出并重新打开 DyberPet 后再体验。"):
+                        try:
+                            stage_default_pet(settings, folder, options.values())
+                        except (ValueError, OSError, TypeError) as exc:
+                            self.__showSystemNote(
+                                "保存下次启动角色失败：" + str(exc)[:180], 2)
+                        else:
+                            self.__showSystemNote(
+                                "已保存下次默认角色 " + folder +
+                                "；正常重启后才会加载新角色的动作。", 0)
             else:
-                self.__showSystemNote("本批没有成功通过原生角色库存核验的新素材。", 1)
+                self.__showSystemNote(
+                    "本批没有成功通过最新原生角色库存核验的新素材。", 1)
 
     def _onCreatorBatchThreadFinished(self):
         if self.batchProgressDialog is not None:
@@ -1568,9 +1613,17 @@ class CharInterface(ScrollArea):
 
     def __onAddClickedContinue(self):
 
-        # Add pet in settings.pet
+        # Add to management list, NOT live PetData/ActData. A runtime
+        # change_pet on this new folder before restart can access missing
+        # animation state, so the launch button must stage next-start only.
         petFolder = self.newPetFolder
+        if petFolder in settings.pets:
+            self.__showSystemNote(
+                "角色已在列表中；请重启后核验实际动作加载状态。", 1)
+            self.newPetFolder = None
+            return
         settings.pets.append(petFolder)
+        self._restart_required_roles.add(petFolder)
         settings.defaultAct[petFolder] = None
 
         # Add pet in basicSetting change pet tab - not implemented yet
