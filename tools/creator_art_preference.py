@@ -23,6 +23,7 @@ INSTALL_MODE_PROVIDER = {
     "react_shimeji_lfs": "react_lfs",
     "artist_shimeji": "shimeji",
     "artist_nano": "nano_shimeji",
+    "pinned_kaveh_shimeji": "shimeji",
 }
 
 
