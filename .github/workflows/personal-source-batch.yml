@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - "tools/personal_source_batch.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "tests/test_creator_batch_gui_contract.py"
       - "tests/test_personal_source_batch.py"
       - "docs/personal_source_batch.md"
       - ".github/workflows/personal-source-batch.yml"
@@ -11,6 +13,8 @@ on:
       - "feat/personal-local-artist-batch-20261026"
     paths:
       - "tools/personal_source_batch.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "tests/test_creator_batch_gui_contract.py"
       - "tests/test_personal_source_batch.py"
       - "docs/personal_source_batch.md"
       - ".github/workflows/personal-source-batch.yml"
@@ -32,6 +36,8 @@ jobs:
           python-version: "3.11"
       - name: Install only offline image parser
         run: python -m pip install Pillow==12.0.0
+      - name: Validate GUI batch opt-in, stop and source-bounded receipts
+        run: python -m unittest discover -s tests -p "test_creator_batch_gui_contract.py" -v
       - name: Test consent, source selection, and no-artwork guarantees
         run: python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
       - name: Test real 123-profile source planning without download or install
