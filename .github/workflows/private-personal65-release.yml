@@ -12,6 +12,13 @@ on:
       - "tools/character_interaction_coverage.py"
       - "tests/test_creator_action_full_sequence.py"
       - "tools/install_pinned_kaveh_shimeji.py"
+      - "tools/install_pinned_eula_shimeji.py"
+      - "tools/probe_artist_eula_fanbox.py"
+      - "tools/install_personal_shimeji_zip.py"
+      - "tools/character_source_coverage.py"
+      - "tools/creator_art_preference.py"
+      - "tests/test_pinned_eula_shimeji.py"
+      - "tests/test_probe_artist_eula_fanbox.py"
       - "tests/test_pinned_kaveh_shimeji.py"
       - "tools/personal_install_journal.py"
       - "tools/creator_launch_choice.py"
@@ -92,6 +99,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Full native creator PNG action sequence check failed" }
           python -m unittest discover -s tests -p "test_nanopet_shimeji_sources.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Actual Shimeji author gestures and Aether frame-gap regression failed" }
+          python -m unittest discover -s tests -p "test_pinned_eula_shimeji.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Eula original SHA source and installation gate failed" }
+          python -m unittest discover -s tests -p "test_probe_artist_eula_fanbox.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Eula original publisher identity gate failed" }
           python -m unittest discover -s tests -p "test_pinned_kaveh_shimeji.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Kaveh exact-source no-redistribution contract failed" }
           python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
