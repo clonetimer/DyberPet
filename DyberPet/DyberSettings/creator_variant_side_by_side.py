@@ -22,6 +22,9 @@ from tools.character_interaction_coverage import _safe_installed_role
 from tools.genshin_library import _profile_of
 from tools.role_family import known_mascot_family
 from tools.creator_chibi_quality import load_local_quality_review
+from tools.creator_motion_quality import analyze_creator_actions
+from tools.creator_reference_cues import cues_for_local_role, cue_text
+from tools.genshin_role_bindings import binding_status, load_bindings
 from DyberPet.assistant.role_interactions import available_interactions
 from DyberPet.DyberSettings.native_frame_preview import (
     NativeFramePreviewDialog, safe_animation_inventory,
@@ -39,6 +42,7 @@ def checked_variant_pair(role_root, options, left=None, right=None):
             len(set(options)) != len(options)):
         raise ValueError("同一角色至少需要两个不同的作者素材版本")
     bound_profiles = set()
+    local_bindings = load_bindings(root)
     for folder in options:
         role = _safe_installed_role(root, folder)
         if ((role / "BUILTIN_CHIBI_DEMO.json").exists() or
@@ -46,6 +50,8 @@ def checked_variant_pair(role_root, options, left=None, right=None):
             raise ValueError("不能将简笔演示形象当成作者原画进行比较")
         mascot = known_mascot_family(role)
         profile = ("mascot_" + mascot if mascot is not None else _profile_of(role))
+        if profile is None and mascot is None:
+            profile = binding_status(role, local_bindings.get(folder))
         if not isinstance(profile, str) or not profile:
             raise ValueError("作者原画缺少明确的角色来源绑定，不能A/B对照")
         bound_profiles.add(profile)
@@ -104,6 +110,7 @@ class CreatorVariantSideBySideDialog(QDialog):
         self._folders = list(folders)
         self._initial = checked_variant_pair(self._root, self._folders)
         self._inventories = [{}, {}]
+        self._motion = [{}, {}]
         self._frames = [[], []]
         self._pixels = [None, None]
         self._tick = 0
@@ -123,6 +130,8 @@ class CreatorVariantSideBySideDialog(QDialog):
         self.action_choices = []
         self.viewports = []
         self.qa = []
+        self.motion_labels = []
+        self.identity_labels = []
         self.frame_counts = []
         choose = QGridLayout()
         for index, label in enumerate(("左侧 A · 原始或备选", "右侧 B · 对照版本")):
@@ -142,6 +151,12 @@ class CreatorVariantSideBySideDialog(QDialog):
             grade = QLabel("未审核", group)
             grade.setWordWrap(True)
             inner.addWidget(grade)
+            identity = QLabel("尚未检查本角色原设特征", group)
+            identity.setWordWrap(True)
+            inner.addWidget(identity)
+            motion = QLabel("逐帧动作质量：未分析", group)
+            motion.setWordWrap(True)
+            inner.addWidget(motion)
             position = QLabel("帧 0 / 0", group)
             inner.addWidget(position)
             check = QPushButton("逐帧核对并保存此版本Q版/立牌意见", group)
@@ -152,6 +167,8 @@ class CreatorVariantSideBySideDialog(QDialog):
             self.action_choices.append(act)
             self.viewports.append(picture)
             self.qa.append(grade)
+            self.identity_labels.append(identity)
+            self.motion_labels.append(motion)
             self.frame_counts.append(position)
         body.addLayout(choose, 1)
 
@@ -217,6 +234,9 @@ class CreatorVariantSideBySideDialog(QDialog):
             self.qa[i].setText("请选择两个不同版本；不能拿同一张图冒充A/B对照")
             self.viewports[i].setText("版本重复")
             self._inventories[i] = {}
+            self._motion[i] = {}
+            self.identity_labels[i].setText("同一版本，无法完成双素材对照")
+            self.motion_labels[i].setText("双版本比较不可用")
             self.action_choices[i].clear()
             self._frames[i] = []
             self._shared_refresh()
@@ -231,8 +251,11 @@ class CreatorVariantSideBySideDialog(QDialog):
             qa = load_local_quality_review(self._root, name, full_audit=False)
         except (OSError, ValueError, KeyError, TypeError) as exc:
             self._inventories[i] = {}
+            self._motion[i] = {}
             self._frames[i] = []
             self.action_choices[i].clear()
+            self.identity_labels[i].setText("无法确认素材所属角色")
+            self.motion_labels[i].setText("动作检查不可用")
             self.qa[i].setText("素材无法核查：" + str(exc)[:110])
             self.viewports[i].setText("素材无效或不可打开")
             self._stop()
@@ -241,6 +264,22 @@ class CreatorVariantSideBySideDialog(QDialog):
         self._inventories[i] = content
         self.qa[i].setText("当前版本人审：" + str(qa["status"]) +
                             "（无需视为官方Q版认证）")
+        # Per-source identity checklist is never a likeness approval. It
+        # cannot borrow another character's frames or silently relabel art.
+        try:
+            cues = cues_for_local_role(self._root, name)
+            self.identity_labels[i].setText(cue_text(cues))
+        except (OSError, ValueError, KeyError, TypeError):
+            self.identity_labels[i].setText(cue_text(None))
+        # Full pose analysis is independent from structural playability.
+        # On an error retain the source preview but mark the motion audit
+        # unknown, NEVER call it a natural or quality-verified animation.
+        try:
+            audit = analyze_creator_actions(self._root, name)
+            self._motion[i] = {row["action"]: row for row in audit["actions"]}
+        except (OSError, ValueError, KeyError, TypeError):
+            self._motion[i] = {}
+        self.motion_labels[i].setText("请选择真实动作，查看整套PNG姿态风险")
         choice = self.action_choices[i]
         choice.blockSignals(True)
         choice.clear()
@@ -256,8 +295,22 @@ class CreatorVariantSideBySideDialog(QDialog):
         action = self.action_choices[i].currentData()
         self._frames[i] = list(self._inventories[i].get(action, []))
         self._tick = 0
+        self._refresh_motion_note(i)
         self._render_both()
         self._shared_refresh()
+
+    def _refresh_motion_note(self, i):
+        action = self.action_choices[i].currentData()
+        record = self._motion[i].get(action)
+        if record is None:
+            self.motion_labels[i].setText("本动作暂无完整逐帧姿态证据；不能当作自然动态合格")
+            return
+        problems = record["risk_indicators"]
+        detail = ("⚠ " + "、".join(problems) if problems
+                  else "未发现重复姿态风险（仍需人工检查动作自然性）")
+        self.motion_labels[i].setText(
+            f"原画动作 {action}：{record['frame_count']}帧 / "
+            f"{record['unique_visible_poses']}种不同可见姿态；{detail}")
 
     def _shared_refresh(self):
         shared = shared_native_interactions(
@@ -265,7 +318,13 @@ class CreatorVariantSideBySideDialog(QDialog):
         self.shared.blockSignals(True)
         self.shared.clear()
         for x in shared:
-            self.shared.addItem(x["label"], x)
+            left = self._motion[0].get(x["left_native_action"])
+            right = self._motion[1].get(x["right_native_action"])
+            # Unknown audit means unknown, not automatically safe.
+            risks = (left is None or right is None or
+                     bool(left.get("risk_indicators")) or
+                     bool(right.get("risk_indicators")))
+            self.shared.addItem(x["label"] + (" ⚠待核对" if risks else ""), x)
         self.shared.blockSignals(False)
         self.apply_shared.setEnabled(bool(shared) and
                                      all(self._inventories) and
@@ -291,6 +350,8 @@ class CreatorVariantSideBySideDialog(QDialog):
             self.action_choices[i].blockSignals(False)
             self._frames[i] = list(self._inventories[i][action])
         self._tick = 0
+        for i in range(2):
+            self._refresh_motion_note(i)
         self._render_both()
 
     def _render_both(self):

@@ -94,6 +94,52 @@ class OriginalABTests(unittest.TestCase):
             self.assertEqual(original_a, {p.name:p.read_bytes() for p in (a/"action").glob("*.png")})
             self.assertEqual(original_b, {p.name:p.read_bytes() for p in (b/"action").glob("*.png")})
 
+    def test_native_motion_comparison_shows_one_frame_risk_without_faking_frames(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp) / "res" / "role"
+            thin = _original(root, "SourceAyakaWeak", "genshin_ayaka",
+                             [(30, 40, 60, 255)], action_name="walk")
+            rich = _original(root, "SourceAyakaFrames", "genshin_ayaka",
+                             [(25, 45, 90, 255), (55, 60, 100, 255),
+                              (80, 50, 100, 255)], action_name="walk")
+            before = {p: p.read_bytes() for a in (thin, rich)
+                      for p in (a / "action").glob("*.png")}
+            ui = CreatorVariantSideBySideDialog(root, [thin.name, rich.name])
+            try:
+                self.assertTrue(ui.apply_shared.isEnabled())
+                labels = [ui.shared.itemText(i) for i in range(ui.shared.count())]
+                self.assertTrue(any("⚠" in s for s in labels))
+                ui._choose_shared()
+                self.assertIn("1帧 / 1种", ui.motion_labels[0].text())
+                self.assertIn("single_frame_motion", ui.motion_labels[0].text())
+                self.assertIn("3帧 / 3种", ui.motion_labels[1].text())
+                self.assertNotIn("single_frame_motion", ui.motion_labels[1].text())
+                self.assertIn("未直接检视", ui.identity_labels[0].text())
+                self.assertEqual(len(ui._frames[0]), 1)
+                self.assertEqual(len(ui._frames[1]), 3)
+            finally:
+                ui.close()
+            self.assertEqual(
+                before, {p: p.read_bytes() for a in (thin, rich)
+                         for p in (a / "action").glob("*.png")})
+
+    def test_explicit_sidecar_binding_works_for_legacy_creator_version(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp) / "res" / "role"
+            a = _original(root, "LegacyA", "genshin_ayaka",
+                          [(11, 22, 33, 255)])
+            b = _original(root, "LegacyB", "genshin_ayaka",
+                          [(33, 22, 11, 255)])
+            (a / "PERSONAL_IMPORT.json").unlink()
+            (b / "PERSONAL_IMPORT.json").unlink()
+            with patch("DyberPet.DyberSettings.creator_variant_side_by_side.load_bindings",
+                       return_value={"LegacyA": {"profile": "genshin_ayaka"},
+                                     "LegacyB": {"profile": "genshin_ayaka"}}), \
+                 patch("DyberPet.DyberSettings.creator_variant_side_by_side.binding_status",
+                       side_effect=lambda _role, mapping: mapping["profile"]):
+                self.assertEqual(checked_variant_pair(
+                    root, ["LegacyA", "LegacyB"]), ("LegacyA", "LegacyB"))
+
     def test_preview_crop_only_removes_transparent_edges_not_author_content(self):
         with TemporaryDirectory() as d:
             root = Path(d)
