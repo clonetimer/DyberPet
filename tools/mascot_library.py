@@ -8,11 +8,11 @@ from pathlib import Path
 try:
     from .generate_mascot_demos import MASCOTS
     from .install_native_role import inspect_native_folder
-    from .role_family import known_mascot_family
+    from .role_family import known_mascot_family, KNOWN_MASCOT_SOURCE_IDS
 except ImportError:
     from generate_mascot_demos import MASCOTS
     from install_native_role import inspect_native_folder
-    from role_family import known_mascot_family
+    from role_family import known_mascot_family, KNOWN_MASCOT_SOURCE_IDS
 
 SOURCE_IDS={"guga":"guga--circus","doro":"doro--lingxiaotian"}
 MAX_JSON=128*1024
@@ -68,8 +68,8 @@ def scan_mascot_library(role_root):
                     category="original_demos"
                 elif original is not None and original.get("mascot_preset") in SOURCE_IDS:
                     identified=original["mascot_preset"]
-                    if original.get("source_manifest_id")!=SOURCE_IDS[identified]:
-                        raise ValueError("Codex mascot preset does not match source ID")
+                    if original.get("source_manifest_id") not in KNOWN_MASCOT_SOURCE_IDS[identified]:
+                        raise ValueError("Codex mascot preset does not match pinned source ID")
                     category="imported_creator_art"
                 if category is None or identified != known_identity:
                     raise ValueError("Mascot receipt classification conflicts with origin")
@@ -78,6 +78,8 @@ def scan_mascot_library(role_root):
                     "folder":folder.name,
                     "actions":valid["actions"],"frames":valid["images"],
                     "likeness_verified":False,"rights_verified":False,
+                    **({"source_id": original["source_manifest_id"]}
+                       if category == "imported_creator_art" else {}),
                 })
             except (ValueError,OSError,UnicodeError,TypeError,
                     json.JSONDecodeError) as exc:
