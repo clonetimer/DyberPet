@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import struct
 from pathlib import Path, PurePosixPath
 from io import BytesIO
 import tempfile
@@ -139,6 +141,8 @@ def summarize_public_zip_layout(raw):
             raise ValueError("Original Eula public archive exceeds safe inventory bounds")
         pngs = []
         configs = []
+        numbered = {}
+        dimensions = {}
         for item in members:
             name = item.filename.replace("\\\\", "/")
             parts = PurePosixPath(name).parts
@@ -148,12 +152,36 @@ def summarize_public_zip_layout(raw):
             low = name.lower()
             if low.endswith(".png"):
                 pngs.append(name)
+                match = re.fullmatch(r"shime([1-9][0-9]*)\\.png",
+                                     PurePosixPath(low).name)
+                if match:
+                    idx = int(match.group(1))
+                    if idx in numbered:
+                        raise ValueError("Duplicate original Eula sprite index")
+                    numbered[idx] = name
+                    with z.open(item) as stream:
+                        head = stream.read(24)
+                    if (len(head) == 24 and
+                            head[:8] == b"\\x89PNG\\r\\n\\x1a\\n" and
+                            head[12:16] == b"IHDR"):
+                        dimensions[idx] = list(struct.unpack(">II", head[16:24]))
             elif low.endswith((".xml", ".json", ".properties", ".txt")):
                 configs.append(name)
         return {
             "original_zip_entry_count": len(members),
             "original_png_count": len(pngs),
-            "original_png_name_examples": sorted(pngs)[:35],
+            "original_numbered_sprite_count": len(numbered),
+            "original_numbered_sprite_min_max": (
+                [min(numbered), max(numbered)] if numbered else []),
+            "standard_first_46_missing": [
+                i for i in range(1, 47) if i not in numbered
+            ],
+            "first_46_unique_dimensions": sorted(set(
+                tuple(v) for i, v in dimensions.items() if i <= 46))[:20],
+            "largest_original_sprite_dimensions": sorted(
+                dimensions.values(), key=lambda x: x[0] * x[1],
+                reverse=True)[:5],
+            "original_png_name_examples": sorted(pngs)[:20],
             "original_config_name_examples": sorted(configs)[:15],
             "png_images_without_executing_code": True,
         }
