@@ -21,6 +21,8 @@ on:
       - "tests/test_creator_batch_gui_contract.py"
       - "tools/personal_mascot_batch.py"
       - "tools/install_creator_mascots.py"
+      - "tools/install_nanopet_shimeji.py"
+      - "tests/test_nanopet_shimeji_sources.py"
       - "tools/creator_motion_quality.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tools/mascot_library.py"
@@ -88,6 +90,8 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_creator_action_full_sequence.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Full native creator PNG action sequence check failed" }
+          python -m unittest discover -s tests -p "test_nanopet_shimeji_sources.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Actual Shimeji author gestures and Aether frame-gap regression failed" }
           python -m unittest discover -s tests -p "test_pinned_kaveh_shimeji.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Kaveh exact-source no-redistribution contract failed" }
           python -m unittest discover -s tests -p "test_personal_source_batch.py" -v

@@ -140,3 +140,27 @@ python -m tools.install_pinned_kaveh_shimeji kaveh_ilewdha --accept-personal-use
 任何一帧损坏，都不再将该动作算入可用互动类别；同角色其他完整动作仍可使用。为了兼容已有 GUI 及外部报告，保留历史 `first_frames_decodable` / `has_decodable_first_frames` 状态标签，但新增 `complete_png_sequences_checked` 明确标注升级后的结构验收，仍明确 `physical_runtime_playback_verified=false`。
 
 **边界：** 单帧坠落、爬行等结构可解码，但“动作是否真的动起来”仍由独立 R7 像素与真人播放质量审计评估。本次不把静态图片变成真正的动画，不冒充原设、配音或艺术授权验收。实际本机交互仍需试用。
+
+## R22 · 16 位人物的 17 套作者 Shimeji：启用更多原始姿态，不伪造新动画
+
+来自 Poseima/nano-pet 的固定来源为 **17 套原画图包，实际只对应 16 位不同原神人物**，其中温迪有两套来源。原始图包每套约 45/46 张真实 Shimeji 画师 PNG，原先导入只映射其中 9 组动作；还存在一个真实互动故障：旧版「行走」`random_act` 同时引用待机 `default` 和行走帧，严格 PetWidget 语义映射会拒绝这个混合组。
+
+本轮 R22 从这些**已有作者原画**额外提供五项精确命名的可预览姿态组：`lookaround`（Shimeji 26、15、27、16、28、17、29 原始转头七帧）、`ceiling_crawl`（23–25）、`edge_sit`（30–33）、`window_carry`（34–36）和 `jump_pose`（22 单张跳起造型）。`jump_pose` 仅作原画姿态预览，**不登记为已实现的跳跃互动**。`shime38–46` 是分身/复制动作，严禁冒充摸头动作。
+
+本轮还将真实 `random_act` 菜单中的「散步」绑定仅有 `left_walk/right_walk`，增加「休息」绑定 `rest`，在完整七张转头原画存在时增加「观察」绑定 `lookaround`。这三项与当前 PetWidget 真实随机动作组调用契约相符，并不绕过用户解锁状态。空的旅行者 Aether 图包缺少 `shime29`，因而会**仅跳过七帧转头观察**，其他完整来源仍正常安装，不自动补绘第七帧。安装回执写明哪些可选动作被跳过。
+
+标准 Shimeji 编号动作语义可对照 [Shimeji Sprite Reference](https://github.com/shimeji-ai/Shimeji-AI-Pets/blob/main/animation-reference/SPRITE-REFERENCE.md)。真实图包 SHA/Git blob 已固定；CI 单独尝试实际下载钟离与空的原画，生成本机临时角色与逐动作质量记录，不上传任何第三方 PNG。不能因为图包有真实 46 帧就判断它完全贴合原作人物、动作自然、配音准确或具有分发权。
+
+**覆盖仍为 65/123**。R22 增强已覆盖人物的真实交互，而不是虚报新增 17 位。
+
+### R22 独立原画在线核验和已安装角色升级
+
+隔离的 [NanoPet 两位原画验收](https://github.com/clonetimer/DyberPet/actions/runs/40515166028) 下载并逐帧核对固定版本：钟离为 46 张原始 PNG、15 项原生动作，七帧 `lookaround`、三帧 `ceiling_crawl`、四帧 `edge_sit`、三帧 `window_carry` 各帧姿态均不同；空（旅行者）为 45 张原始 PNG、14 项原生动作，`shime29` 缺失，因此不提供七帧观察互动，但真实散步和休息仍通过原生菜单语义检查。两者的 `jump_pose` 都是一张原画静态姿态，不宣称为连续跳跃。
+
+**已安装旧版也可以升级：** 在桌宠角色管理界面再次手动选择 NanoPet 原作者来源（提示确认），R22 会为同一人物、同一原作者的新版动作配置安全创建**另一独立角色目录**；原有角色目录、状态和图片完全保留。新目录仍使用精确 Git Blob 校验和全部原画帧，升级后手动预览并重启启用。如果是从 Python CLI 执行，则需要明确附加 `--as-new-version`，否则仍拒绝覆盖：
+
+```powershell
+python -m tools.install_nanopet_shimeji zhongli-by-vol-tuna --accept-personal-use --as-new-version --role-root res/role
+```
+
+这是同一作者原画的**动画映射改进**，不是新画师素材、角色新增或对真实桌面稳定性的自动认证。
