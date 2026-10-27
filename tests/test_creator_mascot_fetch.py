@@ -7,6 +7,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tools.install_creator_mascots import (
     UPSTREAM, DORO_VARIANTS, PINNED_REVISION, ROOT,
@@ -96,6 +97,81 @@ class RemoteMascotInstallTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"size"):
             _download_pinned("https://raw.githubusercontent.com/test",
                              sha,len(payload)+1,opener=opener)
+
+    def _fake_download(self, url, _sha, _size):
+        if url.endswith("/pet.json"):
+            return json.dumps({"id":"guga--circus",
+                               "spritesheetPath":"spritesheet.webp"}).encode("utf-8")
+        return b"fake-byte-atlas-only-for-isolated-test"
+
+    @staticmethod
+    def _fake_convert(source, target_root, *, folder, **kwargs):
+        path=Path(target_root)/folder
+        path.mkdir(parents=True)
+        (path/"IMPORT_REPORT.json").write_text(
+            json.dumps({"mascot_preset":"guga",
+                        "source_manifest_id":"guga--circus"}),encoding="utf-8")
+        return path
+
+    def test_failed_native_or_motion_validation_keeps_live_roster_clean(self):
+        with (patch("tools.install_creator_mascots.convert",
+                    side_effect=self._fake_convert),
+              patch("tools.install_creator_mascots.validate_native_role",
+                    side_effect=ValueError("bad original source config"))):
+            with self.assertRaisesRegex(ValueError,"bad original"):
+                install_creator_mascot("guga",self.root,confirmed=True,
+                                       downloader=self._fake_download)
+        self.assertEqual(list(self.root.iterdir()),[])
+        with (patch("tools.install_creator_mascots.convert",
+                    side_effect=self._fake_convert),
+              patch("tools.install_creator_mascots.validate_native_role",
+                    return_value={"actions":2,"images":6}),
+              patch("tools.install_creator_mascots.analyze_creator_actions",
+                    side_effect=ValueError("unreadable later PNG"))):
+            with self.assertRaisesRegex(ValueError,"unreadable later"):
+                install_creator_mascot("guga",self.root,confirmed=True,
+                                       downloader=self._fake_download)
+        self.assertEqual(list(self.root.iterdir()),[])
+        self.assertFalse((self.root/"SourceGuga").exists())
+
+    def test_success_publishes_only_complete_identity_and_motion_receipt(self):
+        motion={"folder":"SourceGuga",
+                "summary":{"actions_inspected":2,"frames_inspected":6,
+                           "all_frames_examined":True,"original_art_modified":False,
+                           "motion_semantics_approved":False},
+                "actions":[{"action":"left_walk","frame_count":4,
+                           "unique_visible_poses":3,"risk_indicators":[]},
+                          {"action":"crawl","frame_count":2,
+                           "unique_visible_poses":1,
+                           "risk_indicators":["translation_only_or_static_pose"]}]}
+        with (patch("tools.install_creator_mascots.convert",
+                    side_effect=self._fake_convert),
+              patch("tools.install_creator_mascots.validate_native_role",
+                    return_value={"actions":2,"images":6}),
+              patch("tools.install_creator_mascots.analyze_creator_actions",
+                    return_value=motion)):
+            result=install_creator_mascot("guga",self.root,confirmed=True,
+                                           downloader=self._fake_download)
+        self.assertEqual(result["folder"],"SourceGuga")
+        role=self.root/"SourceGuga"
+        self.assertTrue((role/"CREATOR_ORIGINAL_MOTION_QA.json").is_file())
+        receipt=json.loads((role/"PERSONAL_IMPORT.json").read_text("utf-8"))
+        self.assertEqual(receipt["motion_risk_actions"],["crawl"])
+        self.assertFalse(receipt["motion_semantics_manually_reviewed"])
+        self.assertEqual(receipt["source_id"],"guga--circus")
+        self.assertEqual([p.name for p in self.root.iterdir()],["SourceGuga"])
+
+    def test_existing_creator_folder_is_never_replaced(self):
+        self.root.mkdir(parents=True)
+        protected=self.root/"SourceGuga"
+        protected.mkdir()
+        (protected/"keep.txt").write_text("my art")
+        with self.assertRaises(FileExistsError):
+            install_creator_mascot(
+                "guga",self.root,folder="SourceGuga",confirmed=True,
+                downloader=lambda *args: (_ for _ in ()).throw(
+                    AssertionError("should not network on existing folder")))
+        self.assertEqual((protected/"keep.txt").read_text(),"my art")
 
     def test_gui_uses_real_offthread_worker_and_confirmation(self):
         path=Path(__file__).resolve().parents[1]/"DyberPet"/"DyberSettings"/"CharCardUI.py"
