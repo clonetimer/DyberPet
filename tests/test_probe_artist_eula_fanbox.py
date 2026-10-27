@@ -2,6 +2,7 @@
 from __future__ import annotations
 from contextlib import contextmanager
 from io import BytesIO
+from pathlib import Path
 import json
 import tempfile
 import unittest
@@ -10,6 +11,8 @@ from zipfile import ZipFile
 
 from PIL import Image
 
+from tools.install_personal_shimeji_zip import (
+    inspect_shimeji_zip, install_personal_shimeji_zip)
 from tools.probe_artist_eula_fanbox import (
     API_URL, AUTHOR_ID, AUTHOR_POST, POST_ID, MAX_METADATA,
     _publisher_download_url, fetch_public_post, extract_public_eula_post,
@@ -28,7 +31,7 @@ def fake_zip():
     contents = BytesIO()
     with ZipFile(contents, "w") as z:
         z.writestr("Shimeji-ee.jar", b"do not execute")
-        for num in range(1, 47):
+        for num in [i for i in range(1, 111) if i != 47]:
             fp = BytesIO()
             Image.new("RGBA", (32, 48),
                       (num * 3 % 255, num * 7 % 255, 100, 255)).save(fp, "PNG")
@@ -105,14 +108,42 @@ class EulaOriginalSourceTests(unittest.TestCase):
             post_loader=lambda: publisher_post([{"name": "eula.zip",
                                                   "extension": "zip", "url": link}]),
             downloader=lambda url: payload)
-        self.assertTrue(result["source_integrity_verified"])
-        self.assertEqual(result["original_png_frames"], 46)
+        self.assertFalse(result["source_integrity_verified"])
+        self.assertEqual(result["status"],
+                         "publisher_Eula_zip_differs_from_sha256_locked_original")
+        # An artificial 109-frame ZIP proves only parser behavior. It must
+        # never be interpreted as original artist approval or a 66th source.
         self.assertEqual(result["profile"], "genshin_eula")
-        self.assertGreaterEqual(result["native_actions"], 6)
         self.assertFalse(result["source_registry_promoted"])
         self.assertFalse(result["rights_verified"])
         self.assertFalse(result["official_character_likeness_verified"])
         self.assertNotIn("secret", json.dumps(result).lower())
+
+    def test_extended_110_frame_parser_requires_explicit_pinned_eula_sha(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "synthetic-109-frames.zip"
+            source.write_bytes(fake_zip())
+            with self.assertRaisesRegex(ValueError, "out-of-range"):
+                inspect_shimeji_zip(source)
+            frames = inspect_shimeji_zip(source, max_source_frame_index=110)
+            self.assertEqual(len(frames), 109)
+            self.assertEqual(max(frames), 110)
+            self.assertNotIn(47, frames)
+            self.assertTrue(all(x in frames for x in range(1, 47)))
+            root = Path(tmp) / "installed"
+            with self.assertRaisesRegex(ValueError, "original creator SHA-256"):
+                install_personal_shimeji_zip(
+                    source, root, profile="genshin_eula", confirmed=True,
+                    extended_eula_source=True)
+            self.assertFalse(root.exists())
+
+    def test_even_true_original_hash_is_not_a_rights_or_likeness_approval(self):
+        from tools.install_personal_shimeji_zip import EULA_EXTENDED_SOURCE_SHA256
+        self.assertEqual(
+            EULA_EXTENDED_SOURCE_SHA256,
+            "f4952ea151e0ead70b501e9e2637f9dae1194e0da1b5d312046964fc19046803")
+        self.assertFalse(probe_eula(
+            post_loader=lambda: publisher_post([]))["rights_verified"])
 
     def test_page_only_does_not_prove_character_installed(self):
         result = probe_eula(post_loader=lambda: publisher_post([]))
