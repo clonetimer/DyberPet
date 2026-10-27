@@ -92,6 +92,22 @@ class NativeInteractionPreviewShortcutTests(unittest.TestCase):
                 dialog._clock.stop()
                 dialog.close()
 
+    def test_roster_only_appearance_cues_render_without_a_source_png_url(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            folder = role(root, "SourceAyaka", ["walk"])
+            (folder / "PERSONAL_IMPORT.json").write_text(
+                json.dumps({"selected_profile": "genshin_ayaka"}), encoding="utf-8")
+            dialog = NativeFramePreviewDialog(root, ["SourceAyaka"])
+            try:
+                self.assertIn("神里绫华", dialog.identity_cues.text())
+                self.assertIn("未直接检视", dialog.identity_cues.text())
+                self.assertIn("角色档案", dialog.identity_cues.toolTip())
+                self.assertTrue(dialog.play.isEnabled())
+            finally:
+                dialog._clock.stop()
+                dialog.close()
+
     def test_corrupted_version_disables_all_real_interactions(self):
         with TemporaryDirectory() as td:
             root = Path(td)

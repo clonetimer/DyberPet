@@ -91,6 +91,9 @@ class OriginalABTests(unittest.TestCase):
                 self.assertEqual([x["category"] for x in choices],["walk"])
                 self.assertTrue(ui.apply_shared.isEnabled())
                 ui._choose_shared()
+                self.assertFalse(ui.review_recommended.isEnabled())
+                self.assertIsNone(ui._recommendation_index)
+                self.assertIn("暂无足够", ui.motion_recommendation.text())
                 self.assertEqual(len(ui._frames[0]),2)
                 self.assertEqual(len(ui._frames[1]),3)
                 ui._advance()
@@ -128,6 +131,22 @@ class OriginalABTests(unittest.TestCase):
                 self.assertIn("未直接检视", ui.identity_labels[0].text())
                 self.assertEqual(len(ui._frames[0]), 1)
                 self.assertEqual(len(ui._frames[1]), 3)
+                self.assertTrue(ui.review_recommended.isEnabled())
+                self.assertEqual(ui._recommendation_index, 1)
+                self.assertIn("右侧 B", ui.motion_recommendation.text())
+                self.assertIn("SourceAyakaFrames", ui.motion_recommendation.text())
+                # Clicking the review lead must open the recommended ORIGINAL
+                # version directly at the exact native action, no auto-swap.
+                opened = []
+                def fake_exec(dialog):
+                    opened.append((dialog.version.currentData(),
+                                   dialog.action.currentData()))
+                    return 0
+                with patch(
+                        "DyberPet.DyberSettings.creator_variant_side_by_side."
+                        "NativeFramePreviewDialog.exec", new=fake_exec):
+                    ui.review_recommended.click()
+                self.assertEqual(opened, [("SourceAyakaFrames", "walk")])
             finally:
                 ui.close()
             self.assertEqual(

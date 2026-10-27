@@ -24,6 +24,8 @@ on:
       - "tests/test_local_offline_bundle.py"
       - "run_DyberPet.py"
       - "tools/creator_reference_cues.py"
+      - "tools/creator_motion_alternatives.py"
+      - "tests/test_creator_motion_alternatives.py"
       - "DyberPet/DyberSettings/native_frame_preview.py"
       - "DyberPet/DyberSettings/creator_variant_side_by_side.py"
       - "tests/test_creator_variant_side_by_side_qt.py"
