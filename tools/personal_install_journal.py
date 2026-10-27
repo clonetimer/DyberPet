@@ -74,7 +74,7 @@ class PersonalInstallJournal:
 # Read only our exact journal filenames, never arbitrary local JSON. The
 # format is intentionally small: personal art pixels are never recorded.
 _JOURNAL_PATTERN = __import__("re").compile(
-    r"^personal65-batch-[0-9]{8}-[0-9]{6}-[0-9a-f]{8}\\.json$")
+    r"^personal65-batch-[0-9]{8}-[0-9]{6}-[0-9a-f]{8}\.json$")
 _MAX_READ_BYTES = 4 * 1024 * 1024
 _MAX_CHARACTERS = 123
 
