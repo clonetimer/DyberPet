@@ -16,7 +16,16 @@ import uuid
 
 
 class PersonalInstallJournal:
-    def __init__(self, directory, summary):
+    def __init__(self, directory, summary, *, planned_profiles=None):
+        # Persist the EXACT opt-in scope. A two-role trial must not be
+        # recoverable as an unbounded 65-role download batch.
+        if planned_profiles is not None:
+            if (not isinstance(planned_profiles, (tuple, list)) or
+                    len(planned_profiles) > _MAX_CHARACTERS or
+                    any(not isinstance(p, str) or not p or len(p) > 128
+                        for p in planned_profiles) or
+                    len(set(planned_profiles)) != len(planned_profiles)):
+                raise ValueError("Invalid selected personal role scope")
         root = Path(directory)
         if root.is_symlink() or (root.exists() and not root.is_dir()):
             raise ValueError("Install receipt root must be a real directory")
@@ -36,6 +45,8 @@ class PersonalInstallJournal:
             "likeness_approved": False,
             "rights_approved": False,
         }
+        if planned_profiles is not None:
+            self.state["planned_profiles"] = list(planned_profiles)
         self._save()
 
     def record_character(self, entry):
@@ -110,6 +121,14 @@ def latest_install_journal(directory):
                 continue
             if not isinstance(doc.get("plan_summary"), dict):
                 continue
+            planned = doc.get("planned_profiles")
+            if "planned_profiles" in doc and (
+                    not isinstance(planned, list) or
+                    len(planned) > _MAX_CHARACTERS or
+                    any(not isinstance(p, str) or not p or len(p) > 128
+                        for p in planned) or
+                    len(set(planned)) != len(planned)):
+                continue
             if any(
                     not isinstance(r, dict)
                     or not isinstance(r.get("profile"), str)
@@ -129,6 +148,8 @@ def latest_install_journal(directory):
                     continue
             return {"path": str(path), "finished": doc["finished"],
                     "attempts": len(records),
+                    "completed_character_attempts": records,
+                    "planned_profiles": planned,
                     "final_installation": doc.get("final_installation"),
                     "plan_summary": doc["plan_summary"]}
         except (OSError, UnicodeError, ValueError, TypeError,
@@ -140,9 +161,11 @@ def latest_install_journal(directory):
 def restartable_profiles(journal, current_plan):
     """Select only currently uninstalled profiles with approved pinned installers.
 
-    When an old run was interrupted, resume everything *currently pending*
-    according to fresh native-art inventory. For finished runs, retry only
-    recorded failures. A forged or stale receipt can never select a new source.
+    Incomplete runs resume ONLY the persisted original selection. Older R14/R15
+    journals had no selection scope; for those, conservatively retry only
+    already attempted profiles, never every profile in the entire roster.
+    For finished runs, retry only recorded failures. Current native inventory
+    and current allowlisted sources always remain authoritative.
     """
     if not isinstance(journal, dict):
         raise ValueError("No validated local journal")
@@ -152,7 +175,17 @@ def restartable_profiles(journal, current_plan):
     permitted = {c["profile"] for c in characters
                  if c.get("status") == "ready_for_opt_in"}
     if not journal.get("finished"):
-        return sorted(permitted)
+        scoped = journal.get("planned_profiles")
+        if scoped is None:
+            # Legacy journals did not retain the original trial size/filter.
+            # We cannot safely infer which unattempted roles the user approved.
+            scoped = [r.get("profile") for r in
+                      journal.get("completed_character_attempts", [])
+                      if isinstance(r, dict)]
+        if not isinstance(scoped, list):
+            raise ValueError("Invalid saved creator import scope")
+        return sorted(permitted.intersection(
+            p for p in scoped if isinstance(p, str)))
     final = journal.get("final_installation")
     if not isinstance(final, dict):
         raise ValueError("Final receipt is missing")

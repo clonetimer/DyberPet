@@ -33,6 +33,38 @@ class JournalRecoveryTests(unittest.TestCase):
             # Fresh planning is authoritative: the previously downloaded
             # Nahida and a no-source Noelle are never re-attempted.
 
+    def test_interrupted_two_role_trial_never_expands_to_all_candidates(self):
+        with TemporaryDirectory() as temp:
+            data = Path(temp) / "data"
+            j = PersonalInstallJournal(
+                data, {"ready_for_opt_in": 3},
+                planned_profiles=["genshin_klee", "genshin_nahida"])
+            j.record_character({"profile": "genshin_klee", "index": 1,
+                                "status": "failed"})
+            candidate_plan = {"characters": [
+                {"profile": "genshin_klee", "status": "ready_for_opt_in"},
+                {"profile": "genshin_nahida", "status": "ready_for_opt_in"},
+                {"profile": "genshin_xiao", "status": "ready_for_opt_in"},
+            ]}
+            found = latest_install_journal(data)
+            self.assertEqual(found["planned_profiles"],
+                             ["genshin_klee", "genshin_nahida"])
+            self.assertEqual(restartable_profiles(found, candidate_plan),
+                             ["genshin_klee", "genshin_nahida"])
+            # A role never selected in the original trial cannot be added
+            # merely because the original process was interrupted.
+
+    def test_legacy_interruption_only_retries_recorded_attempts(self):
+        with TemporaryDirectory() as temp:
+            j = PersonalInstallJournal(Path(temp) / "data", {})
+            j.record_character({"profile": "genshin_klee", "status": "failed"})
+            found = latest_install_journal(Path(temp) / "data")
+            self.assertIsNone(found["planned_profiles"])
+            self.assertEqual(restartable_profiles(found, current_plan()),
+                             ["genshin_klee"])
+            # Older reports cannot prove whether user selected 2 or 65.
+            # Not-yet-attempted Xiaos must not be silently included.
+
     def test_finished_batch_retries_only_failed_and_not_already_installed(self):
         with TemporaryDirectory() as temp:
             j = PersonalInstallJournal(Path(temp) / "data", {})
@@ -60,6 +92,20 @@ class JournalRecoveryTests(unittest.TestCase):
             (data / "personal65-batch-20261027-120001-feedface.json").write_bytes(
                 b"x" * (4*1024*1024 + 1))
             self.assertIsNone(latest_install_journal(data))
+
+    def test_reject_forged_scope_and_keep_older_valid_report(self):
+        with TemporaryDirectory() as temp:
+            data = Path(temp) / "data"
+            good = PersonalInstallJournal(
+                data, {}, planned_profiles=["genshin_klee"])
+            bad = data / "personal65-batch-20990101-010101-deadbeef.json"
+            payload = json.loads(good.path.read_text(encoding="utf-8"))
+            payload["planned_profiles"] = ["genshin_klee", "genshin_klee"]
+            bad.write_text(json.dumps(payload), encoding="utf-8")
+            found = latest_install_journal(data)
+            self.assertEqual(found["path"], str(good.path))
+            with self.assertRaisesRegex(ValueError, "scope"):
+                PersonalInstallJournal(data, {}, planned_profiles=["a", "a"])
 
     def test_invalid_newest_skips_to_older_valid_report(self):
         with TemporaryDirectory() as temp:

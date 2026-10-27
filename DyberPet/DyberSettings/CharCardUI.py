@@ -627,7 +627,7 @@ class CharInterface(ScrollArea):
             return
         note = ("上次记录完整；仅重试当时失败的人物。"
                 if last["finished"] else
-                "上次任务意外中断；依据当前角色库继续未安装的人物。")
+                "上次任务意外中断；只按当时选定的范围继续未安装人物（旧日志仅重试已尝试人物）。")
         self.__showSystemNote(
             f"{note}本次待尝试 {len(targets)} 位，先进行来源确认。"
             f"上次日志：{last['path']}", 1)
@@ -1785,10 +1785,16 @@ class CreatorBatchImportThread(QThread):
             plan = plan_personal_sources(
                 self.output_root, only_profiles=self.only_profiles)
             info = plan["summary"]
+            ready_profiles = [
+                item["profile"] for item in plan["characters"]
+                if item["status"] == "ready_for_opt_in"]
+            planned_profiles = (ready_profiles[:self.max_roles]
+                                if self.max_roles is not None else ready_profiles)
             # Checkpoints are LOCAL, beside the portable app in data/.
             try:
                 journal = PersonalInstallJournal(
-                    self.output_root.parent.parent / "data", info)
+                    self.output_root.parent.parent / "data", info,
+                    planned_profiles=planned_profiles)
             except (OSError, ValueError) as exc:
                 journal_error = "进度保存不可用：" + str(exc)[:170]
             self.progress.emit({

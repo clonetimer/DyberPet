@@ -87,6 +87,8 @@ class BulkArtistGuiContractTests(unittest.TestCase):
         self.assertIn("PersonalInstallJournal(", run)
         self.assertIn("checkpoint=save_checkpoint", run)
         self.assertIn("journal.record_character(", run)
+        self.assertIn("planned_profiles=planned_profiles", run)
+        self.assertIn("ready_profiles[:self.max_roles]", run)
         self.assertIn("journal.finalize(result)", run)
         self.assertIn("journal_error", run)
         self.assertNotIn("QMessageBox", run)
