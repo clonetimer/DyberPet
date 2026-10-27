@@ -105,9 +105,19 @@ class RemoteMascotInstallTests(unittest.TestCase):
         self.assertIn("_installCreatorMascot",methods)
         self.assertIn("self.__showMessageBox(",methods["_installCreatorMascot"])
         self.assertIn("ChibiImportThread(",methods["_installCreatorMascot"])
-        self.assertIn("mode='creator_source'",methods["_installCreatorMascot"])
+        self.assertIn("source_mode = 'creator_source'", methods["_installCreatorMascot"])
+        self.assertIn("'creator_source_v2'", methods["_installCreatorMascot"])
+        self.assertIn("QInputDialog.getItem(", methods["_installCreatorMascot"])
+        self.assertIn("if not accepted:", methods["_installCreatorMascot"])
+        self.assertIn("godxxy1229", methods["_installCreatorMascot"])
+        self.assertIn("handdrawn_v2", methods["run"])
+        self.assertIn("if self.mode == 'creator_source_v2' and self.preset != 'doro':",
+                      methods["run"])
         self.assertIn("install_creator_mascot(",methods["run"])
         self.assertIn("confirmed=True",methods["run"])
+        self.assertIn("scan_mascot_library(", methods["run"])
+        self.assertIn("source_id", methods["run"])
+        self.assertIn("if len(matching) != 1:", methods["run"])
 
 
 if __name__=="__main__":
