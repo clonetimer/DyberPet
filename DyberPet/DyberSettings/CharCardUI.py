@@ -1703,6 +1703,46 @@ class FileCopyThread(QThread):
         self.done.emit(True)
 
 
+class CreatorBatchImportThread(QThread):
+    """Local source downloads on a worker; only Qt signals touch the GUI.
+
+    All creator sources are pre-pinned and matched to the right character.
+    Cancellation is cooperative and takes effect between complete characters.
+    """
+    progress = Signal(object)
+    done = Signal(object)
+
+    def __init__(self, output_root, *, max_roles=None):
+        super().__init__()
+        self.output_root = Path(output_root)
+        self.max_roles = max_roles
+        self._stop_requested = threading.Event()
+
+    def request_stop(self):
+        self._stop_requested.set()
+
+    def run(self):
+        try:
+            from tools.personal_source_batch import (
+                plan_personal_sources, install_personal_plan)
+            plan = plan_personal_sources(self.output_root)
+            info = plan["summary"]
+            self.progress.emit({
+                "stage": "batch_plan",
+                "ready": min(info["ready_for_opt_in"], self.max_roles)
+                         if self.max_roles is not None else info["ready_for_opt_in"],
+                "already": info["already_installed_structurally"],
+                "missing": info["missing_source"],
+            })
+            result = install_personal_plan(
+                plan, self.output_root, confirmed=True,
+                max_roles=self.max_roles, progress=self.progress.emit,
+                should_stop=self._stop_requested.is_set)
+            self.done.emit({"plan_summary": info, "installation": result})
+        except Exception as exc:
+            self.done.emit({"error": type(exc).__name__ + ": " + str(exc)[:300]})
+
+
 class ChibiImportThread(QThread):
     """Converts local assets and runs DyberPet config preflight off the UI thread."""
     done = Signal(str, str)
