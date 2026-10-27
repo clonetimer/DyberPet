@@ -52,6 +52,58 @@ class MascotPersonalBatchTests(unittest.TestCase):
             self.assertEqual(outcome["installed_unreviewed"], 1)
             self.assertTrue(outcome["no_art_uploaded"])
 
+    def test_doro_v2_is_a_separate_source_not_replaced_by_existing_classic(self):
+        with TemporaryDirectory() as temp:
+            plan = plan_mascot_sources(
+                temp, inventory=self._inventory(), doro_variant="handdrawn_v2")
+            guga, doro = plan["mascots"]
+            self.assertEqual(guga["status"], "ready_for_opt_in")
+            self.assertEqual(doro["status"], "ready_for_opt_in")
+            self.assertEqual(doro["source_variant"], "handdrawn_v2")
+            self.assertEqual(doro["source_id"], "doro--godxxy1229")
+            requests = []
+            def fake(kind, root, *, confirmed, variant="classic"):
+                requests.append((kind, confirmed, variant))
+                return {"kind": kind, "actions": 9, "frames": 70}
+            def after(_):
+                return {"mascots": [
+                    {"key": "guga", "imported_creator_art": [
+                        {"source_id": "guga--circus"}]},
+                    {"key": "doro", "imported_creator_art": [
+                        {"source_id": "doro--lingxiaotian"},
+                        {"source_id": "doro--godxxy1229"}]},
+                ]}
+            outcome = install_mascot_plan(
+                plan, temp, confirmed=True,
+                installer=fake, inventory_reader=after)
+            self.assertEqual(outcome["installed_unreviewed"], 2)
+            self.assertEqual(outcome["post_install_recognized_source_variants"], 3)
+            self.assertEqual(requests,
+                             [("guga", True, "classic"),
+                              ("doro", True, "handdrawn_v2")])
+
+    def test_doro_v2_must_not_count_old_classic_installed_as_success(self):
+        with TemporaryDirectory() as temp:
+            plan = plan_mascot_sources(
+                temp, inventory=self._inventory(), doro_variant="handdrawn_v2")
+            def fake(kind, root, *, confirmed, variant="classic"):
+                return {"kind": kind, "actions": 9, "frames": 70}
+            def only_classic(_):
+                return {"mascots": [
+                    {"key": "guga", "imported_creator_art": [
+                        {"source_id": "guga--circus"}]},
+                    {"key": "doro", "imported_creator_art": [
+                        {"source_id": "doro--lingxiaotian"}]},
+                ]}
+            outcome = install_mascot_plan(
+                plan, temp, confirmed=True, installer=fake,
+                inventory_reader=only_classic)
+            self.assertEqual(outcome["installed_unreviewed"], 1)
+            self.assertEqual(outcome["failed"], 1)
+            doro = next(x for x in outcome["results"] if x["key"] == "doro")
+            self.assertEqual(doro["status"], "failed")
+            self.assertTrue(doro["post_install_validation_failed"])
+
     def test_noop_mascot_installer_must_not_count_as_real_art(self):
         with TemporaryDirectory() as temp:
             report = plan_mascot_sources(temp, inventory=self._inventory())
