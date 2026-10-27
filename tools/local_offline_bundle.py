@@ -121,6 +121,31 @@ def create_local_bundle(portable_root, output, *, confirmed=False):
     if not output.parent.is_dir():
         raise ValueError("Bundle destination parent directory does not exist")
     manifest = inspect_local_bundle(root)
+    # A "role-embedded" archive containing zero genuine imported artwork is
+    # misleading: it looks like a completed Personal65 package but only has
+    # the starter Kitty. Never generate an empty success artifact.
+    if not manifest["contains_user_imported_art"]:
+        raise ValueError(
+            "No structurally installed creator artwork found. Run the local "
+            "65-role / Guga-Doro installer first; refusing starter-only ZIP")
+    # The personal package must not silently distribute corrupt role folders.
+    if manifest["invalid_genshin_folders"] or manifest["invalid_mascot_folders"]:
+        raise ValueError(
+            "Invalid local character folders detected; repair or remove them "
+            "before generating the offline package")
+    # Older builds could contain 125 abstract stand-in avatars. Their marker
+    # must never leak into a final pack presented as genuine character art.
+    role_root = root / "res" / "role"
+    generated_demos = sorted(
+        folder.name for folder in role_root.iterdir()
+        if folder.is_dir() and not folder.is_symlink()
+        and ((folder / "BUILTIN_CHIBI_DEMO.json").exists()
+             or (folder / "BUILTIN_MASCOT_DEMO.json").exists()))
+    if generated_demos:
+        raise ValueError(
+            "Generated placeholder sprites are present; remove old demo roles "
+            "before creating the personal archive: "
+            + ", ".join(generated_demos[:5]))
     entries = _entry_files(root)
     temporary = output.with_name(output.name + ".partial")
     if temporary.exists() or temporary.is_symlink():
