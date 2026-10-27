@@ -252,8 +252,23 @@ def probe_eula(*, post_loader=None, downloader=None):
         try:
             frames = inspect_shimeji_zip(archive)
         except (BadZipFile, ValueError, OSError) as exc:
+            issues = [
+                ("Duplicate or out-of-range", "duplicate_numbered_frame"),
+                ("Not a compatible standard Shimeji archive", "standard_required_motion_absent"),
+                ("Walk frames are identical", "standard_walk_not_distinct"),
+                ("Unsafe Shimeji PNG size/compression", "source_png_compression_exceeds_standard_limit"),
+                ("Unsafe Shimeji frame dimensions", "source_art_exceeds_standard_canvas_limit"),
+                ("Invalid original Shimeji PNG image", "source_png_header_nonstandard"),
+                ("ZIP PNG length mismatch", "source_png_length_mismatch"),
+                ("Shimeji ZIP exceeds compressed", "source_zip_exceeds_standard_size"),
+                ("Archive exceeds uncompressed", "source_unpacked_size_exceeds_standard_limit"),
+                ("Archive contains too many members", "source_zip_member_count_exceeds_standard_limit"),
+            ]
+            reason = next((code for excerpt, code in issues
+                           if excerpt in str(exc)), "standard_parser_unknown_rejection")
             state.update({
                 "status": "public_creator_attachment_not_standard_shimeji_archive",
+                "standard_parser_reason": reason,
                 "original_attachment_exception_class": type(exc).__name__,
                 "source_integrity_verified": False})
             try:
