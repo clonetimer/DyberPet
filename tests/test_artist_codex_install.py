@@ -81,6 +81,41 @@ class PinnedSourceTests(unittest.TestCase):
             self.assertTrue(report["manual_visual_review_pending"])
             self.assertEqual(report["actions"]["left"]["visually_distinct_samples"], 2)
 
+    def test_motion_audit_failure_rolls_back_only_new_codex_role(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "res" / "role"
+            root.mkdir(parents=True)
+            prior = root / "ExistingArt"
+            prior.mkdir()
+            (prior / "keep.txt").write_text("do not delete", encoding="utf-8")
+            pet_id = SOURCES["klee"][0]
+            def fake_downloader(url, expected):
+                if url.endswith("/pet.json"):
+                    return json.dumps({
+                        "id": pet_id, "spritesheetPath": "spritesheet.webp"
+                    }).encode()
+                return b"only a synthetic test fixture"
+
+            def fake_convert(src, dest, *, folder, **kwargs):
+                output = Path(dest) / folder
+                output.mkdir()
+                (output / "dummy.png").write_bytes(b"only-test-data")
+                return output
+
+            with patch("tools.install_artist_codex.convert",
+                       side_effect=fake_convert):
+                with patch("tools.install_artist_codex.validate_native_role",
+                           return_value={"actions": 1, "images": 1}):
+                    with patch("tools.install_artist_codex.write_motion_evidence",
+                               side_effect=ValueError("bad artist frame")):
+                        with self.assertRaisesRegex(ValueError, "bad artist frame"):
+                            install_artist_codex(
+                                "klee", root, confirmed=True,
+                                downloader=fake_downloader)
+            self.assertFalse((root / "SourceCodexKlee").exists())
+            self.assertEqual((prior / "keep.txt").read_text(encoding="utf-8"),
+                             "do not delete")
+
     def test_no_user_consent_no_network(self):
         with self.assertRaises(ValueError):
             install_artist_codex("klee", "/no/write/access")
