@@ -16,9 +16,11 @@ from urllib.request import Request, urlopen
 try:
     from .import_codex_pet import convert
     from .install_native_role import validate_native_role
+    from .pinned_github_png_transport import download_pinned_github_asset
 except ImportError:
     from import_codex_pet import convert
     from install_native_role import validate_native_role
+    from pinned_github_png_transport import download_pinned_github_asset
 
 REVISION = "db2f6306ce78f6559ab27155d7bfaf00bf43809d"
 REPO = "legeling/awesome-codex-pet"
@@ -79,9 +81,9 @@ def _download_pinned(url, expected, opener=urlopen):
     size, git_sha = expected
     if size > MAX_FILE_BYTES or size < 1:
         raise ValueError("Unsafe source file length")
-    request = Request(url, headers={"User-Agent": "DyberPet-personal-codex/1"})
-    with opener(request, timeout=30) as response:
-        data = response.read(MAX_FILE_BYTES + 1)
+    # Mirror only the SAME immutable original object; SHA and byte length
+    # below remain mandatory regardless of which trusted host responds.
+    data = download_pinned_github_asset(url, MAX_FILE_BYTES, opener=opener)
     if len(data) != size:
         raise ValueError("Downloaded art length differs from pinned source")
     if hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() != git_sha:
