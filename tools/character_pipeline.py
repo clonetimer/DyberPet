@@ -230,6 +230,18 @@ def review_turnaround(case_file, reviewer, checks):
     return data
 
 
+def turnaround_card(case_file):
+    """Write a non-public visual comparison card; never approves an asset."""
+    data = load_case(case_file)
+    if __package__:
+        from .turnaround_review_card import render_review_card
+    else:
+        from turnaround_review_card import render_review_card
+    workspace = Path(case_file).resolve().parent.parent
+    return render_review_card(data["id"], data.get("turnaround") or {},
+                              workspace / "review_cards")
+
+
 def rights_review(case_file, reviewer, evidence, *,
                   local_use=False, derivatives=False, redistribution=False):
     data = load_case(case_file)
@@ -568,6 +580,8 @@ def main(argv=None):
     a.add_argument("--reviewer", required=True)
     for check in CHECKS:
         a.add_argument("--" + check, action="store_true")
+    a = sub.add_parser("turnaround-card", help="Write local front/side/back review card")
+    a.add_argument("id")
     a = sub.add_parser("rights", help="Record user-performed item-specific license check")
     a.add_argument("id")
     a.add_argument("--reviewer", required=True)
@@ -609,6 +623,8 @@ def main(argv=None):
             elif args.command == "turnaround-review":
                 output = review_turnaround(
                     case, args.reviewer, {k: getattr(args, k) for k in CHECKS})["turnaround"]["review"]["reviewed_on"]
+            elif args.command == "turnaround-card":
+                output = turnaround_card(case)
             elif args.command == "rights":
                 output = rights_review(
                     case, args.reviewer, args.evidence,
