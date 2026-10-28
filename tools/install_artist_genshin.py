@@ -21,9 +21,11 @@ from zipfile import ZipFile, BadZipFile
 try:
     from .install_native_role import validate_native_role
     from .artist_visual_review import create_native_art_review
+    from .artist_motion_audit import write_motion_evidence
 except ImportError:
     from install_native_role import validate_native_role
     from artist_visual_review import create_native_art_review
+    from artist_motion_audit import write_motion_evidence
 
 REPOSITORY = "ChaozhongLiu/DyberPet_GenshinImpact"
 REVISION = "0789950b81802cc51ebeeecfc24be16aaee16e74"
@@ -208,6 +210,7 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
             excluded = _prune_missing_optional_actions(staged)
             status = validate_native_role(staged)
             visual_review = create_native_art_review(staged)
+            motion_review = write_motion_evidence(staged)
             (staged / "PERSONAL_IMPORT.json").write_text(
                 json.dumps({"selected_profile": profile,
                             "display_name": original,
@@ -216,6 +219,9 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
                             "source_kind": "artist_original_animation",
                             "source_identity_anchors_verified": verified_source_files,
                             "visual_review": visual_review,
+                            "motion_evidence_file": "ANIMATION_MOTION_QA.json",
+                            "motion_warning_count": len(motion_review["warnings"]),
+                            "animation_quality_automatically_approved": False,
                             "source_rights_verified": False,
                             "likeness_manually_reviewed": False,
                             "voice_verified": False,
@@ -230,6 +236,8 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
             "source": SOURCE_URL + original, "uses_original_author_frames": True,
             "source_identity_verified": True,
             "visual_review": visual_review["visual_review_file"],
+            "motion_evidence": "ANIMATION_MOTION_QA.json",
+            "motion_warnings": len(motion_review["warnings"]),
             "likeness_manually_reviewed": False}
 
 
