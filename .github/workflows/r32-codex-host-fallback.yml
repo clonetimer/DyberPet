@@ -47,6 +47,7 @@ jobs:
     timeout-minutes: 17
     env:
       PYTHONUTF8: "1"
+      PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
