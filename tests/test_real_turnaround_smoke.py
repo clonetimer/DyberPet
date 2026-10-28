@@ -12,6 +12,11 @@ from tools.turnaround_review_card import render_review_card
 
 
 class RealTurnaroundSmoke(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (os.environ.get("BLENDER_BIN") or shutil.which("blender")):
+            raise unittest.SkipTest("Real orthographic smoke requires Blender")
+
     def test_three_cameras_and_unapproved_reference(self):
         blender = os.environ.get("BLENDER_BIN", "blender")
         with tempfile.TemporaryDirectory() as td:
