@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Git-LFS-pinned external React-Shimeji character *leads*, not usable art.
+"""Git-LFS-pinned external React-Shimeji character source identities.
 
 GitHub's small index.ts blobs contain LFS pointers, NOT actual animation
 bytes. Do not count them as imported or visually accepted characters.
@@ -47,6 +47,16 @@ CANDIDATES = {
         "5abe02c8363a86b2c849277409aed0c28d0b606fbde87747f5771f89a23ee922",
         1176253, "6377f1b50d24bf02bea629741f702c6a56337a94",
         "9ddd26c6c463690746eb50a82e6c6cfa2a93111b"),
+    # R27: separate Genshin originals, NOT verified until real LFS bytes and
+    # original animated frames pass an isolated CI probe.
+    "genshin_neuvillette": ("neuvillette-10d1e7",
+        "0baef99c84ba33cbc28b6f607fcc0df3d04a6494f45a34be6db1f1394a7fa59e",
+        1148440, "c708a7dc6c99efca0d1de836fb6d9932ec4a81ba",
+        "e3c875bf9cc057358a06c74526a53f9683614df4"),
+    "genshin_wriothesley": ("wriothesley-01fe24",
+        "10737b31db7fb5958950754cecb9ad7d60eba5cfc95c49ec066a52a41f5d0cb8",
+        993331, "39225e86f7b651a78da96465edb980089f050927",
+        "01bb845ce852d8505189dd3e5c3f9c1315b525ba"),
 }
 
 
@@ -55,7 +65,7 @@ def verified_lfs_sources():
     """Return only full-byte/CI-verified source records, never pointer leads."""
     catalog = json.loads(Path(__file__).with_name(
         "react_lfs_verified_sources.json").read_text(encoding="utf-8"))
-    if catalog.get("schema") != 1 or len(catalog.get("sources", {})) != 2:
+    if catalog.get("schema") != 1 or len(catalog.get("sources", {})) != 4:
         raise ValueError("Unexpected original-LFS source registry")
     mapped = {}
     for key, entry in catalog["sources"].items():

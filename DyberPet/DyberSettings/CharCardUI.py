@@ -925,33 +925,28 @@ class CharInterface(ScrollArea):
         mode, kind = labels[selected]
         if mode == "react_shimeji_lfs":
             source_record = verified_react[kind]
-            source_url = (
-                f"https://github.com/{REACT_REPO}/blob/{REACT_REV}/"
-                f"packages/character-{source_record['slug']}/index.ts")
+            source_url = (f"https://github.com/{REACT_REPO}/tree/{REACT_REV}/"
+                          f"packages/character-{source_record['slug']}")
             if not self.__showMessageBox(
-                    "选择经 SHA 校验的作者原始图集",
-                    "请从以下原作者页面手动下载完整 .ts 原始图集（不是只有几行字的 LFS 指针）：\n"
-                    + source_url + "\n固定 SHA-256："
-                    + source_record["sha256"] +
-                    "\n安装程序会校验精确身份及全部字节；现有 crawl/fall 动作只有单独姿势帧，"
-                    "仍需用户预览验证是否存在真实移动。继续选择已下载文件吗？"):
-                return
-            local_module, _ = QFileDialog.getOpenFileName(
-                self, self.tr("请选择完整作者 Git LFS 原画模块"),
-                QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation),
-                "原画 TypeScript 图集 (*.ts)")
-            if not local_module:
+                    "本机下载经验证的角色原始动画",
+                    f"作者素材来源：{source_url}\\n"
+                    f"固定 Git LFS SHA-256：{source_record['sha256']}\\n"
+                    "软件会在本机按确认获取完整源文件，严格核验长度和哈希，"
+                    "仅提取真实 PNG 帧并创建一个独立角色，不会执行 TypeScript。"
+                    "原始 crawl/fall 各仅一帧，完整动作、原设美术与声音仍需人工验收；"
+                    "源站软件许可不等于游戏角色原画的再分发授权。"
+                    "只在本机个人使用，不上传或替换任何既有角色。确认下载并安装吗？"):
                 return
             self.addButton.setEnabled(False)
             self.artistSourceButton.setEnabled(False)
             self.chibiThread = ChibiImportThread(
-                local_module, os.path.join(basedir, "res", "role"),
-                mode="react_shimeji_lfs", profile=kind, preset=None, folder=None)
+                "", os.path.join(basedir, "res", "role"),
+                mode="react_verified_auto", profile=kind, preset=kind, folder=None)
             self.chibiThread.done.connect(self._onChibiImportComplete)
             self.chibiThread.finished.connect(self._onChibiThreadFinished)
             self.chibiThread.start()
             self.__showSystemNote(
-                "正在检查原画 LFS 内容 SHA 与原始帧；动作质量仍须单独验收。", 1)
+                "正在本机获取并校验完整原始 Git LFS 图集；原画不进入公开软件包。", 1)
             return
         if mode == "artist_genshin":
             source = SOURCE_URL + ROLES[kind][0]
@@ -1635,6 +1630,7 @@ class CharInterface(ScrollArea):
             "shimeji_zip", "codex_zip", "codex",
             "native_zip", "native_folder", "animations",
             "pinned_kaveh_shimeji", "pinned_eula_shimeji",
+            "react_verified_auto",
             "whale_creator",
         }
         if source_mode in original_modes:
@@ -2023,6 +2019,18 @@ class ChibiImportThread(QThread):
                 new_folder = self.output_root / result["folder"]
                 if result["actions"] < 16 or result["frames"] < 32:
                     raise ValueError("Whale original artwork conversion incomplete")
+            elif self.mode == "react_verified_auto":
+                from tools.install_verified_react_lfs import (
+                    ALLOWED as VERIFIED_REACT_KEYS, install_verified_react_lfs)
+                key = next((name for name, profile in VERIFIED_REACT_KEYS.items()
+                            if profile == self.profile), None)
+                if key is None:
+                    raise ValueError("Unknown verified Git LFS character profile")
+                installed = install_verified_react_lfs(
+                    key, self.output_root, confirmed=True)
+                if installed["profile"] != self.profile:
+                    raise ValueError("Remote source bound to incorrect character")
+                new_folder = self.output_root / installed["folder"]
             elif self.mode in ("creator_source", "creator_source_v2"):
                 from tools.install_creator_mascots import install_creator_mascot
                 # Only Doro can use the independent hand-drawn V2 pinned atlas.

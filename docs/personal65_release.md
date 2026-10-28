@@ -2,10 +2,10 @@
 
 ## 2026-10-28 候选版本状态（R24）
 
-- R23 原作者优菈来源加入后，角色来源覆盖为 **66/123**，缺 **57/123**；历史包名 Personal65 与早期 65/58 段落只代表旧时点，**不代表当前预装数量**。
+- R27 那维莱特与莱欧斯利的两份原始 Git LFS 模块均已在 CI 完成全量 SHA-256、46 帧原生 PNG、10 类动作及本机安全安装核验；最新**固定来源覆盖 68/123**、缺 **55/123**。`crawl` / `fall` 缺少独立运动帧，原设美术、实际运动、配音和授权仍未验收。历史 Personal65 包名与旧的 65/58、66/57 段落属于旧阶段，**不等于当前预装角色数量**。
 - 目前 GitHub API 返回该仓库 **Public**。私有预发布工作流因此不会创建 `v0.13.0-private65-rc1` Release，这是安全门禁而非打包故障。两份 Windows ZIP 已在 [Actions 运行 40542222679](https://github.com/clonetimer/DyberPet/actions/runs/40542222679) 作为短期 artifacts 产出，分别是 `personal65-python` 与 `personal65-rust`；artifacts 不是发行版 Release，也没有预装第三方角色原画。
 - 对 10 月 27 日成功构建的真实 Python ZIP 进行补充检查，发现还混入了 CI 离屏运行生成的 `data/pet_data.json`、`data/settings.json`、`data/task_data.json` 和 `data/version`。R24 在最终运行检查结束后清除整个临时 `data/` 目录，再打包；程序首次启动时会自动生成新的数据目录和个人初始存档。实际旧 ZIP 不具备这项修复，请勿将它当作全新安装交付介质。
-- 新增最终 ZIP 检查：逐项验证 `DyberPet.exe`、本机角色安装助手、双击启动入口、实际 Python/Rust 模式、66/123 当前来源数、ZIP CRC；拒绝含私人 `data/`、`Source*/` 原画、过时占位角色标记的包。失败时构建直接停止，不上传伪成功包。
+- 新增最终 ZIP 检查：逐项验证 `DyberPet.exe`、本机角色安装助手、双击启动入口、实际 Python/Rust 模式、运行时动态来源数（最低 R23 66/123，当前 R27 68/123）、ZIP CRC；拒绝含私人 `data/`、`Source*/` 原画、过时占位角色标记的包。失败时构建直接停止，不上传伪成功包。
 - 解压新包后请优先使用 **`Install-Available-Roles.cmd`**，阅读来源条件并本机选择安装，然后在 **系统 → 角色管理 → 全部角色库** 中查看真正识别的角色。首次添加新角色需重启程序激活；来源覆盖不能替代实际安装数量或人工形象/动作验收。
 - 即使上述 ZIP 门禁和 Windows CI 均通过，也不表示用户的 Windows 桌面真实播放、声线、外形相似度或来源许可已经验证，仍只称 **candidate / preview**。
 

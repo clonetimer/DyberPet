@@ -14,20 +14,21 @@ class ReactShimejiLeadTests(unittest.TestCase):
     def test_lfs_leads_and_four_now_have_verified_zip_alternatives(self):
         report = react_shimeji_lead_report()
         self.assertEqual(report["summary"]["repo_character_packages"], 2224)
-        self.assertEqual(report["summary"]["matched_distinct_genshin_personas"], 6)
+        self.assertEqual(report["summary"]["matched_distinct_genshin_personas"], 8)
         self.assertEqual(report["summary"]["new_leads_for_missing_characters"], 0)
         self.assertTrue(report["summary"]["fixed_source_coverage_unchanged"])
-        self.assertEqual(report["summary"]["source_origins_verified_in_ci"], 2)
+        self.assertEqual(report["summary"]["source_origins_verified_in_ci"], 4)
         self.assertEqual(report["summary"]["downloaded_or_installed"], 0)
         self.assertEqual(report["summary"]["art_qa_passed"], 0)
         self.assertEqual(set(CANDIDATES), {
             "genshin_alhaitham", "genshin_amber", "genshin_columbina",
-            "genshin_fischl", "genshin_freminet", "genshin_kaveh"})
+            "genshin_fischl", "genshin_freminet", "genshin_kaveh",
+            "genshin_neuvillette", "genshin_wriothesley"})
         for entry in report["characters"]:
             self.assertEqual(
                 entry["existing_fixed_source"],
-                entry["id"] in {"genshin_alhaitham", "genshin_kaveh", "genshin_freminet", "genshin_columbina", "genshin_amber", "genshin_fischl"})
-            verified = entry["id"] in {"genshin_amber", "genshin_fischl"}
+                entry["id"] in {"genshin_alhaitham", "genshin_kaveh", "genshin_freminet", "genshin_columbina", "genshin_amber", "genshin_fischl", "genshin_neuvillette", "genshin_wriothesley"})
+            verified = entry["id"] in {"genshin_amber", "genshin_fischl", "genshin_neuvillette", "genshin_wriothesley"}
             self.assertEqual(entry["full_lfs_art_downloaded_and_hashed"], verified)
             self.assertEqual(entry["native_install_tested_in_ci"], verified)
             self.assertEqual(entry["status"], ("original_bytes_sha_native_install_verified_motion_pending"
@@ -46,9 +47,9 @@ class ReactShimejiLeadTests(unittest.TestCase):
 
     def test_existing_pinned_source_counts_remain_intact(self):
         summary = source_coverage()["summary"]
-        self.assertEqual(summary["characters_with_pinned_sources"], 66)
-        self.assertEqual(summary["characters_without_pinned_sources"], 57)
-        self.assertEqual(summary["pinned_source_options"], 89)
+        self.assertEqual(summary["characters_with_pinned_sources"], 68)
+        self.assertEqual(summary["characters_without_pinned_sources"], 55)
+        self.assertEqual(summary["pinned_source_options"], 91)
 
     def test_gui_has_explicit_safe_preview_choices_and_no_auto_download(self):
         source = (Path(__file__).resolve().parents[1] /

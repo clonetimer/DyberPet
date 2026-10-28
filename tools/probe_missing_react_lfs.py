@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check two missing Genshin roles against real upstream Git LFS source bytes.
+"""Check four separately verified Genshin roles against full Git LFS source bytes.
 
 This is an *optional, non-publishing* discovery test. Downloading a pointer
 does not count as a source. Only exact byte count + full SHA256 + successful
@@ -25,13 +25,14 @@ except ImportError:
     from install_pinned_react_shimeji import MAX_TS_BYTES, decode_pinned_frames, install_pinned_react_shimeji
     from artist_animation_audit import audit_native_character
 
-MISSING_PROFILES = ("genshin_amber", "genshin_fischl")
+MISSING_PROFILES = ("genshin_amber", "genshin_fischl",
+                    "genshin_neuvillette", "genshin_wriothesley")
 ALLOWED_HOSTS = frozenset(("media.githubusercontent.com", "raw.githubusercontent.com"))
 
 
 def candidate_urls(profile):
     if profile not in MISSING_PROFILES:
-        raise ValueError("Only two currently missing, exact-upstream profiles are permitted")
+        raise ValueError("Only four exact-origin verified React-Shimeji profiles are permitted")
     slug = CANDIDATES[profile][0]
     relative = "packages/character-" + slug + "/index.ts"
     return (

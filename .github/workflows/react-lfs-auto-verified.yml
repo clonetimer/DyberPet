@@ -1,4 +1,4 @@
-name: Verified Amber and Fischl creator LFS native integration
+name: Verified four Genshin creator LFS native integrations
 
 on:
   push:
@@ -38,9 +38,9 @@ jobs:
           python -m unittest discover -s tests -p "test_verified_react_lfs_installer.py" -v
           python -m unittest discover -s tests -p "test_personal_source_batch.py" -v
           python -m unittest discover -s tests -p "test_creator_fallback_variant_ranking.py" -v
-      - name: All 65 source-pinned Genshin roles now have an opt-in installer, without downloading art
+      - name: All 68 source-pinned Genshin roles have an opt-in installer, without downloading art
         run: |
-          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.personal_source_batch import plan_personal_sources; from tools.react_shimeji_source_leads import verified_lfs_sources; t=TemporaryDirectory(); r=plan_personal_sources(Path(t.name)/'fresh'); s=r['summary']; print(s); assert s['selected_profiles']==123 and s['ready_for_opt_in']==66 and s['manual_import_only']==0 and s['missing_source']==57; assert len(verified_lfs_sources())==2"
+          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.personal_source_batch import plan_personal_sources; from tools.react_shimeji_source_leads import verified_lfs_sources; t=TemporaryDirectory(); r=plan_personal_sources(Path(t.name)/'fresh'); s=r['summary']; print(s); assert s['selected_profiles']==123 and s['ready_for_opt_in']==68 and s['manual_import_only']==0 and s['missing_source']==55; assert len(verified_lfs_sources())==4"
   original-bytes-integration:
     runs-on: ubuntu-latest
     needs: offline
@@ -54,9 +54,9 @@ jobs:
       - name: Opt-in CI verification of full pinned Git-LFS original bytes
         run: |
           python tools/probe_missing_react_lfs.py --all
-      - name: Actually install both exact-SHA Genshin roles in a throwaway personal directory
+      - name: Actually install all four exact-SHA Genshin roles in a throwaway personal directory
         run: |
-          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.install_verified_react_lfs import install_verified_react_lfs; from tools.genshin_library import scan_genshin_library; t=TemporaryDirectory(); r=Path(t.name)/'roles'; r.mkdir(); a=install_verified_react_lfs('amber',r,confirmed=True); b=install_verified_react_lfs('fischl',r,confirmed=True); report=scan_genshin_library(r); print('VERIFIED_REACT_AUTO_INSTALLED='+str(report['summary']['personal_art_profile_count'])); assert a['full_lfs_sha256_verified'] and b['full_lfs_sha256_verified'] and report['summary']['personal_art_profile_count']==2"
+          python -c "from pathlib import Path; from tempfile import TemporaryDirectory; from tools.install_verified_react_lfs import install_verified_react_lfs; from tools.genshin_library import scan_genshin_library; t=TemporaryDirectory(); r=Path(t.name)/'roles'; r.mkdir(); a=install_verified_react_lfs('amber',r,confirmed=True); b=install_verified_react_lfs('fischl',r,confirmed=True); c=install_verified_react_lfs('neuvillette',r,confirmed=True); d=install_verified_react_lfs('wriothesley',r,confirmed=True); report=scan_genshin_library(r); print('VERIFIED_REACT_AUTO_INSTALLED='+str(report['summary']['personal_art_profile_count'])); assert all(x['full_lfs_sha256_verified'] for x in (a,b,c,d)) and report['summary']['personal_art_profile_count']==4"
       - name: No third-party sprites uploaded
         run: |
           python -c "from pathlib import Path; assert not list(Path('res/role').glob('SourceVerified*')); print('ORIGINAL_ASSET_UPLOAD=false')"

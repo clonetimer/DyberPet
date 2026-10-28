@@ -19,7 +19,8 @@ except ImportError:
     from tools.character_source_coverage import source_coverage
     from tools.genshin_library import scan_genshin_library
 
-# React LFS entries require a user-provided source file, and remain manual-only.
+# Only independently full-byte/CI-verified React LFS modules may auto-install.
+# Never fetch raw pointers, run upstream TypeScript, or infer art/voice rights.
 def default_role_root():
     """PyInstaller helper installs beside DyberPet.exe, never in _MEIPASS."""
     if getattr(sys, "frozen", False):
