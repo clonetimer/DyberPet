@@ -91,8 +91,11 @@ def verify_portable_zip(archive: str | Path, backend: str) -> dict:
             raise ValueError("Rust package lacks fail-closed native backend requirement")
         if zf.testzip() is not None:
             raise ValueError("Portable ZIP entry CRC verification failed")
+    digest = hashlib.sha256()
     with file.open("rb") as stream:
-        sha = hashlib.file_digest(stream, "sha256").hexdigest()
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    sha = digest.hexdigest()
     return {
         "archive": file.name, "sha256": sha, "backend": backend,
         "files_checked": len(files), "character_templates": total,
