@@ -14,9 +14,9 @@ from tools.character_source_coverage import source_coverage
 class KavehAlternativeTests(unittest.TestCase):
     def test_not_a_new_character_or_fake_approved_source(self):
         r = source_coverage()["summary"]
-        self.assertEqual(r["characters_with_pinned_sources"], 68)
-        self.assertEqual(r["characters_without_pinned_sources"], 55)
-        self.assertEqual(r["pinned_source_options"], 91)
+        self.assertEqual(r["characters_with_pinned_sources"], 69)
+        self.assertEqual(r["characters_without_pinned_sources"], 54)
+        self.assertEqual(r["pinned_source_options"], 92)
 
     def test_explicit_confirmation_and_fixed_identity_before_any_network(self):
         with tempfile.TemporaryDirectory() as td:
