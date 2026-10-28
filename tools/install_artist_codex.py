@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 from pathlib import Path
 import tempfile
 from urllib.request import Request, urlopen
@@ -114,25 +115,35 @@ def install_artist_codex(kind, output_root, *, confirmed=False,
             from .chibi_profiles import CHIBI_PROFILES
         except ImportError:
             from chibi_profiles import CHIBI_PROFILES
-        converted = convert(src, root, folder=folder,
-                            profile=profile if profile in CHIBI_PROFILES else None,
-                            name=display, style="classic",
-                            preserve_source_frames=True,
-                            source_url=f"https://github.com/{REPO}/tree/{REVISION}/pets/{pet_id}",
-                            license_name="See original artist submission; private install")
-        result = validate_native_role(converted)
-        motion_review = write_motion_evidence(converted)
-        (converted / "PERSONAL_IMPORT.json").write_text(
-            json.dumps({"selected_profile": profile, "source_id": pet_id,
-                        "display_name": display,
-                        "source_repository": REPO, "source_commit": REVISION,
-                        "source_kind": "curated_creator_spritesheet",
-                        "motion_evidence_file": "ANIMATION_MOTION_QA.json",
-                        "motion_warning_count": len(motion_review["warnings"]),
-                        "animation_quality_automatically_approved": False,
-                        "source_rights_verified": False,
-                        "likeness_manually_reviewed": False},
-                       ensure_ascii=False, indent=2), encoding="utf-8")
+        # Once convert() publishes the new directory, every subsequent
+        # validation/receipt failure must remove ONLY that newly created role.
+        # Existing roles were rejected before download and are never deleted.
+        converted = None
+        try:
+            converted = convert(src, root, folder=folder,
+                                profile=profile if profile in CHIBI_PROFILES else None,
+                                name=display, style="classic",
+                                preserve_source_frames=True,
+                                source_url=f"https://github.com/{REPO}/tree/{REVISION}/pets/{pet_id}",
+                                license_name="See original artist submission; private install")
+            result = validate_native_role(converted)
+            motion_review = write_motion_evidence(converted)
+            (converted / "PERSONAL_IMPORT.json").write_text(
+                json.dumps({"selected_profile": profile, "source_id": pet_id,
+                            "display_name": display,
+                            "source_repository": REPO, "source_commit": REVISION,
+                            "source_kind": "curated_creator_spritesheet",
+                            "motion_evidence_file": "ANIMATION_MOTION_QA.json",
+                            "motion_warning_count": len(motion_review["warnings"]),
+                            "animation_quality_automatically_approved": False,
+                            "source_rights_verified": False,
+                            "likeness_manually_reviewed": False},
+                           ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            if (converted is not None and Path(converted).resolve() == destination
+                    and destination.is_dir() and not destination.is_symlink()):
+                shutil.rmtree(destination)
+            raise
     return {"folder": destination.name, "source": pet_id, "profile": profile,
             "actions": result["actions"], "frames": result["images"],
             "artist_sprites_retained": True, "visual_qa_pending": True,
