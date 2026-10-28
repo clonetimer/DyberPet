@@ -900,6 +900,30 @@ class CharInterface(ScrollArea):
                 if mode == "pinned_codexpetdb":
                     return petdb[key]["profile"]
                 if mode == "react_shimeji_lfs":
+                    return key
+                if mode == "pinned_kaveh_shimeji":
+                    return "genshin_kaveh"
+                if mode == "pinned_eula_shimeji":
+                    return "genshin_eula"
+                return external["sources"][key]["profile"]
+            labels = {name: source for name, source in labels.items()
+                      if mapped_profile(source) == only_profile}
+        if not labels:
+            self.__showMessageBox(
+                "该角色暂缺原画资源",
+                "目前尚未找到并固定校验属于此人物的公开作者动画。"
+                "不会用简笔画、同名其他游戏角色或通用换色素材代替。"
+                "此人物继续列入待补充清单。")
+            return
+        selected, ok = QInputDialog.getItem(
+            self, "安装真实来源的桌宠美术",
+            "第一组精细 Q 版优先；图集需看图复核；第二组 Shimeji 可接受。"
+            "以下只是素材风格优先级，不代表原设相似度验收通过。",
+            sorted(labels, key=lambda name: (install_preference(labels[name][0]), name)), 0, False)
+        if not ok or selected not in labels:
+            return
+        mode, kind = labels[selected]
+        if mode == "react_shimeji_lfs":
             source_record = verified_react[kind]
             source_url = (f"https://github.com/{REACT_REPO}/tree/{REACT_REV}/"
                           f"packages/character-{source_record['slug']}")
