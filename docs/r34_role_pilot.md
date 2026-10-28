@@ -18,16 +18,20 @@
 
 ## Doro（四足桃乐丝）
 
+**2026-10-28 R37 调整：用户反馈 blatz729 模型美术风格不合预期，已降级，不再作为优先候选。应先对照中文创作者 0x4682B4 的 Dororong Live2D 与 MelanTech/Dororo 的实际运行形象。完整清单及许可边界见 [R37 中文来源复核](r37_doro_cn_sources.md)。**
+
 固定目标：粉发、紫色眼睛、发饰、白色四足圆润身体；必须保持四足步态，**不得制作成人形站立少女**。
 
 | 候选源 | 优点 | 当前阻断 |
 |---|---|---|
 | [Good Smile Arts 官方展示](https://www.goodsmilearts.com/Cn/Index/pageView/catid/5/id/501.html) | 身体体态、脸部比例和配饰的身份核对基准 | 商品宣传图不等于同一套正交三视图，也不授予数字改编或再分发许可 |
-| [blatz729 Sketchfab Doro](https://sketchfab.com/3d-models/doro-9ee7bdcbe953439c8f5438e5197810a7) | 页面标 CC BY、可下载；约 7.95 万三角面，较高模 3D 打印文件轻 | **下载需要 Sketchfab 登录**；尚未获取 GLB，需确认版本相符、骨骼可动与底层角色权利，不能据此宣称已完成三视图 |
+| [0x4682B4 Dororong Live2D](https://booth.pm/zh-cn/items/5867617) | **当前首要审美基准**：四足、粉发、紫眼、发髻和表情比例更符合目标 | 明确禁止再分发，不可上传公开或私有仓库；Live2D 也不是三视图，需补齐侧/背视角 |
+| [MelanTech/Dororo](https://github.com/MelanTech/Dororo) | **当前首要动态体验参考**：Godot Windows 桌宠，包含同一来源 Live2D 模型、眼睛跟随、漫游、摸头等 | 美术源追溯到 0x4682B4；不能把开源代码协议视作素材再分发许可 |
+| ~~[blatz729 Sketchfab Doro](https://sketchfab.com/3d-models/doro-9ee7bdcbe953439c8f5438e5197810a7)~~ | 有几何与 CC BY 声明，但用户已明确否决其审美 | **不采用为第一优先级，不因可下载而直接进入动作开发** |
 | [Gray World / RenderHub 3D 模型](https://www.renderhub.com/gray-world-corporation/dorothy-doro-goddess-of-victory-nikke) | 可能以同一套模型输出三视图；有多角度图 | 页面标为非 game-ready、约 400 万面，许可带 IP restricted/editorial 限制；用于桌宠动作前须检查许可、拓扑及是否能够制作连续动作 |
 | [Marky3d Doro 双姿态打印模型](https://cults3d.com/en/3d-model/game/goddess-of-victory-nikke-doro-dorothy) | 两个造型姿态，可辅助辨认四足/竖立差异 | STL/打印姿态不能直接当作实时骨骼动画；不能混用直立版本 |
 
-**试点路线**：先以官方展示确立四足参考，优先复核 blatz729 可下载模型是否与目标 Doro 四足造型一致（需要合法登录下载）。若一致并允许本地改编，则用 R35 同模型正交渲染 + R36 严格真实动画片段模式。选定前不投产最终动作帧。
+**试点路线（R37 修订）**：先以 0x4682B4 与 MelanTech 的动态形象作为审美验收基准，再研究**合法的本机 Live2D 驱动／原生动作帧制作**和能达到相同 Q 版审美质量的同源 3D 路径。未取得同一来源的侧面、背面设定以及合法可用的动作资产前，不投产最终角色帧；R35/R36 是 3D 路径能力，不能强迫 Doro 用低审美的 3D 模型来满足工具链。
 
 动作计划（目标帧数）：四足呼吸待机 6、左右小跑各 8、摸头 6、跳跃 8、扑倒/翻滚 8、睡眠 6、说话/表情 6。身体和四肢应有真实相位差，不允许用整张图平移假装迈步；检查前后方向转换时的发饰位置。
 
