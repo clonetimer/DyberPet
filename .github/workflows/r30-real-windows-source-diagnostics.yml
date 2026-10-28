@@ -1,0 +1,107 @@
+name: R30 Windows real source install diagnostics (no artwork artifacts)
+on:
+  push:
+    branches: [fix/r30-windows-install-failures-evidence-and-retry-20261028]
+    paths:
+      - ".github/workflows/r30-real-windows-source-diagnostics.yml"
+      - "tools/personal_source_batch.py"
+      - "tools/github_blob_source_fallback.py"
+      - "tools/install_artist_shimeji.py"
+      - "tools/install_nanopet_shimeji.py"
+      - "tests/test_r30_*"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-windows:
+    runs-on: windows-latest
+    timeout-minutes: 27
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install Pillow==12.0.0
+      - name: Inspect five representative roles which user reports as failing or succeeding
+        env:
+          PYTHONUTF8: "1"
+          PYTHONPATH: ${{ github.workspace }}
+        shell: pwsh
+        run: |
+          @'
+          import json, tempfile
+          from pathlib import Path
+          from tools.personal_source_batch import plan_personal_sources, install_personal_plan
+          from tools.character_source_coverage import source_coverage
+          selected = ("genshin_albedo", "genshin_diona", "genshin_fischl",
+                      "genshin_baizhu", "genshin_amber")
+          with tempfile.TemporaryDirectory(prefix="r30-windows-diagnostics-") as td:
+              root=Path(td)/"res"/"role"
+              for profile in selected:
+                  plan=plan_personal_sources(root,only_profiles=[profile])
+                  print("R30_WINDOWS_TEST_START="+profile,flush=True)
+                  report=install_personal_plan(plan,root,confirmed=True,max_roles=1)
+                  result=report["results"]
+                  clean=[{
+                      "profile":x["profile"],"status":x["status"],
+                      "attempts":[{
+                         "provider":y["provider"],"status":y["status"],
+                         "reason":y.get("reason","")[:280]
+                      } for y in x.get("source_attempts",[])]
+                  } for x in result]
+                  print("R30_WINDOWS_REAL_RESULT="+json.dumps(clean,ensure_ascii=False),flush=True)
+              print("R30_ART_UPLOAD=false",flush=True)
+          '@ | Set-Content -Encoding UTF8 -Path "$env:RUNNER_TEMP/r30_probe.py"
+          python "$env:RUNNER_TEMP/r30_probe.py"
+          if ($LASTEXITCODE -ne 0) { throw "Diagnostic script crashed unexpectedly" }
+      - name: No original sprites uploaded
+        run: echo "SOURCE_ART_NOT_PUBLISHED=true"
+
+  frozen-windows:
+    name: Reproduce user failures in ACTUAL frozen Windows role-installer EXE
+    runs-on: windows-latest
+    timeout-minutes: 55
+    needs: live-windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install exact Windows portable requirements
+        run: python -m pip install -r requirements-windows-portable.txt
+      - name: Run offline failure-retry regression tests before build
+        run: python -m unittest discover -s tests -p "test_r30_failed_role_retry.py" -v
+      - name: Build same Windows frozen EXE as user's portable download
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          ./tools/build_personal65_windows.ps1 -Backend python
+          if ($LASTEXITCODE -ne 0) { throw "Frozen installer build failed" }
+      - name: Actually download/import user-affected sources using frozen EXE
+        shell: pwsh
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tool = Join-Path $PWD "dist/DyberPet/DyberPet-Role-Installer.exe"
+          $roleRoot = Join-Path $env:RUNNER_TEMP "r30-frozen-installed-roles"
+          New-Item -ItemType Directory -Force -Path $roleRoot | Out-Null
+          if (-not (Test-Path $tool)) { throw "Frozen role installer unavailable" }
+          foreach ($id in @("genshin_albedo", "genshin_diona", "genshin_fischl", "genshin_baizhu", "genshin_amber")) {
+            $out = Join-Path $env:RUNNER_TEMP ("frozen-" + $id + ".json")
+            & $tool --profile $id --role-root $roleRoot --install --accept-personal-use --output $out
+            $exitCode = $LASTEXITCODE
+            if (-not (Test-Path $out)) {
+              Write-Host ("R30_FROZEN_RESULT=" + $id + ": no JSON report, exit " + $exitCode)
+              continue
+            }
+            $report = Get-Content -LiteralPath $out -Raw -Encoding UTF8 | ConvertFrom-Json
+            foreach ($item in @($report.installation.results)) {
+              $details = @($item.source_attempts | Where-Object { $_.status -eq "failed" } | ForEach-Object {
+                $_.provider + ":" + $_.failure_class + ":" + $_.reason
+              })
+              Write-Host ("R30_FROZEN_RESULT=" + $item.profile + " status=" + $item.status + " exit=" + $exitCode + " reason=" + ($details -join "; "))
+            }
+          }
+          Write-Host "R30_FROZEN_ARTWORK_NOT_UPLOADED=true"

@@ -16,6 +16,7 @@ _REQUIRED = {
     "DyberPet.exe", "DyberPet-Role-Installer.exe", "Run-DyberPet.cmd",
     "Install-Available-Roles.cmd", "Install-Available-Roles.ps1",
     "Install-Guga-Doro.cmd", "Install-Guga-Doro.ps1",
+    "Retry-Failed-Roles.cmd", "Retry-Failed-Roles.ps1",
     "Make-My-Offline-DyberPet.cmd", "Make-Personal65-Offline.ps1",
     "PERSONAL65_BUILD_INFO.json", "PERSONAL65_INSTALL.md",
     "Install-Whale-Pet.cmd", "Install-Whale-Pet.ps1", "WHALE_PERSONAL_GUIDE.md",

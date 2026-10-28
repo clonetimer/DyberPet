@@ -28,6 +28,68 @@ def default_role_root():
     return Path(__file__).resolve().parents[1] / "res" / "role"
 
 
+
+MAX_RETRY_REPORT_BYTES = 2 * 1024 * 1024
+
+
+def read_failed_profiles_from_report(path):
+    """Read previous USER-OWNED summary, not its untrusted provider/URL/paths.
+
+    Use only exact failed canonical IDs; recompute all actual trusted source
+    URLs and installed/available status from fresh registries and disk scan.
+    """
+    file = Path(path).expanduser()
+    if (file.is_symlink() or not file.is_file() or
+            not 0 < file.stat().st_size <= MAX_RETRY_REPORT_BYTES):
+        raise ValueError("Retry report must be a readable bounded JSON file")
+    try:
+        obj = json.loads(file.read_text(encoding="utf-8-sig"))
+    except (UnicodeError, OSError, json.JSONDecodeError) as exc:
+        raise ValueError("Unable to parse previous installation report") from exc
+    if not isinstance(obj, dict) or not isinstance(obj.get("installation"), dict):
+        raise ValueError("Previous report has no installation results")
+    record = obj["installation"]
+    if record.get("scope") != "local_personal_install_only":
+        raise ValueError("Previous report is not a personal installation report")
+    results = record.get("results")
+    if not isinstance(results, list) or not 1 <= len(results) <= 123:
+        raise ValueError("Previous installation report contains invalid results")
+    failed = set()
+    for row in results:
+        if not isinstance(row, dict) or not isinstance(row.get("profile"), str):
+            raise ValueError("Malformed character status in previous report")
+        profile = row["profile"]
+        if row.get("status") == "failed":
+            if not profile.startswith("genshin_") or len(profile) > 80:
+                raise ValueError("Invalid previous failed character identity")
+            failed.add(profile)
+        elif row.get("status") != "installed_unreviewed":
+            raise ValueError("Unexpected previous role status")
+    return sorted(failed)
+
+
+def classify_source_failure(exc):
+    """Diagnostic *classification only*. Never weaken source SHA or identity checks."""
+    from urllib.error import HTTPError, URLError
+    import socket
+    import ssl
+    if isinstance(exc, HTTPError):
+        return "source_http_" + str(exc.code)
+    if isinstance(exc, (TimeoutError, socket.timeout)):
+        return "network_timeout"
+    if isinstance(exc, ssl.SSLError):
+        return "tls_verification"
+    if isinstance(exc, URLError):
+        return "source_network"
+    if isinstance(exc, FileExistsError):
+        return "source_folder_exists"
+    if isinstance(exc, ValueError):
+        return "source_integrity_or_format"
+    if isinstance(exc, (ConnectionError, OSError)):
+        return "io_or_network"
+    return "other_error"
+
+
 INSTALLERS = {
     "native": ("tools.install_artist_genshin", "install_artist_genshin"),
     "codex": ("tools.install_artist_codex", "install_artist_codex"),
@@ -170,12 +232,17 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
             try:
                 dispatch(p, k, root)
             except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+                failure_type = classify_source_failure(exc)
+                failure_text = type(exc).__name__ + ": " + str(exc)[:240]
                 attempts.append({
                     "provider": p, "source_key": k, "status": "failed",
-                    "reason": type(exc).__name__ + ": " + str(exc)[:240]})
+                    "failure_class": failure_type,
+                    "reason": failure_text})
                 if progress is not None:
                     progress({"stage": "source_failed", "profile": profile,
-                              "provider": p, "attempt": len(attempts)})
+                              "provider": p, "attempt": len(attempts),
+                              "reason": failure_text, "failure_class": failure_type,
+                              "has_next_pinned_source": len(attempts) < min(len(sources), 4)})
             else:
                 attempts.append({"provider": p, "source_key": k,
                                  "status": "installed_unreviewed"})
@@ -264,6 +331,18 @@ def install_personal_plan(plan, role_root, *, confirmed=False, max_roles=None,
         "post_install_invalid_folders": invalid_after,
         "post_install_recognized_creator_profiles": len(recognized),
         "results": results, "no_artwork_uploaded": True,
+        "failed_profiles": [x["profile"] for x in results if x["status"] == "failed"],
+        "failure_class_counts": {
+            failure_class: sum(
+                any(a.get("failure_class") == failure_class
+                    for a in x.get("source_attempts", []))
+                for x in results if x["status"] == "failed")
+            for failure_class in sorted({
+                a["failure_class"] for x in results
+                for a in x.get("source_attempts", [])
+                if a.get("failure_class")
+            })
+        },
     }
 
 
@@ -281,6 +360,8 @@ def main(argv=None):
                     help="With --mascots, opt in to separately drawn Doro V2 instead of legacy source")
     ap.add_argument("--profile", action="append", default=None,
                     help="Repeatable genshin_... profile (default: all 123 templates)")
+    ap.add_argument("--retry-failed-from", type=Path,
+                    help="Recompute and retry only failed characters from the previous JSON report; never trust source URLs in report")
     ap.add_argument("--bundle-output", type=Path,
                     help="Create LOCAL offline Windows app ZIP with your installed art; never upload")
     ap.add_argument("--confirm-local-bundle", action="store_true",
@@ -296,7 +377,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         if args.bundle_output is not None:
-            if args.install or args.mascots or args.doro_v2 or args.whale or args.whale_full or args.profile or args.output or args.max_roles is not None or args.accept_personal_use:
+            if args.install or args.mascots or args.doro_v2 or args.whale or args.whale_full or args.profile or args.retry_failed_from or args.output or args.max_roles is not None or args.accept_personal_use:
                 raise ValueError("--bundle-output cannot be combined with install/planning options")
             try:
                 from .local_offline_bundle import create_local_bundle
@@ -311,6 +392,8 @@ def main(argv=None):
             return 0
         if args.confirm_local_bundle:
             raise ValueError("--confirm-local-bundle requires --bundle-output")
+        if args.retry_failed_from is not None and (args.whale or args.mascots or args.doro_v2):
+            raise ValueError("--retry-failed-from applies only to Genshin character installs")
         if args.whale_full and not args.whale:
             raise ValueError("--whale-full requires --whale")
         if args.whale:
@@ -383,7 +466,17 @@ def main(argv=None):
                     sys.stdout.reconfigure(encoding="utf-8")
                 print(output, end="")
             return 0 if not args.install or not result["installation"]["failed"] else 1
-        plan = plan_personal_sources(args.role_root, only_profiles=args.profile)
+        if args.retry_failed_from is not None:
+            if args.profile:
+                raise ValueError("--retry-failed-from cannot be combined with --profile")
+            if args.output is not None and args.output.resolve() == args.retry_failed_from.resolve():
+                raise ValueError("New report must not overwrite the original retry report")
+            failed_profiles = read_failed_profiles_from_report(args.retry_failed_from)
+            if not failed_profiles:
+                raise ValueError("Previous report has no failed characters to retry")
+            plan = plan_personal_sources(args.role_root, only_profiles=failed_profiles)
+        else:
+            plan = plan_personal_sources(args.role_root, only_profiles=args.profile)
         if args.install:
             total = min(plan["summary"]["ready_for_opt_in"],
                         args.max_roles if args.max_roles is not None else
@@ -395,7 +488,11 @@ def main(argv=None):
                 elif stage == "source_start":
                     message = f"  source {event['attempt']}: {event['provider']} ..."
                 elif stage == "source_failed":
-                    message = f"  source {event['attempt']} failed; trying next pinned source"
+                    suffix = ("; trying next pinned source" if event.get("has_next_pinned_source")
+                              else "; no further verified source for this character")
+                    message = (f"  source {event['attempt']} failed "
+                               f"[{event.get('failure_class', 'unknown')}]: "
+                               f"{event.get('reason', '')[:180]}{suffix}")
                 elif stage == "source_returned":
                     message = "  download/import returned; checking actual role inventory at end"
                 else:
