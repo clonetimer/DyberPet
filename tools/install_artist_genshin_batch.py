@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-download, opt-in batch installer for the THREE pinned artist roles.
+"""One-download, opt-in batch installer for pinned artist native roles.
 
 Only author-published native DyberPet folders from a fixed Git commit. The
 download is locally consumed, not republished. Each role still gets its
@@ -25,11 +25,21 @@ except ImportError:
     )
 
 
+# Keep R39's "all" stable: it always means the 3 human Genshin roles.
+# Companion mascots are independent original source roles, not human slots.
+CORE_ROLES = ("nahida", "xiao", "wanderer")
+COMPANION_ROLES = ("arana", "scara_cat", "fungus", "xiao_bird")
+
+
 def parse_roles(raw):
-    """No fallback to unverified 123 template slots."""
+    """Choose pinned author character sets; never auto-fill template slots."""
     raw = str(raw or "").strip().lower()
     if raw == "all":
-        return tuple(ROLES)
+        return CORE_ROLES
+    if raw == "companions":
+        return COMPANION_ROLES
+    if raw == "all-seven":
+        return CORE_ROLES + COMPANION_ROLES
     keys = tuple(x.strip() for x in raw.split(","))
     if not keys or any(not x or x not in ROLES for x in keys):
         raise ValueError("Select all or known artist-backed roles: " + ", ".join(ROLES))
@@ -133,7 +143,7 @@ def install_artist_genshin_batch(roles, output_root, *, confirmed=False,
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--roles", default="all",
-                   help="all or comma-separated nahida,xiao,wanderer")
+                   help="all (original 3), companions (4 mascots), all-seven, or comma-separated IDs")
     p.add_argument("--role-root", default="res/role")
     p.add_argument("--accept-personal-use", action="store_true")
     a = p.parse_args(argv)
