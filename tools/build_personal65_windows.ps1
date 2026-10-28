@@ -252,6 +252,10 @@ $archive = Join-Path $root $archiveName
 if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
 Compress-Archive -Path (Join-Path $package "*") -DestinationPath $archive -CompressionLevel Optimal
 if (-not (Test-Path -LiteralPath $archive)) { throw "Final portable archive missing" }
+# Validate the actual ZIP delivered to users, not just the unpacked build dir.
+# Reject missing installers, stale source counts, wrong backend or hidden creator art.
+python -m tools.verify_personal_portable --archive $archive --backend $Backend
+if ($LASTEXITCODE -ne 0) { throw "Final Windows portable ZIP content verification failed" }
 $sha = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Output "PRIVATE65_ARCHIVE=$archive"
 Write-Output "PRIVATE65_SHA256=$sha"
