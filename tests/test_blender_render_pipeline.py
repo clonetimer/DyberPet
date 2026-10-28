@@ -15,6 +15,7 @@ from tools.render_chibi_blender import RenderError, render_blender, validate_fra
 from tools.character_pipeline import (
     PipelineError, init_case, attach_case, rights_review, render_3d_case,
     load_case, attach_turnaround, review_turnaround, validate_derived_provenance,
+    check_build_gate,
 )
 
 
@@ -167,6 +168,10 @@ class RightsAndDerivationTests(unittest.TestCase):
         with self.assertRaisesRegex(PipelineError, "preview-only"):
             validate_derived_provenance(child, child_data, for_release=True)
         validate_derived_provenance(child, child_data)
+        stripped = dict(child_data)
+        stripped.pop("derived_from")
+        with self.assertRaisesRegex(PipelineError, "parent lineage"):
+            check_build_gate(stripped)
         self.assertFalse(child_data["rights"]["redistribution"])
         self.assertEqual(child_data["derived_from"]["parent_case"], "artist_model_001")
         self.assertEqual(load_case(self.case)["status"], "rendered")
