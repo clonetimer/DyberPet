@@ -42,5 +42,15 @@ jobs:
                                        fps=8)
                   assert count >= 2
                   print("PINNED_ORIGINAL_TRANSPARENT_FRAMES_OK", name, count)
+          from tools.install_whale_pet import install_whale_pet
+          from tools.install_native_role import validate_native_role
+          with tempfile.TemporaryDirectory() as td:
+              result = install_whale_pet(Path(td) / "role", confirmed=True,
+                                         selection="core")
+              role = Path(td) / "role" / result["folder"]
+              assert result["actions"] == 16, result
+              assert result["frames"] >= 32, result
+              assert validate_native_role(role)["actions"] == 16
+              print("REAL_PINNED_16_ACTION_NATIVE_ROLE_INSTALLED", result["frames"])
           print("No third-party video/PNG uploaded or retained by workflow")
           PY
