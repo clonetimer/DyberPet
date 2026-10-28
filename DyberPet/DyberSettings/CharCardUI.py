@@ -529,8 +529,14 @@ class CharInterface(ScrollArea):
             return
         from tools.install_artist_genshin import ROLES, SOURCE_URL
         from tools.install_artist_codex import SOURCES, ROOT
-        labels = {"一次下载·安装三位原画角色（纳西妲 / 魈 / 流浪者）":
-                  ("artist_genshin_batch", "all")}
+        labels = {
+            "一次下载·三位原神人物（纳西妲 / 魈 / 流浪者）":
+                ("artist_genshin_batch", "all"),
+            "一次下载·四位原生动物伙伴（兰纳罗 / 散猫猫 / 蕈兽 / 魈鸟）":
+                ("artist_genshin_batch", "companions"),
+            "一次下载·以上七位原作者角色及伙伴":
+                ("artist_genshin_batch", "all-seven"),
+        }
         labels.update({f"完整原生动画 · {title}": ("artist_genshin", key)
                        for key, (_, _, title) in ROLES.items()})
         labels.update({f"轻量创作者图集 · {row[1]}":("artist_codex", key)
