@@ -1,0 +1,42 @@
+name: R28 discover genuine missing-character upstream asset sources
+
+on:
+  push:
+    branches: [feat/r28-remaining-55-real-source-discovery-20261028]
+    paths:
+      - ".github/workflows/r28-remaining-character-discovery.yml"
+      - "tools/discover_new_codexpetdb_pins.py"
+      - "tests/test_r28_source_discovery.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-catalog-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Test exact 123-character ID matching and no false positives
+        run: python -m unittest discover -s tests -p "test_r28_source_discovery.py" -v
+      - name: Query real publisher catalog, report only missing and exact-ID packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from tools.character_source_coverage import source_coverage
+          from tools.discover_new_codexpetdb_pins import query_unpinned_candidates
+          summary=source_coverage()["summary"]
+          assert summary["template_count"]==123
+          assert summary["characters_with_pinned_sources"]==68
+          assert summary["characters_without_pinned_sources"]==55
+          result=query_unpinned_candidates()
+          print("R28_CATALOG_CANDIDATES="+json.dumps(result,ensure_ascii=False,separators=(",",":")),flush=True)
+          print("R28_NEW_CANDIDATE_COUNT="+str(result["count"]),flush=True)
+          print("R28_NO_DOWNLOAD_OR_INSTALL=true",flush=True)
+          PY
