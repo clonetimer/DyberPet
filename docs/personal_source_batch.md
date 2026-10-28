@@ -1,4 +1,12 @@
 # DyberPet：个人电脑上的固定来源角色批量安装（候选功能）
+## R29：刻晴的第二套作者原画（2026-10-28）
+
+- 来源是 GMCY 的原始桌宠项目 [`DesktopPet-Simple`](https://github.com/GMCY2020/DesktopPet-Simple/tree/1b7d73a940ae4df84a283399f25a80fe2c571595/resources/pet_1)；原作者 README 和 `cfg_keqing.py` 明确标识为原神**刻晴**。R28 同一作者的迪奥娜使用不同的 `pet_2` 目录。
+- 固定源提交 `1b7d73a940ae4df84a283399f25a80fe2c571595`，独立登记 `gmcy_keqing_92_source.json` 中 92 张 PNG 各自 Git blob SHA-1、文件长度和原作者六组动作分段。
+- [R29 真实动画 CI](https://github.com/clonetimer/DyberPet/actions/runs/40652536037)：实际获取 67.2MB 完整上游仓库，核实 **92 张作者原图、6 组原生动作、92 帧，自动像素结构缺陷 0**。离线伪造哈希、缺帧、无确认及重复安装安全测试在 Windows/Linux 通过。
+- GUI **系统 → 角色管理 → 安装作者原画角色 → 刻晴（GMCY原作者92帧）**：仅在用户确认后本机下载和独立安装，保留当前其他刻晴版本与用户存档；界面显示中文“刻晴”。无需用户手动准备 `.ts` 或 `.zip`。
+- 本轮是**既有刻晴的第二份来源**，不增加覆盖人物数。当前仍为 **69/123 位固定来源，54 位缺来源**；固定来源选项从 92 增至 **93**。人物原设相似度、六组动作具体语义和声音均未人工验收，不能称为完整角色已完成。作者图集不打包进公开 EXE。
+
 ## R28：迪奥娜原作者 170 帧本机安装（2026-10-28）
 
 - 来源：[GMCY2020/DesktopPet-Simple](https://github.com/GMCY2020/DesktopPet-Simple/tree/1b7d73a940ae4df84a283399f25a80fe2c571595/resources/pet_2)，上游 README 与 `cfg_diaona.py` 明确指向原神**迪奥娜**；固定上游提交和 170 张图片各自的 Git blob SHA-1、文件长度记录于 `tools/gmcy_diona_170_source.json`。
