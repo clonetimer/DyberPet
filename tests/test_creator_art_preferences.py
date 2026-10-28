@@ -54,7 +54,7 @@ class CreatorArtPreferenceTests(unittest.TestCase):
         self.assertEqual(summary["template_count"], 123)
         self.assertEqual(summary["characters_with_pinned_sources"], 69)
         self.assertEqual(summary["characters_without_pinned_sources"], 54)
-        self.assertEqual(summary["pinned_source_options"], 92)
+        self.assertEqual(summary["pinned_source_options"], 93)
         self.assertEqual(summary["style_priority_detailed_native_count"], 3)
         self.assertEqual(summary["user_visible_style_grades_approved"], 0)
         total = sum(summary[x] for x in (
