@@ -38,7 +38,7 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.install_gmcy_diona --hidden-import tools.install_gmcy_keqing --hidden-import tools.install_artist_genshin \
   --hidden-import tools.artist_visual_review \
   --hidden-import tools.install_artist_codex \
-  --hidden-import tools.install_artist_shimeji \
+  --hidden-import tools.install_artist_shimeji --hidden-import tools.pinned_github_png_transport \
   --hidden-import tools.install_nanopet_shimeji \
   --hidden-import tools.install_external_codex \
   --hidden-import tools.character_source_coverage \
