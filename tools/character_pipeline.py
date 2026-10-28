@@ -312,6 +312,10 @@ def check_build_gate(data):
         raise PipelineError("Attach a local asset first")
     if data["source"]["sha256"] != fingerprint(source):
         raise PipelineError("Source files changed since intake; attach again and re-review")
+    if (data["source"]["kind"] == "frames" and source.is_dir() and
+            (source / "BLENDER_RENDER_REPORT.json").is_file() and
+            not data.get("derived_from")):
+        raise PipelineError("Rendered model frames require parent lineage evidence")
     if not data["rights"]["reviewer"] or not data["rights"]["evidence"]:
         raise PipelineError("Human rights review with evidence required before build")
     if not data["rights"]["local_use"]:
