@@ -86,7 +86,7 @@ class CharInterface(ScrollArea):
         self.catalogButton = PushButton(self.tr("全部角色库"), self, FIF.SEARCH)
         self.catalogButton.setToolTip(
             self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
-        self.qThreeViewButton = PushButton(self.tr("Q版三视图·交互"), self, FIF.EYE)
+        self.qThreeViewButton = PushButton(self.tr("Q版三视图·交互"), self, FIF.SEARCH)
         self.qThreeViewButton.setToolTip(
             self.tr("对已内置角色用同一比例对照正侧背与原生摸头、拖拽、走路；缺失背面不伪造"))
         self.artistSourceButton = PushButton(self.tr("安装作者原画角色"), self, FIF.DOWNLOAD)
