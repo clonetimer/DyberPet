@@ -126,6 +126,9 @@ $cmd = '@echo off' + "`r`n" + 'cd /d "%~dp0"' + "`r`n" +
 [System.IO.File]::WriteAllText((Join-Path $package "Install-65-Roles.cmd"), $cmd, (New-Object System.Text.ASCIIEncoding))
 $availableCmd = $cmd.Replace("Install-65-Roles.ps1", "Install-Available-Roles.ps1")
 [System.IO.File]::WriteAllText((Join-Path $package "Install-Available-Roles.cmd"), $availableCmd, (New-Object System.Text.ASCIIEncoding))
+Copy-Item -LiteralPath (Join-Path $root "tools/Retry-Failed-Roles.ps1") -Destination (Join-Path $package "Retry-Failed-Roles.ps1") -Force
+$retryCmd = $cmd.Replace("Install-65-Roles.ps1", "Retry-Failed-Roles.ps1")
+[System.IO.File]::WriteAllText((Join-Path $package "Retry-Failed-Roles.cmd"), $retryCmd, (New-Object System.Text.ASCIIEncoding))
 
 # Independent whale local source installer; never prebundles noncommercial media.
 $whaleMenu = @'
