@@ -76,8 +76,8 @@ class R28ExactCatalogDiscovery(unittest.TestCase):
         from tools.character_source_coverage import source_coverage
         summary = source_coverage()["summary"]
         self.assertEqual(summary["template_count"], 123)
-        self.assertEqual(summary["characters_with_pinned_sources"], 68)
-        self.assertEqual(summary["characters_without_pinned_sources"], 55)
+        self.assertEqual(summary["characters_with_pinned_sources"], 69)
+        self.assertEqual(summary["characters_without_pinned_sources"], 54)
 
 
 if __name__ == "__main__":
