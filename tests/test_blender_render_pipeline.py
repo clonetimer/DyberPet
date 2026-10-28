@@ -14,7 +14,7 @@ from PIL import Image
 from tools.render_chibi_blender import RenderError, render_blender, validate_frames
 from tools.character_pipeline import (
     PipelineError, init_case, attach_case, rights_review, render_3d_case,
-    load_case,
+    load_case, attach_turnaround, review_turnaround, validate_derived_provenance,
 )
 
 
@@ -117,6 +117,25 @@ class RightsAndDerivationTests(unittest.TestCase):
             creator="Demo Author"
         )
         attach_case(self.case, self.model)
+        self.views = self.root / "views"
+        self.views.mkdir()
+        for i, name in enumerate(("front", "side", "back")):
+            im = Image.new("RGBA", (192, 208), (0, 0, 0, 0))
+            for x in range(30 + i * 3, 110 + i * 3):
+                for y in range(25, 170):
+                    im.putpixel((x, y), (30 + 50 * i, 80, 200, 255))
+            im.save(self.views / (name + ".png"))
+
+    def approve_views(self):
+        attach_turnaround(
+            self.case, front=self.views / "front.png",
+            side=self.views / "side.png", back=self.views / "back.png",
+            reference_url="https://artist.example/model-turnaround",
+            artist="Demo Author", variant="one-source-Q-model")
+        review_turnaround(self.case, "Human", {
+            "silhouette": True, "outfit": True, "identity": True,
+            "cross_view": True,
+        })
 
     def test_requires_explicit_local_and_derivative_permission(self):
         with self.assertRaisesRegex(PipelineError, "permission"):
@@ -129,6 +148,7 @@ class RightsAndDerivationTests(unittest.TestCase):
     def test_child_frames_record_requires_own_rights_review(self):
         rights_review(self.case, "Reviewer", "https://author.example/terms",
                       local_use=True, derivatives=True)
+        self.approve_views()
         def fake_render(blender, output, *, source, actions, frames, timeout):
             output.mkdir(parents=True)
             for act in actions:
@@ -141,13 +161,72 @@ class RightsAndDerivationTests(unittest.TestCase):
             child = render_3d_case(self.case, blender="dummy", frames=1)
         child_data = load_case(child)
         self.assertEqual(child_data["source"]["kind"], "frames")
+        self.assertEqual(child_data["turnaround"], load_case(self.case)["turnaround"])
         self.assertEqual(child_data["rights"]["reviewer"], "")
+        self.assertTrue(child_data["derived_from"]["preview_only"])
+        with self.assertRaisesRegex(PipelineError, "preview-only"):
+            validate_derived_provenance(child, child_data, for_release=True)
+        validate_derived_provenance(child, child_data)
         self.assertFalse(child_data["rights"]["redistribution"])
         self.assertEqual(child_data["derived_from"]["parent_case"], "artist_model_001")
         self.assertEqual(load_case(self.case)["status"], "rendered")
         with self.assertRaises(FileExistsError):
             render_3d_case(self.case, blender="dummy", frames=1)
         self.assertTrue((self.workspace / "renders" / "artist_model_001").is_dir())
+
+
+    def test_strict_clip_lineage_is_package_eligible_only_with_real_clips(self):
+        rights_review(self.case, "Reviewer", "https://author.example/terms",
+                      local_use=True, derivatives=True)
+        self.approve_views()
+
+        def render_strict(blender, output, *, source, actions, frames, timeout,
+                          require_clips=False):
+            self.assertTrue(require_clips)
+            output.mkdir(parents=True)
+            for act in actions:
+                Image.new("RGBA", (192, 208), (20, 30, 40, 90)).save(
+                    output / (act + "_0.png"))
+            (output / "BLENDER_RENDER_REPORT.json").write_text(
+                json.dumps({"animation_sources": {a: "clip" for a in actions}}))
+            return output
+
+        with patch("tools.render_chibi_blender.render_blender",
+                   side_effect=render_strict):
+            child = render_3d_case(self.case, blender="dummy", frames=1,
+                                   require_clips=True)
+        data = load_case(child)
+        self.assertFalse(data["derived_from"]["preview_only"])
+        self.assertTrue(data["derived_from"]["all_actions_use_real_clips"])
+        validate_derived_provenance(child, data, for_release=True)
+
+        # Parent source changes immediately invalidate the child.
+        self.model.write_bytes(b"new model geometry")
+        with self.assertRaisesRegex(PipelineError, "Parent model changed"):
+            validate_derived_provenance(child, data, for_release=True)
+
+    def test_strict_mode_rejects_fake_motion_without_child(self):
+        rights_review(self.case, "Reviewer", "https://author.example/terms",
+                      local_use=True, derivatives=True)
+        self.approve_views()
+
+        def fake_fallback(blender, output, *, source, actions, frames, timeout,
+                          require_clips=False):
+            output.mkdir(parents=True)
+            (output / "BLENDER_RENDER_REPORT.json").write_text(
+                json.dumps({"animation_sources": {a: "procedural_fallback"
+                                                  for a in actions}}))
+            return output
+
+        with patch("tools.render_chibi_blender.render_blender",
+                   side_effect=fake_fallback):
+            with self.assertRaisesRegex(PipelineError, "genuine imported"):
+                render_3d_case(self.case, blender="dummy", frames=1,
+                               require_clips=True)
+        self.assertFalse((self.workspace / "cases" /
+                          "artist_model_001_frames.json").exists())
+        self.assertFalse((self.workspace / "renders" /
+                          "artist_model_001").exists())
 
 
 if __name__ == "__main__":
