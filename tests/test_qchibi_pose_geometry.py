@@ -69,7 +69,9 @@ class RealPoseGroundingTests(unittest.TestCase):
         result = pose_geometry_for_role(plan)
         anchor = result["interactions"]["default"]["anchor"]
         self.assertEqual(anchor, (59, 91))
-        self.assertEqual(result["interactions"]["default"]["different_poses"], 5)
+        # Rise/fall intentionally share the same painted pose twice. Their
+        # genuine three distinct heights must not be 'invented' as 5 poses.
+        self.assertEqual(result["interactions"]["default"]["different_poses"], 3)
         self.assertEqual(result["interactions"]["default"]["bbox_union"], (50, 25, 68, 91))
         self.assertTrue(result["manual_review_required"])
 
