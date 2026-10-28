@@ -16,9 +16,11 @@ from urllib.request import Request, urlopen
 try:
     from .import_codex_pet import convert
     from .install_native_role import validate_native_role
+    from .artist_motion_audit import write_motion_evidence
 except ImportError:
     from import_codex_pet import convert
     from install_native_role import validate_native_role
+    from artist_motion_audit import write_motion_evidence
 
 REVISION = "db2f6306ce78f6559ab27155d7bfaf00bf43809d"
 REPO = "legeling/awesome-codex-pet"
@@ -119,17 +121,23 @@ def install_artist_codex(kind, output_root, *, confirmed=False,
                             source_url=f"https://github.com/{REPO}/tree/{REVISION}/pets/{pet_id}",
                             license_name="See original artist submission; private install")
         result = validate_native_role(converted)
+        motion_review = write_motion_evidence(converted)
         (converted / "PERSONAL_IMPORT.json").write_text(
             json.dumps({"selected_profile": profile, "source_id": pet_id,
                         "display_name": display,
                         "source_repository": REPO, "source_commit": REVISION,
                         "source_kind": "curated_creator_spritesheet",
+                        "motion_evidence_file": "ANIMATION_MOTION_QA.json",
+                        "motion_warning_count": len(motion_review["warnings"]),
+                        "animation_quality_automatically_approved": False,
                         "source_rights_verified": False,
                         "likeness_manually_reviewed": False},
                        ensure_ascii=False, indent=2), encoding="utf-8")
     return {"folder": destination.name, "source": pet_id, "profile": profile,
             "actions": result["actions"], "frames": result["images"],
-            "artist_sprites_retained": True, "visual_qa_pending": True}
+            "artist_sprites_retained": True, "visual_qa_pending": True,
+            "motion_evidence": "ANIMATION_MOTION_QA.json",
+            "motion_warnings": len(motion_review["warnings"])}
 
 
 def main(argv=None):
