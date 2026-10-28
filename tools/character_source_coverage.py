@@ -109,6 +109,26 @@ def source_coverage():
             "artist_character_likeness_verified": False,
             "physical_runtime_motion_qa_verified": False,
         })
+    # R28: GMCY creator explicitly identifies pet_2 as Genshin Diona;
+    # 170 original PNG Git blobs and nine native action groups passed isolated CI.
+    gmcy = json.loads(Path(__file__).with_name("gmcy_diona_170_source.json").read_text(encoding="utf-8"))
+    if (gmcy.get("schema") != 1 or gmcy.get("source_profile") != "genshin_diona"
+            or gmcy.get("original_frame_count") != 170 or
+            len(gmcy.get("files", [])) != 170 or
+            len(gmcy.get("original_action_groups", [])) != 9):
+        raise ValueError("Invalid independently verified GMCY Diona 170 source registry")
+    record("genshin_diona", "gmcy_diona", "diona_170",
+           "https://github.com/" + gmcy["repository"] + "/tree/" + gmcy["commit"] + "/resources/pet_2")
+    rows["genshin_diona"]["source_candidates"][-1].update({
+        "original_author_frames": 170,
+        "verified_original_git_blob_count": 170,
+        "original_creator_action_groups": 9,
+        "native_source_import_tested_in_ci": True,
+        "source_author_likeness_qa_passed": False,
+        "action_semantics_manually_approved": False,
+        "artist_rights_approved": False,
+        "prebundled_original_art": False,
+    })
     # Original creator public ZIP and 109 numbered PNGs independently
     # SHA-verified in CI, not bundled or visually approved.
     # Keep this catalog directly runnable as python tools/character_source_coverage.py
