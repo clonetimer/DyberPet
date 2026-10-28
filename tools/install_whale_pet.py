@@ -241,11 +241,11 @@ def install_whale_pet(output_root: Path, *, confirmed: bool = False,
     catalog = source_catalog()
     entries = select_actions(catalog, selection)
     fps = 8 if selection == "core" else 5
-    binary = locate_ffmpeg(ffmpeg, role_root=root)
     root = Path(output_root).expanduser()
     if root.is_symlink() or (root.exists() and not root.is_dir()):
         raise ValueError("Role root must not be a symlink")
     root = root.resolve()
+    binary = locate_ffmpeg(ffmpeg, role_root=root)
     root.mkdir(parents=True, exist_ok=True)
     folder_name = available_role_folder(root, ROLE_NAME)
     dest = root / folder_name
