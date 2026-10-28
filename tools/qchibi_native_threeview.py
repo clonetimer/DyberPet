@@ -162,7 +162,7 @@ def native_threeview_interactions(role_directory):
         heights.append(h)
     if not widths:
         raise ValueError("No Q版三视图 source frames")
-    return {
+    plan = {
         "role": root.name,
         "views": views,
         "interactions": interactions,
@@ -174,3 +174,9 @@ def native_threeview_interactions(role_directory):
         "read_only": True,
         "warning": "同一造型的正交正/侧/背三视图必须人工对照；动作源帧不能替代缺失的背面。",
     }
+    try:
+        from .qchibi_pose_geometry import pose_geometry_for_role
+    except ImportError:
+        from qchibi_pose_geometry import pose_geometry_for_role
+    plan["pose_geometry"] = pose_geometry_for_role(plan)
+    return plan
