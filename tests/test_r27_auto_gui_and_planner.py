@@ -15,8 +15,8 @@ class R27TwoNewCreatorRoles(unittest.TestCase):
             result = plan_personal_sources(Path(td) / "fresh")
         summary = result["summary"]
         self.assertEqual(summary["selected_profiles"], 123)
-        self.assertEqual(summary["ready_for_opt_in"], 68)
-        self.assertEqual(summary["missing_source"], 55)
+        self.assertEqual(summary["ready_for_opt_in"], 69)
+        self.assertEqual(summary["missing_source"], 54)
         self.assertEqual(summary["manual_import_only"], 0)
         self.assertEqual(len(verified_lfs_sources()), 4)
         by_profile = {entry["profile"]: entry for entry in result["characters"]}
