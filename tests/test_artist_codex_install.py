@@ -72,8 +72,8 @@ class PinnedSourceTests(unittest.TestCase):
                         "klee", root, confirmed=True,
                         downloader=fake_downloader)
             folder = root / installed["folder"]
-            receipt = json.loads((folder / "PERSONAL_IMPORT.json").read_text())
-            report = json.loads((folder / "ANIMATION_MOTION_QA.json").read_text())
+            receipt = json.loads((folder / "PERSONAL_IMPORT.json").read_text(encoding="utf-8"))
+            report = json.loads((folder / "ANIMATION_MOTION_QA.json").read_text(encoding="utf-8"))
             self.assertEqual(installed["motion_evidence"], "ANIMATION_MOTION_QA.json")
             self.assertEqual(receipt["motion_evidence_file"], installed["motion_evidence"])
             self.assertFalse(receipt["animation_quality_automatically_approved"])
