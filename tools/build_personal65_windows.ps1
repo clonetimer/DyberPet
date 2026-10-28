@@ -71,6 +71,7 @@ $sourceDirs = @(Get-ChildItem -LiteralPath $roles -Directory -ErrorAction Stop |
 if ($sourceDirs.Count -ne 0) { throw "Third-party Source* art accidentally included" }
 
 Copy-Item -LiteralPath (Join-Path $root "docs/personal_source_batch.md") -Destination (Join-Path $package "PERSONAL65_INSTALL.md") -Force
+Copy-Item -LiteralPath (Join-Path $root "docs/whale_personal_install.md") -Destination (Join-Path $package "WHALE_PERSONAL_GUIDE.md") -Force
 
 # Personal-only complete offline bundle generation: the art does not enter
 # hosted CI or any GitHub Release, even when the repository is private.
