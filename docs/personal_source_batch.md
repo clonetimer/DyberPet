@@ -1,4 +1,19 @@
 # DyberPet：个人电脑上的固定来源角色批量安装（候选功能）
+## R28：迪奥娜原作者 170 帧本机安装（2026-10-28）
+
+- 来源：[GMCY2020/DesktopPet-Simple](https://github.com/GMCY2020/DesktopPet-Simple/tree/1b7d73a940ae4df84a283399f25a80fe2c571595/resources/pet_2)，上游 README 与 `cfg_diaona.py` 明确指向原神**迪奥娜**；固定上游提交和 170 张图片各自的 Git blob SHA-1、文件长度记录于 `tools/gmcy_diona_170_source.json`。
+- [R28 真实 CI](https://github.com/clonetimer/DyberPet/actions/runs/40642720650) 从作者仓库下载约 67.2 MB ZIP；**170 张原始 PNG、9 组作者动作、170 个原生动作图片**全部通过哈希和结构验收，逐帧像素审计异常为 0。
+- 只在个人设备选择安装时从固定上游提交下载，不执行作者仓库里的 Python / EXE。角色名称显示为**迪奥娜**；创建独立角色目录，不覆盖已有角色，附带来源回执、原图动态预览与质量审计。
+- 原作者的 9 组动作原样保留，而没有未经核实就重命名为行走、摸头、坠落。声音和原设外观、个人设备 Qt 实播仍然未人工核准。
+- 固定来源覆盖从 **68/123 更新为 69/123**，缺来源 **54/123**。这**不是**已经在你本机预装的 69 个角色，也不等于 69 位外观人工通过。
+
+首次使用建议：Windows R28 候选版解压后，点击“角色管理 → 安装作者原画角色 → 迪奥娜”，阅读来源提示并确认；安装后重启桌宠再切换角色。也可在有源码的本机运行：
+
+```powershell
+python -m tools.install_gmcy_diona --personal-use --role-root .\res\role
+```
+
+
 
 本功能已合并至 `release/personal65-python-rust-20261026` 发行候选分支，R14 新增断点记录与免重启逐帧预览。
 **R27 固定来源 68/123 ≠ 已安装 68 个桌宠，更不等于角色外观、完整动作或声音验收通过。**
