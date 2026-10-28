@@ -21,6 +21,8 @@ class R32LegacyReportGui(unittest.TestCase):
             'info.get("reason"',
             'info.get("has_next_pinned_source")',
             "已安装角色与存档不会覆盖",
+            'label = CHIBI_PROFILES.get(profile, {}).get("name", profile)',
+            'f"正在安装第 {n} 位：{label}。"',
         ):
             self.assertIn(expected,text)
 
