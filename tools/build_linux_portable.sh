@@ -39,7 +39,7 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.artist_visual_review \
   --hidden-import tools.install_artist_codex \
   --hidden-import tools.install_creator_mascots \
-  --hidden-import tools.qchibi_native_threeview
+  --hidden-import tools.qchibi_native_threeview \
   --hidden-import tools.qchibi_pose_geometry \
   --hidden-import DyberPet.DyberSettings.qchibi_three_view_dialog \
   --hidden-import tools.role_action_preview \
