@@ -53,7 +53,8 @@ class QChibiThreeViewDialog(QDialog):
             if view["file"] is None:
                 sprite.setText("缺少独立背面原画" if name == "back" else "无可靠方向图")
             else:
-                sprite.setPixmap(self._grounded_pixmap(view["file"]))
+                sprite.setPixmap(self._grounded_pixmap(
+                    view["file"], self.plan["pose_geometry"]["views"][name]))
             self.viewLabels[name] = sprite
             panel.addWidget(sprite, 1, index)
             note = QLabel(view["evidence"], self)
@@ -69,6 +70,12 @@ class QChibiThreeViewDialog(QDialog):
         self.sourceStatus = QLabel(reviewed, self)
         self.sourceStatus.setWordWrap(True)
         layout.addWidget(self.sourceStatus)
+        alerts = self.plan["pose_geometry"]["warnings"]
+        self.poseQA = QLabel(
+            ("动作/形象复核提醒：" + "；".join(alerts[:4]) if alerts
+             else "原生动作帧未发现上述机械异常；形象仍需人工验收"), self)
+        self.poseQA.setWordWrap(True)
+        layout.addWidget(self.poseQA)
 
         actions = QGridLayout()
         self.actionButtons = {}
@@ -109,23 +116,30 @@ class QChibiThreeViewDialog(QDialog):
         layout.addWidget(close)
         self.play_interaction("default")
 
-    def _grounded_pixmap(self, path):
-        """Shared scale + bottom baseline; do NOT stretch or regenerate pixels."""
+    def _grounded_pixmap(self, path, geometry):
+        """Preserve unedited source PNG with constant alpha-silhouette anchor.
+
+        Transparent author canvas padding no longer alters the apparent
+        character scale or grounding. Crucially the SAME action-union anchor
+        is used for every frame, preserving actual jumping and bobbing.
+        """
         source = QPixmap(str(path))
         if source.isNull():
             raise ValueError("原画源 PNG 无法在 Qt 中读取：" + Path(path).name)
-        full_w, full_h = self.plan["reference_dimensions"]
+        full_w, full_h = self.plan["pose_geometry"]["reference_visible_dimensions"]
         scale = min(200 / full_w, 200 / full_h, 1.0)
         width = max(1, round(source.width() * scale))
         height = max(1, round(source.height() * scale))
         source = source.scaled(width, height,
                                Qt.AspectRatioMode.KeepAspectRatio,
                                Qt.TransformationMode.SmoothTransformation)
+        anchor_x, anchor_y = geometry["anchor"]
         canvas = QPixmap(222, 228)
         canvas.fill(Qt.GlobalColor.transparent)
         painter = QPainter(canvas)
-        painter.drawPixmap((222 - source.width()) // 2,
-                           216 - source.height(), source)
+        painter.drawPixmap(
+            round(111 - anchor_x * scale),
+            round(216 - anchor_y * scale), source)
         painter.end()
         return canvas
 
@@ -150,7 +164,8 @@ class QChibiThreeViewDialog(QDialog):
             return
         entry = self.plan["interactions"][self.current_action]
         path = entry["frames"][self.frame_index]
-        self.animated.setPixmap(self._grounded_pixmap(path))
+        self.animated.setPixmap(self._grounded_pixmap(
+            path, self.plan["pose_geometry"]["interactions"][self.current_action]))
         self.actionState.setText(
             entry["label"] + " · 原生 " + entry["action"]
             + " · " + str(self.frame_index + 1)
