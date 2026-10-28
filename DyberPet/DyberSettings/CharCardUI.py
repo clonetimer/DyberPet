@@ -786,6 +786,13 @@ class CharInterface(ScrollArea):
         if dialog is None or not isinstance(info, dict):
             return
         stage = info.get("stage")
+        profile = str(info.get("profile", ""))
+        # The GUI shows real Chinese role names, while JSON keeps stable IDs.
+        try:
+            from tools.chibi_profiles import CHIBI_PROFILES
+            label = CHIBI_PROFILES.get(profile, {}).get("name", profile)
+        except ImportError:
+            label = profile
         if stage == "batch_plan":
             count = info.get("ready", 0)
             dialog.setMaximum(max(1, count))
@@ -796,7 +803,7 @@ class CharInterface(ScrollArea):
             n = info.get("index", 0)
             dialog.setValue(max(0, n - 1))
             dialog.setLabelText(
-                f"正在安装第 {n} 位：{info.get('profile', '')}。"
+                f"正在安装第 {n} 位：{label}。"
                 "点击停止会在当前角色安装结束后生效。")
         elif stage == "source_failed":
             category = str(info.get("failure_class", "unknown"))[:40]
@@ -805,7 +812,7 @@ class CharInterface(ScrollArea):
                       if info.get("has_next_pinned_source") else
                       "此角色没有其他固定来源，仍可继续安装其他角色。")
             dialog.setLabelText(
-                f"{info.get('profile', '')} 下载失败（{category}）：{reason}。{suffix}")
+                f"{label} 下载失败（{category}）：{reason}。{suffix}")
 
     def _onCreatorBatchDone(self, outcome):
         dialog = self.batchProgressDialog
