@@ -49,6 +49,7 @@ $installerArgs = @(
     "--hidden-import", "tools.probe_artist_eula_fanbox",
     "--hidden-import", "tools.probe_shimejishop_kaveh",
     "--hidden-import", "tools.install_verified_react_lfs",
+    "--hidden-import", "tools.install_gmcy_diona",
     "--hidden-import", "tools.probe_missing_react_lfs",
     "--hidden-import", "tools.react_shimeji_source_leads",
     "--hidden-import", "tools.install_pinned_react_shimeji",
