@@ -1016,6 +1016,23 @@ class CharInterface(ScrollArea):
                    else "角色已导入。是否打开动作帧预览图，检查动画素材？")
         if preview.is_file() and self.__showMessageBox(title, message):
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
+        # The optional local JSON receipt warns about frozen walks or
+        # edge-clipped source PNGs. These are inspection hints, never a
+        # character-likeness approval or proof of correct gait.
+        motion_path = preview.parent / "ANIMATION_MOTION_QA.json"
+        if source_mode in ("artist_genshin", "artist_genshin_batch",
+                           "artist_codex") and motion_path.is_file():
+            try:
+                if motion_path.is_symlink() or motion_path.stat().st_size > 128 * 1024:
+                    raise ValueError("Unexpected motion evidence file")
+                motion = json.loads(motion_path.read_text(encoding="utf-8"))
+                warnings = motion.get("warnings", [])
+                if isinstance(warnings, list) and warnings:
+                    summary = "；".join(str(item)[:80] for item in warnings[:3])
+                    self.__showSystemNote(
+                        "动作来源检查提醒（不代表原设通过）：" + summary, 1)
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                self.__showSystemNote("动作核对记录无法读取，请手工检查原始帧。", 1)
 
     def _onChibiThreadFinished(self):
         self.addButton.setEnabled(True)
