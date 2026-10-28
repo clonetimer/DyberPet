@@ -20,8 +20,10 @@ from pathlib import Path
 
 if __package__:
     from .chibi_profiles import CHIBI_PROFILES
+    from .turnaround_gate import VIEWS, CHECKS, capture, approve, verify, release_metadata, TurnaroundError
 else:
     from chibi_profiles import CHIBI_PROFILES
+    from turnaround_gate import VIEWS, CHECKS, capture, approve, verify, release_metadata, TurnaroundError
 
 KINDS = ("codex", "frames", "native_zip", "native_folder", "model3d")
 ACTION_PLAN = ("idle", "left_walk", "right_walk", "wave", "jump",
@@ -85,6 +87,7 @@ def init_case(workspace, role_id, name, source_channel, source_url,
         "qa": {"reviewer": "", "reviewed_on": "", "visual_pass": False,
                "runtime_pass": False, "asset_sha256": ""},
         "status": "discovered", "build": {"role": "", "report": ""},
+        "turnaround": {},
         "history": [{"date": utc_date(), "event": "discovered"}],
     }
     dump_json(data, path)
@@ -198,7 +201,31 @@ def attach_case(case_file, source):
     data["qa"] = {"reviewer": "", "reviewed_on": "", "visual_pass": False,
                   "runtime_pass": False, "asset_sha256": ""}
     data["build"] = {"role": "", "report": ""}
+    if data.get("turnaround"):
+        data["turnaround"]["review"] = {}  # different motion source: re-review likeness
     advance(data, "source_attached", kind=found)
+    dump_json(data, case_file)
+    return data
+
+
+def attach_turnaround(case_file, *, front, side, back, reference_url, artist, variant):
+    data = load_case(case_file)
+    if data["status"] in ("built", "qa_reviewed", "packaged"):
+        raise PipelineError("Use a new case ID rather than alter a built reference")
+    data["turnaround"] = capture(front, side, back, reference_url=reference_url,
+                                 artist=artist, variant=variant)
+    advance(data, "turnaround_attached", variant=variant)
+    dump_json(data, case_file)
+    return data
+
+
+def review_turnaround(case_file, reviewer, checks):
+    data = load_case(case_file)
+    if data["status"] in ("built", "qa_reviewed", "packaged"):
+        raise PipelineError("Cannot revise turnaround approval after build")
+    data["turnaround"] = approve(data.get("turnaround") or {},
+                                 reviewer, checks, utc_date())
+    advance(data, "turnaround_reviewed", reviewer=reviewer)
     dump_json(data, case_file)
     return data
 
@@ -239,6 +266,7 @@ def check_build_gate(data):
         raise PipelineError("Conversion requires acknowledged permission to create derivatives")
     if data["source"]["kind"] == "model3d":
         raise PipelineError("3D source requires render plan and local Blender/MMD rendering first")
+    verify(data.get("turnaround"))
     return source
 
 
