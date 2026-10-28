@@ -56,3 +56,52 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Diagnostic script crashed unexpectedly" }
       - name: No original sprites uploaded
         run: echo "SOURCE_ART_NOT_PUBLISHED=true"
+
+  frozen-windows:
+    name: Reproduce user failures in ACTUAL frozen Windows role-installer EXE
+    runs-on: windows-latest
+    timeout-minutes: 55
+    needs: live-windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install exact Windows portable requirements
+        run: python -m pip install -r requirements-windows-portable.txt
+      - name: Run offline failure-retry regression tests before build
+        run: python -m unittest discover -s tests -p "test_r30_failed_role_retry.py" -v
+      - name: Build same Windows frozen EXE as user's portable download
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          ./tools/build_personal65_windows.ps1 -Backend python
+          if ($LASTEXITCODE -ne 0) { throw "Frozen installer build failed" }
+      - name: Actually download/import user-affected sources using frozen EXE
+        shell: pwsh
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tool = Join-Path $PWD "dist/DyberPet/DyberPet-Role-Installer.exe"
+          $roleRoot = Join-Path $env:RUNNER_TEMP "r30-frozen-installed-roles"
+          New-Item -ItemType Directory -Force -Path $roleRoot | Out-Null
+          if (-not (Test-Path $tool)) { throw "Frozen role installer unavailable" }
+          foreach ($id in @("genshin_albedo", "genshin_diona", "genshin_fischl", "genshin_baizhu", "genshin_amber")) {
+            $out = Join-Path $env:RUNNER_TEMP ("frozen-" + $id + ".json")
+            & $tool --profile $id --role-root $roleRoot --install --accept-personal-use --output $out
+            $exitCode = $LASTEXITCODE
+            if (-not (Test-Path $out)) {
+              Write-Host ("R30_FROZEN_RESULT=" + $id + ": no JSON report, exit " + $exitCode)
+              continue
+            }
+            $report = Get-Content -LiteralPath $out -Raw -Encoding UTF8 | ConvertFrom-Json
+            foreach ($item in @($report.installation.results)) {
+              $details = @($item.source_attempts | Where-Object { $_.status -eq "failed" } | ForEach-Object {
+                $_.provider + ":" + $_.failure_class + ":" + $_.reason
+              })
+              Write-Host ("R30_FROZEN_RESULT=" + $item.profile + " status=" + $item.status + " exit=" + $exitCode + " reason=" + ($details -join "; "))
+            }
+          }
+          Write-Host "R30_FROZEN_ARTWORK_NOT_UPLOADED=true"
