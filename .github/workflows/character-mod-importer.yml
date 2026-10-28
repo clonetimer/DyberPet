@@ -48,6 +48,9 @@ on:
       - "tests/test_mascot_live_preview.py"
       - "tools/character_progress.py"
       - "tools/character_catalog_search.py"
+      - "tools/character_art_source_index.py"
+      - "tests/test_character_art_source_index.py"
+      - "docs/r38_creator_first_role_fidelity.md"
       - "DyberPet/DyberSettings/character_catalog_dialog.py"
       - "tests/test_character_catalog_search.py"
       - "tests/test_character_progress.py"
@@ -120,6 +123,9 @@ on:
       - "tests/test_mascot_live_preview.py"
       - "tools/character_progress.py"
       - "tools/character_catalog_search.py"
+      - "tools/character_art_source_index.py"
+      - "tests/test_character_art_source_index.py"
+      - "docs/r38_creator_first_role_fidelity.md"
       - "DyberPet/DyberSettings/character_catalog_dialog.py"
       - "tests/test_character_catalog_search.py"
       - "tests/test_character_progress.py"
@@ -167,7 +173,7 @@ jobs:
       - name: Install image dependency
         run: python -m pip install "Pillow>=10,<13"
       - name: Compile modified Python modules
-        run: python -m py_compile tools/chibi_clip_map.py tools/render_chibi_blender.py tools/audit_character_sources.py tools/character_pipeline.py tools/turnaround_gate.py tools/turnaround_review_card.py tools/render_turnaround_blender.py tools/blender_turnaround_scene.py tools/install_native_role.py DyberPet/conf.py tools/import_codex_pet.py tools/import_chibi_animations.py tools/chibi_layout.py tools/chibi_profiles.py tools/genshin_library.py tools/genshin_roster.py tools/genshin_complete_roster.py tools/genshin_batch.py tools/create_original_mascot.py tools/generate_builtin_chibi_demos.py tools/generate_mascot_demos.py tools/mascot_library.py tools/role_family.py tests/test_role_family_ownership.py tools/personal_role_import.py tools/chibi_preview.py DyberPet/DyberSettings/CharCardUI.py DyberPet/DyberSettings/mascot_preview_dialog.py tools/role_action_preview.py tools/character_catalog_search.py DyberPet/DyberSettings/character_catalog_dialog.py tests/test_character_catalog_search.py tests/test_mascot_live_preview.py tests/test_qt_character_loader.py
+        run: python -m py_compile tools/chibi_clip_map.py tools/render_chibi_blender.py tools/audit_character_sources.py tools/character_pipeline.py tools/turnaround_gate.py tools/turnaround_review_card.py tools/render_turnaround_blender.py tools/blender_turnaround_scene.py tools/install_native_role.py DyberPet/conf.py tools/import_codex_pet.py tools/import_chibi_animations.py tools/chibi_layout.py tools/chibi_profiles.py tools/genshin_library.py tools/genshin_roster.py tools/genshin_complete_roster.py tools/genshin_batch.py tools/create_original_mascot.py tools/generate_builtin_chibi_demos.py tools/generate_mascot_demos.py tools/mascot_library.py tools/role_family.py tests/test_role_family_ownership.py tools/personal_role_import.py tools/chibi_preview.py DyberPet/DyberSettings/CharCardUI.py DyberPet/DyberSettings/mascot_preview_dialog.py tools/role_action_preview.py tools/character_catalog_search.py tools/character_art_source_index.py DyberPet/DyberSettings/character_catalog_dialog.py tests/test_character_art_source_index.py tests/test_character_catalog_search.py tests/test_mascot_live_preview.py tests/test_qt_character_loader.py
       - name: Check standalone Windows-friendly CLI
         run: python tools/import_codex_pet.py --help
       - name: Check GIF/PNG importer CLI
