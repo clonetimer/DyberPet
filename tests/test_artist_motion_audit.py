@@ -27,7 +27,7 @@ def native_fixture(folder, *, moving=True, walk_fallback=False,
         for i in range(5):
             frame = Image.new("RGBA", (48, 56), (0, 0, 0, 0))
             if not (has_blank and name == "left_walk" and i == 3):
-                x = i * 3 if moving and name != "idle" else 3
+                x = 3 + i * 3 if moving and name != "idle" else 3
                 if cropped and name == "right_walk":
                     x = 0
                 for xx in range(x, x + 10):
