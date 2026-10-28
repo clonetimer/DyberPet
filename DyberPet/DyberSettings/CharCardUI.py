@@ -882,8 +882,11 @@ class CharInterface(ScrollArea):
             f"② LFS 原始 PNG 已核验 · {row['slug']} · 动作待验收": ("react_shimeji_lfs", profile)
             for profile, row in verified_react.items()
         })
+        labels["② 刻晴 · GMCY原作者92帧 · 6组动作待人工语义验收"] = (
+            "gmcy_keqing_original", "keqing_92")
         labels["② 迪奥娜 · GMCY原作者170帧 · 9组动作待人工语义验收"] = (
-            "gmcy_diona_original", "diona_170")
+            "gmcy_diona_original",
+            "gmcy_keqing_original", "diona_170")
         labels["③ 卡维 ilewdha · 真实 PNG 原画 ZIP · 匍匐/坠落单帧待验收"] = (
             "pinned_kaveh_shimeji", KAVEH_KEY)
         labels["③ 优菈 SaylaMars · 109 帧原画 SHA 已核验 · 动作待人工验收"] = (
@@ -903,7 +906,32 @@ class CharInterface(ScrollArea):
                     return petdb[key]["profile"]
                 if mode == "react_shimeji_lfs":
                     return key
-                if mode == "gmcy_diona_original":
+                if mode == "gmcy_keqing_original":
+                    return "genshin_keqing"
+                if mode == "gmcy_keqing_original":
+            from tools.install_gmcy_keqing import source_zip_url
+            if not self.__showMessageBox(
+                    "刻晴 · 确认安装原作者 92 帧动画",
+                    f"原画来源：{source_zip_url()}\n"
+                    "固定 GMCY 作者提交，92 张源 PNG 均由 Git blob SHA 校验。"
+                    "首次会在本机获取原始仓库压缩包，仅提取刻晴原画，"
+                    "不会运行原作者脚本，也不会覆盖当前安装的其他刻晴版本。"
+                    "原作者保留6组独立动作，不臆造走路/摸头语义；"
+                    "外观相似度、原设动作、配音和实机体验仍待人工复核。"
+                    "是否确认本机下载并安装该独立角色？"):
+                return
+            self.addButton.setEnabled(False)
+            self.artistSourceButton.setEnabled(False)
+            self.chibiThread = ChibiImportThread(
+                "", os.path.join(basedir, "res", "role"),
+                mode="gmcy_keqing_original", profile="genshin_keqing",
+                preset=kind, folder=None)
+            self.chibiThread.done.connect(self._onChibiImportComplete)
+            self.chibiThread.finished.connect(self._onChibiThreadFinished)
+            self.chibiThread.start()
+            self.__showSystemNote("正在逐帧核验并安装刻晴的原作者92帧素材。", 1)
+            return
+        if mode == "gmcy_diona_original":
                     return "genshin_diona"
                 if mode == "pinned_kaveh_shimeji":
                     return "genshin_kaveh"
@@ -2048,6 +2076,11 @@ class ChibiImportThread(QThread):
                 new_folder = self.output_root / result["folder"]
                 if result["actions"] < 16 or result["frames"] < 32:
                     raise ValueError("Whale original artwork conversion incomplete")
+            elif self.mode == "gmcy_keqing_original":
+                from tools.install_gmcy_keqing import install_gmcy_keqing, SOURCE_KEY
+                if self.profile != "genshin_keqing" or self.preset != SOURCE_KEY:
+                    raise ValueError("Keqing creator source selected for wrong Genshin identity")
+                new_folder = install_gmcy_keqing(SOURCE_KEY, self.output_root, confirmed=True)
             elif self.mode == "gmcy_diona_original":
                 from tools.install_gmcy_diona import install_gmcy_diona, SOURCE_KEY
                 if self.profile != "genshin_diona" or self.preset != SOURCE_KEY:
