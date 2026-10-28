@@ -10,16 +10,21 @@
 
 **素材不入仓库。** 本地流水线工作区 data/character_pipeline 已被 .gitignore 排除，不主动下载或重新分发第三方图像、3D模型与音频。
 
+## 新强制前置：三视图美术验收（R33）
+
+所有通过本流水线构建的新角色，必须先登记同一 Q 版版本的正面、侧面和背面三视图，并由真人核对轮廓、服饰、身份特征与视角一致性。新命令 `turnaround-attach` / `turnaround-review` 及具体示例见 [三视图先行工作流](qchibi_turnaround_first.md)。无三视图或未签核将阻断 `build`、`qa` 与 `package`；现有独立作者素材一键安装器暂不受此门禁影响。
+
 ## 流水线
 
 1. 发现：从来源清单寻找具体作者的作品，记录链接与角色类型。
 2. 建档：新建候选 ID、人物、作品渠道和需要的动画/模型格式。
 3. 本地采集：用户自己取得素材，记录源路径和 SHA-256 哈希。
-4. 权限审查：人工记录具体授权文本/证据、审核人、本地使用许可、改编许可、再分发许可三项独立结论。
-5. 内容准备：2D动画直接构建；PMX/VRM先生成渲染计划，待离线生成透明PNG/GIF后重新建档。
-6. 构建：转换成 DyberPet 原生主角色；做动作及目录完整性校验，生成 ANIMATION_PREVIEW.png、IMPORT_REPORT.json 和 PIPELINE_SOURCE.json。
-7. 人工验收：Windows真实桌宠检查帧动画、站立与走路、贴地/悬浮、拖拽、缩放、交互、角色切换；必须记录人工审核人。
-8. 可选打包：只有证据明确允许改编和再分发且人工视觉/运行验收通过，才可创建独立本地 ZIP。**不会自动上传 GitHub Release**。
+4. 三视图：取得同一 Q 版正/侧/背视图，登记具体来源、哈希和版本，并人工核对四项（修改动作来源后需重新核对）。
+5. 权限审查：人工记录具体授权文本/证据、审核人、本地使用许可、改编许可、再分发许可三项独立结论。
+6. 内容准备：2D动画直接构建；PMX/VRM先生成渲染计划，待离线生成透明PNG/GIF后重新建档。
+7. 构建：转换成 DyberPet 原生主角色；做动作及目录完整性校验，生成 ANIMATION_PREVIEW.png、IMPORT_REPORT.json 和 PIPELINE_SOURCE.json。
+8. 人工验收：Windows真实桌宠检查帧动画、站立与走路、贴地/悬浮、拖拽、缩放、交互、角色切换；必须记录人工审核人。
+9. 可选打包：只有证据明确允许改编和再分发且人工视觉/运行验收通过，才可创建独立本地 ZIP。**不会自动上传 GitHub Release**。
 
 ## 已建立的来源池
 
@@ -43,6 +48,8 @@
     py tools/character_pipeline.py sources
     py tools/character_pipeline.py new genshin_paimon_001 --name 派蒙 --channel codex_pets --kind codex --profile genshin_paimon --url https://codex-pet.org/zh/pets/paimon/
     py tools/character_pipeline.py attach genshin_paimon_001 --asset "D:\Art\Paimon"
+
+在 `build` 之前，按照上方 R33 三视图文档使用 `turnaround-attach` 和 `turnaround-review` 完成逐图签核。单张三视图须先在本机拆成正/侧/背三张，原文件不可上传仓库。
 
 **严格限制**：以下 rights 命令必须在真人阅读对应素材作者规约、并确认允许本地使用及改编之后执行。证据路径为本地保存的真实条款文件；不得把示例当成已有授权。
 
