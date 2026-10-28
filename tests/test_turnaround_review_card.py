@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw
 
 from tools.turnaround_gate import capture, TurnaroundError
 from tools.turnaround_review_card import render_review_card, CARD_WIDTH, CARD_HEIGHT
+from tools.character_pipeline import init_case, attach_turnaround, turnaround_card
 
 
 class TurnaroundReviewCardTests(unittest.TestCase):
@@ -51,6 +52,20 @@ class TurnaroundReviewCardTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             render_review_card("doro_q01", self.sheet, self.root / "reviews")
         self.assertTrue(Path(result["review_card"]).exists())
+
+    def test_pipeline_exposes_local_card_without_implicit_approval(self):
+        workspace = self.root / "workspace"
+        case = init_case(workspace, "doro_q01", "Doro", "bilibili",
+                         "https://www.bilibili.com/", "frames")
+        attach_turnaround(
+            case, front=self.paths[0], side=self.paths[1], back=self.paths[2],
+            reference_url=self.sheet["reference_url"],
+            artist=self.sheet["artist"], variant=self.sheet["variant"])
+        result = turnaround_card(case)
+        self.assertTrue(Path(result["review_card"]).is_file())
+        self.assertEqual(Path(result["review_card"]).parent,
+                         workspace / "review_cards")
+        self.assertIn("awaiting", result["status"])
 
     def test_rejects_invalid_candidate(self):
         with self.assertRaisesRegex(TurnaroundError, "candidate"):
