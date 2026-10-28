@@ -4,6 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from PIL import Image
+from tools.turnaround_gate import capture, approve
+
 from tools.character_pipeline import PipelineError, record_path, fingerprint
 from tools.genshin_batch import seed, status, probe_asset
 
@@ -91,6 +94,19 @@ class GenshinStatusSafetyTests(unittest.TestCase):
             "local_use": True,
         })
         data["status"] = "qa_reviewed"
+        reference = self.workspace / "synthetic-turnaround"
+        reference.mkdir()
+        for i, key in enumerate(("front", "side", "back")):
+            Image.new("RGB", (120, 160), (50 * (i + 1), 70, 100)).save(
+                reference / (key + ".png"))
+        views = capture(
+            *(reference / (key + ".png") for key in ("front", "side", "back")),
+            reference_url="https://artist.example/synthetic-xiao-three-views",
+            artist="Synthetic artist", variant="Test v1")
+        data["turnaround"] = approve(
+            views, "Synthetic reviewer",
+            dict.fromkeys(("silhouette", "outfit", "identity", "cross_view"), True),
+            "2026-10-28")
         data["build"]["role"] = str(role)
         data["qa"].update({
             "visual_pass": True, "runtime_pass": True,

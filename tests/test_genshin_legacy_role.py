@@ -13,7 +13,7 @@ from PIL import Image
 
 from tools.character_pipeline import (
     PipelineError, init_case, attach_case, rights_review, build_case,
-    qa_review, package_release, load_case,
+    qa_review, package_release, load_case, attach_turnaround, review_turnaround,
 )
 from tools.install_native_role import (
     inspect_native_folder, install_native_folder,
@@ -53,6 +53,22 @@ class LegacyGenshinRoleMigrationTests(unittest.TestCase):
         self.evidence = self.root / "actual-artwork-terms.txt"
         self.evidence.write_text("synthetic test permission only", encoding="utf-8")
 
+    def approve_synthetic_qviews(self):
+        viewdir = self.root / "qchibi-three-view-test"
+        viewdir.mkdir(exist_ok=True)
+        for i, key in enumerate(("front", "side", "back")):
+            Image.new("RGB", (120, 160), (30 + i * 60, 80, 110)).save(
+                viewdir / (key + ".png"))
+        attach_turnaround(
+            self.case, front=viewdir / "front.png",
+            side=viewdir / "side.png", back=viewdir / "back.png",
+            reference_url="https://artist.example/synthetic-three-view",
+            artist="Synthetic fixture artist", variant="Xiao test costume")
+        review_turnaround(
+            self.case, "Fixture reviewer", {
+                "silhouette": True, "outfit": True,
+                "identity": True, "cross_view": True})
+
     def test_single_original_folder_is_read_only_identified(self):
         report = inspect_native_folder(self.role)
         self.assertEqual(report["validation"]["actions"], 2)
@@ -72,6 +88,7 @@ class LegacyGenshinRoleMigrationTests(unittest.TestCase):
         attach_case(self.case, self.role)
         rights_review(self.case, "CI synthetic user", str(self.evidence),
                       local_use=True)
+        self.approve_synthetic_qviews()
         built = build_case(self.case)
         self.assertTrue((built / "action" / "walk_3.png").exists())
         self.assertTrue((built / "PIPELINE_SOURCE.json").exists())
@@ -157,6 +174,7 @@ class LegacyGenshinRoleMigrationTests(unittest.TestCase):
         rights_review(self.case, "CI", str(self.evidence), local_use=True)
         self.assertEqual(status(self.workspace, ("xiao",))["characters"][0]["stage"],
                          "rights_reviewed")
+        self.approve_synthetic_qviews()
         build_case(self.case)
         self.assertEqual(status(self.workspace, ("xiao",))["characters"][0]["stage"],
                          "built_pending_visual_runtime_qa")

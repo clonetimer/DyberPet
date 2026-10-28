@@ -20,8 +20,10 @@ from pathlib import Path
 
 if __package__:
     from .chibi_profiles import CHIBI_PROFILES
+    from .turnaround_gate import VIEWS, CHECKS, capture, approve, verify, release_metadata, TurnaroundError
 else:
     from chibi_profiles import CHIBI_PROFILES
+    from turnaround_gate import VIEWS, CHECKS, capture, approve, verify, release_metadata, TurnaroundError
 
 KINDS = ("codex", "frames", "native_zip", "native_folder", "model3d")
 ACTION_PLAN = ("idle", "left_walk", "right_walk", "wave", "jump",
@@ -85,6 +87,7 @@ def init_case(workspace, role_id, name, source_channel, source_url,
         "qa": {"reviewer": "", "reviewed_on": "", "visual_pass": False,
                "runtime_pass": False, "asset_sha256": ""},
         "status": "discovered", "build": {"role": "", "report": ""},
+        "turnaround": {},
         "history": [{"date": utc_date(), "event": "discovered"}],
     }
     dump_json(data, path)
@@ -198,7 +201,31 @@ def attach_case(case_file, source):
     data["qa"] = {"reviewer": "", "reviewed_on": "", "visual_pass": False,
                   "runtime_pass": False, "asset_sha256": ""}
     data["build"] = {"role": "", "report": ""}
+    if data.get("turnaround"):
+        data["turnaround"]["review"] = {}  # different motion source: re-review likeness
     advance(data, "source_attached", kind=found)
+    dump_json(data, case_file)
+    return data
+
+
+def attach_turnaround(case_file, *, front, side, back, reference_url, artist, variant):
+    data = load_case(case_file)
+    if data["status"] in ("built", "qa_reviewed", "packaged"):
+        raise PipelineError("Use a new case ID rather than alter a built reference")
+    data["turnaround"] = capture(front, side, back, reference_url=reference_url,
+                                 artist=artist, variant=variant)
+    advance(data, "turnaround_attached", variant=variant)
+    dump_json(data, case_file)
+    return data
+
+
+def review_turnaround(case_file, reviewer, checks):
+    data = load_case(case_file)
+    if data["status"] in ("built", "qa_reviewed", "packaged"):
+        raise PipelineError("Cannot revise turnaround approval after build")
+    data["turnaround"] = approve(data.get("turnaround") or {},
+                                 reviewer, checks, utc_date())
+    advance(data, "turnaround_reviewed", reviewer=reviewer)
     dump_json(data, case_file)
     return data
 
@@ -239,6 +266,7 @@ def check_build_gate(data):
         raise PipelineError("Conversion requires acknowledged permission to create derivatives")
     if data["source"]["kind"] == "model3d":
         raise PipelineError("3D source requires render plan and local Blender/MMD rendering first")
+    verify(data.get("turnaround"))
     return source
 
 
@@ -403,6 +431,7 @@ def build_case(case_file):
                         "author": data["source"]["artist"],
                         "rights_evidence": data["rights"]["evidence"],
                         "input_sha256": data["source"]["sha256"],
+                        "turnaround": release_metadata(data["turnaround"]),
                         "preflight": preflight},
                        ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8")
@@ -429,6 +458,7 @@ def qa_review(case_file, reviewer, *, visual_pass=False, runtime_pass=False):
         raise PipelineError("Human QA reviewer required")
     if not visual_pass or not runtime_pass:
         raise PipelineError("Both visual and real DyberPet runtime checks must pass")
+    verify(data.get("turnaround"))
     data["qa"] = {"reviewer": reviewer, "reviewed_on": utc_date(),
                   "visual_pass": True, "runtime_pass": True,
                   "asset_sha256": fingerprint(role)}
@@ -450,6 +480,7 @@ def package_release(case_file):
         raise PipelineError("Release blocked: mandatory QA missing")
     if not qa["reviewer"]:
         raise PipelineError("Release blocked: missing QA reviewer")
+    verify(data.get("turnaround"))
     role = Path(data["build"]["role"]).resolve()
     if not role.is_dir() or fingerprint(role) != qa["asset_sha256"]:
         raise PipelineError("Built role changed since QA approval")
@@ -484,6 +515,10 @@ def inspect_case(case_file):
         problems.append("image conversion/derivative use not authorized")
     if data["source"]["kind"] == "model3d":
         problems.append("3D asset requires separate authorized transparent rendering")
+    try:
+        verify(data.get("turnaround"))
+    except TurnaroundError as exc:
+        problems.append(str(exc))
     if not data["qa"]["visual_pass"] or not data["qa"]["runtime_pass"]:
         problems.append("real visual/runtime QA not complete")
     if not rights["redistribution"]:
@@ -521,6 +556,18 @@ def main(argv=None):
     a = sub.add_parser("attach", help="Record source asset and its content hash")
     a.add_argument("id")
     a.add_argument("--asset", type=Path, required=True)
+    a = sub.add_parser("turnaround-attach", help="Attach front/side/back Q-chibi reference")
+    a.add_argument("id")
+    for view in VIEWS:
+        a.add_argument("--" + view, type=Path, required=True)
+    a.add_argument("--reference-url", required=True)
+    a.add_argument("--artist", required=True)
+    a.add_argument("--variant", required=True)
+    a = sub.add_parser("turnaround-review", help="Human approve Q-chibi visual consistency")
+    a.add_argument("id")
+    a.add_argument("--reviewer", required=True)
+    for check in CHECKS:
+        a.add_argument("--" + check, action="store_true")
     a = sub.add_parser("rights", help="Record user-performed item-specific license check")
     a.add_argument("id")
     a.add_argument("--reviewer", required=True)
@@ -554,6 +601,14 @@ def main(argv=None):
             case = record_path(args.workspace, args.id)
             if args.command == "attach":
                 output = attach_case(case, args.asset)["status"]
+            elif args.command == "turnaround-attach":
+                output = attach_turnaround(
+                    case, front=args.front, side=args.side, back=args.back,
+                    reference_url=args.reference_url, artist=args.artist,
+                    variant=args.variant)["turnaround"]["variant"]
+            elif args.command == "turnaround-review":
+                output = review_turnaround(
+                    case, args.reviewer, {k: getattr(args, k) for k in CHECKS})["turnaround"]["review"]["reviewed_on"]
             elif args.command == "rights":
                 output = rights_review(
                     case, args.reviewer, args.evidence,
