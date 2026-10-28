@@ -213,8 +213,28 @@ def write_native_configs(folder: Path, animations: list[dict], counts: dict,
         json.dumps(pet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     info_dir = folder / "info"
     info_dir.mkdir()
+    # Produce the role picker portrait using real author PNG pixels only,
+    # never a synthetic/mismatched mascot or an unknown default icon.
+    import shutil as _shutil
+    _shutil.copyfile(folder / "action" / "breathing_0.png", info_dir / "cover.png")
+    chosen = None
+    for i in range(min(counts.get("breathing", 1), 8)):
+        with Image.open(folder / "action" / f"breathing_{i}.png") as frame:
+            rgba = frame.convert("RGBA")
+            bbox = rgba.getchannel("A").getbbox()
+            if bbox is not None:
+                chosen = rgba.crop(bbox)
+                break
+    if chosen is not None:
+        chosen.thumbnail((176, 176), Image.Resampling.LANCZOS)
+        icon = Image.new("RGBA", (192, 192), (0, 0, 0, 0))
+        icon.alpha_composite(chosen, ((192 - chosen.width) // 2,
+                                      (192 - chosen.height) // 2))
+        icon.save(info_dir / "pfp.png")
     (info_dir / "info.json").write_text(json.dumps({
         "petName": "鲸鱼娘 Whale Pet",
+        "coverImages": ["cover.png"],
+        "pfp": "pfp.png" if chosen is not None else None,
         "tages": {"WebM 原作者动画": "#81C7DD", "个人非商用": "#AAC6D0"},
         "intro": ("由 luweiyabo/dsh-whale-pet 固定版本视频转换；"
                   "不含 DeepSeek Harness 工作状态侦测；素材分项许可见 SOURCE_LICENSE.txt。"),
