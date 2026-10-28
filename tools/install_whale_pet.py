@@ -106,21 +106,10 @@ def fetch_pinned_video(row: dict, *, opener=urlopen) -> bytes:
     return data
 
 
-def locate_ffmpeg(explicit=None) -> str:
-    if explicit:
-        exe = Path(explicit).expanduser()
-        if not exe.is_file():
-            raise ValueError("Selected FFmpeg executable does not exist")
-        return str(exe.resolve())
-    # imageio-ffmpeg supplies a Windows binary in source/dev and frozen builds.
-    try:
-        import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except (ImportError, RuntimeError, OSError):
-        found = shutil.which("ffmpeg")
-        if found:
-            return found
-        raise ValueError("FFmpeg decoder missing; install imageio-ffmpeg or provide --ffmpeg")
+def locate_ffmpeg(explicit=None, *, role_root=None) -> str:
+    """Resolve only on demand; do not freeze FFmpeg into every Windows install."""
+    from tools.whale_ffmpeg_runtime import locate_decoder
+    return locate_decoder(explicit=explicit, role_root=role_root)
 
 
 def decode_video(clip: Path, target: Path, *, ffmpeg: str, fps: int) -> int:
@@ -232,7 +221,7 @@ def write_native_configs(folder: Path, animations: list[dict], counts: dict,
                                       (192 - chosen.height) // 2))
         icon.save(info_dir / "pfp.png")
     (info_dir / "info.json").write_text(json.dumps({
-        "petName": "鲸鱼娘 Whale Pet",
+        "petName": "鲸鱼娘",
         "coverImages": ["cover.png"],
         "pfp": "pfp.png" if chosen is not None else None,
         "tages": {"WebM 原作者动画": "#81C7DD", "个人非商用": "#AAC6D0"},
@@ -252,7 +241,7 @@ def install_whale_pet(output_root: Path, *, confirmed: bool = False,
     catalog = source_catalog()
     entries = select_actions(catalog, selection)
     fps = 8 if selection == "core" else 5
-    binary = locate_ffmpeg(ffmpeg)
+    binary = locate_ffmpeg(ffmpeg, role_root=root)
     root = Path(output_root).expanduser()
     if root.is_symlink() or (root.exists() and not root.is_dir()):
         raise ValueError("Role root must not be a symlink")
@@ -304,7 +293,7 @@ def install_whale_pet(output_root: Path, *, confirmed: bool = False,
             "This local conversion does not include upstream JS/DeepSeek Harness integration.\n",
             encoding="utf-8")
         (stage / "PERSONAL_IMPORT.json").write_text(json.dumps({
-            "display_name": "鲸鱼娘 Whale Pet",
+            "display_name": "鲸鱼娘",
             "source_id": "dsh_whale_pet",
             "source_repository": SOURCE_REPO, "source_commit": SOURCE_REV,
             "source_kind": "original_pinned_webm_converted_to_native_png",
