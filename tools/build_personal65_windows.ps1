@@ -224,6 +224,17 @@ python tools/strip_generated_demo_art.py --role-root $roles --expected 125
 if ($LASTEXITCODE -ne 0) { throw "Failed to remove 125 QA-only chibi placeholders" }
 $personalProcess = Start-Process -FilePath $exe -ArgumentList "--personal-package-smoke" -WorkingDirectory $package -Wait -PassThru
 if ($personalProcess.ExitCode -ne 0) { throw "Final user binary still contains placeholders" }
+# Frozen Qt smoke generated per-user save state inside dist/DyberPet/data.
+# These are runtime test fixtures, NOT clean defaults for a fresh installation:
+# a prior CI ZIP contained pet_data.json, settings.json and task_data.json
+# with stale DemoG_* settings. First launch creates its own data directory.
+$runtimeData = Join-Path $package "data"
+if (Test-Path -LiteralPath $runtimeData) {
+    Remove-Item -LiteralPath $runtimeData -Recurse -Force
+}
+if (Test-Path -LiteralPath $runtimeData) {
+    throw "Could not remove CI-generated runtime user data before portable packaging"
+}
 # Intermediate QA ZIP contains temporary synthesized art and MUST NEVER ship.
 $intermediate = if ($Backend -eq "rust") {
     Join-Path $root "DyberPet-Windows-Rust-Experimental.zip"
@@ -252,6 +263,10 @@ $archive = Join-Path $root $archiveName
 if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
 Compress-Archive -Path (Join-Path $package "*") -DestinationPath $archive -CompressionLevel Optimal
 if (-not (Test-Path -LiteralPath $archive)) { throw "Final portable archive missing" }
+# Validate the actual ZIP delivered to users, not just the unpacked build dir.
+# Reject missing installers, stale source counts, wrong backend or hidden creator art.
+python -m tools.verify_personal_portable --archive $archive --backend $Backend
+if ($LASTEXITCODE -ne 0) { throw "Final Windows portable ZIP content verification failed" }
 $sha = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Output "PRIVATE65_ARCHIVE=$archive"
 Write-Output "PRIVATE65_SHA256=$sha"

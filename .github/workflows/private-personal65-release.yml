@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/private-personal65-release.yml"
       - "tools/build_personal65_windows.ps1"
+      - "tools/verify_personal_portable.py"
+      - "tests/test_verify_personal_portable.py"
       - "tools/build_windows_portable.ps1"
       - "tools/personal_source_batch.py"
       - "tools/character_interaction_coverage.py"
@@ -51,13 +53,21 @@ on:
       - "tests/test_creator_variant_side_by_side_qt.py"
       - "tests/test_native_interaction_preview_shortcuts.py"
       - "tests/test_creator_reference_cues.py"
+  pull_request:
+    branches:
+      - "release/personal65-python-rust-20261026"
+    paths:
+      - ".github/workflows/private-personal65-release.yml"
+      - "tools/build_personal65_windows.ps1"
+      - "tools/verify_personal_portable.py"
+      - "tests/test_verify_personal_portable.py"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: dyberpet-private65-release
+  group: dyberpet-private65-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -92,6 +102,11 @@ jobs:
           $env:DYBERPET_NATIVE_BACKEND = "rust"
           python -c "from DyberPet.assistant.native_bridge import backend_status; s=backend_status(); print(s); assert s['active']=='rust'"
           if ($LASTEXITCODE -ne 0) { throw "Native bridge is not active Rust" }
+      - name: Test packaged ZIP safety and backend contracts (synthetic only)
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p "test_verify_personal_portable.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Portable ZIP verifier regression failed" }
       - name: Test personal character planner offline (no art downloaded)
         shell: pwsh
         run: |
@@ -142,7 +157,7 @@ jobs:
     name: Publish private prerelease after both builds pass
     needs: [build-windows]
     # Never create a personal Release while repository visibility is public.
-    if: github.event.repository.private == true
+    if: github.event_name == 'push' && github.event.repository.private == true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
