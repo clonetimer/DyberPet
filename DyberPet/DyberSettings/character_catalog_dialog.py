@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 from tools.character_catalog_search import (
     describe_character_status, query_character_catalog,
 )
-from tools.character_art_source_index import sources_for_role
+from tools.character_art_source_index import sources_for_role, source_coverage
 
 
 class CharacterCatalogDialog(QDialog):
@@ -26,6 +26,7 @@ class CharacterCatalogDialog(QDialog):
         self._entries = list(entries)
         self._selected_id = None
         self._sources = []
+        self._sourceCoverage = source_coverage()
         self.setWindowTitle("DyberPet · 全部角色库（本机状态）")
         self.setMinimumSize(600, 520)
         layout = QVBoxLayout(self)
@@ -119,8 +120,10 @@ class CharacterCatalogDialog(QDialog):
         if self.results.count() and self.results.currentItem() is None:
             self.results.setCurrentRow(0)
         self.countLabel.setText(
-            f"当前筛选 {self.results.count()} / {len(self._entries)} 个角色。"
-            "可切换为「全部角色」查看程序演示，或点击素材管理安装真实角色。")
+            f"当前筛选 {self.results.count()} / {len(self._entries)} 个角色；"
+            f"已有专属来源线索 {self._sourceCoverage['specific_source_leads']} 位，"
+            f"仅有系列查找入口 {self._sourceCoverage['family_discovery_only']} 位。"
+            "来源不代表真实素材已安装或完成验收。")
         self.openButton.setEnabled(self.results.count() > 0)
         self._refresh_sources()
 
