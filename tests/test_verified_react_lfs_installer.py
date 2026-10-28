@@ -65,7 +65,7 @@ class VerifiedReactInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(ValueError, "consent"):
                 install_verified_react_lfs("amber", folder)
-            with self.assertRaisesRegex(ValueError, "Only pinned"):
+            with self.assertRaisesRegex(ValueError, "Only four independently"):
                 install_verified_react_lfs("unverified_character", folder,
                                            confirmed=True)
 
