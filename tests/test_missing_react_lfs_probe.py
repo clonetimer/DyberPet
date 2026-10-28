@@ -14,7 +14,8 @@ from tools.react_shimeji_source_leads import CANDIDATES
 
 class OriginalLfsProbeTests(unittest.TestCase):
     def test_missing_roles_only_and_immutable_upstream_hosts(self):
-        self.assertEqual(MISSING_PROFILES, ("genshin_amber", "genshin_fischl"))
+        self.assertEqual(MISSING_PROFILES, ("genshin_amber", "genshin_fischl",
+                                            "genshin_neuvillette", "genshin_wriothesley"))
         for profile in MISSING_PROFILES:
             urls = candidate_urls(profile)
             self.assertEqual(len(urls), 2)
