@@ -31,6 +31,7 @@
 
 ## 不可混淆的来源
 
+- [栎曦_Nuo 《原神桌宠：全角色（2.8前）》](https://www.bilibili.com/video/BV1eY4y177tk/) 是中文创作者在 2022 年提供过的原画合集和网盘下载入口，**很适合先核查一批早期原神人物**；但旧 2.8 阵容与现今 123 模板不同。不能只看视频标题就把现有 123 位标成美术齐全，当前未取得、检查或上传该网盘包。
 - 旧版 [DyberPet_GenshinImpact](https://github.com/ChaozhongLiu/DyberPet_GenshinImpact) 仓库自述不再维护。实际 `res/role` 目录含：兰纳罗、散猫猫、流浪者、纳西妲、蕈兽、魈、魈鸟，以及系统目录。这**不是 123 位全部角色的原画资源**。
 - [ZaytsevZY/genshin-pets](https://github.com/ZaytsevZY/genshin-pets) 的 `pets/` 下当前确有 `citlali/` 和 `hutao/` 的 v2 图集，不能因仓库标题叫“原神桌宠合集”就声称有整个原神阵容。
 - [MelanTech/Dororo](https://github.com/MelanTech/Dororo) 的美术源指向 0x4682B4；两条记录共用一条来源 lineage，不能据此增加独立原画数量。
