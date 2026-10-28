@@ -43,7 +43,7 @@ def _fixture():
             for path, payload in files.items():
                 archive.writestr(ROOT_PREFIX + name + "/" + path, payload)
                 anchors[key][path] = hashlib.sha1(
-                    b"blob " + str(len(payload)).encode() + b"\\0" + payload
+                    b"blob " + str(len(payload)).encode() + b"\0" + payload
                 ).hexdigest()
         # Source may contain unrelated modules, but none may install by mistake.
         archive.writestr(ROOT_PREFIX + "散猫猫/action/no_0.png",
