@@ -86,6 +86,9 @@ class CharInterface(ScrollArea):
         self.catalogButton = PushButton(self.tr("全部角色库"), self, FIF.SEARCH)
         self.catalogButton.setToolTip(
             self.tr("按中文/英文搜索 125 个角色，筛选原创演示和个人素材；不自动下载"))
+        self.qThreeViewButton = PushButton(self.tr("Q版三视图·交互"), self, FIF.SEARCH)
+        self.qThreeViewButton.setToolTip(
+            self.tr("对已内置角色用同一比例对照正侧背与原生摸头、拖拽、走路；缺失背面不伪造"))
         self.artistSourceButton = PushButton(self.tr("安装作者原画角色"), self, FIF.DOWNLOAD)
         self.artistSourceButton.setToolTip(
             self.tr("本机下载已有原作者逐帧动画：纳西妲／魈／流浪者，不再生成替代造型"))
@@ -106,6 +109,7 @@ class CharInterface(ScrollArea):
         self.headerLayout.addWidget(self.addButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.quickStartButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.catalogButton, Qt.AlignLeft | Qt.AlignVCenter)
+        self.headerLayout.addWidget(self.qThreeViewButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.artistSourceButton, Qt.AlignLeft | Qt.AlignVCenter)
         self.headerLayout.addWidget(self.mascotButton, Qt.AlignLeft | Qt.AlignVCenter)
         spacerItem1 = QSpacerItem(10, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
@@ -213,6 +217,7 @@ class CharInterface(ScrollArea):
         self.addButton.clicked.connect(self.__onAddClicked)
         self.quickStartButton.clicked.connect(self._showQuickStartGuide)
         self.catalogButton.clicked.connect(self._showAllCharacterCatalog)
+        self.qThreeViewButton.clicked.connect(self._showQThreeViewInteractions)
         self.showDemoRoles.toggled.connect(self._applyDemoRoleVisibility)
         self._applyDemoRoleVisibility()
         self.artistSourceButton.clicked.connect(self._installArtistGenshin)
@@ -402,6 +407,39 @@ class CharInterface(ScrollArea):
         #    return
         #return
 
+
+    def _showQThreeViewInteractions(self):
+        """Inspect actual already-bundled sprites; never initiate installation."""
+        from .qchibi_three_view_dialog import QChibiThreeViewDialog
+
+        role_root = Path(basedir) / "res" / "role"
+        choices = {}
+        for row in self.CharLineList:
+            folder_name = getattr(row, "chrFolder", None)
+            if not isinstance(folder_name, str):
+                continue
+            folder = role_root / folder_name
+            if (self._isLowFidelityDemo(folder_name)
+                    or not folder.is_dir() or folder.is_symlink()
+                    or not (folder / "act_conf.json").is_file()):
+                continue
+            title = getattr(row, "chrName", folder_name)
+            label = title + "（" + folder_name + "）"
+            choices[label] = folder
+        if not choices:
+            self.__showSystemNote("当前安装包没有可以预览的真实桌宠角色。", 1)
+            return
+        selected, ok = QInputDialog.getItem(
+            self, "Q版角色三视图与交互测试",
+            "选择已内置角色（不下载、不安装新素材）：",
+            list(choices), 0, False)
+        if not ok or selected not in choices:
+            return
+        try:
+            viewer = QChibiThreeViewDialog(choices[selected], parent=self)
+            viewer.exec()
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            self.__showSystemNote("Q版三视图或原生动作读取失败：" + str(exc)[:260], 2)
 
     def _showMascotLibrary(self, selected_kind=None):
         """Actual local mascot status; never mistake generated art for source."""

@@ -1,0 +1,179 @@
+"""R43: fixed-scale Q版 three-view comparison + real sprite action interaction.
+
+The renderer uses EXACT pixels of the native installed role; it never
+reconstructs a missing back view. Windows/Linux share the same Qt surface.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtWidgets import (
+    QDialog, QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout,
+)
+
+from tools.qchibi_native_threeview import native_threeview_interactions
+
+VIEW_LABELS = {"front": "正面参考", "side": "侧面参考", "back": "背面参考"}
+BUTTONS = ("default", "left", "right", "patpat", "drag", "on_floor", "fall")
+
+
+class QChibiThreeViewDialog(QDialog):
+    """One source art/scale, honest missing directions and playable interactions."""
+
+    def __init__(self, role_directory, parent=None):
+        super().__init__(parent)
+        self.plan = native_threeview_interactions(role_directory)
+        self.frame_index = 0
+        self.current_action = None
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.advance_frame)
+        self.setWindowTitle("Q版三视图与真实交互 · " + self.plan["role"])
+        self.setMinimumWidth(740)
+        layout = QVBoxLayout(self)
+        explanation = QLabel(
+            "正/侧/背统一比例与着地线。缺失的背面不从正面镜像、"
+            "不使用其他画师的造型拼凑。点击下方交互播放实际角色 PNG。",
+            self)
+        explanation.setWordWrap(True)
+        layout.addWidget(explanation)
+
+        self.viewLabels = {}
+        self.viewNotes = {}
+        panel = QGridLayout()
+        for index, name in enumerate(("front", "side", "back")):
+            title = QLabel(VIEW_LABELS[name], self)
+            title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            panel.addWidget(title, 0, index)
+            sprite = QLabel(self)
+            sprite.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            sprite.setFixedSize(222, 228)
+            view = self.plan["views"][name]
+            if view["file"] is None:
+                sprite.setText("缺少独立背面原画" if name == "back" else "无可靠方向图")
+            else:
+                sprite.setPixmap(self._grounded_pixmap(view["file"]))
+            self.viewLabels[name] = sprite
+            panel.addWidget(sprite, 1, index)
+            note = QLabel(view["evidence"], self)
+            note.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            note.setWordWrap(True)
+            self.viewNotes[name] = note
+            panel.addWidget(note, 2, index)
+        layout.addLayout(panel)
+
+        reviewed = ("有同源三视图原图证据；仍需人工核对"
+                    if self.plan["source_threeview_complete"]
+                    else "尚无三视图完整证据，所示正/侧仅为动作参考，不能算三视图通过")
+        self.sourceStatus = QLabel(reviewed, self)
+        self.sourceStatus.setWordWrap(True)
+        layout.addWidget(self.sourceStatus)
+
+        actions = QGridLayout()
+        self.actionButtons = {}
+        for i, key in enumerate(BUTTONS):
+            item = self.plan["interactions"].get(key)
+            button = QPushButton(
+                item["label"] if item else {
+                    "default": "正面待机", "left": "向左移动",
+                    "right": "向右移动", "patpat": "摸头反馈",
+                    "drag": "拖拽反馈", "on_floor": "休息 / 落地",
+                    "fall": "下落",
+                }[key], self)
+            button.setEnabled(item is not None)
+            button.clicked.connect(lambda _checked=False, k=key: self.play_interaction(k))
+            actions.addWidget(button, i // 4, i % 4)
+            self.actionButtons[key] = button
+        layout.addLayout(actions)
+
+        self.animated = QLabel(self)
+        self.animated.setFixedSize(222, 228)
+        self.animated.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.actionState = QLabel("交互预览尚未开始", self)
+        self.actionState.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        bottom = QHBoxLayout()
+        bottom.addStretch()
+        bottom.addWidget(self.animated)
+        status = QVBoxLayout()
+        status.addWidget(self.actionState)
+        self.pauseButton = QPushButton("暂停", self)
+        self.pauseButton.clicked.connect(self.toggle)
+        status.addWidget(self.pauseButton)
+        bottom.addLayout(status)
+        bottom.addStretch()
+        layout.addLayout(bottom)
+
+        close = QPushButton("关闭", self)
+        close.clicked.connect(self.close)
+        layout.addWidget(close)
+        self.play_interaction("default")
+
+    def _grounded_pixmap(self, path):
+        """Shared scale + bottom baseline; do NOT stretch or regenerate pixels."""
+        source = QPixmap(str(path))
+        if source.isNull():
+            raise ValueError("原画源 PNG 无法在 Qt 中读取：" + Path(path).name)
+        full_w, full_h = self.plan["reference_dimensions"]
+        scale = min(200 / full_w, 200 / full_h, 1.0)
+        width = max(1, round(source.width() * scale))
+        height = max(1, round(source.height() * scale))
+        source = source.scaled(width, height,
+                               Qt.AspectRatioMode.KeepAspectRatio,
+                               Qt.TransformationMode.SmoothTransformation)
+        canvas = QPixmap(222, 228)
+        canvas.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(canvas)
+        painter.drawPixmap((222 - source.width()) // 2,
+                           216 - source.height(), source)
+        painter.end()
+        return canvas
+
+    def play_interaction(self, key):
+        """Real action image sequence for actual left/right/pet/drag signals."""
+        if key not in self.plan["interactions"]:
+            return False
+        self.timer.stop()
+        self.current_action = key
+        self.frame_index = 0
+        self.show_frame()
+        entry = self.plan["interactions"][key]
+        if len(entry["frames"]) > 1:
+            self.timer.start(entry["interval_ms"])
+            self.pauseButton.setText("暂停")
+        else:
+            self.pauseButton.setText("播放")
+        return True
+
+    def show_frame(self):
+        if self.current_action is None:
+            return
+        entry = self.plan["interactions"][self.current_action]
+        path = entry["frames"][self.frame_index]
+        self.animated.setPixmap(self._grounded_pixmap(path))
+        self.actionState.setText(
+            entry["label"] + " · 原生 " + entry["action"]
+            + " · " + str(self.frame_index + 1)
+            + "/" + str(len(entry["frames"]))
+            + " 帧 · " + str(entry["interval_ms"]) + " ms")
+
+    def advance_frame(self):
+        if self.current_action is None:
+            return
+        count = len(self.plan["interactions"][self.current_action]["frames"])
+        self.frame_index = (self.frame_index + 1) % count
+        self.show_frame()
+
+    def toggle(self):
+        if self.timer.isActive():
+            self.timer.stop()
+            self.pauseButton.setText("播放")
+        elif self.current_action is not None:
+            entry = self.plan["interactions"][self.current_action]
+            if len(entry["frames"]) > 1:
+                self.timer.start(entry["interval_ms"])
+                self.pauseButton.setText("暂停")
+
+    def closeEvent(self, event):
+        self.timer.stop()
+        super().closeEvent(event)
