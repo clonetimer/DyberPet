@@ -396,8 +396,15 @@ def _assistant_package_smoke():
     from tools.install_artist_genshin import ROLES as original_genshin
     from tools.install_artist_codex import SOURCES as codex_art
     from tools.install_creator_mascots import UPSTREAM as mascot_art
+    expected_artist_roles = {
+        "nahida", "xiao", "wanderer",
+        "arana", "scara_cat", "fungus", "xiao_bird",
+    }
     report["public_art_sources_ready"] = (
-        len(original_genshin) == 3 and len(codex_art) == 12
+        set(original_genshin) == expected_artist_roles
+        and all(original_genshin[key][1] is None
+                for key in ("arana", "scara_cat", "fungus", "xiao_bird"))
+        and len(codex_art) == 12
         and {"guga", "doro"}.issubset(mascot_art))
     if not report["public_art_sources_ready"]:
         raise RuntimeError("Pinned original-art installers missing from executable")
