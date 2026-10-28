@@ -17,7 +17,7 @@ class DionaCatalogTests(unittest.TestCase):
         self.assertEqual(s["template_count"], 123)
         self.assertEqual(s["characters_with_pinned_sources"], 69)
         self.assertEqual(s["characters_without_pinned_sources"], 54)
-        self.assertEqual(s["pinned_source_options"], 92)
+        self.assertEqual(s["pinned_source_options"], 93)
         diona = next(x for x in ledger["characters"] if x["id"] == "genshin_diona")
         self.assertTrue(diona["source_found"])
         self.assertEqual(diona["name"], "迪奥娜")
