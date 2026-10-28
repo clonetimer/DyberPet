@@ -529,8 +529,10 @@ class CharInterface(ScrollArea):
             return
         from tools.install_artist_genshin import ROLES, SOURCE_URL
         from tools.install_artist_codex import SOURCES, ROOT
-        labels = {f"完整原生动画 · {title}":("artist_genshin", key)
-                  for key, (_, _, title) in ROLES.items()}
+        labels = {"一次下载·安装三位原画角色（纳西妲 / 魈 / 流浪者）":
+                  ("artist_genshin_batch", "all")}
+        labels.update({f"完整原生动画 · {title}": ("artist_genshin", key)
+                       for key, (_, _, title) in ROLES.items()})
         labels.update({f"轻量创作者图集 · {row[1]}":("artist_codex", key)
                        for key, row in SOURCES.items()})
         selected, ok = QInputDialog.getItem(
@@ -541,12 +543,16 @@ class CharInterface(ScrollArea):
         if not ok or selected not in labels:
             return
         mode, kind = labels[selected]
-        source = (SOURCE_URL + ROLES[kind][0] if mode == "artist_genshin"
+        source = (SOURCE_URL + "（固定提交，仅下载一次）"
+                  if mode == "artist_genshin_batch"
+                  else SOURCE_URL + ROLES[kind][0]
+                  if mode == "artist_genshin"
                   else ROOT + "/" + SOURCES[kind][0])
         if not self.__showMessageBox(
                 "本机安装公开作者动画",
                 f"来源：{source}\\n"
                 "确认后下载固定版本原始动画，并安装为独立角色。"
+                "批量模式只联网获取一次，任一角色验证失败则全部不安装。"
                 "不会覆盖现有桌宠或用户存档。"
                 "公开素材与人物形象的人工验收是两回事；安装后请先预览。继续吗？"):
             return
@@ -999,12 +1005,14 @@ class CharInterface(ScrollArea):
         preview = Path(basedir) / "res" / "role" / role_name / "ANIMATION_PREVIEW.png"
         source_mode = self.chibiThread.mode if self.chibiThread is not None else ""
         title = ("作者真实动作帧核对（非人工验收通过）"
-                 if source_mode in ("artist_genshin", "artist_codex", "creator_source")
+                 if source_mode in ("artist_genshin", "artist_genshin_batch",
+                                    "artist_codex", "creator_source")
                  else "角色动作帧预览")
         message = ("安装成功。是否打开由原作者 PNG 原始帧直接拼成的核对图？"
                    "请检查脸部、发饰、服装和动作是否确实属于所选角色。"
                    "预览不等于自动完成形象验收。"
-                   if source_mode in ("artist_genshin", "artist_codex", "creator_source")
+                   if source_mode in ("artist_genshin", "artist_genshin_batch",
+                                    "artist_codex", "creator_source")
                    else "角色已导入。是否打开动作帧预览图，检查动画素材？")
         if preview.is_file() and self.__showMessageBox(title, message):
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(preview.resolve())))
@@ -1234,7 +1242,24 @@ class ChibiImportThread(QThread):
 
     def run(self):
         new_folder = None
+        batch_folders = []
         try:
+            if self.mode == "artist_genshin_batch":
+                from tools.install_artist_genshin_batch import install_artist_genshin_batch
+                result = install_artist_genshin_batch(
+                    self.preset, self.output_root, confirmed=True)
+                batch_folders = [self.output_root / x["folder"]
+                                 for x in result["roles"]]
+                # Validate every role before emitting any UI success signal.
+                for folder in batch_folders:
+                    status, problem = CheckCharFiles(str(folder))
+                    if status:
+                        raise ValueError(
+                            f"Batch role {folder.name} failed validation "
+                            f"(code {status}): {problem}")
+                for folder in batch_folders:
+                    self.done.emit(folder.name, "")
+                return
             if self.mode == "original_demo":
                 from tools.create_original_mascot import create_original_mascot
                 new_folder = create_original_mascot(self.output_root)
@@ -1289,8 +1314,10 @@ class ChibiImportThread(QThread):
                 )
             self.done.emit(new_folder.name, "")
         except Exception as exc:
-            # Clean up only the role directory created in this execution.
-            # Existing roles cannot be overwritten by either importer.
+            # Roll back only directories created by this installation.
+            for folder in batch_folders:
+                if folder.exists():
+                    rmtree(folder, ignore_errors=True)
             if new_folder is not None and new_folder.exists():
                 rmtree(new_folder, ignore_errors=True)
             self.done.emit("", str(exc))
