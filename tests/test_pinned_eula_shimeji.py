@@ -86,7 +86,7 @@ class PinnedEulaSourceTests(unittest.TestCase):
         result = source_coverage()
         self.assertEqual(result["summary"]["characters_with_pinned_sources"], 69)
         self.assertEqual(result["summary"]["characters_without_pinned_sources"], 54)
-        self.assertEqual(result["summary"]["pinned_source_options"], 92)
+        self.assertEqual(result["summary"]["pinned_source_options"], 93)
         self.assertIn("pinned_eula_creator", INSTALLERS)
         eula = next(row for row in result["characters"]
                     if row["id"] == "genshin_eula")
