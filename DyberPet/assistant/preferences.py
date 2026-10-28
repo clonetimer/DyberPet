@@ -56,7 +56,7 @@ def validate(raw) -> dict:
             raise ValueError("Invalid boolean assistant preference")
         result[key] = val
     persona = raw.get("personas", {})
-    if not isinstance(persona, dict) or len(persona) > 100:
+    if not isinstance(persona, dict) or len(persona) > 150:
         raise ValueError("Invalid character persona settings")
     for character, key in persona.items():
         if (not isinstance(character, str) or len(character) > 120
