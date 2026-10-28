@@ -115,3 +115,12 @@ def download_pinned_github_png(url, limit, *, opener=urlopen):
 def reset_transport_preference_for_tests():
     with _LOCK:
         _PREFERRED.clear()
+
+
+def download_pinned_github_asset(url, limit, *, opener=urlopen):
+    """Transport immutable GitHub JSON/WebP/PNG byte objects without re-encoding.
+
+    The separate caller MUST check its known Git blob SHA-1 and byte length
+    before consuming the result. Network fallback never relaxes identity.
+    """
+    return download_pinned_github_png(url, limit, opener=opener)
