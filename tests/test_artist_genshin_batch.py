@@ -15,7 +15,7 @@ from tools.install_artist_genshin import (
     ROLES, REVISION, ROOT_PREFIX, SOURCE_IDENTITY,
 )
 from tools.install_artist_genshin_batch import (
-    install_artist_genshin_batch, parse_roles,
+    install_artist_genshin_batch, parse_roles, CORE_ROLES, COMPANION_ROLES,
 )
 
 
@@ -38,7 +38,7 @@ def _fixture():
                 "act_conf.json": json.dumps({
                     "idle": {"images": "idle", "frame_refresh": 0.2}
                 }).encode("utf-8"),
-                "action/idle_0.png": _png_data((90 + index * 40, 40, 90, 255)),
+                "action/idle_0.png": _png_data(((90 + index * 40) % 256, 40, 90, 255)),
             }
             anchors[key] = {}
             for path, payload in files.items():
@@ -77,8 +77,9 @@ class SourceBatchTests(unittest.TestCase):
         self.assertFalse(got["likeness_manually_reviewed"])
         self.assertFalse(got["art_rights_verified"])
         self.assertEqual(set(x["profile"] for x in got["roles"]),
-                         {v[1] for v in ROLES.values()})
-        for i, (key, (cn_name, profile, _)) in enumerate(ROLES.items()):
+                         {ROLES[k][1] for k in CORE_ROLES})
+        for i, key in enumerate(CORE_ROLES):
+            cn_name, profile, _ = ROLES[key]
             folder = self.root / ("SourceGenshin" + key.title())
             receipt = json.loads((folder / "PERSONAL_IMPORT.json").read_text("utf-8"))
             self.assertEqual(receipt["display_name"], cn_name)
@@ -90,6 +91,31 @@ class SourceBatchTests(unittest.TestCase):
                 self.assertEqual(img.getpixel((0, 0)),
                                  (90 + i * 40, 40, 90, 255))
             self.assertFalse((folder / "action" / "no_0.png").exists())
+
+    def test_companions_four_are_real_native_source_roles_not_human_templates(self):
+        result = install_artist_genshin_batch(
+            "companions", self.root, confirmed=True, opener=self.opener)
+        self.assertEqual(result["installed_count"], 4)
+        self.assertEqual(result["archive_download_count"], 1)
+        self.assertEqual(self.requests, 1)
+        for key in COMPANION_ROLES:
+            folder = self.root / ("SourceGenshin" + key.title())
+            receipt = json.loads((folder / "PERSONAL_IMPORT.json").read_text(encoding="utf-8"))
+            self.assertEqual(receipt["display_name"], ROLES[key][0])
+            self.assertIsNone(receipt["selected_profile"])
+            self.assertTrue(receipt["native_companion"])
+            self.assertFalse(receipt["likeness_manually_reviewed"])
+            self.assertTrue((folder / "ANIMATION_PREVIEW.png").exists())
+            self.assertTrue((folder / "ANIMATION_MOTION_QA.json").exists())
+        self.assertFalse((self.root / "SourceGenshinNahida").exists())
+
+    def test_all_seven_staged_in_one_download_with_distinct_receipts(self):
+        result = install_artist_genshin_batch(
+            "all-seven", self.root, confirmed=True, opener=self.opener)
+        self.assertEqual(result["installed_count"], 7)
+        self.assertEqual(self.requests, 1)
+        self.assertEqual(len({x["folder"] for x in result["roles"]}), 7)
+        self.assertTrue((self.root / "SourceGenshinXiao_Bird").exists())
 
     def test_requires_consent_before_network_or_writing(self):
         with self.assertRaisesRegex(ValueError, "consent"):
@@ -163,7 +189,9 @@ class SourceBatchTests(unittest.TestCase):
 
     def test_subset_and_duplicate_validation(self):
         self.assertEqual(parse_roles("nahida,xiao"), ("nahida", "xiao"))
-        self.assertEqual(parse_roles("all"), tuple(ROLES))
+        self.assertEqual(parse_roles("all"), CORE_ROLES)
+        self.assertEqual(parse_roles("companions"), COMPANION_ROLES)
+        self.assertEqual(parse_roles("all-seven"), CORE_ROLES + COMPANION_ROLES)
         for raw in ("", "ALL,nahida", "nahida,nahida", "unknown", "xiao,"):
             with self.subTest(raw=raw), self.assertRaises(ValueError):
                 parse_roles(raw)
