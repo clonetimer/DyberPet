@@ -37,6 +37,7 @@ INSTALLERS = {
     "independent_codex": ("tools.install_external_codex", "install_external_codex"),
     "codexpetdb_zip": ("tools.install_pinned_codexpetdb", "install_pinned_codexpetdb"),
     "react_lfs": ("tools.install_verified_react_lfs", "install_verified_react_lfs"),
+    "gmcy_diona": ("tools.install_gmcy_diona", "install_gmcy_diona"),
 }
 
 
