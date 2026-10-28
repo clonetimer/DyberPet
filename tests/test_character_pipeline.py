@@ -13,7 +13,7 @@ from tools.character_pipeline import (
     PipelineError, SOURCE_REGISTRY, registry, init_case, attach_case,
     rights_review, check_build_gate, build_case, qa_review, package_release,
     inspect_case, create_render_plan, identify_local, record_path,
-    attach_turnaround, review_turnaround,
+    attach_turnaround, review_turnaround, render_turnaround_case,
 )
 
 
@@ -209,6 +209,24 @@ class CharacterPipelineTest(unittest.TestCase):
         with self.assertRaisesRegex(TurnaroundError, "changed"):
             package_release(self.case)
         self.assertTrue(role.exists())
+
+    def test_model_turnaround_requires_exact_attached_source_and_rights(self):
+        model = self.root / "demo.glb"
+        model.write_bytes(b"not a valid GLB")
+        case = init_case(
+            self.workspace, "model_3view", "测试角色", "bilibili",
+            "https://example.org/single-author-model", "model3d",
+            creator="Test model author")
+        attach_case(case, model)
+        with self.assertRaisesRegex(PipelineError, "rights review"):
+            render_turnaround_case(case, variant="test-one-version")
+        rights_review(case, "Test reviewer", "https://example.org/license",
+                      local_use=True, derivatives=True)
+        # Renderer, rather than license intake, rejects malformed GLB.
+        from tools.render_turnaround_blender import TurnaroundRenderError
+        with self.assertRaises(TurnaroundRenderError):
+            render_turnaround_case(case, variant="test-one-version")
+        self.assertEqual(json.loads(case.read_text("utf-8"))["turnaround"], {})
 
     def test_source_swap_resets_turnaround_approval(self):
         attach_case(self.case, self.art)
