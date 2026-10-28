@@ -18,6 +18,7 @@ _REQUIRED = {
     "Install-Guga-Doro.cmd", "Install-Guga-Doro.ps1",
     "Make-My-Offline-DyberPet.cmd", "Make-Personal65-Offline.ps1",
     "PERSONAL65_BUILD_INFO.json", "PERSONAL65_INSTALL.md",
+    "Install-Whale-Pet.cmd", "Install-Whale-Pet.ps1", "WHALE_PERSONAL_GUIDE.md",
 }
 _DEMO_MARKERS = {"builtin_chibi_demo.json", "builtin_mascot_demo.json"}
 _MAX_ENTRIES = 50000
