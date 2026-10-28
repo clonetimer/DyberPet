@@ -882,6 +882,8 @@ class CharInterface(ScrollArea):
             f"② LFS 原始 PNG 已核验 · {row['slug']} · 动作待验收": ("react_shimeji_lfs", profile)
             for profile, row in verified_react.items()
         })
+        labels["② 迪奥娜 · GMCY原作者170帧 · 9组动作待人工语义验收"] = (
+            "gmcy_diona_original", "diona_170")
         labels["③ 卡维 ilewdha · 真实 PNG 原画 ZIP · 匍匐/坠落单帧待验收"] = (
             "pinned_kaveh_shimeji", KAVEH_KEY)
         labels["③ 优菈 SaylaMars · 109 帧原画 SHA 已核验 · 动作待人工验收"] = (
@@ -901,6 +903,8 @@ class CharInterface(ScrollArea):
                     return petdb[key]["profile"]
                 if mode == "react_shimeji_lfs":
                     return key
+                if mode == "gmcy_diona_original":
+                    return "genshin_diona"
                 if mode == "pinned_kaveh_shimeji":
                     return "genshin_kaveh"
                 if mode == "pinned_eula_shimeji":
@@ -923,6 +927,30 @@ class CharInterface(ScrollArea):
         if not ok or selected not in labels:
             return
         mode, kind = labels[selected]
+        if mode == "gmcy_diona_original":
+            from tools.install_gmcy_diona import source_zip_url, source_manifest
+            src = source_manifest()
+            if not self.__showMessageBox(
+                    "迪奥娜 · 确认安装真实原作者动画",
+                    f"来源：{source_zip_url()}\\n"
+                    "GMCY 原作者明确标注迪奥娜 / pet_2；170 张 PNG 已在 CI 逐张锁定 Git 哈希。"
+                    "首次会在本机下载约 67 MB 的完整仓库 ZIP，仅提取170张迪奥娜图片，"
+                    "绝不执行其中的 Python/EXE/脚本，也不上传原画。"
+                    "保留9组原作者动作、原画待机与逐帧预览。"
+                    "原设外观、动作语义与原音尚未人工通过，禁止按已验收形象处理。"
+                    "确认仅在本机导入为新的独立角色吗？"):
+                return
+            self.addButton.setEnabled(False)
+            self.artistSourceButton.setEnabled(False)
+            self.chibiThread = ChibiImportThread(
+                "", os.path.join(basedir, "res", "role"),
+                mode="gmcy_diona_original", profile="genshin_diona",
+                preset=kind, folder=None)
+            self.chibiThread.done.connect(self._onChibiImportComplete)
+            self.chibiThread.finished.connect(self._onChibiThreadFinished)
+            self.chibiThread.start()
+            self.__showSystemNote("正在本机验证并安装迪奥娜170张原始 PNG；全程不运行第三方代码。",1)
+            return
         if mode == "react_shimeji_lfs":
             source_record = verified_react[kind]
             source_url = (f"https://github.com/{REACT_REPO}/tree/{REACT_REV}/"
@@ -1631,6 +1659,7 @@ class CharInterface(ScrollArea):
             "native_zip", "native_folder", "animations",
             "pinned_kaveh_shimeji", "pinned_eula_shimeji",
             "react_verified_auto",
+            "gmcy_diona_original",
             "whale_creator",
         }
         if source_mode in original_modes:
@@ -2019,6 +2048,12 @@ class ChibiImportThread(QThread):
                 new_folder = self.output_root / result["folder"]
                 if result["actions"] < 16 or result["frames"] < 32:
                     raise ValueError("Whale original artwork conversion incomplete")
+            elif self.mode == "gmcy_diona_original":
+                from tools.install_gmcy_diona import install_gmcy_diona, SOURCE_KEY
+                if self.profile != "genshin_diona" or self.preset != SOURCE_KEY:
+                    raise ValueError("Diona creator source selected for wrong Genshin identity")
+                new_folder = install_gmcy_diona(
+                    SOURCE_KEY, self.output_root, confirmed=True)
             elif self.mode == "react_verified_auto":
                 from tools.install_verified_react_lfs import (
                     ALLOWED as VERIFIED_REACT_KEYS, install_verified_react_lfs)
