@@ -50,7 +50,7 @@ def source_manifest():
             obj.get("repository") != "GMCY2020/DesktopPet-Simple" or
             obj.get("commit") != "1b7d73a940ae4df84a283399f25a80fe2c571595" or
             obj.get("source_profile") != "genshin_keqing" or
-            obj.get("source_directory") != "resources/pet_2" or
+            obj.get("source_directory") != "resources/pet_1" or
             obj.get("original_frame_count") != 92 or
             len(obj.get("files", [])) != 92 or
             len(obj.get("original_action_groups", [])) != 6):
@@ -151,7 +151,7 @@ def verify_original_frames(archive_bytes, *, manifest=None):
     return verified
 
 
-def install_gmcy_diona(key, output_root, *, confirmed=False,
+def install_gmcy_keqing(key, output_root, *, confirmed=False,
                        archive_bytes=None, downloader=download_original_archive):
     """Atomic new-role-only install; never overwrite a creator or user's art."""
     if key != SOURCE_KEY:
@@ -170,7 +170,7 @@ def install_gmcy_diona(key, output_root, *, confirmed=False,
     if target.exists() or target.is_symlink():
         raise FileExistsError("Author original role cannot overwrite an existing character")
     root.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=root, prefix=".author-diona92-") as tmp:
+    with tempfile.TemporaryDirectory(dir=root, prefix=".author-keqing92-") as tmp:
         stage = Path(tmp) / folder
         action_path = stage / "action"
         action_path.mkdir(parents=True)
@@ -209,7 +209,7 @@ def install_gmcy_diona(key, output_root, *, confirmed=False,
         validation = validate_native_role(stage)
         receipt = {
             "mode": "personal_local_only",
-            "source_kind": "sha1_git_blob_pinned_gmcy_diona92",
+            "source_kind": "sha1_git_blob_pinned_gmcy_keqing92",
             "selected_profile": "genshin_keqing",
             "display_name_zh": "刻晴",
             "upstream_repo": src["repository"],
@@ -248,7 +248,7 @@ def main(argv=None):
     parser.add_argument("--personal-use", action="store_true")
     args = parser.parse_args(argv)
     raw = args.archive.read_bytes() if args.archive else None
-    print(install_gmcy_diona(SOURCE_KEY, args.role_root,
+    print(install_gmcy_keqing(SOURCE_KEY, args.role_root,
                              confirmed=args.personal_use, archive_bytes=raw))
     return 0
 
