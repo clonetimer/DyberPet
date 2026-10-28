@@ -35,8 +35,8 @@ jobs:
           from tools.discover_new_codexpetdb_pins import query_unpinned_candidates
           summary=source_coverage()["summary"]
           assert summary["template_count"]==123
-          assert summary["characters_with_pinned_sources"]==68
-          assert summary["characters_without_pinned_sources"]==55
+          assert summary["characters_with_pinned_sources"]==69
+          assert summary["characters_without_pinned_sources"]==54
           result=query_unpinned_candidates()
           print("R28_CATALOG_CANDIDATES="+json.dumps(result,ensure_ascii=False,separators=(",",":")),flush=True)
           print("R28_NEW_CANDIDATE_COUNT="+str(result["count"]),flush=True)
