@@ -166,16 +166,24 @@ class SettingInterface(ScrollArea):
         self.ScaleCard.setValue(int(settings.tunable_scale*10))
         self.ScaleCard.slider.valueChanged.connect(self._ScaleChanged)
 
+        from tools.character_display_name import chinese_character_name
         pet_list = settings.pets
+        root = os.path.join(basedir, "res", "role")
+        pet_labels = [chinese_character_name(pet, root) for pet in pet_list]
         self.DefaultPetCard = Dyber_ComboBoxSettingCard(
             pet_list,
-            pet_list,
+            pet_labels,
             QIcon(os.path.join(basedir, 'res/icons/system/homestar.svg')),
             self.tr('Default Pet'),
             self.tr('Pet to show everytime App starts'),
             parent=self.PersonalGroup
         )
-        self.DefaultPetCard.comboBox.currentTextChanged.connect(self._DefaultPetChanged)
+        # Store the stable role ID, never the translated UI label.
+        if settings.default_pet in pet_list:
+            self.DefaultPetCard.comboBox.setCurrentIndex(pet_list.index(settings.default_pet))
+        self.DefaultPetCard.comboBox.currentIndexChanged.connect(
+            lambda index: self._DefaultPetChanged(
+                self.DefaultPetCard.comboBox.itemData(index)))
 
         lang_choices = list(settings.lang_dict.keys())
         lang_now = lang_choices[list(settings.lang_dict.values()).index(settings.language_code)]

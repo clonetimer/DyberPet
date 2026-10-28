@@ -14,7 +14,13 @@ on:
       - "requirements-windows-portable.txt"
       - "docs/whale_personal_install.md"
       - "tools/verify_personal_portable.py"
+      - "tools/whale_ffmpeg_runtime.py"
+      - "tools/character_display_name.py"
+      - "tests/test_r26_chinese_and_lean.py"
       - "tests/test_verify_personal_portable.py"
+      - "tools/whale_ffmpeg_runtime.py"
+      - "tools/character_display_name.py"
+      - "tests/test_r26_chinese_and_lean.py"
       - "tools/install_whale_pet.py"
       - "tools/whale_creator_sources.json"
       - "tests/test_whale_creator_install.py"
@@ -113,6 +119,11 @@ jobs:
           $env:DYBERPET_NATIVE_BACKEND = "rust"
           python -c "from DyberPet.assistant.native_bridge import backend_status; s=backend_status(); print(s); assert s['active']=='rust'"
           if ($LASTEXITCODE -ne 0) { throw "Native bridge is not active Rust" }
+      - name: Test R26 Chinese names and on-demand FFmpeg integrity (synthetic only)
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p "test_r26_chinese_and_lean.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "R26 Chinese label or FFmpeg regression failed" }
       - name: Test packaged ZIP safety and backend contracts (synthetic only)
         shell: pwsh
         run: |

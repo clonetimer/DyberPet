@@ -248,7 +248,9 @@ class CharInterface(ScrollArea):
             settings.save_settings()
             return True
         # Confirm
-        title = self.tr('Switch to ') + petname + "?"
+        from tools.character_display_name import chinese_character_name
+        display = chinese_character_name(petname, Path(basedir) / "res" / "role")
+        title = f"切换到{display}？"
         content = self.tr("Might take some time, just wait a moment <3")
         if not self.__showMessageBox(title, content):
             return False
@@ -339,7 +341,7 @@ class CharInterface(ScrollArea):
                      "个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）",
                      f"个人使用：下载 SHA-256 固定的{verified_source_count}位原神角色原画 ZIP",
                      "个人本地导入：已下载的 SHA-256 固定原画 ZIP（断网可用）",
-                     "个人非商用：安装鲸鱼娘 Whale Pet（原始 WebM 动作）"]
+                     "个人非商用：安装鲸鱼娘（原始 WebM 动作）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False

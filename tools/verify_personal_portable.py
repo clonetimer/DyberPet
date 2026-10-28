@@ -54,6 +54,9 @@ def verify_portable_zip(archive: str | Path, backend: str) -> dict:
             if uncompressed > _MAX_TOTAL_UNCOMPRESSED:
                 raise ValueError("Portable ZIP exceeds size limit")
             parts = tuple(p.casefold() for p in path.parts)
+            if (name.casefold().startswith("imageio_ffmpeg/binaries/")
+                    or name.casefold().endswith("ffmpeg-win-x86_64-v7.1.exe")):
+                raise ValueError("Optimized Windows bundle must not prebundle whale FFmpeg")
             if name.casefold().endswith((".pyc", ".pyo")):
                 raise ValueError("Unexpected bytecode cache in portable ZIP")
             if parts and parts[0] == "data":

@@ -1015,6 +1015,12 @@ class CharLine(SimpleCardWidget):
             else:
                 pfpPath = os.path.join(basedir, 'res/icons/unknown.svg')
 
+        # Display the Chinese role name; keep chrFolder unchanged for saves/events.
+        if self.parentDir == "role":
+            from tools.character_display_name import chinese_character_name
+            self.chrName = chinese_character_name(
+                self.chrFolder, Path(basedir) / "res" / "role")
+
         # Character pfp
         image = QImage()
         image.load(pfpPath)
@@ -1221,6 +1227,10 @@ class CharCardWidget(SimpleCardWidget):
         self.hBoxLayoutTitle.setContentsMargins(0, 0, 0, 0)
 
         self.petName = infoConfig.get("petName", self.tr("Unnamed"))
+        if self.parentDir == "role":
+            from tools.character_display_name import chinese_character_name
+            self.petName = chinese_character_name(
+                self.petFolder, Path(basedir) / "res" / "role")
         self.titleLabel = CaptionLabel(self.petName)
         setFont(self.titleLabel, 14, QFont.DemiBold)
         self.titleLabel.adjustSize()

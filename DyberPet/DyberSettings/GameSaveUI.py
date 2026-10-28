@@ -78,11 +78,19 @@ class SaveInterface(ScrollArea):
             self.TransferSaveGroup
         )
 
+        from tools.character_display_name import chinese_character_name
+        self._import_pet_name_map = {}
+        role_root = os.path.join(basedir, "res", "role")
+        for role_id in settings.pets:
+            label = chinese_character_name(role_id, role_root)
+            if label in self._import_pet_name_map:
+                label = f"{label}（{role_id}）"
+            self._import_pet_name_map[label] = role_id
         self.ImportSaveCard = DyberToolBottonCard(
             self.tr('Import for'),
             QIcon(os.path.join(basedir, 'res/icons/system/upload.svg')),
             self.tr("Import from"),
-            menu_text = [self.tr('All pets')] + settings.pets,
+            menu_text = [self.tr('All pets')] + list(self._import_pet_name_map),
             content=self.tr("Please choose the pet, then choose the save folder"),
             parent=self.TransferSaveGroup
         )
@@ -291,6 +299,7 @@ class SaveInterface(ScrollArea):
         self.ExportSaveCard.setContent(folder)
 
     def __onImportSaveCardClicked(self, petname):
+        petname = self._import_pet_name_map.get(petname, petname)
         """ import folder card clicked slot """
 
         # Confirm

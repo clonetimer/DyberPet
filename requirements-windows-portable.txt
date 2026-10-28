@@ -7,8 +7,8 @@ tendo==0.3.0
 pyinstaller==6.16.0
 # Main-branch character importer processes local GIF/PNG/WEBP resources.
 Pillow==12.0.0
-# Packaged FFmpeg executable for local-only original whale WebM -> PNG conversion.
-imageio-ffmpeg==0.6.0
+# Whale FFmpeg is fetched on the user's first opt-in import from a SHA-pinned
+# official PyPI wheel. Do not include the 83 MiB decoder in every Windows app.
 # Offline voice engines are bundled; Vosk acoustic model files are NOT.
 vosk==0.3.45
 sounddevice==0.5.2
