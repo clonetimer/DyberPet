@@ -61,10 +61,11 @@ def _frame_from_declared(root, entry):
             or rel.suffix.lower() != ".png"):
         raise ValueError("Unsafe or ambiguous three-view reference path")
     file = root.joinpath(*rel.parts)
-    if (file.is_symlink() or not file.is_file() or
-            file.stat().st_size > MAX_FRAME_BYTES
-            or file.resolve().parent != (root / rel.parts[0]).resolve()
-            and len(rel.parts) == 2):
+    if ((root / rel.parts[0]).is_symlink()
+            or file.is_symlink() or not file.is_file()
+            or file.stat().st_size > MAX_FRAME_BYTES
+            or not file.resolve().is_relative_to(root.resolve())
+            or file.resolve().parent != (root / rel.parts[0]).resolve()):
         raise ValueError("Invalid referenced source PNG")
     _png_dimensions(file)
     expected = entry.get("sha256")
