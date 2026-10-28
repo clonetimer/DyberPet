@@ -92,7 +92,7 @@ jobs:
               def exact_cached_author_bytes(address, identity):
                   raw=cache[address]
                   assert len(raw)==identity[0]
-                  assert hashlib.sha1(b"blob "+str(len(raw)).encode()+b"\\0"+raw).hexdigest()==identity[1]
+                  assert hashlib.sha1(b"blob "+str(len(raw)).encode()+b"\0"+raw).hexdigest()==identity[1]
                   return raw
               with TemporaryDirectory(prefix="r32-windows-native-codex-") as tmp:
                   root=Path(tmp)/"role"
