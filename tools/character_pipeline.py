@@ -312,6 +312,10 @@ def check_build_gate(data):
         raise PipelineError("Attach a local asset first")
     if data["source"]["sha256"] != fingerprint(source):
         raise PipelineError("Source files changed since intake; attach again and re-review")
+    if (data["source"]["kind"] == "frames" and source.is_dir() and
+            (source / "BLENDER_RENDER_REPORT.json").is_file() and
+            not data.get("derived_from")):
+        raise PipelineError("Rendered model frames require parent lineage evidence")
     if not data["rights"]["reviewer"] or not data["rights"]["evidence"]:
         raise PipelineError("Human rights review with evidence required before build")
     if not data["rights"]["local_use"]:
@@ -378,6 +382,8 @@ def render_3d_case(case_file, *, blender="blender", frames=6,
             "3D rendering needs author-specific human rights evidence "
             "and permission for local use and derivatives"
         )
+    # A renderer cannot bypass the R33 artwork approval requirement.
+    verify(data.get("turnaround"))
     child_id = frames_case_id or data["id"] + "_frames"
     root = Path(case_file).resolve().parent.parent
     child_path = record_path(root, child_id)
@@ -400,16 +406,32 @@ def render_3d_case(case_file, *, blender="blender", frames=6,
         rendered = render_blender(blender, output_root, **render_options)
         if fingerprint(source) != data["source"]["sha256"]:
             raise PipelineError("3D source changed during Blender render")
+        verify(data.get("turnaround"))
+        report_file = rendered / "BLENDER_RENDER_REPORT.json"
+        report = json.loads(report_file.read_text(encoding="utf-8"))
+        modes = report.get("animation_sources") or {}
+        if require_clips and (not isinstance(modes, dict) or
+                              any(modes.get(action) != "clip" for action in actions)):
+            raise PipelineError(
+                "High-fidelity build requires genuine imported animation clips for every action")
         child = init_case(
             root, child_id, data["character"], data["source"]["channel"],
             data["source"]["url"], "frames", data.get("profile"),
             data["source"]["artist"]
         )
         child_data = attach_case(child, rendered)
+        # Carry the *same* approved design into the animation case. Its
+        # human approval applies to the model identity, not motion quality.
+        child_data["turnaround"] = json.loads(json.dumps(data["turnaround"]))
         child_data["derived_from"] = {
             "parent_case": data["id"],
             "parent_asset_sha256": data["source"]["sha256"],
-            "render_report": str(rendered / "BLENDER_RENDER_REPORT.json")
+            "parent_model_name": source.name,
+            "render_report": str(report_file),
+            "render_report_sha256": hashlib.sha256(report_file.read_bytes()).hexdigest(),
+            "animation_actions": list(actions),
+            "all_actions_use_real_clips": bool(require_clips),
+            "preview_only": not require_clips,
         }
         dump_json(child_data, child)
     except Exception:
@@ -424,9 +446,57 @@ def render_3d_case(case_file, *, blender="blender", frames=6,
     return child_path
 
 
+def validate_derived_provenance(case_file, data, *, for_release=False):
+    """Verify model->view->frames lineage before build/QA/release.
+
+    A preview with synthetic root motion is allowed for experimentation, but
+    it cannot be repackaged as a completed high-fidelity character.
+    """
+    derivation = data.get("derived_from")
+    if not derivation:
+        return
+    root = Path(case_file).resolve().parent.parent
+    try:
+        parent = load_case(record_path(root, derivation["parent_case"]))
+        if parent["source"]["kind"] != "model3d":
+            raise PipelineError("Derived character parent must be a model3d case")
+        parent_source = asset_path(parent)
+        if (not parent_source or not parent_source.is_file() or
+                fingerprint(parent_source) != derivation["parent_asset_sha256"] or
+                parent["source"]["sha256"] != derivation["parent_asset_sha256"]):
+            raise PipelineError("Parent model changed; lineage no longer valid")
+        verify(parent["turnaround"])
+        verify(data["turnaround"])
+        if (data["turnaround"] != parent["turnaround"] or
+                data["character"] != parent["character"] or
+                data["source"]["url"] != parent["source"]["url"] or
+                data["source"]["artist"] != parent["source"]["artist"]):
+            raise PipelineError("Child frames no longer match approved model design")
+        report_path = Path(derivation["render_report"]).resolve()
+        rendered = asset_path(data)
+        if (rendered is None or report_path != rendered / "BLENDER_RENDER_REPORT.json" or
+                not report_path.is_file() or
+                hashlib.sha256(report_path.read_bytes()).hexdigest() !=
+                derivation["render_report_sha256"]):
+            raise PipelineError("Blender action render receipt changed")
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        actions = derivation["animation_actions"]
+        modes = report.get("animation_sources") or {}
+        if for_release and (derivation.get("preview_only") is not False or
+                            derivation.get("all_actions_use_real_clips") is not True or
+                            not isinstance(modes, dict) or
+                            not actions or
+                            any(modes.get(a) != "clip" for a in actions)):
+            raise PipelineError(
+                "Release blocked: preview-only/fallback motion is not a real animation clip")
+    except (KeyError, TypeError, OSError, json.JSONDecodeError) as exc:
+        raise PipelineError("Incomplete or invalid source-to-action lineage") from exc
+
+
 def build_case(case_file):
     data = load_case(case_file)
     source = check_build_gate(data)
+    validate_derived_provenance(case_file, data)
     root = Path(case_file).resolve().parent.parent
     output_root = root / "build" / data["id"]
     if output_root.exists() and any(output_root.iterdir()):
@@ -513,6 +583,7 @@ def qa_review(case_file, reviewer, *, visual_pass=False, runtime_pass=False):
     if not visual_pass or not runtime_pass:
         raise PipelineError("Both visual and real DyberPet runtime checks must pass")
     verify(data.get("turnaround"))
+    validate_derived_provenance(case_file, data)
     data["qa"] = {"reviewer": reviewer, "reviewed_on": utc_date(),
                   "visual_pass": True, "runtime_pass": True,
                   "asset_sha256": fingerprint(role)}
@@ -535,6 +606,7 @@ def package_release(case_file):
     if not qa["reviewer"]:
         raise PipelineError("Release blocked: missing QA reviewer")
     verify(data.get("turnaround"))
+    validate_derived_provenance(case_file, data, for_release=True)
     role = Path(data["build"]["role"]).resolve()
     if not role.is_dir() or fingerprint(role) != qa["asset_sha256"]:
         raise PipelineError("Built role changed since QA approval")
@@ -571,8 +643,11 @@ def inspect_case(case_file):
         problems.append("3D asset requires separate authorized transparent rendering")
     try:
         verify(data.get("turnaround"))
-    except TurnaroundError as exc:
+        validate_derived_provenance(case_file, data, for_release=False)
+    except (TurnaroundError, PipelineError) as exc:
         problems.append(str(exc))
+    if data.get("derived_from", {}).get("preview_only"):
+        problems.append("derived motion is preview-only; use --require-clips for releasable character")
     if not data["qa"]["visual_pass"] or not data["qa"]["runtime_pass"]:
         problems.append("real visual/runtime QA not complete")
     if not rights["redistribution"]:

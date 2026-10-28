@@ -8,7 +8,7 @@
 
 | 候选源 | 优点 | 当前阻断 |
 |---|---|---|
-| [ballmarker BOOTH 3D avatar](https://booth.pm/ja/items/8369044) | 单一 FBX/材质来源，能从同一个模型输出正交前/侧/背；商品说明列出 FBX/PNG/Unity | 需取得模型并核实 VN3 条款；商品预览不等于已取得三视图；未完成源图审查 |
+| [ballmarker BOOTH 3D avatar](https://booth.pm/ja/items/8369044) | 同一 FBX/材质来源理论上可输出正交前/侧/背 | **2026-10-28 商品页面当前显示非公开**；不可视作现在可取得的模型；需用户合法取得和核实 VN3 条款 |
 | [Eijnewgnaw 咕咕嘎嘎 Codex Pet](https://github.com/Eijnewgnaw/gugugaga-codexpet) | 仓库 MIT 许可，带 V2 精灵图、11 行动画与 16 个视线方向，DyberPet 已有 V2 本地导入能力 | 精灵图不等于三视图；MIT 仓库声明不能代替对原有角色 IP、作者身份与形象版本的核实；不得和另一模型直接混合作为统一设定 |
 | 商品四角度相片（如日本电商） | 可帮助确认 Q 版形体特征 | 不同来源的四角度图不能当作 ballmarker 模型的背面；不直接抽成正式三视图 |
 
@@ -23,10 +23,11 @@
 | 候选源 | 优点 | 当前阻断 |
 |---|---|---|
 | [Good Smile Arts 官方展示](https://www.goodsmilearts.com/Cn/Index/pageView/catid/5/id/501.html) | 身体体态、脸部比例和配饰的身份核对基准 | 商品宣传图不等于同一套正交三视图，也不授予数字改编或再分发许可 |
+| [blatz729 Sketchfab Doro](https://sketchfab.com/3d-models/doro-9ee7bdcbe953439c8f5438e5197810a7) | 页面标 CC BY、可下载；约 7.95 万三角面，较高模 3D 打印文件轻 | **下载需要 Sketchfab 登录**；尚未获取 GLB，需确认版本相符、骨骼可动与底层角色权利，不能据此宣称已完成三视图 |
 | [Gray World / RenderHub 3D 模型](https://www.renderhub.com/gray-world-corporation/dorothy-doro-goddess-of-victory-nikke) | 可能以同一套模型输出三视图；有多角度图 | 页面标为非 game-ready、约 400 万面，许可带 IP restricted/editorial 限制；用于桌宠动作前须检查许可、拓扑及是否能够制作连续动作 |
 | [Marky3d Doro 双姿态打印模型](https://cults3d.com/en/3d-model/game/goddess-of-victory-nikke-doro-dorothy) | 两个造型姿态，可辅助辨认四足/竖立差异 | STL/打印姿态不能直接当作实时骨骼动画；不能混用直立版本 |
 
-**试点路线**：先以官方展示确立四足参考；优先寻找具有同一版本正交前/侧/背且允许本地动画改编的单一模型/画师图。选定前不投产最终动作帧。
+**试点路线**：先以官方展示确立四足参考，优先复核 blatz729 可下载模型是否与目标 Doro 四足造型一致（需要合法登录下载）。若一致并允许本地改编，则用 R35 同模型正交渲染 + R36 严格真实动画片段模式。选定前不投产最终动作帧。
 
 动作计划（目标帧数）：四足呼吸待机 6、左右小跑各 8、摸头 6、跳跃 8、扑倒/翻滚 8、睡眠 6、说话/表情 6。身体和四肢应有真实相位差，不允许用整张图平移假装迈步；检查前后方向转换时的发饰位置。
 

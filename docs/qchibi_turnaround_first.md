@@ -39,6 +39,25 @@ py tools/character_pipeline.py turnaround-card doro_q01
 咕嘎、Doro 的首批参考候选与动作开发目标参阅 [R34 首批角色试点](r34_role_pilot.md)。
 
 
+## R36：模型三视图和动画帧共用同一批准来源
+
+R35 的 `turnaround-render-model` 先生成并登记模型正/侧/背图；**确认原设后必须在原 model3d 候选上执行 `turnaround-review`，再运行 `render`**。R36 在模型到动作帧的转换处引入强制来源验证。新生成的 `frames` 子候选继承父候选的整套三视图、画师、造型版本和签名；动作仍然需要单独视觉与桌面交互验收。
+
+生产动作渲染应使用严格模式：
+
+```powershell
+# guga_q3d01 已完成三视图审核；源 GLB 内还必须包含对应 NLA 动画片段
+py tools/character_pipeline.py render guga_q3d01 --require-clips --frames 8 `
+  --actions idle,left_walk,right_walk,wave,wait,sleep
+# 将生成 guga_q3d01_frames 子候选，它继承已审核的三视图身份。
+py tools/character_pipeline.py inspect guga_q3d01_frames
+# 子候选还需要第二次逐件权利复核、build、真实外观和桌面交互 QA。
+```
+
+**严禁误判**：如果模型没有真实 NLA 动画，非严格的 `render` 会生成程序根节点位移。该产物标记为 `preview_only`，可以进行制作调试，但即使手工勾选了视觉/运行 QA，也**不能调用 `package` 作为完整角色包**。严格模式不仅要求 `--require-clips`，还要求报告中每个动作来源都明确为 `clip`。若源 GLB、审核后的三视图、渲染报告或从属关系被改变，构建/验收/发布被阻断。
+
+用于角色动作的下载文件、素材 URL 和许可证仍必须与同一作者、同一版本绑定。Doro 四足动作必须由四足模型真正的骨骼动作或经过人工核对的四足逐帧动画提供，不能靠简单窗口位移伪造。**真实动作来源与正交三视图未拿到前，咕嘎、Doro 都不计高保真完成。**
+
 ## R35：一个授权 3D 模型直接生成正交三视图
 
 针对网络正、侧、背图片经常是不同作者/不同服装版本的问题，R35 新增 **同一 GLB 同一场景生成前 / 右侧 / 背面** 的真实 Blender 渲染器。
