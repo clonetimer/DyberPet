@@ -33,6 +33,8 @@ $installerArgs = @(
     "--hidden-import", "tools.local_offline_bundle",
     "--hidden-import", "tools.personal_mascot_batch",
     "--hidden-import", "tools.install_creator_mascots",
+    "--hidden-import", "tools.install_whale_pet",
+    "--collect-all", "imageio_ffmpeg",
     "--hidden-import", "tools.mascot_library",
     "--hidden-import", "tools.install_artist_genshin",
     "--hidden-import", "tools.install_artist_codex",
@@ -69,6 +71,7 @@ $sourceDirs = @(Get-ChildItem -LiteralPath $roles -Directory -ErrorAction Stop |
 if ($sourceDirs.Count -ne 0) { throw "Third-party Source* art accidentally included" }
 
 Copy-Item -LiteralPath (Join-Path $root "docs/personal_source_batch.md") -Destination (Join-Path $package "PERSONAL65_INSTALL.md") -Force
+Copy-Item -LiteralPath (Join-Path $root "docs/whale_personal_install.md") -Destination (Join-Path $package "WHALE_PERSONAL_GUIDE.md") -Force
 
 # Personal-only complete offline bundle generation: the art does not enter
 # hosted CI or any GitHub Release, even when the repository is private.
@@ -119,6 +122,38 @@ $cmd = '@echo off' + "`r`n" + 'cd /d "%~dp0"' + "`r`n" +
 [System.IO.File]::WriteAllText((Join-Path $package "Install-65-Roles.cmd"), $cmd, (New-Object System.Text.ASCIIEncoding))
 $availableCmd = $cmd.Replace("Install-65-Roles.ps1", "Install-Available-Roles.ps1")
 [System.IO.File]::WriteAllText((Join-Path $package "Install-Available-Roles.cmd"), $availableCmd, (New-Object System.Text.ASCIIEncoding))
+
+# Independent whale local source installer; never prebundles noncommercial media.
+$whaleMenu = @'
+$ErrorActionPreference = "Stop"
+Set-Location $PSScriptRoot
+$tool = Join-Path $PSScriptRoot "DyberPet-Role-Installer.exe"
+$roleDir = Join-Path $PSScriptRoot "res/role"
+New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot "data") | Out-Null
+$mode = Read-Host "Whale original clips: type CORE for 16 actions (recommended), FULL for all 95"
+if ($mode -notin @("CORE", "FULL")) { Write-Host "Cancelled."; exit 0 }
+$selection = @("--whale")
+if ($mode -eq "FULL") { $selection += "--whale-full" }
+$plan = Join-Path $PSScriptRoot "data/whale-source-plan.json"
+& $tool @selection --role-root $roleDir --output $plan
+if ($LASTEXITCODE -ne 0) { throw "Whale source plan failed" }
+Write-Host "Pinned original videos from luweiyabo/dsh-whale-pet."
+Write-Host "Video media have separate noncommercial conditions and are NOT MIT re-licensed."
+Write-Host "No video, audio or author art is included in this downloaded application ZIP."
+$answer = Read-Host "Confirm personal noncommercial source terms? Type INSTALL to download, verify and convert on this PC"
+if ($answer -cne "INSTALL") { Write-Host "Cancelled. No whale material fetched."; exit 0 }
+$report = Join-Path $PSScriptRoot "data/whale-install-report.json"
+& $tool @selection --role-root $roleDir --install --accept-personal-use --output $report
+if ($LASTEXITCODE -ne 0) { throw "Whale local install failed; inspect $report" }
+Write-Host "Whale installed; restart DyberPet then choose the new role in Character Management."
+Write-Host "Report: $report"
+'@
+[System.IO.File]::WriteAllText((Join-Path $package "Install-Whale-Pet.ps1"), $whaleMenu, (New-Object System.Text.UTF8Encoding($false)))
+$nl = [System.Environment]::NewLine
+$whaleCmd = '@echo off' + $nl + 'cd /d "%~dp0"' + $nl +
+            'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-Whale-Pet.ps1"' + $nl +
+            'pause' + $nl
+[System.IO.File]::WriteAllText((Join-Path $package "Install-Whale-Pet.cmd"), $whaleCmd, (New-Object System.Text.ASCIIEncoding))
 
 # Guga and Doro are two ADDITIONAL mascot sources; not part of the 65 Genshin count.
 # Keep both artist atlases off GitHub and outside the portable archive.
@@ -180,6 +215,19 @@ if ($report.summary.selected_profiles -ne 123 -or
 }
 Write-Host "Validated $sourceCount pinned-source candidates and $missingCount missing among 123 profiles. Neither implies installed artwork."
 if ($report.summary.already_installed_structurally -ne 0) { throw "Creator art was prebundled" }
+
+# Whale helper must enumerate 95 fixed clips while the public archive remains art-free.
+$whalePlan = Join-Path $smokeDir ("whale-plan-" + $Backend + ".json")
+& $helper --whale --role-root $roles --output $whalePlan
+if ($LASTEXITCODE -ne 0) { throw "Frozen whale source planner failed" }
+$whale = Get-Content -LiteralPath $whalePlan -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($whale.pinned_animation_catalog -ne 95 -or $whale.selected_animation_count -ne 16 -or
+    $whale.installed -or -not $whale.no_artwork_prebundled) {
+    throw "Frozen whale planner art-free contract failed"
+}
+if (-not (Test-Path -LiteralPath (Join-Path $package "Install-Whale-Pet.cmd"))) {
+    throw "Whale opt-in local installation shortcut missing"
+}
 
 # Ensure the frozen role installer knows about the offline archive workflow;
 # refusing to bundle without a local opt-in must not create an output file.

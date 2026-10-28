@@ -18,6 +18,7 @@ _REQUIRED = {
     "Install-Guga-Doro.cmd", "Install-Guga-Doro.ps1",
     "Make-My-Offline-DyberPet.cmd", "Make-Personal65-Offline.ps1",
     "PERSONAL65_BUILD_INFO.json", "PERSONAL65_INSTALL.md",
+    "Install-Whale-Pet.cmd", "Install-Whale-Pet.ps1", "WHALE_PERSONAL_GUIDE.md",
 }
 _DEMO_MARKERS = {"builtin_chibi_demo.json", "builtin_mascot_demo.json"}
 _MAX_ENTRIES = 50000
@@ -90,8 +91,11 @@ def verify_portable_zip(archive: str | Path, backend: str) -> dict:
             raise ValueError("Rust package lacks fail-closed native backend requirement")
         if zf.testzip() is not None:
             raise ValueError("Portable ZIP entry CRC verification failed")
+    digest = hashlib.sha256()
     with file.open("rb") as stream:
-        sha = hashlib.file_digest(stream, "sha256").hexdigest()
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    sha = digest.hexdigest()
     return {
         "archive": file.name, "sha256": sha, "backend": backend,
         "files_checked": len(files), "character_templates": total,

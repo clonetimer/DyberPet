@@ -1,0 +1,56 @@
+name: Whale original WebM decoder and identity gate
+on:
+  pull_request:
+    paths:
+      - "tools/install_whale_pet.py"
+      - "tools/whale_creator_sources.json"
+      - "tests/test_whale_creator_install.py"
+      - ".github/workflows/whale-original-media-smoke.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-clips-to-native-png:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install no-GUI conversion requirements
+        run: python -m pip install Pillow==12.0.0 imageio-ffmpeg==0.6.0
+      - name: Synthetic offline install tests
+        run: python -m unittest discover -s tests -p "test_whale_creator_install.py" -v
+      - name: Download exact upstream original clips and verify transparent native frames
+        shell: bash
+        run: |
+          python - <<'PY'
+          import tempfile
+          from pathlib import Path
+          from tools.install_whale_pet import (
+              source_catalog, fetch_pinned_video, locate_ffmpeg, decode_video
+          )
+          source = {row["path"]: row for row in source_catalog()["animations"]}
+          for name in ("assets/thumb/idle/breathing.webm",
+                       "assets/thumb/drag/dragged_in_midair.webm"):
+              with tempfile.TemporaryDirectory() as td:
+                  root = Path(td)
+                  clip = root / "original.webm"
+                  clip.write_bytes(fetch_pinned_video(source[name]))
+                  count = decode_video(clip, root / "decoded", ffmpeg=locate_ffmpeg(),
+                                       fps=8)
+                  assert count >= 2
+                  print("PINNED_ORIGINAL_TRANSPARENT_FRAMES_OK", name, count)
+          from tools.install_whale_pet import install_whale_pet
+          from tools.install_native_role import validate_native_role
+          with tempfile.TemporaryDirectory() as td:
+              result = install_whale_pet(Path(td) / "role", confirmed=True,
+                                         selection="core")
+              role = Path(td) / "role" / result["folder"]
+              assert result["actions"] == 16, result
+              assert result["frames"] >= 32, result
+              assert validate_native_role(role)["actions"] == 16
+              print("REAL_PINNED_16_ACTION_NATIVE_ROLE_INSTALLED", result["frames"])
+          print("No third-party video/PNG uploaded or retained by workflow")
+          PY

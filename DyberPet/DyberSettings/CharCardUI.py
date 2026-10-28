@@ -338,7 +338,8 @@ class CharInterface(ScrollArea):
                     "个人本地导入：Codex 动画 ZIP（仅提取图集）",
                      "个人本地导入：React-Shimeji 完整图集 TS（先校验 LFS）",
                      f"个人使用：下载 SHA-256 固定的{verified_source_count}位原神角色原画 ZIP",
-                     "个人本地导入：已下载的 SHA-256 固定原画 ZIP（断网可用）"]
+                     "个人本地导入：已下载的 SHA-256 固定原画 ZIP（断网可用）",
+                     "个人非商用：安装鲸鱼娘 Whale Pet（原始 WebM 动作）"]
         choice, accepted = QInputDialog.getItem(
             self, self.tr("添加角色"), self.tr("请选择本地素材类型："),
             options, 0, False
@@ -365,6 +366,9 @@ class CharInterface(ScrollArea):
             return
         if choice == options[8]:
             self._importPinnedPetDb(local_archive=True)
+            return
+        if choice == options[9]:
+            self._installWhaleCreator()
             return
         if choice == options[6]:
             module, _ = QFileDialog.getOpenFileName(
@@ -553,6 +557,41 @@ class CharInterface(ScrollArea):
             self.__onLaunchClicked(name)
         elif operation==operations[2]:
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder.resolve())))
+
+    def _installWhaleCreator(self):
+        """Consent-driven pinned whale WebM-to-PNG conversion in background thread."""
+        if self.chibiThread is not None:
+            self.__showSystemNote("角色原画安装正在进行，请先完成当前任务。", 1)
+            return
+        modes = (
+            "推荐 · 16 项核心原画动作（8 FPS，适合首次安装）",
+            "完整 · 95 项原画动作（5 FPS，占用更多磁盘）",
+        )
+        chosen, ok = QInputDialog.getItem(
+            self, "新增鲸鱼娘 · 选择动画范围",
+            "来自 luweiyabo/dsh-whale-pet；全部素材本机下载，不上传或公开分发。",
+            list(modes), 0, False)
+        if not ok:
+            return
+        selected = "core" if chosen == modes[0] else "full"
+        if not self.__showMessageBox(
+                "确认仅个人非商业用途安装",
+                "源代码 MIT 授权不等于视频美术 MIT 授权。多数透明 WebM 动画来自 "
+                "PC2005-cloud/dsh-pet，使用需遵守单独的非商业素材条款。"
+                "软件将校验固定 Git 版本、原文件长度与 Blob 哈希，再通过本机 FFmpeg "
+                "生成真正的 PNG 帧和 DyberPet 动作配置。不会伪画替代素材、上传原画、"
+                "覆盖现有角色，也不宣称移植了 DeepSeek Harness 事件监听或原声。"
+                "较大的完整 95 项动作可能占用数百 MB，且需要更多时间。确认继续吗？"):
+            return
+        self.addButton.setEnabled(False)
+        self.chibiThread = ChibiImportThread(
+            "whale", os.path.join(basedir, "res", "role"),
+            mode="whale_creator", profile=None, preset=selected, folder=None)
+        self.chibiThread.done.connect(self._onChibiImportComplete)
+        self.chibiThread.finished.connect(self._onChibiThreadFinished)
+        self.chibiThread.start()
+        self.__showSystemNote(
+            "正在本机核验并转换鲸鱼娘原始透明 WebM；完成后可预览，重启再使用。", 1)
 
     def _installCreatorMascot(self, kind):
         """Select a real, fixed-origin mascot atlas, then import off the UI thread."""
@@ -1594,6 +1633,7 @@ class CharInterface(ScrollArea):
             "shimeji_zip", "codex_zip", "codex",
             "native_zip", "native_folder", "animations",
             "pinned_kaveh_shimeji", "pinned_eula_shimeji",
+            "whale_creator",
         }
         if source_mode in original_modes:
             # Use the actual installed PNG sequence player, not a static
@@ -1974,6 +2014,13 @@ class ChibiImportThread(QThread):
                 installed = install_external_codex(
                     self.preset, self.output_root, confirmed=True)
                 new_folder = self.output_root / installed["folder"]
+            elif self.mode == "whale_creator":
+                from tools.install_whale_pet import install_whale_pet
+                result = install_whale_pet(
+                    self.output_root, confirmed=True, selection=self.preset)
+                new_folder = self.output_root / result["folder"]
+                if result["actions"] < 16 or result["frames"] < 32:
+                    raise ValueError("Whale original artwork conversion incomplete")
             elif self.mode in ("creator_source", "creator_source_v2"):
                 from tools.install_creator_mascots import install_creator_mascot
                 # Only Doro can use the independent hand-drawn V2 pinned atlas.

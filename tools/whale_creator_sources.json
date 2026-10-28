@@ -1,0 +1,489 @@
+{
+  "format": "dyberpet-whale-creator-source-v1",
+  "source_repository": "luweiyabo/dsh-whale-pet",
+  "source_commit": "b61b445e6be05a732fc6738b825240aeffdf6769",
+  "source_license": "MIT for original code; video media from PC2005-cloud/dsh-pet and other creators have separate non-commercial terms; check THIRD_PARTY_ASSETS.md",
+  "source_licensing_url": "https://github.com/luweiyabo/dsh-whale-pet/blob/b61b445e6be05a732fc6738b825240aeffdf6769/THIRD_PARTY_ASSETS.md",
+  "upstream_canvas": [
+    640,
+    360
+  ],
+  "animation_count": 95,
+  "animations": [
+    {
+      "path": "assets/thumb/clicks/arrival_wave.webm",
+      "size": 978966,
+      "git_blob_sha1": "8b4feae23304d88198ce188246279ff0803272d0"
+    },
+    {
+      "path": "assets/thumb/clicks/cheerful_wave.webm",
+      "size": 421669,
+      "git_blob_sha1": "f60556f06c386cfb569f76b0cfa2e34e34fdc362"
+    },
+    {
+      "path": "assets/thumb/clicks/happy_hop.webm",
+      "size": 538110,
+      "git_blob_sha1": "fb614abf8d19c650fb5bd4727b2585282733a996"
+    },
+    {
+      "path": "assets/thumb/clicks/shy_surprise.webm",
+      "size": 538281,
+      "git_blob_sha1": "499b73c42844bd0268bff9044e0523fcae1c1b27"
+    },
+    {
+      "path": "assets/thumb/clicks/ticklish_giggle.webm",
+      "size": 425393,
+      "git_blob_sha1": "d896eb9a91ca8eafa7f0af35a3073dc04a397742"
+    },
+    {
+      "path": "assets/thumb/clicks/tsundere_pout.webm",
+      "size": 392336,
+      "git_blob_sha1": "77c6461a1f8ced2dc7272f44192f37dd682becf8"
+    },
+    {
+      "path": "assets/thumb/daily/attentive_listening.webm",
+      "size": 854920,
+      "git_blob_sha1": "faabe7324271b98d1760b6faeaa8289827d32500"
+    },
+    {
+      "path": "assets/thumb/daily/big_stretch.webm",
+      "size": 396987,
+      "git_blob_sha1": "689e04f120f9f678a9424dac6cadf4b6a0bd6e6b"
+    },
+    {
+      "path": "assets/thumb/daily/gentle_spin.webm",
+      "size": 585715,
+      "git_blob_sha1": "915feb453f11f0267693109b3e847a850cdb1ec7"
+    },
+    {
+      "path": "assets/thumb/daily/maid_curtsy.webm",
+      "size": 365712,
+      "git_blob_sha1": "0bcac6ada85e78527fcce020db73bf0b6eff41d3"
+    },
+    {
+      "path": "assets/thumb/daily/mirror_check.webm",
+      "size": 504127,
+      "git_blob_sha1": "f9ead4a5e1ab6cb702bd349794264f398f470867"
+    },
+    {
+      "path": "assets/thumb/daily/morning_brushing.webm",
+      "size": 425460,
+      "git_blob_sha1": "66581dbd88c72bcba960d551b9cdcb0239da7d2f"
+    },
+    {
+      "path": "assets/thumb/daily/outfit_color_try_on.webm",
+      "size": 524724,
+      "git_blob_sha1": "abd198a8d1e4e67f09d86e4a5bdc99859e61098e"
+    },
+    {
+      "path": "assets/thumb/daily/quick_nap.webm",
+      "size": 433769,
+      "git_blob_sha1": "9b258545a841647a11ffdc5882ad8b2bb808a343"
+    },
+    {
+      "path": "assets/thumb/daily/sleepy_yawn.webm",
+      "size": 424352,
+      "git_blob_sha1": "63da356fa373ecf6256bc8f4deb9709577e2f18e"
+    },
+    {
+      "path": "assets/thumb/daily/startled_awake.webm",
+      "size": 454028,
+      "git_blob_sha1": "e5c5759895274e1f7c4017dce9c9c51beec44e51"
+    },
+    {
+      "path": "assets/thumb/drag/dragged_in_midair.webm",
+      "size": 464764,
+      "git_blob_sha1": "728f04b2997aa9ec4bdb87d1b9b14d7910bc7fd6"
+    },
+    {
+      "path": "assets/thumb/drag/turn_into_ball.webm",
+      "size": 465933,
+      "git_blob_sha1": "60d2645e41cdb882ba802e8c3e03619ff4566bd1"
+    },
+    {
+      "path": "assets/thumb/festivals/chongyang_chrysanthemums.webm",
+      "size": 486358,
+      "git_blob_sha1": "7e2976e00317dfd681279890ab48f3a68ceb03f9"
+    },
+    {
+      "path": "assets/thumb/festivals/cute_little_ghost.webm",
+      "size": 421990,
+      "git_blob_sha1": "cae5ebbca8634591a49daf5f7a4bc56fa369a7bf"
+    },
+    {
+      "path": "assets/thumb/festivals/decorating_a_christmas_tree.webm",
+      "size": 818456,
+      "git_blob_sha1": "1217c9625c3a682732bc4398108ce7c4ae2a07f6"
+    },
+    {
+      "path": "assets/thumb/festivals/eating_chongyang_cake.webm",
+      "size": 468951,
+      "git_blob_sha1": "cc54c1f82bb5c4b8e366fba6433b6534bedcf4fc"
+    },
+    {
+      "path": "assets/thumb/festivals/eating_dumplings.webm",
+      "size": 554828,
+      "git_blob_sha1": "2dee24954bae172a20ef1e0d44b34d7105872851"
+    },
+    {
+      "path": "assets/thumb/festivals/eating_laba_congee.webm",
+      "size": 460665,
+      "git_blob_sha1": "c20156c0de0863832d7bc10fb65153559de388be"
+    },
+    {
+      "path": "assets/thumb/festivals/eating_qingtuan.webm",
+      "size": 377524,
+      "git_blob_sha1": "00031236d476501f71b3f03f978a4b79952e5097"
+    },
+    {
+      "path": "assets/thumb/festivals/eating_rice_cake.webm",
+      "size": 451257,
+      "git_blob_sha1": "7b4473435dfa219428f5bb2e1dbf34fe83b59190"
+    },
+    {
+      "path": "assets/thumb/festivals/eating_tangyuan.webm",
+      "size": 437152,
+      "git_blob_sha1": "eac65950006cf0814e6e4f1ebe1c73b9e36a8791"
+    },
+    {
+      "path": "assets/thumb/festivals/eating_zongzi.webm",
+      "size": 446268,
+      "git_blob_sha1": "6ad057c473cbaf209de8d4ec91781d9bc759cda9"
+    },
+    {
+      "path": "assets/thumb/festivals/halloween_trick_or_treat.webm",
+      "size": 483293,
+      "git_blob_sha1": "3a17ac14fba449e8d7bb0e0d38085825b068a9e1"
+    },
+    {
+      "path": "assets/thumb/festivals/lion_dance.webm",
+      "size": 632110,
+      "git_blob_sha1": "b16d549ec2572f5d693bdc7691e3247544ccb88e"
+    },
+    {
+      "path": "assets/thumb/festivals/moon_festival.webm",
+      "size": 512341,
+      "git_blob_sha1": "48beff57ddc5b3c7e1c0387348e33ce8e3a5b819"
+    },
+    {
+      "path": "assets/thumb/festivals/opening_a_gift.webm",
+      "size": 517803,
+      "git_blob_sha1": "01445f708db3e19b707e6d1609902dd4da9c0ade"
+    },
+    {
+      "path": "assets/thumb/festivals/qixi_needlework.webm",
+      "size": 480887,
+      "git_blob_sha1": "f78881f4e996d5160ce4910ed06646b5b9d5bd60"
+    },
+    {
+      "path": "assets/thumb/festivals/receiving_a_red_envelope.webm",
+      "size": 472277,
+      "git_blob_sha1": "ca07f8792572e3b182b2077b768fbcf9ece4ee91"
+    },
+    {
+      "path": "assets/thumb/festivals/releasing_a_river_lantern.webm",
+      "size": 379124,
+      "git_blob_sha1": "2827fd308393a036201bc85dca0a9b2cc9f3ee13"
+    },
+    {
+      "path": "assets/thumb/festivals/releasing_a_sky_lantern.webm",
+      "size": 594144,
+      "git_blob_sha1": "ca554c0df5fb9cd2f35ad9eb54957b9e1dfcd2cf"
+    },
+    {
+      "path": "assets/thumb/festivals/setting_off_fireworks.webm",
+      "size": 1330462,
+      "git_blob_sha1": "3a1bcd38b00b170b619e42b76ab8c9ea9225903a"
+    },
+    {
+      "path": "assets/thumb/festivals/writing_the_fu_character.webm",
+      "size": 500314,
+      "git_blob_sha1": "b7aa9ce458b6e8d1c9513b5e4b059a07ca143f88"
+    },
+    {
+      "path": "assets/thumb/food/caught_snacking.webm",
+      "size": 432201,
+      "git_blob_sha1": "9f50ed6c3ba1a3f96b614e34ecaaf067ef6ab9cd"
+    },
+    {
+      "path": "assets/thumb/food/eating_breakfast.webm",
+      "size": 441484,
+      "git_blob_sha1": "6691dc43900e3f906b6576cc6eb7e0f23b0e2702"
+    },
+    {
+      "path": "assets/thumb/food/eating_candied_haw.webm",
+      "size": 469809,
+      "git_blob_sha1": "def3fa70022f6b728f0d0b3ebbfcff601c406c57"
+    },
+    {
+      "path": "assets/thumb/food/eating_dinner.webm",
+      "size": 741965,
+      "git_blob_sha1": "14f9eee2a361a592fd55c95979f5810b7b8dcd03"
+    },
+    {
+      "path": "assets/thumb/food/eating_hairy_crab.webm",
+      "size": 545299,
+      "git_blob_sha1": "f8e0774d6b4b38f27adfecdfc591dd40812f5e38"
+    },
+    {
+      "path": "assets/thumb/food/eating_hotpot.webm",
+      "size": 466547,
+      "git_blob_sha1": "d3e99cf6d8694b5e83a3957793f8fc7a0fc2cc2a"
+    },
+    {
+      "path": "assets/thumb/food/eating_longevity_noodles.webm",
+      "size": 489038,
+      "git_blob_sha1": "ac71008a07686f858627e7f7f69e77448941bb97"
+    },
+    {
+      "path": "assets/thumb/food/eating_lunch.webm",
+      "size": 495122,
+      "git_blob_sha1": "83618038d3d4fe98b9f42d0fd7ae1b7a24f686b3"
+    },
+    {
+      "path": "assets/thumb/food/eating_rice.webm",
+      "size": 459590,
+      "git_blob_sha1": "0f400023c2f036e6edc28033083d49f68686d347"
+    },
+    {
+      "path": "assets/thumb/food/eating_snacks.webm",
+      "size": 806998,
+      "git_blob_sha1": "ab57e48e28d0e0fb832549e1b546bed28f2eb3df"
+    },
+    {
+      "path": "assets/thumb/food/eating_watermelon.webm",
+      "size": 482918,
+      "git_blob_sha1": "ffa2c36e86e9056a7e965c73364a50c1fd8bb192"
+    },
+    {
+      "path": "assets/thumb/food/melting_ice_cream.webm",
+      "size": 509816,
+      "git_blob_sha1": "c696cf2f61366cd9ba973aae1526dbf920c3d85d"
+    },
+    {
+      "path": "assets/thumb/fun/animal_parade.webm",
+      "size": 981435,
+      "git_blob_sha1": "44722e0afb7ef4c1cd85c5c98eadd9b4ade2fea9"
+    },
+    {
+      "path": "assets/thumb/fun/butterflies_and_blossoms.webm",
+      "size": 852828,
+      "git_blob_sha1": "6f39bb90fd8349d5f23d0912a4bc01c2c06470f2"
+    },
+    {
+      "path": "assets/thumb/fun/desk_tap.webm",
+      "size": 403033,
+      "git_blob_sha1": "c7e55e6f83c1847a45d81d60c04de2a167680c92"
+    },
+    {
+      "path": "assets/thumb/fun/gravity_squash.webm",
+      "size": 215047,
+      "git_blob_sha1": "67acb52f7e7c49e77b000730b3bff9a65fb21a10"
+    },
+    {
+      "path": "assets/thumb/fun/inflating_a_balloon.webm",
+      "size": 751040,
+      "git_blob_sha1": "3a632cd91c409ed1b889f0313ae1394113c0d7c0"
+    },
+    {
+      "path": "assets/thumb/fun/jump_and_smash.webm",
+      "size": 619282,
+      "git_blob_sha1": "b45cdcb57340f12fff1b40ea9391bdd1d3c2845a"
+    },
+    {
+      "path": "assets/thumb/fun/jump_scare.webm",
+      "size": 282771,
+      "git_blob_sha1": "a7afe71ed72990bbace7026abb1ef69ae7e3706c"
+    },
+    {
+      "path": "assets/thumb/fun/petting_a_cat.webm",
+      "size": 348432,
+      "git_blob_sha1": "466044675ea20b863db850373aab8a6c2b7c11a8"
+    },
+    {
+      "path": "assets/thumb/fun/three_ball_juggling.webm",
+      "size": 549316,
+      "git_blob_sha1": "a76228cb5f42fa159e3ec565b8ef969a7d289dca"
+    },
+    {
+      "path": "assets/thumb/games/gaming_rage.webm",
+      "size": 525022,
+      "git_blob_sha1": "a3375c2980634529e84ba2ee61a57776ea8205e9"
+    },
+    {
+      "path": "assets/thumb/games/kicking_a_shuttlecock.webm",
+      "size": 531015,
+      "git_blob_sha1": "1a0586564e58e6a60e4f151d2bf161e975673e30"
+    },
+    {
+      "path": "assets/thumb/games/playground_swing.webm",
+      "size": 644126,
+      "git_blob_sha1": "41c61429405139344b13875135468edb25b6f28e"
+    },
+    {
+      "path": "assets/thumb/games/playing_gomoku.webm",
+      "size": 514704,
+      "git_blob_sha1": "63295b32e6a0522dac3840abb74a5af7b1431a08"
+    },
+    {
+      "path": "assets/thumb/games/playing_with_a_toy_car.webm",
+      "size": 505114,
+      "git_blob_sha1": "9a4ba01b33e6fba841a99ebf55631433651cdcd3"
+    },
+    {
+      "path": "assets/thumb/games/rocking_horse.webm",
+      "size": 697580,
+      "git_blob_sha1": "b578f4c951a11c3fe97bdbd609315d3e72fe6827"
+    },
+    {
+      "path": "assets/thumb/games/solving_a_rubiks_cube.webm",
+      "size": 442948,
+      "git_blob_sha1": "d2730f4c17e8ccb793973929c237b4fb32d8e3fc"
+    },
+    {
+      "path": "assets/thumb/games/spinning_a_top.webm",
+      "size": 521068,
+      "git_blob_sha1": "1a0cd6a9447c3a36b068fb9db46fd56447520a73"
+    },
+    {
+      "path": "assets/thumb/games/water_gun_play.webm",
+      "size": 523346,
+      "git_blob_sha1": "70cabac39a03ab1738540fdb9a9581ae523de463"
+    },
+    {
+      "path": "assets/thumb/idle/breathing.webm",
+      "size": 441437,
+      "git_blob_sha1": "fd64a428a2be1d3b4ff6cd7f9867dfe978ba0bbb"
+    },
+    {
+      "path": "assets/thumb/magic/card_magic.webm",
+      "size": 461997,
+      "git_blob_sha1": "2e33efead726dff587fa0ca46adef5ecb5d0b7c9"
+    },
+    {
+      "path": "assets/thumb/magic/dove_magic.webm",
+      "size": 509462,
+      "git_blob_sha1": "150abd9011b3c9fec7229fa2b30418958040a7ad"
+    },
+    {
+      "path": "assets/thumb/magic/flower_conjuring.webm",
+      "size": 620252,
+      "git_blob_sha1": "085fe6d74ddfc268670be32b7c3f78c6806b68f1"
+    },
+    {
+      "path": "assets/thumb/memes/eating_tokens.webm",
+      "size": 574754,
+      "git_blob_sha1": "619722b50ea75fcb3c18b3de5d996ce4e87a7893"
+    },
+    {
+      "path": "assets/thumb/memes/yeah_what_should_we_eat.webm",
+      "size": 588163,
+      "git_blob_sha1": "e347b7574b4dca0d65bdd34bf9af0a176fbb15a1"
+    },
+    {
+      "path": "assets/thumb/moves/crab_walk.webm",
+      "size": 596902,
+      "git_blob_sha1": "6ff80136295718a2e866e70d90fa8a0bada333dd"
+    },
+    {
+      "path": "assets/thumb/moves/floating_steps.webm",
+      "size": 591446,
+      "git_blob_sha1": "d700e4fdd38e8795b88f6d81418e8fc196fe80ed"
+    },
+    {
+      "path": "assets/thumb/moves/running_trip.webm",
+      "size": 614526,
+      "git_blob_sha1": "d9b6611b32065a7937878a5467cd84d47a1be543"
+    },
+    {
+      "path": "assets/thumb/moves/target_point_run.webm",
+      "size": 1240787,
+      "git_blob_sha1": "cb376f7f257d38f00095989ae17246a17da331b2"
+    },
+    {
+      "path": "assets/thumb/music/carefree_humming.webm",
+      "size": 584008,
+      "git_blob_sha1": "01bd5c202583ef634de424904e76f2906f7289d3"
+    },
+    {
+      "path": "assets/thumb/music/cute_otaku_dance.webm",
+      "size": 576307,
+      "git_blob_sha1": "0b96ac0de6fa7afe72f256148dd719698769043c"
+    },
+    {
+      "path": "assets/thumb/music/elegant_maid_dance.webm",
+      "size": 578915,
+      "git_blob_sha1": "390c504dfb0b56bb647f0253782a91ee705f8933"
+    },
+    {
+      "path": "assets/thumb/music/light_sway_dance.webm",
+      "size": 542928,
+      "git_blob_sha1": "596558b14cacee0d96f5e9d3942fd5731be49718"
+    },
+    {
+      "path": "assets/thumb/music/playing_the_flute.webm",
+      "size": 768350,
+      "git_blob_sha1": "fd57f820116b72c35e7b50ee3cdb5c20e775062b"
+    },
+    {
+      "path": "assets/thumb/music/playing_the_violin.webm",
+      "size": 605350,
+      "git_blob_sha1": "2de1533cd0f2d7a72e0099f9ac6f816353f3912f"
+    },
+    {
+      "path": "assets/thumb/seasonal/building_a_snowman.webm",
+      "size": 519196,
+      "git_blob_sha1": "ce8e8be3b7e5c0dfbdebf15f5a8fd70e2836ee0f"
+    },
+    {
+      "path": "assets/thumb/seasonal/buried_in_autumn_leaves.webm",
+      "size": 766832,
+      "git_blob_sha1": "1e35fff171fb8856bd89de91329ef357c7d33e65"
+    },
+    {
+      "path": "assets/thumb/seasonal/cooling_with_a_hand_fan.webm",
+      "size": 510022,
+      "git_blob_sha1": "bbb9b8344e6c30579c967a27831ad85f19db1002"
+    },
+    {
+      "path": "assets/thumb/seasonal/flying_a_kite.webm",
+      "size": 770134,
+      "git_blob_sha1": "000eba2f49a11beb21aa63ddc64c4d1522afa27e"
+    },
+    {
+      "path": "assets/thumb/special/blue_whale_appears.webm",
+      "size": 482896,
+      "git_blob_sha1": "eb62a155d056d35a16b1d4e961d5ff10c109f684"
+    },
+    {
+      "path": "assets/thumb/special/whale_bubbles.webm",
+      "size": 452096,
+      "git_blob_sha1": "4848e28f2c4fde323025a03a7980b75f1c56f98e"
+    },
+    {
+      "path": "assets/thumb/special/whale_tail_slap.webm",
+      "size": 352213,
+      "git_blob_sha1": "822a7c41f795906ca46e2f1757c63e6633d39214"
+    },
+    {
+      "path": "assets/thumb/turn/looking_around.webm",
+      "size": 427005,
+      "git_blob_sha1": "3ba4edb2cc647c51edd41b5a6c71eeee8c418ed0"
+    },
+    {
+      "path": "assets/thumb/work/coding.webm",
+      "size": 383960,
+      "git_blob_sha1": "47902f235c11fadd22134dd71d2fbcc3a36a13fc"
+    },
+    {
+      "path": "assets/thumb/work/deep_thought.webm",
+      "size": 458027,
+      "git_blob_sha1": "a4082cf30b60e02b4928c501c5416cbe14519724"
+    },
+    {
+      "path": "assets/thumb/work/taking_notes.webm",
+      "size": 447726,
+      "git_blob_sha1": "d0c1bc670b74450e53019b36366edbe54056a363"
+    }
+  ]
+}

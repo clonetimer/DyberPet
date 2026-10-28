@@ -43,6 +43,8 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.install_external_codex \
   --hidden-import tools.character_source_coverage \
   --hidden-import tools.install_creator_mascots \
+  --hidden-import tools.install_whale_pet \
+  --collect-all imageio_ffmpeg \
   --hidden-import tools.role_action_preview \
   --hidden-import tools.character_progress \
   --hidden-import tools.character_catalog_search \
@@ -66,8 +68,9 @@ pyz = ZlibArchiveReader(str(source))
 names = set(pyz.toc)
 for name in ("DyberPet", "DyberPet.assistant",
              "DyberPet.assistant.portable", "DyberPet.DyberPet",
-             "tools.genshin_library"):
+             "tools.genshin_library", "tools.install_whale_pet"):
     print("FROZEN_MODULE_CHECK", name, name in names, flush=True)
+assert "tools.install_whale_pet" in names, "Whale creator installer absent from Linux frozen executable"
 assert "DyberPet.assistant.portable" in names, (
     "PyInstaller did not include the required assistant module in PYZ")
 PY
@@ -91,6 +94,7 @@ cp docs/pet_assistant.md "$package/ASSISTANT_GUIDE.md"
 cp docs/character_fidelity.md "$package/CHARACTER_FIDELITY.md"
 cp docs/personal_character_install.md "$package/PERSONAL_CHARACTER_GUIDE.md"
 cp docs/guga_doro_personal_install.md "$package/GUGA_DORO_GUIDE.md"
+cp docs/whale_personal_install.md "$package/WHALE_PERSONAL_GUIDE.md"
 cp docs/original_chibi_starter.md "$package/ORIGINAL_MASCOT_GUIDE.md"
 cp docs/linux_acceptance.md "$package/LINUX_ACCEPTANCE.md"
 

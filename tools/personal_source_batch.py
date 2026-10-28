@@ -268,6 +268,10 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--role-root", type=Path,
                     default=default_role_root())
+    ap.add_argument("--whale", action="store_true",
+                    help="Plan or locally install the independent noncommercial Whale Pet")
+    ap.add_argument("--whale-full", action="store_true",
+                    help="Convert all 95 pinned whale clips instead of 16 core clips")
     ap.add_argument("--mascots", action="store_true",
                     help="Plan or explicitly install Guga/Doro original creator fan-art locally")
     ap.add_argument("--doro-v2", action="store_true",
@@ -289,7 +293,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         if args.bundle_output is not None:
-            if args.install or args.mascots or args.doro_v2 or args.profile or args.output or args.max_roles is not None or args.accept_personal_use:
+            if args.install or args.mascots or args.doro_v2 or args.whale or args.whale_full or args.profile or args.output or args.max_roles is not None or args.accept_personal_use:
                 raise ValueError("--bundle-output cannot be combined with install/planning options")
             try:
                 from .local_offline_bundle import create_local_bundle
@@ -304,6 +308,39 @@ def main(argv=None):
             return 0
         if args.confirm_local_bundle:
             raise ValueError("--confirm-local-bundle requires --bundle-output")
+        if args.whale_full and not args.whale:
+            raise ValueError("--whale-full requires --whale")
+        if args.whale:
+            if args.mascots or args.profile or args.doro_v2 or args.max_roles is not None:
+                raise ValueError("Whale installation cannot use Genshin/mascot options")
+            from tools.install_whale_pet import install_whale_pet, source_catalog, select_actions
+            chosen = "full" if args.whale_full else "core"
+            catalog = source_catalog()
+            result = {"name": "Whale Pet", "selection": chosen,
+                      "pinned_animation_catalog": catalog["animation_count"],
+                      "selected_animation_count": len(select_actions(catalog, chosen)),
+                      "source_commit": catalog["source_commit"],
+                      "no_artwork_prebundled": True,
+                      "media_license": catalog["source_license"],
+                      "installed": False}
+            if args.install:
+                installed = install_whale_pet(args.role_root,
+                                              confirmed=args.accept_personal_use,
+                                              selection=chosen)
+                result.update(installed= True, installation=installed)
+            elif args.accept_personal_use:
+                raise ValueError("--accept-personal-use requires --install")
+            text_result = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+            if args.output:
+                if args.output.suffix.lower() != ".json":
+                    raise ValueError("Whale report must have .json extension")
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(text_result, encoding="utf-8")
+            else:
+                if hasattr(sys.stdout, "reconfigure"):
+                    sys.stdout.reconfigure(encoding="utf-8")
+                print(text_result, end="")
+            return 0
         if args.mascots and args.profile:
             raise ValueError("--mascots and --profile cannot be combined")
         if args.doro_v2 and not args.mascots:
