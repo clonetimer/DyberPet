@@ -66,6 +66,10 @@ class ArtistInstallTests(unittest.TestCase):
         folder = self.root / role["folder"]
         self.assertEqual((folder / "action/idle_0.png").read_bytes(), fixture_sprite())
         self.assertTrue((folder / "ANIMATION_PREVIEW.png").is_file())
+        self.assertTrue((folder / "ANIMATION_MOTION_QA.json").is_file())
+        motion = json.loads((folder / "ANIMATION_MOTION_QA.json").read_text("utf-8"))
+        self.assertTrue(motion["manual_visual_review_pending"])
+        self.assertFalse(motion["animation_quality_automatically_approved"])
         with Image.open(folder / "ANIMATION_PREVIEW.png") as preview:
             self.assertGreaterEqual(preview.width, 700)
             self.assertGreaterEqual(preview.height, 180)
@@ -79,6 +83,8 @@ class ArtistInstallTests(unittest.TestCase):
         self.assertFalse(receipt["visual_review"]["likeness_manually_reviewed"])
         self.assertTrue(receipt["visual_review"]["source_frames_unmodified"])
         self.assertFalse(receipt["likeness_manually_reviewed"])
+        self.assertEqual(receipt["motion_evidence_file"], "ANIMATION_MOTION_QA.json")
+        self.assertFalse(receipt["animation_quality_automatically_approved"])
         self.assertEqual(role["actions"], 1)
         with self.assertRaises(FileExistsError):
             install_artist_genshin("nahida", self.root,
