@@ -124,8 +124,7 @@ class SourceBatchTests(unittest.TestCase):
             install_artist_genshin_batch("all", self.root, confirmed=True,
                                           opener=self.opener)
         self.assertEqual(self.requests, 1)
-        self.assertFalse(any(self.root.glob("SourceGenshin*"))
-                         if self.root.exists() else True)
+        self.assertFalse(any(self.root.glob("SourceGenshin*")))
 
     def test_rollback_if_copy_to_final_install_fails(self):
         import tools.install_artist_genshin_batch as target
