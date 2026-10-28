@@ -230,6 +230,48 @@ def review_turnaround(case_file, reviewer, checks):
     return data
 
 
+def render_turnaround_case(case_file, *, blender="blender",
+                           front_yaw=0.0, variant="", timeout=600):
+    """Render & attach three unapproved views from the SAME authorized GLB.
+
+    Only applies to a model3d candidate whose attached source already passed
+    independent local-use and derivative-use human license review.
+    """
+    data = load_case(case_file)
+    if data["status"] in ("built", "qa_reviewed", "packaged"):
+        raise PipelineError("Built artwork is immutable; create a new candidate")
+    if data["source"]["kind"] != "model3d":
+        raise PipelineError("Three-view model render requires a model3d candidate")
+    source = asset_path(data)
+    if source is None or not source.is_file() or fingerprint(source) != data["source"]["sha256"]:
+        raise PipelineError("Reattach an unchanged local model before rendering")
+    rights = data["rights"]
+    if not (rights["reviewer"] and rights["evidence"] and rights["local_use"]
+            and rights["derivative_use"]):
+        raise PipelineError("Model-specific local and derivative rights review required")
+    if not data["source"]["artist"].strip() or not data["source"]["url"].startswith("https://"):
+        raise PipelineError("Record exact model artist and HTTPS source before rendering")
+    if not variant.strip():
+        raise PipelineError("Specific Q model/outfit variant required")
+    if __package__:
+        from .render_turnaround_blender import render_turnaround
+    else:
+        from render_turnaround_blender import render_turnaround
+    workspace = Path(case_file).resolve().parent.parent
+    suffix = str(front_yaw).replace("-", "m").replace(".", "p")
+    folder = workspace / "turnaround_generated" / (
+        data["id"] + "-" + data["source"]["sha256"][:12] + "-yaw" + suffix)
+    result = render_turnaround(blender, folder, source=source,
+                                front_yaw=front_yaw, timeout=timeout)
+    # Rendering is evidence generation, NOT human approval.
+    attach_turnaround(
+        case_file, front=result / "front.png", side=result / "side.png",
+        back=result / "back.png", reference_url=data["source"]["url"],
+        artist=data["source"]["artist"], variant=variant)
+    return {"views": str(result), "approved": False,
+            "next_step": "turnaround-card then human turnaround-review"}
+
+
 def turnaround_card(case_file):
     """Write a non-public visual comparison card; never approves an asset."""
     data = load_case(case_file)
@@ -580,6 +622,13 @@ def main(argv=None):
     a.add_argument("--reviewer", required=True)
     for check in CHECKS:
         a.add_argument("--" + check, action="store_true")
+    a = sub.add_parser("turnaround-render-model",
+                       help="Render 3 orthographic views from an authorized attached GLB")
+    a.add_argument("id")
+    a.add_argument("--variant", required=True)
+    a.add_argument("--blender", default="blender")
+    a.add_argument("--front-yaw", type=float, default=0)
+    a.add_argument("--timeout", type=int, default=600)
     a = sub.add_parser("turnaround-card", help="Write local front/side/back review card")
     a.add_argument("id")
     a = sub.add_parser("rights", help="Record user-performed item-specific license check")
@@ -623,6 +672,10 @@ def main(argv=None):
             elif args.command == "turnaround-review":
                 output = review_turnaround(
                     case, args.reviewer, {k: getattr(args, k) for k in CHECKS})["turnaround"]["review"]["reviewed_on"]
+            elif args.command == "turnaround-render-model":
+                output = render_turnaround_case(
+                    case, blender=args.blender, front_yaw=args.front_yaw,
+                    variant=args.variant, timeout=args.timeout)
             elif args.command == "turnaround-card":
                 output = turnaround_card(case)
             elif args.command == "rights":
