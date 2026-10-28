@@ -36,11 +36,14 @@ class CreatorSourceIndexTests(unittest.TestCase):
     def test_family_link_is_not_role_specific_artwork(self):
         for name in ("genshin_lisa", "genshin_raiden_shogun"):
             links = sources_for_role(name)
-            self.assertEqual(len(links), 1)
+            self.assertEqual(len(links), 2)
             self.assertEqual(links[0]["scope"], "family")
             self.assertEqual(links[0]["rights"], "unknown")
+            self.assertTrue(all(s["scope"] == "family" for s in links))
+            self.assertTrue(all("genshin-nuo-native" == s["lineage"]
+                                for s in links))
         nahida = sources_for_role("genshin_nahida")
-        self.assertEqual([s["scope"] for s in nahida], ["role", "family"])
+        self.assertEqual([s["scope"] for s in nahida], ["role", "family", "family"])
         self.assertEqual(nahida[0]["creator"], "栎曦_Nuo")
         ayaka = sources_for_role("genshin_ayaka")
         self.assertEqual(ayaka[0]["rights"], "restricted")
