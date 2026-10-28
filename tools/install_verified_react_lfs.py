@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install only the two previously verified original React-Shimeji LFS sprites.
+"""Install only independently verified original React-Shimeji LFS sprites.
 
 The old native-import tool required users to download the actual .ts module.
 This wrapper retrieves byte-for-byte pinned modules in the cloud / user machine
@@ -21,7 +21,8 @@ except ImportError:
     from tools.probe_missing_react_lfs import fetch_matching_source
     from tools.install_pinned_react_shimeji import install_pinned_react_shimeji
 
-ALLOWED = {"amber": "genshin_amber", "fischl": "genshin_fischl"}
+ALLOWED = {"amber": "genshin_amber", "fischl": "genshin_fischl",
+           "neuvillette": "genshin_neuvillette", "wriothesley": "genshin_wriothesley"}
 
 
 def install_verified_react_lfs(key, role_root, *, confirmed=False,
@@ -32,7 +33,7 @@ def install_verified_react_lfs(key, role_root, *, confirmed=False,
         raise ValueError("Explicit personal-use source consent required")
     profile = ALLOWED.get(key)
     if profile is None:
-        raise ValueError("Only pinned Amber and Fischl can be auto-installed")
+        raise ValueError("Only four independently source-verified React-Shimeji roles can be auto-installed")
     registered = verified_lfs_sources()
     trusted = registered.get(profile)
     if trusted is None or trusted["profile"] != profile:
