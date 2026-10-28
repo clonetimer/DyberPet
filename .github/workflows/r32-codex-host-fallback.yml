@@ -1,0 +1,124 @@
+name: R32 Codex original JSON/WebP alternate GitHub host acceptance
+on:
+  pull_request:
+    paths:
+      - "tools/install_artist_codex.py"
+      - "tools/pinned_github_png_transport.py"
+      - "tests/test_r32_codex_asset_fallback.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "tests/test_r32_gui_legacy_failure_retry.py"
+      - ".github/workflows/r32-codex-host-fallback.yml"
+  push:
+    branches: [fix/r32-merge-win-local-retry-r31-verified-sources-20261028]
+    paths:
+      - "tools/install_artist_codex.py"
+      - "tools/pinned_github_png_transport.py"
+      - "tests/test_r32_codex_asset_fallback.py"
+      - "DyberPet/DyberSettings/CharCardUI.py"
+      - "tests/test_r32_gui_legacy_failure_retry.py"
+      - ".github/workflows/r32-codex-host-fallback.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.9", "3.11"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install Pillow==11.3.0
+      - name: Mirrors reject fake byte and incorrect original commit for Codex webp/json
+        run: python -m unittest discover -s tests -p "test_r32_codex_asset_fallback.py" -v
+      - name: Existing creator installation regression with fixtures
+        run: python -m unittest discover -s tests -p "test_artist_codex_install.py" -v
+      - name: Legacy Windows report GUI safety checks
+        run: python -m unittest discover -s tests -p "test_r32_gui_legacy_failure_retry.py" -v
+  real-win:
+    name: Windows actual creator Codex bytes with raw-GitHub intentionally blocked
+    needs: unit
+    runs-on: windows-latest
+    timeout-minutes: 17
+    env:
+      PYTHONUTF8: "1"
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install Pillow==11.3.0
+      - name: Verify real 4 original Codex sprite atlases via blocked raw host
+        shell: pwsh
+        run: |
+          @'
+          import json
+          import hashlib
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from urllib.error import URLError
+          from urllib.request import urlopen
+          from tools.install_artist_codex import ROOT, SOURCES, _download_pinned, install_artist_codex
+          from tools.install_native_role import validate_native_role
+          from tools.genshin_library import scan_genshin_library
+          from tools.pinned_github_png_transport import reset_transport_preference_for_tests
+          reset_transport_preference_for_tests()
+          for key in ("ayaka", "citlali", "hu_tao", "yae_miko"):
+              pet_id, label, profile, meta, sheet = SOURCES[key]
+              fetched=[]
+              cache={}
+              def blocked_raw(req, timeout=30):
+                  address=req.full_url
+                  if address.startswith("https://raw.githubusercontent.com/"):
+                      raise URLError("Simulated Windows regional raw.githubusercontent.com block")
+                  fetched.append(address)
+                  return urlopen(req,timeout=timeout)
+              base=ROOT+"/"+pet_id
+              for name,identity in (("pet.json",meta),("spritesheet.webp",sheet)):
+                  data=_download_pinned(base+"/"+name,identity,opener=blocked_raw)
+                  cache[base+"/"+name]=data
+                  if name=="pet.json":
+                      manifest=json.loads(data)
+                      assert manifest["id"]==pet_id
+                      assert manifest["spritesheetPath"]=="spritesheet.webp"
+              assert len(fetched)>=2
+              assert all("raw.githubusercontent.com" not in u for u in fetched)
+              def exact_cached_author_bytes(address, identity):
+                  raw=cache[address]
+                  assert len(raw)==identity[0]
+                  assert hashlib.sha1(b"blob "+str(len(raw)).encode()+b"\0"+raw).hexdigest()==identity[1]
+                  return raw
+              with TemporaryDirectory(prefix="r32-windows-native-codex-") as tmp:
+                  root=Path(tmp)/"role"
+                  installed=install_artist_codex(
+                      key,root,confirmed=True,downloader=exact_cached_author_bytes)
+                  folder=root/installed["folder"]
+                  valid=validate_native_role(folder)
+                  record=json.loads((folder/"PERSONAL_IMPORT.json").read_text("utf-8"))
+                  assert record["selected_profile"]==profile
+                  assert valid["actions"]>=3 and valid["images"]>=8
+                  inventory=scan_genshin_library(root)
+                  found=next(x for x in inventory["characters"] if x["profile"]==profile)
+                  assert any(not f["is_original_demo"] for f in found["installed_folders"])
+              print("R32_REAL_WINDOWS_NATIVE_ROLE_PASS="+json.dumps({
+                  "profile":profile, "author_art_frame_integrity":True,
+                  "installed_actions":valid["actions"],"installed_frames":valid["images"],
+                  "correct_roster_identity":True,"original_art_uploaded":False,
+                  "visual_qa_passed":False},ensure_ascii=False),flush=True)
+              print("R32_REAL_WINDOWS_CODEX_MIRROR_PASS="+json.dumps({
+                  "profile":profile, "upstream_commit":"db2f6306ce78f6559ab27155d7bfaf00bf43809d",
+                  "asset_count":2,"both_original_Git_blob_SHA1_and_lengths_verified":True,
+                  "raw_GitHub_block_simulated":True,"original_art_uploaded":False,
+                  "local_visual_qa_passed":False
+              },ensure_ascii=False),flush=True)
+          '@ | Set-Content -Encoding UTF8 "$env:RUNNER_TEMP/r32_real_codex.py"
+          python "$env:RUNNER_TEMP/r32_real_codex.py"
+          if ($LASTEXITCODE -ne 0) { throw "Real pinned original Codex source download rejected" }
+      - name: Source files are never sent to Actions artifacts
+        run: echo "R32_NO_CREATOR_ART_PUBLISHED=true"

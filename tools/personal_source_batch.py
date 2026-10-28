@@ -478,13 +478,19 @@ def main(argv=None):
         else:
             plan = plan_personal_sources(args.role_root, only_profiles=args.profile)
         if args.install:
+            try:
+                from .chibi_profiles import CHIBI_PROFILES
+            except ImportError:
+                from tools.chibi_profiles import CHIBI_PROFILES
             total = min(plan["summary"]["ready_for_opt_in"],
                         args.max_roles if args.max_roles is not None else
                         plan["summary"]["ready_for_opt_in"])
             def show_progress(event):
                 stage, profile = event["stage"], event["profile"]
+                role_name = CHIBI_PROFILES.get(profile, {}).get("name", profile)
+                display = f"{role_name} ({profile})" if role_name != profile else profile
                 if stage == "role_start":
-                    message = f"[{event['index']}/{total}] Installing {profile}"
+                    message = f"[{event['index']}/{total}] 正在安装 {display}"
                 elif stage == "source_start":
                     message = f"  source {event['attempt']}: {event['provider']} ..."
                 elif stage == "source_failed":
@@ -496,7 +502,7 @@ def main(argv=None):
                 elif stage == "source_returned":
                     message = "  download/import returned; checking actual role inventory at end"
                 else:
-                    message = f"  verified {profile}: {event['status']}"
+                    message = f"  验证结果 {display}: {event['status']}"
                 # JSON goes to --output file; stdout is safe for Windows PowerShell progress.
                 # Without --output, emit progress on stderr to keep stdout valid JSON.
                 print(message, file=sys.stdout if args.output else sys.stderr, flush=True)

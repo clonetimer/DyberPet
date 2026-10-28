@@ -653,6 +653,7 @@ class CharInterface(ScrollArea):
             "先试装 2 位：核对下载速度、造型和当前角色库",
             "只安装一位指定人物的原画",
             "查看上次进度并续传未完成或失败的真实原画",
+            "从旧版安装报告仅重试失败角色（保留已有原画）",
         )
         selected, accepted = QInputDialog.getItem(
             self, "安装作者原画", "请选择安装方式：", list(choices), 0, False)
@@ -662,8 +663,51 @@ class CharInterface(ScrollArea):
             self._installArtistGenshin()
         elif selected == choices[3]:
             self._resumeCreatorBulkImport()
+        elif selected == choices[4]:
+            self._retryFailedFromPreviousReport()
         elif selected in choices[:2]:
             self._startCreatorBulkImport(max_roles=None if selected == choices[0] else 2)
+
+    def _retryFailedFromPreviousReport(self):
+        """Safely import ONLY failed profile IDs from legacy CLI reports.
+
+        Ignore every URL/source_key in the untrusted report; resolve the new
+        exact-pinned sources from the installed verified registry. Existing
+        native art in the CURRENT app role directory is always skipped.
+        """
+        from tools.personal_source_batch import (
+            read_failed_profiles_from_report, plan_personal_sources)
+        default_report = Path(basedir) / "data" / "personal65-install-report.json"
+        initial = str(default_report if default_report.is_file() else Path(basedir))
+        source, _ = QFileDialog.getOpenFileName(
+            self, "选择先前安装的 JSON 报告（仅提取失败角色 ID）",
+            initial, "JSON 安装报告 (*.json)")
+        if not source:
+            return
+        root = Path(basedir) / "res" / "role"
+        try:
+            failed = read_failed_profiles_from_report(Path(source))
+            plan = plan_personal_sources(root, only_profiles=failed)
+            targets = [r["profile"] for r in plan["characters"]
+                       if r["status"] == "ready_for_opt_in"]
+        except (ValueError, OSError, TypeError, KeyError) as exc:
+            self.__showSystemNote("旧安装报告格式或角色来源有误：" + str(exc)[:190], 2)
+            return
+        if not targets:
+            self.__showSystemNote(
+                "报告中失败角色均已安装、没有可用固定来源，或无需再次尝试。", 1)
+            return
+        if not self.__showMessageBox(
+                "仅重试失败角色",
+                f"旧报告标记失败 {len(failed)} 位；当前目录仍待安装 {len(targets)} 位。"
+                "将使用**当前候选版本的固定来源清单**重新下载，"
+                "旧报告中的任意 URL、脚本、来源键都会被忽略。"
+                "安装目标仅为当前软件的 res/role 目录；"
+                "如果旧版的41位原画保存在另一个解压目录，请先备份并迁移到当前角色目录，"
+                "否则新目录只会增加本次重试角色，不会自动合并两个目录。"
+                "已安装角色与存档不会覆盖。继续吗？"):
+            return
+        self._startCreatorBulkImport(only_profiles=targets)
 
     def _resumeCreatorBulkImport(self):
         """Resume only from local R14+ journal and fresh exact native inventory."""
@@ -742,6 +786,13 @@ class CharInterface(ScrollArea):
         if dialog is None or not isinstance(info, dict):
             return
         stage = info.get("stage")
+        profile = str(info.get("profile", ""))
+        # The GUI shows real Chinese role names, while JSON keeps stable IDs.
+        try:
+            from tools.chibi_profiles import CHIBI_PROFILES
+            label = CHIBI_PROFILES.get(profile, {}).get("name", profile)
+        except ImportError:
+            label = profile
         if stage == "batch_plan":
             count = info.get("ready", 0)
             dialog.setMaximum(max(1, count))
@@ -752,12 +803,16 @@ class CharInterface(ScrollArea):
             n = info.get("index", 0)
             dialog.setValue(max(0, n - 1))
             dialog.setLabelText(
-                f"正在安装第 {n} 位：{info.get('profile', '')}。"
+                f"正在安装第 {n} 位：{label}。"
                 "点击停止会在当前角色安装结束后生效。")
         elif stage == "source_failed":
+            category = str(info.get("failure_class", "unknown"))[:40]
+            reason = str(info.get("reason", "未提供原因"))[:180]
+            suffix = ("正在检查下一个属于同一人物的固定来源。"
+                      if info.get("has_next_pinned_source") else
+                      "此角色没有其他固定来源，仍可继续安装其他角色。")
             dialog.setLabelText(
-                f"{info.get('profile', '')} 原来源失败；"
-                "只尝试属于同一人物的其他固定来源。")
+                f"{label} 下载失败（{category}）：{reason}。{suffix}")
 
     def _onCreatorBatchDone(self, outcome):
         dialog = self.batchProgressDialog
