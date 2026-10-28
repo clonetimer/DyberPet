@@ -1,4 +1,5 @@
-"""Opt-in installation of existing artist-drawn Genshin desktop pet sprites.
+"""Opt-in installation of author-drawn Genshin desktop pet sprites,
+including four animal mascots distinct from the human Genshin roster.
 
 Downloads an immutable upstream GitHub source ZIP into temporary storage,
 extracts only one named role and retains its original animation PNGs and
@@ -35,6 +36,11 @@ ROLES = {
     "nahida": ("纳西妲", "genshin_nahida", "纳西妲"),
     "xiao": ("魈", "genshin_xiao", "魈"),
     "wanderer": ("流浪者", "genshin_wanderer", "流浪者"),
+    # Original artist animal/mascot *main* pets: not four Genshin human roles.
+    "arana": ("兰纳罗", None, "兰纳罗"),
+    "scara_cat": ("散猫猫", None, "散猫猫"),
+    "fungus": ("蕈兽", None, "蕈兽"),
+    "xiao_bird": ("魈鸟", None, "魈鸟"),
 }
 MAX_DOWNLOAD = 600 * 1024 * 1024
 MAX_SINGLE = 64 * 1024 * 1024
@@ -62,6 +68,26 @@ SOURCE_IDENTITY = {
         "pet_conf.json": "a204e9495fad1c42130b401813681b616817caae",
         "act_conf.json": "f40d19d250dfb136f881f9241210f0b627a948b9",
         "action/stand_0.png": "4467a4c6c41abcb41d61294292ad6b5231400b1c",
+    },
+    "arana": {
+        "pet_conf.json": "553dc683ed92e527aa2a675a772800b547fa48c6",
+        "act_conf.json": "2e937894c3c1a5ea99a5b482598d185f49d081df",
+        "action/stand_0.png": "e2a2f9de498dac758542bb29f8eabba2838d1d6a",
+    },
+    "scara_cat": {
+        "pet_conf.json": "f81236e4c0be703271bf78a42d10a5ee9e5d4515",
+        "act_conf.json": "cd26277e9732db6beb35b8c715da55100b47c851",
+        "action/m_0.png": "a0e6572133a7a79733d2ef11c81e9252182f5cc0",
+    },
+    "fungus": {
+        "pet_conf.json": "97ae9073fdc9f2dc8a77a0c8b9c678a0713beda5",
+        "act_conf.json": "212552366047ea37a7e2ccb3485df4804f77fbef",
+        "action/stand_0.png": "20f67a0008fd6d4ff69e4f41616b297cd2b9b198",
+    },
+    "xiao_bird": {
+        "pet_conf.json": "97ae9073fdc9f2dc8a77a0c8b9c678a0713beda5",
+        "act_conf.json": "b016aff33886cf423460d886fa6d0fef8bb4fce4",
+        "action/stand_0.png": "deb6db7717045968fbd559e5961005b32bf86378",
     },
 }
 
@@ -109,7 +135,17 @@ def _prune_missing_optional_actions(folder):
     actions = json.loads(act_file.read_text(encoding="utf-8"))
     missing = sorted(name for name, cfg in actions.items()
                      if not list((folder / "action").glob(str(cfg.get("images", "")) + "_*.png")))
-    if not missing:
+    # Original 散猫猫 patpat has 10ms frame refresh (unsafe for modern
+    # loader). Only adjust playback metadata; PNGs remain byte-identical.
+    too_fast = []
+    for key, cfg in actions.items():
+        try:
+            refresh = float(cfg.get("frame_refresh", 0.5))
+        except (TypeError, ValueError):
+            continue  # Leave invalid values to the native validator.
+        if 0 < refresh < 0.015:
+            too_fast.append(key)
+    if not missing and not too_fast:
         return []
     for core in ("default", "drag", "fall"):
         if pet.get(core) in missing:
@@ -120,6 +156,9 @@ def _prune_missing_optional_actions(folder):
         json.dumps(pet, ensure_ascii=False, indent=2), encoding="utf-8")
     for key in missing:
         del actions[key]
+    for key in too_fast:
+        if key in actions:
+            actions[key]["frame_refresh"] = 0.02
     for field in ("up", "down", "left", "right", "prefall", "on_floor", "focus"):
         if pet.get(field) in missing:
             pet[field] = pet["default"]
@@ -226,7 +265,9 @@ def install_artist_genshin(kind, output_root, *, confirmed=False, opener=urlopen
                             "likeness_manually_reviewed": False,
                             "voice_verified": False,
                             "installed_for_personal_use": True,
-                            "absent_upstream_actions": excluded},
+                            "absent_upstream_actions": excluded,
+                            "native_companion": profile is None,
+                            "original_config_preserved_if_adapted": True},
                            ensure_ascii=False, indent=2), encoding="utf-8")
             if destination.exists() or destination.is_symlink():
                 raise FileExistsError("Source role folder was created concurrently")
