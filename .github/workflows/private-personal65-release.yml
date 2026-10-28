@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/private-personal65-release.yml"
       - "tools/build_personal65_windows.ps1"
+      - "tools/verify_personal_portable.py"
+      - "tests/test_verify_personal_portable.py"
       - "tools/build_windows_portable.ps1"
       - "tools/personal_source_batch.py"
       - "tools/character_interaction_coverage.py"
@@ -92,6 +94,11 @@ jobs:
           $env:DYBERPET_NATIVE_BACKEND = "rust"
           python -c "from DyberPet.assistant.native_bridge import backend_status; s=backend_status(); print(s); assert s['active']=='rust'"
           if ($LASTEXITCODE -ne 0) { throw "Native bridge is not active Rust" }
+      - name: Test packaged ZIP safety and backend contracts (synthetic only)
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p "test_verify_personal_portable.py" -v
+          if ($LASTEXITCODE -ne 0) { throw "Portable ZIP verifier regression failed" }
       - name: Test personal character planner offline (no art downloaded)
         shell: pwsh
         run: |
