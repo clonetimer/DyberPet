@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Git-LFS-pinned external React-Shimeji character *leads*, not usable art.
+"""Git-LFS-pinned external React-Shimeji character source identities.
 
 GitHub's small index.ts blobs contain LFS pointers, NOT actual animation
 bytes. Do not count them as imported or visually accepted characters.
@@ -65,7 +65,7 @@ def verified_lfs_sources():
     """Return only full-byte/CI-verified source records, never pointer leads."""
     catalog = json.loads(Path(__file__).with_name(
         "react_lfs_verified_sources.json").read_text(encoding="utf-8"))
-    if catalog.get("schema") != 1 or len(catalog.get("sources", {})) != 2:
+    if catalog.get("schema") != 1 or len(catalog.get("sources", {})) != 4:
         raise ValueError("Unexpected original-LFS source registry")
     mapped = {}
     for key, entry in catalog["sources"].items():
