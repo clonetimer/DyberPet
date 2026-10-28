@@ -32,7 +32,7 @@ class TurnaroundReviewCardTests(unittest.TestCase):
         result = render_review_card("doro_q01", self.sheet, self.root / "reviews")
         out = Path(result["review_card"])
         self.assertTrue(out.exists())
-        self.assertEqual(out.parent, self.root / "reviews")
+        self.assertEqual(out.parent.resolve(), (self.root / "reviews").resolve())
         with Image.open(out) as img:
             self.assertEqual(img.size, (CARD_WIDTH, CARD_HEIGHT))
             self.assertEqual(img.format, "PNG")
@@ -63,8 +63,8 @@ class TurnaroundReviewCardTests(unittest.TestCase):
             artist=self.sheet["artist"], variant=self.sheet["variant"])
         result = turnaround_card(case)
         self.assertTrue(Path(result["review_card"]).is_file())
-        self.assertEqual(Path(result["review_card"]).parent,
-                         workspace / "review_cards")
+        self.assertEqual(Path(result["review_card"]).parent.resolve(),
+                         (workspace / "review_cards").resolve())
         self.assertIn("awaiting", result["status"])
 
     def test_rejects_invalid_candidate(self):
