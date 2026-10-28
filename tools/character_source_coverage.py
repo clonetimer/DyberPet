@@ -89,7 +89,7 @@ def source_coverage():
     # in CI; this is source integrity only, not full motion/likeness approval.
     react = json.loads(Path(__file__).with_name(
         "react_lfs_verified_sources.json").read_text(encoding="utf-8"))
-    if react.get("schema") != 1 or len(react.get("sources", {})) != 2:
+    if react.get("schema") != 1 or len(react.get("sources", {})) != 4:
         raise ValueError("Unexpected verified React-Shimeji source registry")
     for key, entry in sorted(react["sources"].items()):
         profile = entry["profile"]
