@@ -41,6 +41,7 @@ $installerArgs = @(
     "--hidden-import", "tools.install_artist_genshin",
     "--hidden-import", "tools.install_artist_codex",
     "--hidden-import", "tools.install_artist_shimeji",
+    "--hidden-import", "tools.pinned_github_png_transport",
     "--hidden-import", "tools.install_nanopet_shimeji",
     "--hidden-import", "tools.install_external_codex",
     "--hidden-import", "tools.install_pinned_codexpetdb",

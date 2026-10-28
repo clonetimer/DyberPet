@@ -1,0 +1,99 @@
+name: R31 real original PNG alternate host installation
+on:
+  push:
+    branches: [fix/r31-pinned-github-png-mirror-fallback-20261028]
+    paths:
+      - "tools/pinned_github_png_transport.py"
+      - "tools/install_artist_shimeji.py"
+      - "tests/test_r31_github_png_transport.py"
+      - ".github/workflows/r31-github-png-fallback.yml"
+  pull_request:
+    paths:
+      - "tools/pinned_github_png_transport.py"
+      - "tools/install_artist_shimeji.py"
+      - "tests/test_r31_github_png_transport.py"
+permissions:
+  contents: read
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install Pillow==12.0.0
+      - run: python -m unittest discover -s tests -p "test_r31_github_png_transport.py" -v
+  windows-real-artist-both-families:
+    runs-on: windows-latest
+    needs: unit
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install Pillow==12.0.0
+      - name: Simulate raw.githubusercontent block and install ACTUAL NanoPet and Shimeji source PNGs from pinned mirrors
+        shell: pwsh
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          @'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from urllib.error import URLError
+          from urllib.request import urlopen
+          import json
+          from tools.install_artist_shimeji import _download_png, install_artist_shimeji
+          from tools.install_nanopet_shimeji import install_nanopet_shimeji, source_manifest
+          from tools.install_native_role import validate_native_role
+          from tools.artist_animation_audit import audit_native_character
+          from tools.pinned_github_png_transport import reset_transport_preference_for_tests
+
+          def simulate_user_network_block(req,timeout):
+              if req.full_url.startswith("https://raw.githubusercontent.com/"):
+                  raise URLError("SIMULATED Windows raw.githubusercontent.com blocked")
+              return urlopen(req,timeout=timeout)
+
+          def download_alt(url,spec):
+              return _download_png(url,spec,opener=simulate_user_network_block)
+
+          nano = source_manifest()
+          key = next(k for k,v in nano["roles"].items() if v["profile"]=="genshin_albedo")
+          with TemporaryDirectory(prefix="r31-real-windows-mirrors-") as tmp:
+              root=Path(tmp)/"res"/"role"
+              installed=install_nanopet_shimeji(
+                  key,root,confirmed=True,downloader=download_alt)
+              folder=root/installed["folder"]
+              validated=validate_native_role(folder)
+              audit=audit_native_character(folder)
+              assert installed["profile"]=="genshin_albedo"
+              assert validated["actions"]>=8
+              print("R31_REAL_ALBEDO_NANOPET_MIRROR_SUCCESS="+json.dumps({
+                "real_frame_count":installed["source_original_frames"],
+                "native_actions":validated["actions"],
+                "structure_passed":audit["summary"]["animation_structure_passed"],
+                "likeness_manually_approved":False,
+                "original_art_uploaded":False
+              }),flush=True)
+              reset_transport_preference_for_tests()
+              result=install_artist_shimeji("albedo",root,confirmed=True,downloader=download_alt)
+              assert result["profile"]=="genshin_albedo"
+              validated=validate_native_role(root/result["folder"])
+              print("R31_REAL_ALBEDO_SHIMEJI_MIRROR_SUCCESS="+json.dumps({
+                "native_actions":validated["actions"],
+                "native_images":validated["images"],
+                "real_author_pixels_preserved":True,
+                "original_art_uploaded":False
+              }),flush=True)
+          print("R31_NO_ART_UPLOAD=true",flush=True)
+          '@ | Set-Content -Encoding UTF8 -Path "$env:RUNNER_TEMP/r31_actual_original.py"
+          $env:PYTHONPATH = $PWD.Path
+          python "$env:RUNNER_TEMP/r31_actual_original.py"
+          if ($LASTEXITCODE -ne 0) { throw "R31 real original author PNG mirror import failure" }
