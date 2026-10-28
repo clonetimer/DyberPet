@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - "tools/blender_chibi_scene.py"
+      - "tools/blender_turnaround_scene.py"
+      - "tools/render_turnaround_blender.py"
       - "tools/chibi_clip_map.py"
       - "tools/render_chibi_blender.py"
       - "tools/character_pipeline.py"
       - "tools/import_chibi_animations.py"
       - "tests/test_real_blender_smoke.py"
+      - "tests/test_real_turnaround_smoke.py"
+      - "tests/test_turnaround_renderer.py"
       - "tools/blender_demo_export.py"
       - ".github/workflows/blender-chibi-smoke.yml"
   workflow_dispatch:
@@ -38,6 +42,20 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: "1"
           BLENDER_CI_ARTIFACT_DIR: blender-demo-preview
         run: python -m unittest discover -s tests -p "test_real_blender_smoke.py" -v
+      - name: Render and QA same-model orthographic three-view evidence
+        env:
+          BLENDER_BIN: blender
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          BLENDER_TURNAROUND_ARTIFACT_DIR: blender-turnaround-preview
+        run: python -m unittest discover -s tests -p "test_real_turnaround_smoke.py" -v
+      - name: Upload unapproved three-view synthetic preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-orthographic-turnaround-preview
+          path: blender-turnaround-preview/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload original synthetic role preview
         if: always()
         uses: actions/upload-artifact@v4
