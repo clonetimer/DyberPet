@@ -55,7 +55,7 @@ def _frame_from_declared(root, entry):
     if not isinstance(entry, dict) or not isinstance(entry.get("file"), str):
         raise ValueError("Three-view source requires explicit PNG file paths")
     rel = PurePosixPath(entry["file"])
-    if (rel.is_absolute() or len(rel.parts) not in (2, 3)
+    if (rel.is_absolute() or len(rel.parts) != 2
             or any(p in (".", "..", "") for p in rel.parts)
             or rel.parts[0] not in ("action", "threeview")
             or rel.suffix.lower() != ".png"):
@@ -153,6 +153,12 @@ def native_threeview_interactions(role_directory):
             view["dimensions"] = (width, height)
             widths.append(width)
             heights.append(height)
+    # Also bound the interaction previews to the same image scale, including
+    # dragging/petting poses that are taller than the still turnaround art.
+    for entry in interactions.values():
+        w, h = _png_dimensions(entry["frames"][0])
+        widths.append(w)
+        heights.append(h)
     if not widths:
         raise ValueError("No Q版三视图 source frames")
     return {
