@@ -2,7 +2,7 @@
   "schema": 1,
   "repository": "CarbonNeuron/react-shimeji",
   "revision": "35b507062be71e8b9dbea6d20b77a9901dfe9114",
-  "note": "Two original Git LFS modules independently downloaded and SHA256-verified in GitHub CI on 2026-10-26, parsed without executing TypeScript, 46 authentic atlas frames each and native role import tested. crawl/fall each have only one distinct sprite pose; actual movement, original-game visual resemblance, voice and rights await human QA.",
+  "note": "Four independently source-byte-verified original LFS modules: Amber/Fischl in CI 2026-10-26 and Neuvillette/Wriothesley in R27 CI run 40623238685 on 2026-10-28. All four contain 46 real numbered PNG atlas frames and pass isolated native role installation; crawl and fall each lack distinctive motion. Verified byte identity is NOT visual-likeness, creator rights, human animation semantics, voice or physical Windows QA.",
   "sources": {
     "amber": {
       "profile": "genshin_amber",
@@ -31,6 +31,36 @@
       ],
       "visual_likeness_verified": false,
       "physical_runtime_motion_qa_verified": false
+    },
+    "neuvillette": {
+      "profile": "genshin_neuvillette",
+      "slug": "neuvillette-10d1e7",
+      "sha256": "0baef99c84ba33cbc28b6f607fcc0df3d04a6494f45a34be6db1f1394a7fa59e",
+      "verified_bytes": 1148440,
+      "atlas_frames": 46,
+      "native_actions": 10,
+      "action_quality_pending": [
+        "crawl",
+        "fall"
+      ],
+      "visual_likeness_verified": false,
+      "physical_runtime_motion_qa_verified": false,
+      "verified_ci_run": "40623238685"
+    },
+    "wriothesley": {
+      "profile": "genshin_wriothesley",
+      "slug": "wriothesley-01fe24",
+      "sha256": "10737b31db7fb5958950754cecb9ad7d60eba5cfc95c49ec066a52a41f5d0cb8",
+      "verified_bytes": 993331,
+      "atlas_frames": 46,
+      "native_actions": 10,
+      "action_quality_pending": [
+        "crawl",
+        "fall"
+      ],
+      "visual_likeness_verified": false,
+      "physical_runtime_motion_qa_verified": false,
+      "verified_ci_run": "40623238685"
     }
   }
 }
