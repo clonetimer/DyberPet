@@ -59,14 +59,20 @@ jobs:
         run: |
           @'
           import json
+          import hashlib
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
           from urllib.error import URLError
           from urllib.request import urlopen
-          from tools.install_artist_codex import ROOT, SOURCES, _download_pinned
+          from tools.install_artist_codex import ROOT, SOURCES, _download_pinned, install_artist_codex
+          from tools.install_native_role import validate_native_role
+          from tools.genshin_library import scan_genshin_library
           from tools.pinned_github_png_transport import reset_transport_preference_for_tests
           reset_transport_preference_for_tests()
           for key in ("ayaka", "citlali", "hu_tao", "yae_miko"):
               pet_id, label, profile, meta, sheet = SOURCES[key]
               fetched=[]
+              cache={}
               def blocked_raw(req, timeout=30):
                   address=req.full_url
                   if address.startswith("https://raw.githubusercontent.com/"):
@@ -76,12 +82,35 @@ jobs:
               base=ROOT+"/"+pet_id
               for name,identity in (("pet.json",meta),("spritesheet.webp",sheet)):
                   data=_download_pinned(base+"/"+name,identity,opener=blocked_raw)
+                  cache[base+"/"+name]=data
                   if name=="pet.json":
                       manifest=json.loads(data)
                       assert manifest["id"]==pet_id
                       assert manifest["spritesheetPath"]=="spritesheet.webp"
               assert len(fetched)>=2
               assert all("raw.githubusercontent.com" not in u for u in fetched)
+              def exact_cached_author_bytes(address, identity):
+                  raw=cache[address]
+                  assert len(raw)==identity[0]
+                  assert hashlib.sha1(b"blob "+str(len(raw)).encode()+b"\\0"+raw).hexdigest()==identity[1]
+                  return raw
+              with TemporaryDirectory(prefix="r32-windows-native-codex-") as tmp:
+                  root=Path(tmp)/"role"
+                  installed=install_artist_codex(
+                      key,root,confirmed=True,downloader=exact_cached_author_bytes)
+                  folder=root/installed["folder"]
+                  valid=validate_native_role(folder)
+                  record=json.loads((folder/"PERSONAL_IMPORT.json").read_text("utf-8"))
+                  assert record["selected_profile"]==profile
+                  assert valid["actions"]>=3 and valid["images"]>=8
+                  inventory=scan_genshin_library(root)
+                  found=next(x for x in inventory["characters"] if x["profile"]==profile)
+                  assert any(not f["is_original_demo"] for f in found["installed_folders"])
+              print("R32_REAL_WINDOWS_NATIVE_ROLE_PASS="+json.dumps({
+                  "profile":profile, "author_art_frame_integrity":True,
+                  "installed_actions":valid["actions"],"installed_frames":valid["images"],
+                  "correct_roster_identity":True,"original_art_uploaded":False,
+                  "visual_qa_passed":False},ensure_ascii=False),flush=True)
               print("R32_REAL_WINDOWS_CODEX_MIRROR_PASS="+json.dumps({
                   "profile":profile, "upstream_commit":"db2f6306ce78f6559ab27155d7bfaf00bf43809d",
                   "asset_count":2,"both_original_Git_blob_SHA1_and_lengths_verified":True,
