@@ -33,7 +33,7 @@ class ExternalCreatorSourcesTests(unittest.TestCase):
                 self.assertGreater(row[key]["size"], 100)
         catalog = source_coverage()
         self.assertEqual(catalog["summary"]["template_count"], 123)
-        self.assertEqual(catalog["summary"]["pinned_source_options"], 92)
+        self.assertEqual(catalog["summary"]["pinned_source_options"], 93)
         self.assertEqual(catalog["summary"]["characters_with_pinned_sources"], 69)
         self.assertEqual(catalog["summary"]["characters_without_pinned_sources"], 54)
         sayu = next(x for x in catalog["characters"] if x["id"]=="genshin_sayu")

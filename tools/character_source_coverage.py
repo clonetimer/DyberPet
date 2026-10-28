@@ -129,6 +129,28 @@ def source_coverage():
         "artist_rights_approved": False,
         "prebundled_original_art": False,
     })
+    # R29: independent GMCY pet_1: Genshin Keqing / 刻晴; 92 real PNG frames,
+    # exact per-file Git object identities, six author action sequences.
+    keqing = json.loads(Path(__file__).with_name("gmcy_keqing_92_source.json").read_text(encoding="utf-8"))
+    if (keqing.get("schema") != 1 or keqing.get("source_profile") != "genshin_keqing"
+            or keqing.get("source_directory") != "resources/pet_1"
+            or keqing.get("original_frame_count") != 92 or
+            len(keqing.get("files", [])) != 92 or
+            len(keqing.get("original_action_groups", [])) != 6):
+        raise ValueError("Invalid source-pinned GMCY Keqing 92 registry")
+    record("genshin_keqing", "gmcy_keqing", "keqing_92",
+           "https://github.com/" + keqing["repository"] + "/tree/" +
+           keqing["commit"] + "/resources/pet_1")
+    rows["genshin_keqing"]["source_candidates"][-1].update({
+        "original_author_frames": 92,
+        "verified_original_git_blob_count": 92,
+        "original_creator_action_groups": 6,
+        "native_source_import_tested_in_ci": True,
+        "source_author_likeness_qa_passed": False,
+        "action_semantics_manually_approved": False,
+        "artist_rights_approved": False,
+        "prebundled_original_art": False,
+    })
     # Original creator public ZIP and 109 numbered PNGs independently
     # SHA-verified in CI, not bundled or visually approved.
     # Keep this catalog directly runnable as python tools/character_source_coverage.py

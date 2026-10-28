@@ -26,7 +26,7 @@ class CreatorSourcesTests(unittest.TestCase):
         r = source_coverage()
         s = r["summary"]
         self.assertEqual(s["template_count"], 123)
-        self.assertEqual(s["pinned_source_options"], 92)
+        self.assertEqual(s["pinned_source_options"], 93)
         self.assertEqual(s["characters_with_pinned_sources"], 69)
         self.assertEqual(s["characters_without_pinned_sources"], 54)
         self.assertEqual(s["verified_likeness_count"], 0)

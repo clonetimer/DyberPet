@@ -16,7 +16,7 @@ class KavehAlternativeTests(unittest.TestCase):
         r = source_coverage()["summary"]
         self.assertEqual(r["characters_with_pinned_sources"], 69)
         self.assertEqual(r["characters_without_pinned_sources"], 54)
-        self.assertEqual(r["pinned_source_options"], 92)
+        self.assertEqual(r["pinned_source_options"], 93)
 
     def test_explicit_confirmation_and_fixed_identity_before_any_network(self):
         with tempfile.TemporaryDirectory() as td:
