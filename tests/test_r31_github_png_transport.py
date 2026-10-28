@@ -77,7 +77,7 @@ class R31FallbackIntegrityTests(unittest.TestCase):
         def bad_primary(req,timeout):
             calls.append(req.full_url)
             return Response(req.full_url, b"BAD PNG")
-        with self.assertRaisesRegex(ValueError,"length differs"):
+        with self.assertRaisesRegex(ValueError,"size differs"):
             _download_png(URL,spec,opener=bad_primary)
         self.assertEqual(len(calls),1)
 
