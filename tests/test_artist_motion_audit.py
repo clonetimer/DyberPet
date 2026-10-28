@@ -60,8 +60,8 @@ class ArtistMotionEvidenceTests(unittest.TestCase):
         made = write_motion_evidence(self.role)
         self.assertEqual(made["actions"]["left"]["frames_in_source"], 5)
         self.assertEqual(frame.read_bytes(), original)
-        parsed = json.loads((self.role / "ANIMATION_MOTION_QA.json").read_text())
-        self.assertEqual(parsed["role_folder"], "作者原画")
+        parsed = json.loads((self.role / "ANIMATION_MOTION_QA.json").read_text(encoding="utf-8"))
+        self.assertEqual(parsed["role_folder"], self.role.name)
         with self.assertRaises(FileExistsError):
             write_motion_evidence(self.role)
 
