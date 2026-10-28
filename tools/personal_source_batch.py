@@ -377,7 +377,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         if args.bundle_output is not None:
-            if args.install or args.mascots or args.doro_v2 or args.whale or args.whale_full or args.profile or args.output or args.max_roles is not None or args.accept_personal_use:
+            if args.install or args.mascots or args.doro_v2 or args.whale or args.whale_full or args.profile or args.retry_failed_from or args.output or args.max_roles is not None or args.accept_personal_use:
                 raise ValueError("--bundle-output cannot be combined with install/planning options")
             try:
                 from .local_offline_bundle import create_local_bundle
@@ -392,6 +392,8 @@ def main(argv=None):
             return 0
         if args.confirm_local_bundle:
             raise ValueError("--confirm-local-bundle requires --bundle-output")
+        if args.retry_failed_from is not None and (args.whale or args.mascots or args.doro_v2):
+            raise ValueError("--retry-failed-from applies only to Genshin character installs")
         if args.whale_full and not args.whale:
             raise ValueError("--whale-full requires --whale")
         if args.whale:
