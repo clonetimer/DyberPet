@@ -1,4 +1,5 @@
 """Offline tests for the REAL one-download artist-batch import workflow."""
+import ast
 import hashlib
 import io
 import json
@@ -144,6 +145,22 @@ class SourceBatchTests(unittest.TestCase):
                                               opener=self.opener)
         self.assertEqual(calls, 2)
         self.assertFalse(any(self.root.glob("SourceGenshin*")))
+
+    def test_actual_gui_has_opt_in_batch_and_adds_all_three_roles(self):
+        ui = (Path(__file__).resolve().parents[1] /
+              "DyberPet" / "DyberSettings" / "CharCardUI.py")
+        source = ui.read_text(encoding="utf-8")
+        nodes = ast.walk(ast.parse(source))
+        methods = {f.name: ast.unparse(f) for f in nodes
+                   if isinstance(f, ast.FunctionDef)}
+        self.assertIn("artist_genshin_batch", methods["_installArtistGenshin"])
+        run = methods["run"]  # ChibiImportThread.run is the only named run in UI
+        self.assertIn("install_artist_genshin_batch(", run)
+        self.assertIn("CheckCharFiles(str(folder))", run)
+        self.assertIn("self.done.emit(folder.name, '')", run)
+        self.assertIn("batch_folders", run)
+        self.assertIn("rmtree(folder, ignore_errors=True)", run)
+        self.assertIn("artist_genshin_batch", methods["_onChibiImportComplete"])
 
     def test_subset_and_duplicate_validation(self):
         self.assertEqual(parse_roles("nahida,xiao"), ("nahida", "xiao"))
