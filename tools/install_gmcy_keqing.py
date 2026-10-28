@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Opt-in native DyberPet import of ORIGINAL Keqing creator's 92 PNG frames.
 
-The upstream author describes resources/pet_2 as 原神 刻晴 in README and
+The upstream author identifies resources/pet_1 as 原神 刻晴 in README and
 cfg_diaona.py. We pin the upstream commit AND every Git blob SHA/size. Neither
 the author's arbitrary Python code nor any executable in the ZIP is run.
 Original 6 action groups are preserved without inventing walk, fall or pat art.
