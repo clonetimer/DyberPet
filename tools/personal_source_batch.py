@@ -38,6 +38,7 @@ INSTALLERS = {
     "codexpetdb_zip": ("tools.install_pinned_codexpetdb", "install_pinned_codexpetdb"),
     "react_lfs": ("tools.install_verified_react_lfs", "install_verified_react_lfs"),
     "gmcy_diona": ("tools.install_gmcy_diona", "install_gmcy_diona"),
+    "gmcy_keqing": ("tools.install_gmcy_keqing", "install_gmcy_keqing"),
 }
 
 
