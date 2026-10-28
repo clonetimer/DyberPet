@@ -25,6 +25,7 @@ jobs:
       - name: Inspect five representative roles which user reports as failing or succeeding
         env:
           PYTHONUTF8: "1"
+          PYTHONPATH: ${{ github.workspace }}
         shell: pwsh
         run: |
           @'
