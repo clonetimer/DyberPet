@@ -50,7 +50,7 @@ class KeqingR29Registry(unittest.TestCase):
         self.assertIn('if mode == "gmcy_keqing_original":',s)
         self.assertIn('return "genshin_keqing"',s)
         self.assertIn('install_gmcy_keqing(',s)
-        self.assertIn("不覆盖当前安装的其他刻晴版本",s)
+        self.assertIn("不会覆盖当前安装的其他刻晴版本",s)
 
 
 if __name__=="__main__":
