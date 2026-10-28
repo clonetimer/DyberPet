@@ -14,6 +14,7 @@ from tools.install_artist_genshin import (
     _prune_missing_optional_actions, verify_artist_role_identity,
     SOURCE_IDENTITY,
 )
+from tools.install_native_role import validate_native_role
 
 
 def fixture_sprite():
@@ -147,8 +148,32 @@ class ArtistInstallTests(unittest.TestCase):
         self.assertEqual(updated["random_act"], [])
 
     def test_all_named_roles_have_pinned_profiles(self):
-        self.assertEqual(set(ROLES), {"nahida", "xiao", "wanderer"})
-        self.assertEqual(len({x[1] for x in ROLES.values()}), 3)
+        people = ("nahida", "xiao", "wanderer")
+        mascots = ("arana", "scara_cat", "fungus", "xiao_bird")
+        self.assertEqual(set(ROLES), set(people + mascots))
+        self.assertEqual(len({ROLES[k][1] for k in people}), 3)
+        self.assertTrue(all(ROLES[k][1] is None for k in mascots))
+        self.assertEqual(set(SOURCE_IDENTITY), set(ROLES))
+
+    def test_legacy_scara_cat_patpat_clamp_does_not_modify_source_png(self):
+        folder = self.root / "scara_cat"
+        (folder / "action").mkdir(parents=True)
+        frame = folder / "action" / "idle_0.png"
+        frame.write_bytes(fixture_sprite())
+        pet = {"default":"idle","drag":"idle","fall":"idle",
+               "patpat":"patpat"}
+        act = {"idle":{"images":"idle","frame_refresh":0.03},
+               "patpat":{"images":"idle","frame_refresh":0.01}}
+        (folder / "pet_conf.json").write_text(json.dumps(pet))
+        (folder / "act_conf.json").write_text(json.dumps(act))
+        untouched = frame.read_bytes()
+        self.assertEqual(_prune_missing_optional_actions(folder), [])
+        corrected = json.loads((folder / "act_conf.json").read_text())
+        original = json.loads((folder / "UPSTREAM_ACT_CONF.json").read_text())
+        self.assertEqual(corrected["patpat"]["frame_refresh"], 0.02)
+        self.assertEqual(original["patpat"]["frame_refresh"], 0.01)
+        self.assertEqual(frame.read_bytes(), untouched)
+        self.assertEqual(validate_native_role(folder)["actions"], 2)
 
 
 if __name__ == "__main__":
