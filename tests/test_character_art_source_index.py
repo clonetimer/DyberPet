@@ -14,8 +14,8 @@ class CreatorSourceIndexTests(unittest.TestCase):
         self.assertEqual(validate_sources(), len(SOURCES))
         coverage = source_coverage()
         self.assertEqual(coverage["template_count"], 125)
-        self.assertEqual(coverage["specific_source_leads"], 5)
-        self.assertEqual(coverage["family_discovery_only"], 120)
+        self.assertEqual(coverage["specific_source_leads"], 8)
+        self.assertEqual(coverage["family_discovery_only"], 117)
         self.assertEqual(coverage["without_source_lead"], 0)
         self.assertEqual(coverage["creator_fidelity_approved"], 0)
         self.assertEqual(coverage["physical_desktop_qa_approved"], 0)
@@ -45,6 +45,8 @@ class CreatorSourceIndexTests(unittest.TestCase):
         ayaka = sources_for_role("genshin_ayaka")
         self.assertEqual(ayaka[0]["rights"], "restricted")
         self.assertEqual(sources_for_role("genshin_xiao")[0]["scope"], "role")
+        for role in ("genshin_hu_tao", "genshin_citlali", "genshin_wanderer"):
+            self.assertEqual(sources_for_role(role)[0]["scope"], "role")
 
     def test_no_made_up_character_ids_or_false_positive(self):
         for name in ("genshin_made_up", "mascot_unknown", "genshin_123",
