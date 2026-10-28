@@ -117,6 +117,16 @@ SOURCES = (
         "lineage": "genshin-zaytsev-pixel",
     },
     {
+        "id": "genshin_nuo_pre_28_collection", "scope": "family",
+        "roles": ("genshin",),
+        "name": "栎曦_Nuo 原神 2.8 前多角色原画合集",
+        "creator": "栎曦_Nuo",
+        "url": "https://www.bilibili.com/video/BV1eY4y177tk/",
+        "type": "family_discovery", "rights": "unknown",
+        "note": "原作者曾发布 2.8 前全角色的网盘下载入口；只涵盖当时人物，不能当作 2026 年 123 位齐全。下载后须逐一核对角色名、动作数及二次使用条款。",
+        "lineage": "genshin-nuo-native",
+    },
+    {
         "id": "genshin_nuo_original_collection", "scope": "family", "roles": ("genshin",),
         "name": "栎曦_Nuo 的原神 DyberPet 作品系列（仅发现入口）",
         "creator": "栎曦_Nuo / DyberPet_GenshinImpact",
