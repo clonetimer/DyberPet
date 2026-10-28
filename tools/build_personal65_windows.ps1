@@ -313,6 +313,10 @@ $archive = Join-Path $root $archiveName
 if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
 Compress-Archive -Path (Join-Path $package "*") -DestinationPath $archive -CompressionLevel Optimal
 if (-not (Test-Path -LiteralPath $archive)) { throw "Final portable archive missing" }
+# R26: JPEG/voice/UI remain bundled; decoder is installed only when a user opts in.
+if ((Get-Item -LiteralPath $archive).Length -gt 125MB) {
+    throw "Optimized Windows ZIP unexpectedly exceeds 125 MiB; check duplicate bundled decoders"
+}
 # Validate the actual ZIP delivered to users, not just the unpacked build dir.
 # Reject missing installers, stale source counts, wrong backend or hidden creator art.
 python -m tools.verify_personal_portable --archive $archive --backend $Backend
