@@ -38,6 +38,35 @@ py tools/character_pipeline.py turnaround-card doro_q01
 
 咕嘎、Doro 的首批参考候选与动作开发目标参阅 [R34 首批角色试点](r34_role_pilot.md)。
 
+
+## R35：一个授权 3D 模型直接生成正交三视图
+
+针对网络正、侧、背图片经常是不同作者/不同服装版本的问题，R35 新增 **同一 GLB 同一场景生成前 / 右侧 / 背面** 的真实 Blender 渲染器。
+
+使用前提：你已取得同一角色版本的 3D 模型，**逐件人工核实本地改编许可**。仅接受自包含的 `.glb`；FBX、VRM、PMX 需先依照作者条款，在本地通过合法工具导出为 GLB。只在用户本机渲染，不自动下载第三方文件；`.blend` 工程不会被执行。程序执行 Blender 时使用 `--factory-startup --disable-autoexec`。
+
+在仓库根目录使用以下命令：
+
+```powershell
+# 创建仅用于本地处理的角色候选，名称必须是中文角色名。
+py tools/character_pipeline.py new guga_q3d01 --name "咕嘎" --channel bilibili --kind model3d --url "https://实际模型作者的作品页" --creator "实际作者"
+py tools/character_pipeline.py attach guga_q3d01 --asset "D:\\Art\\Guga\\authorized-model.glb"
+# 仅在本人实际核对了具体素材的许可、确认允许本地改编时登记。
+py tools/character_pipeline.py rights guga_q3d01 --reviewer "实际审核人" --evidence "D:\\Art\\Guga\\LICENSE.txt" --local-use --derivatives
+# 同一 GLB 连续渲染三张 512x512 透明 PNG，无人工批准效果。
+py tools/character_pipeline.py turnaround-render-model guga_q3d01 --variant "锁定的Q版模型版本" --blender blender --front-yaw 0
+py tools/character_pipeline.py turnaround-card guga_q3d01
+py tools/character_pipeline.py inspect guga_q3d01
+```
+
+`--front-yaw` 默认 0°：假设模型面朝 Blender 的 -Y 方向；若导入模型正面朝向不同，可以通过 `--front-yaw` 调整，再重新生成（不同角度不可覆盖同一路径）。三个相机相差 90° 和 180°，**不能把正交侧视误认为普通斜前方**。三视图共享同一模型、归一化尺寸、相机投影与光照，保留完整透明度，且通过不同哈希、图像尺寸、可见像素和裁切检测。
+
+输出位于已忽略的 `data/character_pipeline/turnaround_generated/`；`TURNAROUND_BLENDER_REPORT.json` 保存模型 SHA-256、各视图 SHA-256、Blender 版本与视角约定。三视图会自动登记到当前候选，但**保持待人工审核**。审核者应打开本地审核卡，确认与原作的身份特征、头身比、前侧背方向和配色一致，之后才可执行 `turnaround-review`。模型三视图正确并不意味着动作或使用许可已被软件自动验证。
+
+没有模型时可通过 `py tools/render_turnaround_blender.py --demo --output "D:\\PetQA\\synthetic-3view"` 演示流程，演示几何是软件原创测试夹具，不是咕嘎或 Doro 的角色替代美术。
+
+R35 私有参考素材（已提交）：仓库所有者可从 `clonetimer/ChatGPT-Download/private_assets/dyberpet/r35` 获取咕嘎和 Doro 的**候选**动画/视线参考；不自动公开或当作三视图证据。权利说明见私有目录 `README.md` 和 `licenses/`。
+
 ## Windows 本地 CLI
 
 在仓库根目录（需要 Pillow），新建角色候选后执行；三视图文件仅保留在本机：
