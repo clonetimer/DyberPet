@@ -1,0 +1,87 @@
+name: R27 Missing Genshin characters original LFS identity and native import
+
+on:
+  pull_request:
+    paths:
+      - "tools/react_shimeji_source_leads.py"
+      - "tests/test_r27_source_leads.py"
+      - "tools/react_lfs_verified_sources.json"
+      - "tools/install_verified_react_lfs.py"
+      - "tools/character_source_coverage.py"
+      - ".github/workflows/r27-original-react-lfs-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-originals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Prepare safe literal-only decoder (no npm or JS runtime)
+        run: python -m pip install Pillow==12.0.0
+      - name: Source identity and roster regression
+        run: python -m unittest discover -s tests -p "test_r27_source_leads.py" -v
+      - name: Fetch original LFS bytes; validate real PNG atlas and native DyberPet installation
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from urllib.parse import urlsplit
+          from urllib.request import Request, urlopen
+          from tools.react_shimeji_source_leads import CANDIDATES, REPOSITORY, REVISION
+          from tools.install_pinned_react_shimeji import (
+              MAX_TS_BYTES, decode_pinned_frames, install_pinned_react_shimeji)
+          from tools.install_native_role import validate_native_role
+          from tools.artist_animation_audit import audit_native_character
+
+          for profile in ("genshin_neuvillette", "genshin_wriothesley"):
+              slug, sha, length, _, _ = CANDIDATES[profile]
+              path = f"packages/character-{slug}/index.ts"
+              address = f"https://media.githubusercontent.com/media/{REPOSITORY}/{REVISION}/{path}"
+              with urlopen(Request(address, headers={"User-Agent": "DyberPet-R27-original-source-QA/1"}), timeout=40) as response:
+                  if urlsplit(response.geturl()).hostname not in (
+                          "media.githubusercontent.com", "raw.githubusercontent.com"):
+                      raise ValueError("Upstream original source redirected")
+                  raw = response.read(MAX_TS_BYTES + 1)
+              if raw.startswith(b"version https://git-lfs.github.com/spec/v1"):
+                  raise ValueError(f"{profile}: Git LFS pointer, not real animation")
+              if len(raw) != length or hashlib.sha256(raw).hexdigest() != sha:
+                  raise ValueError(f"{profile}: original LFS source bytes/hash mismatch")
+              with TemporaryDirectory(prefix="dyberpet-r27-author-art-") as tmp:
+                  root = Path(tmp)
+                  module = root / "original-index.ts"
+                  module.write_bytes(raw)
+                  frames, digest = decode_pinned_frames(module, profile=profile)
+                  if len(frames) < 30:
+                      raise ValueError(f"{profile}: too few original PNG atlas frames")
+                  role = install_pinned_react_shimeji(
+                      module, root / "roles", profile=profile, confirmed=True)
+                  native = validate_native_role(role)
+                  audit = audit_native_character(role)
+                  receipt = json.loads((role / "PERSONAL_IMPORT.json").read_text("utf-8"))
+                  if (native["actions"] < 3 or receipt["selected_profile"] != profile
+                          or receipt["source_module_sha256"] != digest):
+                      raise ValueError(f"{profile}: wrong native identity or action files")
+                  print("R27_REAL_ORIGINAL_LFS_NATIVE_ROLE_VERIFIED " +
+                        json.dumps({
+                            "profile": profile, "sha256": sha, "bytes": len(raw),
+                            "original_sprite_frames": len(frames),
+                            "native_actions": native["actions"],
+                            "structure_passed": audit["summary"]["animation_structure_passed"],
+                            "motion_issues": [
+                                {"action": x["action"], "issues": x["issues"]}
+                                for x in audit["actions"] if x["issues"]
+                            ], "user_likeness_approved": False,
+                            "rights_verified": False, "physical_windows_qa": False
+                        }, ensure_ascii=False), flush=True)
+          print("No third-party frames, raw video, ZIPs or original artwork uploaded")
+          PY
