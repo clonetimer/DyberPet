@@ -68,7 +68,7 @@ class CreatorArtPreferenceTests(unittest.TestCase):
             self.assertEqual(refs[key]["style_preference_group"], "detailed_candidate")
         for key in ("genshin_traveler_aether", "genshin_traveler_lumine", "genshin_zhongli"):
             self.assertEqual(refs[key]["style_preference_group"], "small_candidate")
-        self.assertEqual(refs["genshin_keqing"]["source_candidate_count"], 2)
+        self.assertEqual(refs["genshin_keqing"]["source_candidate_count"], 3)
         self.assertEqual(refs["genshin_lisa"]["source_candidate_count"], 0)
         self.assertEqual(refs["genshin_sayu"]["source_candidate_count"], 1)
         self.assertIsNone(refs["genshin_lisa"]["recommended_source"])
