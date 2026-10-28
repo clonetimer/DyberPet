@@ -19,10 +19,12 @@ from urllib.request import Request, urlopen
 try:
     from .install_native_role import validate_native_role
     from .artist_visual_review import create_native_art_review
+    from .pinned_github_png_transport import download_pinned_github_png
     from .chibi_profiles import CHIBI_PROFILES
 except ImportError:
     from install_native_role import validate_native_role
     from artist_visual_review import create_native_art_review
+    from pinned_github_png_transport import download_pinned_github_png
     from chibi_profiles import CHIBI_PROFILES
 
 MANIFEST = Path(__file__).with_name("artist_shimeji_sources.json")
@@ -59,9 +61,11 @@ def source_manifest(path=MANIFEST):
 
 
 def _download_png(url, spec, opener=urlopen):
-    req = Request(url, headers={"User-Agent": "DyberPet-personal-shimeji/1"})
-    with opener(req, timeout=30) as stream:
-        raw = stream.read(MAX_PNG_BYTES + 1)
+    # NanoPet and original Shimeji share this downloader. A failed regional
+    # raw.githubusercontent.com request may use an immutable same-commit
+    # GitHub media CDN or jsDelivr URL; the EXACT original Git blob SHA and
+    # source dimensions are still checked below before any install.
+    raw = download_pinned_github_png(url, MAX_PNG_BYTES, opener=opener)
     if len(raw) != spec["size"]:
         raise ValueError("Creator artwork size differs from pinned file")
     anchor = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
