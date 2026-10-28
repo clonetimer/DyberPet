@@ -4,7 +4,8 @@ No network, disk mutation or source-art verification occurs in this UI.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget,
     QListWidgetItem, QPushButton, QVBoxLayout,
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
 from tools.character_catalog_search import (
     describe_character_status, query_character_catalog,
 )
+from tools.character_art_source_index import sources_for_role
 
 
 class CharacterCatalogDialog(QDialog):
@@ -23,6 +25,7 @@ class CharacterCatalogDialog(QDialog):
         entries = progress_report["characters"]
         self._entries = list(entries)
         self._selected_id = None
+        self._sources = []
         self.setWindowTitle("DyberPet · 全部角色库（本机状态）")
         self.setMinimumSize(600, 520)
         layout = QVBoxLayout(self)
@@ -49,10 +52,25 @@ class CharacterCatalogDialog(QDialog):
         self.results = QListWidget(self)
         self.results.setAlternatingRowColors(True)
         self.results.itemDoubleClicked.connect(lambda _item: self._select())
+        self.results.currentItemChanged.connect(lambda _new, _old: self._refresh_sources())
         layout.addWidget(self.results)
 
         self.countLabel = QLabel(self)
         layout.addWidget(self.countLabel)
+
+        # Only trusted creator URLs, no automatic model/animation downloads.
+        sourceRow = QHBoxLayout()
+        self.sourceChoice = QComboBox(self)
+        self.sourceChoice.setAccessibleName("当前角色的原画与动态素材来源")
+        self.sourceChoice.currentIndexChanged.connect(self._update_source_note)
+        self.openSourceButton = QPushButton("打开作者作品页", self)
+        self.openSourceButton.clicked.connect(self._open_source)
+        sourceRow.addWidget(self.sourceChoice, 1)
+        sourceRow.addWidget(self.openSourceButton)
+        layout.addLayout(sourceRow)
+        self.sourceNote = QLabel(self)
+        self.sourceNote.setWordWrap(True)
+        layout.addWidget(self.sourceNote)
         self.disclaimer = QLabel(
             "默认优先展示真实来源素材；程序低保真演示须主动切换筛选。"
             "安装成功也不等于已经通过原设相似度人工验收。", self)
@@ -104,6 +122,41 @@ class CharacterCatalogDialog(QDialog):
             f"当前筛选 {self.results.count()} / {len(self._entries)} 个角色。"
             "可切换为「全部角色」查看程序演示，或点击素材管理安装真实角色。")
         self.openButton.setEnabled(self.results.count() > 0)
+        self._refresh_sources()
+
+    def _refresh_sources(self):
+        selected = self.selected_character_id()
+        self._sources = sources_for_role(selected) if selected else []
+        self.sourceChoice.blockSignals(True)
+        self.sourceChoice.clear()
+        for source in self._sources:
+            scope = "角色专属线索" if source["scope"] == "role" else "系列查找入口（非角色证据）"
+            self.sourceChoice.addItem(scope + " · " + source["name"], source["url"])
+        self.sourceChoice.blockSignals(False)
+        self._update_source_note()
+
+    def _update_source_note(self, *_):
+        index = self.sourceChoice.currentIndex()
+        if index < 0 or index >= len(self._sources):
+            self.openSourceButton.setEnabled(False)
+            self.sourceNote.setText(
+                "暂无已核对的角色专属来源。请按角色中文名寻找画师原始作品，"
+                "不要使用简笔画或用系列链接冒充角色素材。")
+            return
+        source = self._sources[index]
+        self.openSourceButton.setEnabled(True)
+        self.sourceNote.setText(
+            "作者：" + source["creator"] + "。"
+            + ("该来源对应当前角色；" if source["scope"] == "role"
+               else "这只是系列发现入口，尚未确认包含当前角色；")
+            + source["note"]
+            + " 原画一致性、素材许可与 Windows 实机尚未经软件自动核实。")
+
+    def _open_source(self):
+        index = self.sourceChoice.currentIndex()
+        if 0 <= index < len(self._sources):
+            # Only HTTPS creator URLs from a fixed, prevalidated index.
+            QDesktopServices.openUrl(QUrl(self._sources[index]["url"]))
 
     def selected_character_id(self):
         current = self.results.currentItem()
