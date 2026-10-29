@@ -263,7 +263,8 @@ class DoroLocalModelTests(unittest.TestCase):
             with patch.dict(sys.modules, {"live2d": fake}):
                 first.initializeGL()
                 second.initializeGL()
-            self.assertEqual(calls, {"glInit": 1, "init": 1})
+            self.assertEqual(calls, {"glInit": 1, "init": 1},
+                             f"first={first.error!r}, second={second.error!r}")
             self.assertIsNone(first.error)
             self.assertIsNone(second.error)
         finally:
