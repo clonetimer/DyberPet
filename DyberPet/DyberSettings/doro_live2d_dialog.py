@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSettings, QTimer
+from PySide6.QtCore import Qt, QSettings, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
     QMenu, QMessageBox, QPushButton, QVBoxLayout,
@@ -21,6 +21,8 @@ _SETTINGS_KEY = "character/doro_live2d_model3"
 
 class _DoroGLView(QOpenGLWidget):
     _framework_ready = False
+    loadFailed = Signal(str)
+    loadSucceeded = Signal()
 
     def __init__(self, model_info, parent=None):
         super().__init__(parent)
@@ -52,14 +54,25 @@ class _DoroGLView(QOpenGLWidget):
             if "OwnerIdle" in self.model_info.get("extra_motions", {}):
                 self.model.StartMotion("OwnerIdle", 0, 1)
             self.clock.start(33)
-        except (ImportError, OSError, RuntimeError, ValueError) as exc:
-            self.error = str(exc)[:300]
+            self.loadSucceeded.emit()
+        except Exception as exc:
+            # SDK native errors may be raised outside the Python exception
+            # families above. Never leave an unexplained, empty Qt viewport.
+            self.error = (type(exc).__name__ + ": " + str(exc))[:300]
+            self.model = None
             self.clock.stop()
+            self.loadFailed.emit(self.error)
 
     def _tick(self):
         if self.model and "OwnerIdle" in self.model_info.get("extra_motions", {}):
-            if self.model.IsMotionFinished():
-                self.model.StartMotion("OwnerIdle", 0, 1)
+            try:
+                if self.model.IsMotionFinished():
+                    self.model.StartMotion("OwnerIdle", 0, 1)
+            except Exception as exc:
+                self.error = (type(exc).__name__ + ": " + str(exc))[:300]
+                self.clock.stop()
+                self.loadFailed.emit(self.error)
+                return
         self.update()
 
     def resizeGL(self, width, height):
@@ -117,6 +130,12 @@ class DoroDesktopWindow(_DoroGLView):
         self._press_global = None
         self._window_origin = None
         self._moved = False
+        self.loadFailed.connect(self._on_load_failed)
+
+    def _on_load_failed(self, message):
+        QMessageBox.warning(None, "Doro 原生模型启动失败",
+                            "本机 Live2D 模型未能加载。源文件未更改。\n" + message)
+        self.close()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -178,6 +197,13 @@ class DoroDesktopWindow(_DoroGLView):
 
 
 def open_doro_desktop(model_info):
+    """One live Doro per application; do not exhaust GPU or duplicate pets."""
+    for existing in tuple(_ACTIVE_DORO_WINDOWS):
+        if existing.isVisible() and existing.model_info["model_json"] == model_info["model_json"]:
+            existing.raise_()
+            existing.activateWindow()
+            return existing
+        existing.close()
     window = DoroDesktopWindow(model_info)
     _ACTIVE_DORO_WINDOWS.append(window)
     window.show()
@@ -199,6 +225,8 @@ class DoroLive2DPreviewDialog(QDialog):
         tip.setWordWrap(True)
         layout.addWidget(tip)
         self.canvas = _DoroGLView(self.model_info, self)
+        self.canvas.loadFailed.connect(self._on_model_failed)
+        self.canvas.loadSucceeded.connect(self._on_model_ready)
         layout.addWidget(self.canvas)
         controls = QHBoxLayout()
         self.expressions = QComboBox(self)
@@ -224,9 +252,39 @@ class DoroLive2DPreviewDialog(QDialog):
         desktop = QPushButton("在桌面独立运行 Doro（置顶、拖动、滚轮缩放）", self)
         desktop.clicked.connect(lambda: open_doro_desktop(self.model_info))
         layout.addWidget(desktop)
+        choose = QPushButton("更换本机 Live2D 模型文件", self)
+        choose.clicked.connect(self._choose_another_model)
+        layout.addWidget(choose)
         close = QPushButton("关闭（保留原始本地模型文件）", self)
         close.clicked.connect(self.close)
         layout.addWidget(close)
+
+    def _choose_another_model(self):
+        selected, _ = QFileDialog.getOpenFileName(
+            self, "选择另一个已合法取得的 Live2D 模型",
+            str(Path(self.model_info["model_json"]).parent),
+            "Live2D Cubism (*.model3.json)")
+        if not selected or selected == self.model_info["model_json"]:
+            return
+        try:
+            replacement = DoroLive2DPreviewDialog(selected, self.parentWidget())
+        except (ValueError, OSError, TypeError, KeyError) as exc:
+            QMessageBox.warning(self, "模型校验失败", str(exc)[:450])
+            return
+        QSettings("DyberPet", "DyberPet").setValue(_SETTINGS_KEY, selected)
+        self.canvas.stop()
+        self.hide()
+        replacement.exec()
+        self.close()
+
+    def _on_model_failed(self, message):
+        self.status.setText("Doro Live2D 模型加载失败：" + message)
+        QMessageBox.warning(self, "Doro Live2D 加载失败",
+                            "本机原画未被修改。\n" + message)
+
+    def _on_model_ready(self):
+        self.status.setText("Doro 原始 Live2D 已载入。可预览源模型已有动作/表情；"
+                            "未提供的四足动作不会凭空生成。")
 
     def _expression_changed(self, *_):
         name = self.expressions.currentData()
