@@ -6,6 +6,7 @@ remain in the owner's original local folder; no PNG conversion or upload.
 from __future__ import annotations
 
 from pathlib import Path
+import time
 import zipfile
 
 from PySide6.QtCore import Qt, QSettings, QTimer, Signal, QStandardPaths, QUrl
@@ -20,6 +21,7 @@ from tools.doro_live2d_local import inspect_local_live2d
 from tools.doro_live2d_interaction import click_expression_for_area, is_same_source_area_press
 from tools.doro_personal_setup import find_doro_archives_in_directories, setup_personal_doro_zip
 from tools.doro_window_placement import place_doro_window
+from tools.doro_native_gait import STEP_ID, source_step_gait
 
 _SETTINGS_KEY = "character/doro_live2d_model3"
 _AUTOSTART_KEY = "character/doro_live2d_auto_start"
@@ -103,7 +105,12 @@ class _DoroGLView(QOpenGLWidget):
         if self.model:
             self.live2d.clearBuffer()
             self.model.Update()
+            self._after_native_update()
             self.model.Draw()
+
+    def _after_native_update(self):
+        """Hook called after Cubism Update and before Draw; no native mutations by default."""
+        return
 
     def mouseMoveEvent(self, event):
         if self.model:
@@ -178,6 +185,9 @@ class DoroDesktopWindow(_DoroGLView):
         self._pressed_model = False
         self._legacy_hidden_by_doro = False
         self._model_loaded = False
+        self._gait = None
+        self._walk_x = 0.0
+        self._last_gait_tick = 0.0
         self.loadSucceeded.connect(self._on_model_ready)
         self.loadFailed.connect(self._on_load_failed)
         self._restore_window_geometry()
@@ -212,11 +222,59 @@ class DoroDesktopWindow(_DoroGLView):
         # Hide the original only AFTER Cubism loaded; this also covers a
         # manually launched Doro when 'start with Doro' is not enabled.
         self._model_loaded = True
+        try:
+            self._gait = source_step_gait(self.model)
+        except (AttributeError, RuntimeError, TypeError):
+            self._gait = None
+        self._walk_x = float(self.x())
+        self._last_gait_tick = time.monotonic()
         app = QApplication.instance()
         if (app and hasattr(app, "p") and app.p.isVisible()
                 and not self._legacy_hidden_by_doro):
             app.p.hide()
             self._legacy_hidden_by_doro = True
+
+    def start_walk(self, direction):
+        """Walk with the original Cubism ParamStep rig only, never fake motion."""
+        if not self._model_loaded or self._gait is None:
+            return False
+        self._walk_x = float(self.x())
+        self._last_gait_tick = time.monotonic()
+        return self._gait.start(direction)
+
+    def stop_walk(self):
+        if self._gait is not None:
+            self._gait.stop()
+
+    def _after_native_update(self):
+        # The original renderer updates deformation in Draw(). Apply Step
+        # after Update() so source motions do not overwrite our gait value.
+        if self.model is not None and self._gait is not None:
+            self.model.SetParamById(STEP_ID, self._gait.value)
+
+    def _tick(self):
+        if self._gait is not None and self._gait.active and self.model:
+            now = time.monotonic()
+            dt = min(0.1, max(0.0, now - self._last_gait_tick))
+            self._last_gait_tick = now
+            screen = self._available_screens()
+            center_x = self.x() + self.width() // 2
+            center_y = self.y() + self.height() // 2
+            active_screen = next((
+                r for r in screen
+                if r[0] <= center_x < r[0] + r[2]
+                and r[1] <= center_y < r[1] + r[3]
+            ), screen[0] if screen else None)
+            if active_screen is None:
+                self.stop_walk()
+            else:
+                left = active_screen[0]
+                right = active_screen[0] + active_screen[2] - self.width()
+                self._walk_x = self._gait.tick(dt, self._walk_x, left, right)
+                new_x = round(self._walk_x)
+                if new_x != self.x():
+                    self.move(new_x, self.y())
+        super()._tick()
 
     def _on_load_failed(self, message):
         self.close()
@@ -226,6 +284,7 @@ class DoroDesktopWindow(_DoroGLView):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
+            self.stop_walk()
             self._press_global = event.globalPosition().toPoint()
             self._window_origin = self.pos()
             self._moved = False
@@ -282,11 +341,20 @@ class DoroDesktopWindow(_DoroGLView):
                 action.triggered.connect(
                     lambda _checked=False, g=group, i=idx: self.motion(g, i))
         menu.addSeparator()
+        if self._gait is not None and self._model_loaded:
+            menu.addAction("向左走 3 秒 · 模型原生 Step", lambda: self.start_walk(-1))
+            menu.addAction("向右走 3 秒 · 模型原生 Step", lambda: self.start_walk(1))
+            menu.addAction("停止行走 · 恢复待机", self.stop_walk)
+        else:
+            action = menu.addAction("当前模型无可用 ParamStep，不能播放步态")
+            action.setEnabled(False)
+        menu.addSeparator()
         menu.addAction("移回主显示器（恢复位置）", self._recover_screen_position)
         menu.addAction("关闭 Doro · 恢复原桌宠", self.close)
         menu.exec(position)
 
     def closeEvent(self, event):
+        self.stop_walk()
         if self._model_loaded:
             QSettings("DyberPet", "DyberPet").setValue(
                 _WINDOW_GEOMETRY_KEY,
