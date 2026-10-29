@@ -81,6 +81,30 @@ def inspect_local_live2d(model_json):
                 assets.append(row["Sound"])
     if len(assets) > MAX_RESOURCES or len(set(assets)) != len(assets):
         raise ValueError("Excess or repeated references in model manifest")
+    # The actual Dororong source used by MelanTech records its Idle.motion3
+    # beside Doro.model3.json in a VTube Studio sidecar, not under Motions.
+    # Only accept a same-directory sidecar pointing back to THIS model file.
+    extra_motions = {}
+    vtube = root / (model.name.removesuffix(".model3.json") + ".vtube.json")
+    if vtube.exists():
+        if vtube.is_symlink() or not vtube.is_file() or vtube.stat().st_size > MAX_JSON_BYTES:
+            raise ValueError("Invalid local VTube Studio idle metadata")
+        vt = json.loads(vtube.read_text(encoding="utf-8"))
+        if not isinstance(vt, dict) or not isinstance(vt.get("FileReferences"), dict):
+            raise ValueError("Invalid local VTube Studio metadata")
+        vr = vt["FileReferences"]
+        if vr.get("Model") != model.name:
+            raise ValueError("VTube Studio metadata refers to a different model")
+        idle = vr.get("IdleAnimation")
+        if idle:
+            if not isinstance(idle, str) or not idle.endswith(".motion3.json"):
+                raise ValueError("Invalid VTube Studio idle motion")
+            _resource(root, idle)
+            if "OwnerIdle" in motion_groups:
+                raise ValueError("Reserved owner idle group already declared")
+            extra_motions["OwnerIdle"] = [str((root / idle).resolve())]
+            motion_groups["OwnerIdle"] = 1
+            assets.append(idle)
     for item in assets:
         _resource(root, item)
     return {
@@ -89,6 +113,7 @@ def inspect_local_live2d(model_json):
         "resource_files_checked": len(assets),
         "expressions": expression_ids,
         "motion_groups": motion_groups,
+        "extra_motions": extra_motions,
         "is_user_approved_doro_likeness": False,
         "independent_orthographic_threeview_complete": False,
         "redistribution_rights_verified": False,
