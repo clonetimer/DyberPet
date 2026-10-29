@@ -594,6 +594,11 @@ if __name__ == '__main__':
     app.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
     if _FIRST_RUN:
         QTimer.singleShot(400, app.show_first_run_guide)
+    else:
+        # R56: resume user's own Doro model as preferred desktop pet only
+        # when explicitly enabled. Missing asset leaves old pet unchanged.
+        from DyberPet.DyberSettings.doro_live2d_dialog import launch_personal_doro_at_startup
+        QTimer.singleShot(700, launch_personal_doro_at_startup)
 
     sys.exit(app.exec())
 

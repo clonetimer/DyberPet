@@ -10,7 +10,7 @@ import unittest
 import zipfile
 
 from tools.doro_personal_setup import (
-    find_doro_archives, setup_personal_doro_zip,
+    find_doro_archives, find_doro_archives_in_directories, setup_personal_doro_zip,
 )
 
 
@@ -80,6 +80,22 @@ class PersonalDoroSetupTests(unittest.TestCase):
         (self.base / "DoroOther.zip").write_bytes(self.zip.read_bytes())
         self.assertEqual(find_doro_archives(self.downloads), [self.zip])
 
+    def test_finds_redirected_downloads_and_deduplicates_known_folder(self):
+        moved = self.base / "OneDrive" / "Downloads"
+        moved.mkdir(parents=True)
+        source = moved / self.zip.name
+        source.write_bytes(self.zip.read_bytes())
+        legacy = find_doro_archives(self.downloads)
+        combined = find_doro_archives_in_directories(
+            [moved, self.downloads, moved, self.base / "not-exist"])
+        self.assertEqual(set(combined), set(legacy + [source]))
+        self.assertEqual(len(combined), 2)
+
+    def test_both_downloads_paths_empty_returns_empty(self):
+        result = find_doro_archives_in_directories(
+            [self.base / "not-exist", None, "", self.base / "also-missing"])
+        self.assertEqual(result, [])
+
     def test_reject_traversal_and_preserve_private_folder(self):
         self.files["OriginalDoro/Doro/../../../escape.png"] = b"BAD"
         self.make_archive()
@@ -132,11 +148,55 @@ class PersonalDoroSetupTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Cubism"):
             setup_personal_doro_zip(self.zip, self.private)
 
+    def test_auto_start_is_explicit_only_and_preserves_old_pet_on_missing_model(self):
+        from unittest.mock import patch
+        import DyberPet.DyberSettings.doro_live2d_dialog as dialog
+
+        class FakeSettings:
+            def __init__(self):
+                self.values = {}
+            def value(self, key, default=None, type=None):
+                return self.values.get(key, default)
+            def setValue(self, key, value):
+                self.values[key] = value
+
+        cfg = FakeSettings()
+        with (patch.object(dialog, "QSettings", return_value=cfg),
+              patch.object(dialog, "_resolve_installed_doro") as resolver,
+              patch.object(dialog, "open_doro_desktop") as opener,
+              patch.object(dialog, "inspect_local_live2d") as inspector):
+            self.assertFalse(dialog.launch_personal_doro_at_startup())
+            resolver.assert_not_called()
+            opener.assert_not_called()
+            cfg.values[dialog._AUTOSTART_KEY] = True
+            resolver.return_value = ""
+            self.assertFalse(dialog.launch_personal_doro_at_startup())
+            opener.assert_not_called()
+            resolver.return_value = "Doro.model3.json"
+            inspector.return_value = {"model_json": "Doro.model3.json"}
+            self.assertTrue(dialog.launch_personal_doro_at_startup())
+            opener.assert_called_once_with({"model_json": "Doro.model3.json"})
+            self.assertEqual(cfg.values[dialog._SETTINGS_KEY], "Doro.model3.json")
+
+    def test_gui_has_visible_autostart_preference_and_main_boot_hook(self):
+        dialog = (Path(__file__).resolve().parents[1]
+                  / "DyberPet" / "DyberSettings" / "doro_live2d_dialog.py"
+                  ).read_text(encoding="utf-8")
+        run = (Path(__file__).resolve().parents[1] /
+               "run_DyberPet.py").read_text(encoding="utf-8")
+        self.assertIn("self.start_with_doro = QCheckBox(", dialog)
+        self.assertIn("character/doro_live2d_auto_start", dialog)
+        self.assertIn("app.p.hide()", dialog)
+        self.assertIn("app.p.show()", dialog)
+        self.assertIn("QTimer.singleShot(700, launch_personal_doro_at_startup)", run)
+        self.assertIn("if _FIRST_RUN:", run)
+
     def test_gui_official_creator_link_and_downloads_autodetect_are_wired(self):
         source = (Path(__file__).resolve().parents[1] / "DyberPet" /
                   "DyberSettings" / "doro_live2d_dialog.py").read_text("utf-8")
         self.assertIn("_select_local_doro_model", source)
-        self.assertIn("find_doro_archives(Path.home() / \"Downloads\")", source)
+        self.assertIn("_find_personal_doro_downloads()", source)
+        self.assertIn("QStandardPaths.StandardLocation.DownloadLocation", source)
         self.assertIn("setup_personal_doro_zip", source)
         self.assertIn("https://booth.pm/zh-cn/items/5867617", source)
         self.assertIn("QStandardPaths.StandardLocation.AppLocalDataLocation", source)

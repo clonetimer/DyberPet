@@ -59,6 +59,22 @@ def find_doro_archives(downloads):
     return sorted(found, key=lambda p: p.stat().st_mtime, reverse=True)
 
 
+def find_doro_archives_in_directories(directories):
+    """Merge likely Windows Downloads locations without searching other files."""
+    ordered = []
+    known = set()
+    for folder in directories:
+        if not folder:
+            continue
+        path = Path(folder).expanduser()
+        canonical = str(path).casefold()
+        if canonical in known:
+            continue
+        known.add(canonical)
+        ordered.extend(find_doro_archives(path))
+    return sorted(set(ordered), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
 def _candidate_manifest(zf):
     infos = zf.infolist()
     if len(infos) > MAX_MEMBERS:
