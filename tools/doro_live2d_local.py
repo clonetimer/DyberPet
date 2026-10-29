@@ -131,7 +131,7 @@ def inspect_local_live2d(model_json):
             # A referenced VTubeStudio shortcut can be optional/uninstalled.
             # Validate the path *even when absent* before checking existence.
             rel = PurePosixPath(file)
-            if (rel.is_absolute() or ":" in file or "\\\\" in file
+            if (rel.is_absolute() or ":" in file or "\\" in file
                     or "\x00" in file or len(rel.parts) != 1
                     or file in (".", "..")):
                 raise ValueError("Unsafe VTube Studio expression shortcut")
