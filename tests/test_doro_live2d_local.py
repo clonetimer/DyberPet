@@ -98,6 +98,20 @@ class DoroLocalModelTests(unittest.TestCase):
         self.assertIn("from .doro_live2d_dialog import open_doro_live2d", source)
         self.assertIn("open_doro_live2d(self)", source)
 
+    def test_desktop_pet_is_a_real_window_not_a_thumbnail(self):
+        import ast
+        module = (Path(__file__).resolve().parents[1]
+                  / "DyberPet" / "DyberSettings" / "doro_live2d_dialog.py")
+        tree = ast.parse(module.read_text(encoding="utf-8"))
+        cls = next(x for x in tree.body if isinstance(x, ast.ClassDef)
+                   and x.name == "DoroDesktopWindow")
+        methods = {n.name for n in cls.body if isinstance(n, ast.FunctionDef)}
+        self.assertTrue({"mouseMoveEvent", "mouseReleaseEvent",
+                         "wheelEvent", "_show_actions", "closeEvent"} <= methods)
+        self.assertIn("WindowStaysOnTopHint", module.read_text(encoding="utf-8"))
+        self.assertIn("open_doro_desktop(self.model_info)",
+                      module.read_text(encoding="utf-8"))
+
     def test_qt_preview_module_compiles_without_optional_engine_import(self):
         import ast
         file = (Path(__file__).resolve().parents[1]
