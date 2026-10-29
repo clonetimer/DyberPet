@@ -31,7 +31,7 @@ class _DoroGLView(QOpenGLWidget):
         self.setMinimumSize(360, 370)
         self.setMouseTracking(True)
         self.clock = QTimer(self)
-        self.clock.timeout.connect(self.update)
+        self.clock.timeout.connect(self._tick)
 
     def initializeGL(self):
         try:
@@ -45,11 +45,22 @@ class _DoroGLView(QOpenGLWidget):
             live2d.glInit()
             self.model = live2d.Model()
             self.model.LoadModelJson(self.model_info["model_json"])
+            for group, paths in self.model_info.get("extra_motions", {}).items():
+                for path in paths:
+                    self.model.LoadExtraMotion(group, path)
             self.model.Resize(max(1, self.width()), max(1, self.height()))
+            if "OwnerIdle" in self.model_info.get("extra_motions", {}):
+                self.model.StartMotion("OwnerIdle", 0, 1)
             self.clock.start(33)
         except (ImportError, OSError, RuntimeError, ValueError) as exc:
             self.error = str(exc)[:300]
             self.clock.stop()
+
+    def _tick(self):
+        if self.model and "OwnerIdle" in self.model_info.get("extra_motions", {}):
+            if self.model.IsMotionFinished():
+                self.model.StartMotion("OwnerIdle", 0, 1)
+        self.update()
 
     def resizeGL(self, width, height):
         if self.model:
