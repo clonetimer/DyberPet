@@ -50,6 +50,8 @@ class _DoroGLView(QOpenGLWidget):
             for group, paths in self.model_info.get("extra_motions", {}).items():
                 for path in paths:
                     self.model.LoadExtraMotion(group, path)
+                if self.model.GetMotionGroups().get(group, 0) < len(paths):
+                    raise RuntimeError("作者原生待机动作文件未实际加载：" + group)
             self.model.Resize(max(1, self.width()), max(1, self.height()))
             if "OwnerIdle" in self.model_info.get("extra_motions", {}):
                 self.model.StartMotion("OwnerIdle", 0, 1)
@@ -133,9 +135,10 @@ class DoroDesktopWindow(_DoroGLView):
         self.loadFailed.connect(self._on_load_failed)
 
     def _on_load_failed(self, message):
-        QMessageBox.warning(None, "Doro 原生模型启动失败",
-                            "本机 Live2D 模型未能加载。源文件未更改。\n" + message)
         self.close()
+        QTimer.singleShot(0, lambda: QMessageBox.warning(
+            None, "Doro 原生模型启动失败",
+            "本机 Live2D 模型未能加载。源文件未更改。\n" + message))
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -279,8 +282,9 @@ class DoroLive2DPreviewDialog(QDialog):
 
     def _on_model_failed(self, message):
         self.status.setText("Doro Live2D 模型加载失败：" + message)
-        QMessageBox.warning(self, "Doro Live2D 加载失败",
-                            "本机原画未被修改。\n" + message)
+        QTimer.singleShot(0, lambda: QMessageBox.warning(
+            self, "Doro Live2D 加载失败",
+            "本机原画未被修改。\n" + message))
 
     def _on_model_ready(self):
         self.status.setText("Doro 原始 Live2D 已载入。可预览源模型已有动作/表情；"
