@@ -456,6 +456,7 @@ class CharInterface(ScrollArea):
             name=("咕嘎 Guga" if entry["key"]=="guga" else "Doro 四足宠物")
             label=f"{name} · 原创演示 {demos} / 个人来源导入 {actual}"
             names[label]=entry
+        doro_live_choice="【Doro 专项】用已取得的四足 Live2D 原模型预览（不下载、不复制）"
         install_actions={
             "【联网安装】咕嘎作者公开图集（个人本地使用）":"guga",
             "【联网安装】Doro 二创作者图集（CC BY-NC，本机使用）":"doro",
@@ -469,8 +470,12 @@ class CharInterface(ScrollArea):
             chosen,accepted=QInputDialog.getItem(
                 self,self.tr("咕嘎 / Doro 独立角色库"),
                 self.tr("原创演示不是 CIRCUS/legeling 作者的原画或原声。"),
-                list(install_actions)+list(names),0,False)
+                [doro_live_choice]+list(install_actions)+list(names),0,False)
             if not accepted:
+                return
+            if chosen==doro_live_choice:
+                from .doro_live2d_dialog import open_doro_live2d
+                open_doro_live2d(self)
                 return
             if chosen in install_actions:
                 self._installCreatorMascot(install_actions[chosen])
@@ -479,6 +484,10 @@ class CharInterface(ScrollArea):
                 return
             entry=names[chosen]
         roles=entry["imported_creator_art"]+entry["original_demos"]
+        if not roles and entry["key"]=="doro":
+            from .doro_live2d_dialog import open_doro_live2d
+            open_doro_live2d(self)
+            return
         if not roles:
             self.__showMessageBox(self.tr("尚无角色动画"),
                                   self.tr("请通过「添加角色」导入本地 Codex/PNG 素材。"))
@@ -511,13 +520,19 @@ class CharInterface(ScrollArea):
             "✓ 使用这个角色作为桌宠",
             "↗ 查看本地素材目录",
         ]
+        if entry["key"]=="doro":
+            operations.insert(0,doro_live_choice)
         operation,ok=QInputDialog.getItem(
             self,self.tr("咕嘎 / Doro · 角色操作"),
             self.tr("请选择要进行的操作，预览不修改角色文件："),
             operations,0,False)
         if not ok:
             return
-        if operation==operations[0]:
+        if operation==doro_live_choice:
+            from .doro_live2d_dialog import open_doro_live2d
+            open_doro_live2d(self)
+            return
+        if operation=="▶ 在界面中预览动画（可选择动作）":
             from .mascot_preview_dialog import MascotActionPreview
             try:
                 viewer=MascotActionPreview(
@@ -527,13 +542,13 @@ class CharInterface(ScrollArea):
                 self.__showSystemNote(self.tr("预览失败：")+str(exc),2)
                 return
             viewer.exec()
-        elif operation==operations[1]:
+        elif operation=="✓ 使用这个角色作为桌宠":
             if name not in settings.pets:
                 self.__showSystemNote(
                     self.tr("角色存在于磁盘但尚未被当前桌宠会话加载，请重启 DyberPet。"),2)
                 return
             self.__onLaunchClicked(name)
-        elif operation==operations[2]:
+        elif operation=="↗ 查看本地素材目录":
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder.resolve())))
 
     def _installCreatorMascot(self, kind):
