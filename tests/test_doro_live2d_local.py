@@ -174,6 +174,8 @@ class DoroLocalModelTests(unittest.TestCase):
                 self.expressions = []
             def IsAreaHit(self, area, x, y):
                 return area == "HitAreaFace" and 10 <= x <= 30 and 10 <= y <= 30
+            def HitDrawable(self, x, y, topOnly=False):
+                return ["Body"] if 40 <= x <= 80 and 40 <= y <= 80 else []
             def SetExpression(self, name):
                 self.expressions.append(name)
             def Drag(self, x, y):
@@ -206,6 +208,16 @@ class DoroLocalModelTests(unittest.TestCase):
             window.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, 15, 15,
                                          Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton))
             window.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, 150, 150,
+                                           Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton))
+            self.assertEqual(engine.expressions, ["Amaze"])
+            # Real visible non-face body is draggable but not a 'pet' hit.
+            window.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, 50, 50,
+                                         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton))
+            self.assertTrue(window._pressed_model)
+            window.mouseMoveEvent(mouse(QEvent.Type.MouseMove, 80, 80,
+                                        Qt.MouseButton.NoButton, Qt.MouseButton.LeftButton))
+            self.assertTrue(window._moved)
+            window.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, 80, 80,
                                            Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton))
             self.assertEqual(engine.expressions, ["Amaze"])
         finally:
