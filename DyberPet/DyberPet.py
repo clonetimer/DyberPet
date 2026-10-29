@@ -823,6 +823,19 @@ class PetWidget(QWidget):
         if self.select_acts:
             self.act_menu.addActions(self.select_acts)
 
+        # These are the artist's *real* decoded frames, but not necessarily
+        # included in random_act. Let the owner play them on the desktop pet
+        # instead of requiring another asset installation.
+        from tools.native_gesture_catalog import native_gesture_catalog
+        self.native_gesture_names = native_gesture_catalog(self.pet_conf)
+        if self.native_gesture_names:
+            self.native_gesture_action = Action(
+                self.tr("原画专属动作…"), self.act_menu)
+            self.native_gesture_action.triggered.connect(
+                self._show_native_gesture_picker)
+            self.act_menu.addSeparator()
+            self.act_menu.addAction(self.native_gesture_action)
+
         #menu.addMenu(self.act_menu)
 
 
@@ -2140,6 +2153,28 @@ class PetWidget(QWidget):
 
         return new_x, new_y
 
+
+    def _show_native_gesture_picker(self):
+        """Play original unused role action immediately on the desktop pet."""
+        from tools.native_gesture_catalog import native_gesture_catalog
+        available = native_gesture_catalog(self.pet_conf)
+        if not available or settings.draging or self.is_follow_mouse:
+            return
+        choices = {
+            f"{name} · {info['frames']} 帧 × {info['repeats']} 次"
+            f" · {info['duration_seconds']} 秒": name
+            for name, info in available.items()
+        }
+        selected, accepted = QInputDialog.getItem(
+            self, self.tr("角色专属原画动作"),
+            self.tr("选择已内置的原作者动作；播放一次后返回日常桌宠动画。"),
+            list(choices), 0, False)
+        if not accepted or selected not in choices:
+            return
+        self.workers['Animation'].pause()
+        if self.workers['Interaction'].start_interact(
+                'native_action', choices[selected]) is False:
+            self.workers['Animation'].resume()
 
     def _show_act(self, act_name):
         self.workers['Animation'].pause()
