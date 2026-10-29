@@ -22,6 +22,7 @@ from tools.doro_live2d_interaction import click_expression_for_area, is_same_sou
 from tools.doro_personal_setup import find_doro_archives_in_directories, setup_personal_doro_zip
 from tools.doro_window_placement import place_doro_window
 from tools.doro_native_gait import STEP_ID, source_step_gait
+from tools.doro_touch_drop import DoroTouchDrop, read_source_ranges
 
 _SETTINGS_KEY = "character/doro_live2d_model3"
 _AUTOSTART_KEY = "character/doro_live2d_auto_start"
@@ -143,10 +144,10 @@ class _DoroGLView(QOpenGLWidget):
         except (ValueError, RuntimeError, TypeError):
             return False
 
-    def express(self, name):
+    def express(self, name, fadeout_ms=-1.0):
         if not self.model or name not in self.model_info["expressions"]:
             return False
-        self.model.SetExpression(name)
+        self.model.SetExpression(name, fadeout_ms)
         return True
 
     def motion(self, group, index):
@@ -186,6 +187,8 @@ class DoroDesktopWindow(_DoroGLView):
         self._legacy_hidden_by_doro = False
         self._model_loaded = False
         self._gait = None
+        self._touch_drop = DoroTouchDrop()
+        self._last_action_tick = 0.0
         self._walk_x = 0.0
         self._last_gait_tick = 0.0
         self.loadSucceeded.connect(self._on_model_ready)
@@ -226,8 +229,13 @@ class DoroDesktopWindow(_DoroGLView):
             self._gait = source_step_gait(self.model)
         except (AttributeError, RuntimeError, TypeError):
             self._gait = None
+        try:
+            self._touch_drop = DoroTouchDrop(read_source_ranges(self.model))
+        except (AttributeError, RuntimeError, TypeError, ValueError):
+            self._touch_drop = DoroTouchDrop()
         self._walk_x = float(self.x())
         self._last_gait_tick = time.monotonic()
+        self._last_action_tick = self._last_gait_tick
         app = QApplication.instance()
         if (app and hasattr(app, "p") and app.p.isVisible()
                 and not self._legacy_hidden_by_doro):
@@ -238,6 +246,7 @@ class DoroDesktopWindow(_DoroGLView):
         """Walk with the original Cubism ParamStep rig only, never fake motion."""
         if not self._model_loaded or self._gait is None:
             return False
+        self._touch_drop.cancel()
         self._walk_x = float(self.x())
         self._last_gait_tick = time.monotonic()
         return self._gait.start(direction)
@@ -246,13 +255,61 @@ class DoroDesktopWindow(_DoroGLView):
         if self._gait is not None:
             self._gait.stop()
 
+    def start_pat(self):
+        if not self._model_loaded or not self.model:
+            return False
+        self.stop_walk()
+        if "Amaze" in self.model_info.get("expressions", []):
+            self.express("Amaze", fadeout_ms=700)
+        self._last_action_tick = time.monotonic()
+        return self._touch_drop.pat()
+
+    def start_drop(self, from_drag=False):
+        """Physical desktop fall; optional native rig bounce on landing."""
+        if not self._model_loaded or not self.model:
+            return False
+        self.stop_walk()
+        screens = self._available_screens()
+        cy = self.y() + self.height() // 2
+        cx = self.x() + self.width() // 2
+        screen = next((
+            r for r in screens
+            if r[0] <= cx < r[0] + r[2]
+            and r[1] <= cy < r[1] + r[3]
+        ), screens[0] if screens else None)
+        if screen is None:
+            return False
+        floor = screen[1] + screen[3] - self.height()
+        if floor < screen[1]:
+            return False
+        start = min(self.y(), floor)
+        # The explicit menu action also works for a pet already on the floor.
+        # A drag release never lifts a pet again on its own.
+        if not from_drag and start >= floor - 1:
+            start = max(screen[1], floor - 85)
+            self.move(self.x(), round(start))
+        self._last_action_tick = time.monotonic()
+        return self._touch_drop.drop(start, floor)
+
+
     def _after_native_update(self):
         # The original renderer updates deformation in Draw(). Apply Step
         # after Update() so source motions do not overwrite our gait value.
         if self.model is not None and self._gait is not None:
             self.model.SetParamById(STEP_ID, self._gait.value)
+        if self.model is not None:
+            for key, value in self._touch_drop.overrides.items():
+                self.model.SetParamById(key, value)
 
     def _tick(self):
+        now = time.monotonic()
+        dt_action = min(0.08, max(0.0, now - self._last_action_tick))
+        self._last_action_tick = now
+        if self.model and self._touch_drop.active:
+            y = self._touch_drop.tick(dt_action)
+            if self._touch_drop.phase in ("fall", "land"):
+                if round(y) != self.y():
+                    self.move(self.x(), round(y))
         if self._gait is not None and self._gait.active and self.model:
             now = time.monotonic()
             dt = min(0.1, max(0.0, now - self._last_gait_tick))
@@ -285,6 +342,7 @@ class DoroDesktopWindow(_DoroGLView):
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self.stop_walk()
+            self._touch_drop.cancel()
             self._press_global = event.globalPosition().toPoint()
             self._window_origin = self.pos()
             self._moved = False
@@ -313,7 +371,12 @@ class DoroDesktopWindow(_DoroGLView):
                 name = click_expression_for_area(
                     self._press_area, self.model_info["expressions"])
                 if name:
-                    self.express(name)
+                    self.express(name, fadeout_ms=700)
+                if self._press_area == "HitAreaFace":
+                    self._touch_drop.pat()
+            elif self._moved and self._pressed_model and self.model:
+                # Releasing a dragged pet lets it drop to the active floor.
+                self.start_drop(from_drag=True)
             self._press_area = None
             self._pressed_model = False
             self._press_global = None
@@ -349,12 +412,16 @@ class DoroDesktopWindow(_DoroGLView):
             action = menu.addAction("当前模型无可用 ParamStep，不能播放步态")
             action.setEnabled(False)
         menu.addSeparator()
+        menu.addAction("摸摸头 · 原生角度反馈", self.start_pat)
+        menu.addAction("轻跃下落、落地恢复 · 原生弹性反馈", self.start_drop)
+        menu.addSeparator()
         menu.addAction("移回主显示器（恢复位置）", self._recover_screen_position)
         menu.addAction("关闭 Doro · 恢复原桌宠", self.close)
         menu.exec(position)
 
     def closeEvent(self, event):
         self.stop_walk()
+        self._touch_drop.cancel()
         if self._model_loaded:
             QSettings("DyberPet", "DyberPet").setValue(
                 _WINDOW_GEOMETRY_KEY,
