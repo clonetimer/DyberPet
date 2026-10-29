@@ -107,11 +107,27 @@ def inspect_local_live2d(model_json):
             assets.append(idle)
     for item in assets:
         _resource(root, item)
+    # Only report hit areas actually declared by the selected source model.
+    # In the verified Dororong version these are HitAreaFace and HitAreaLegBack.
+    raw_areas = data.get("HitAreas", [])
+    if not isinstance(raw_areas, list) or len(raw_areas) > 64:
+        raise ValueError("Invalid Cubism hit-area inventory")
+    hit_areas = {}
+    for row in raw_areas:
+        if not isinstance(row, dict):
+            raise ValueError("Invalid Cubism hit-area entry")
+        name, drawable = row.get("Name"), row.get("Id")
+        if (not isinstance(name, str) or not isinstance(drawable, str)
+                or not (1 <= len(name) <= 80) or not (1 <= len(drawable) <= 80)
+                or name in hit_areas):
+            raise ValueError("Invalid/duplicate Cubism hit-area name or id")
+        hit_areas[name] = drawable
     return {
         "model_json": str(model.resolve()),
         "model_type": "Cubism 3+",
         "resource_files_checked": len(assets),
         "expressions": expression_ids,
+        "hit_areas": hit_areas,
         "motion_groups": motion_groups,
         "extra_motions": extra_motions,
         "is_user_approved_doro_likeness": False,
