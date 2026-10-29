@@ -240,11 +240,32 @@ class DoroDesktopWindow(_DoroGLView):
         # Only create Doro's progress after the actual Cubism model loads.
         # Uses the same PetData writer, never changes current sprite role.
         self._doro_bridge().activate_doro_profile()
+        self._connect_host_task_signals()
         app = QApplication.instance()
         if (app and hasattr(app, "p") and app.p.isVisible()
                 and not self._legacy_hidden_by_doro):
             app.p.hide()
             self._legacy_hidden_by_doro = True
+
+    def _connect_host_task_signals(self):
+        """Observe real completed work; no synthetic timer or parallel task engine."""
+        self._host_task_links = []
+        app = QApplication.instance()
+        pet = getattr(app, "p", None)
+        if pet is None:
+            return
+        for name, event in (("taskUI_task_end", "task_finished"),
+                            ("single_pomo_done", "pomodoro_finished")):
+            signal = getattr(pet, name, None)
+            if not callable(getattr(signal, "connect", None)):
+                continue
+            callback = lambda e=event: self._on_host_task_completed(e)
+            signal.connect(callback)
+            self._host_task_links.append((signal, callback))
+
+    def _on_host_task_completed(self, event):
+        if self._model_loaded and self.isVisible():
+            self._doro_bridge().record_completed_task(event)
 
     def _doro_bridge(self):
         return DoroHostBridge(QApplication.instance())
@@ -465,6 +486,17 @@ class DoroDesktopWindow(_DoroGLView):
                      interactions["walk_left"] + interactions["walk_right"],
                      interactions["land"]))
                 counts.setEnabled(False)
+            doro_status = context.get("doro_status")
+            if doro_status is not None:
+                state = menu.addAction(
+                    "Doro 自身 · 活力 %d / 亲密 %d" %
+                    (doro_status["energy"], doro_status["bond"]))
+                state.setEnabled(False)
+                finished = doro_status["tasks"]
+                task_row = menu.addAction(
+                    "Doro 完成任务 · 专注 %d / 番茄 %d" %
+                    (finished["task_finished"], finished["pomodoro_finished"]))
+                task_row.setEnabled(False)
             snapshot = host.current_host_status()
             if snapshot is not None:
                 status = menu.addAction(
@@ -480,6 +512,12 @@ class DoroDesktopWindow(_DoroGLView):
         menu.exec(position)
 
     def closeEvent(self, event):
+        for signal, callback in getattr(self, "_host_task_links", []):
+            try:
+                signal.disconnect(callback)
+            except (RuntimeError, TypeError):
+                pass
+        self._host_task_links = []
         self.stop_walk()
         self._touch_drop.cancel()
         if self._model_loaded:
