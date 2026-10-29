@@ -206,6 +206,8 @@ jobs:
           # Re-audit the FINAL stripped resource tree before ZIP upload.
           python tools/qchibi_threeview_audit.py --role-root $roleDir --out "dist/DyberPet/THREEVIEW_AUDIT.json" --fail-on-invalid
           if ($LASTEXITCODE -ne 0) { throw "Final downloadable character evidence audit failed" }
+          $evidence = Get-Content -LiteralPath "dist/DyberPet/THREEVIEW_AUDIT.json" -Raw | ConvertFrom-Json
+          if ($evidence.summary.excluded_generated_test_demos -ne 0) { throw "Final art ledger still counts throwaway demos" }
           $zipPath = "DyberPet-Windows-Personal-PR5.zip"
           Remove-Item -LiteralPath $zipPath -Force
           Compress-Archive -Path "dist/DyberPet/*" -DestinationPath $zipPath -CompressionLevel Optimal
