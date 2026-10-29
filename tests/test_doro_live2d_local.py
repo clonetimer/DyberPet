@@ -138,6 +138,62 @@ class DoroLocalModelTests(unittest.TestCase):
         self.assertIn("open_doro_desktop(self.model_info)",
                       module.read_text(encoding="utf-8"))
 
+    def test_duplicate_doro_launch_reuses_one_window_and_switch_closes_old(self):
+        from unittest.mock import patch
+        import DyberPet.DyberSettings.doro_live2d_dialog as viewer
+
+        original = list(viewer._ACTIVE_DORO_WINDOWS)
+
+        class FakeWindow:
+            def __init__(self, info):
+                self.model_info = info
+                self.visible = False
+                self.focused = 0
+
+            def isVisible(self):
+                return self.visible
+
+            def show(self):
+                self.visible = True
+
+            def close(self):
+                self.visible = False
+                if self in viewer._ACTIVE_DORO_WINDOWS:
+                    viewer._ACTIVE_DORO_WINDOWS.remove(self)
+
+            def raise_(self):
+                self.focused += 1
+
+            def activateWindow(self):
+                self.focused += 1
+
+        try:
+            viewer._ACTIVE_DORO_WINDOWS.clear()
+            with patch.object(viewer, "DoroDesktopWindow", FakeWindow):
+                first = viewer.open_doro_desktop({"model_json": "Doro1.model3.json"})
+                self.assertTrue(first.isVisible())
+                repeat = viewer.open_doro_desktop({"model_json": "Doro1.model3.json"})
+                self.assertIs(repeat, first)
+                self.assertEqual(len(viewer._ACTIVE_DORO_WINDOWS), 1)
+                self.assertEqual(first.focused, 2)
+                different = viewer.open_doro_desktop({"model_json": "Doro2.model3.json"})
+                self.assertIsNot(different, first)
+                self.assertFalse(first.isVisible())
+                self.assertTrue(different.isVisible())
+                self.assertEqual(len(viewer._ACTIVE_DORO_WINDOWS), 1)
+                different.close()
+                self.assertEqual(len(viewer._ACTIVE_DORO_WINDOWS), 0)
+        finally:
+            viewer._ACTIVE_DORO_WINDOWS[:] = original
+
+    def test_model_failure_shows_explicit_status_and_reselection_is_available(self):
+        source = (Path(__file__).resolve().parents[1]
+                  / "DyberPet" / "DyberSettings" / "doro_live2d_dialog.py").read_text("utf-8")
+        self.assertIn("loadFailed = Signal(str)", source)
+        self.assertIn("loadFailed.connect(self._on_model_failed)", source)
+        self.assertIn("更换本机 Live2D 模型文件", source)
+        self.assertIn("GetMotionGroups().get(group, 0)", source)
+
     def test_qt_preview_module_compiles_without_optional_engine_import(self):
         import ast
         file = (Path(__file__).resolve().parents[1]
