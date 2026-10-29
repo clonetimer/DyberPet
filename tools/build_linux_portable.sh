@@ -40,6 +40,7 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.install_artist_codex \
   --hidden-import tools.install_creator_mascots \
   --hidden-import tools.qchibi_native_threeview \
+  --hidden-import tools.native_sprite_canvas \
   --hidden-import tools.pet_pointer_gestures \
   --hidden-import tools.native_gesture_catalog \
   --hidden-import tools.qchibi_pose_geometry \
