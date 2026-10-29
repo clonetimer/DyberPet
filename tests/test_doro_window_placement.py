@@ -85,7 +85,9 @@ class DoroPlacementTests(unittest.TestCase):
                 first = viewer.DoroDesktopWindow(info)
                 # Showing before model init does not hide the user's old pet.
                 self.assertEqual(fake_pet.hides, 0)
-                first.show()
+                # We deliberately do not create a native GL context with the
+                # fake test model. Before the loadSucceeded event the old pet
+                # must remain visible, even though the Doro widget exists.
                 self.assertEqual(fake_pet.hides, 0)
                 # Engine-loaded notification, independent of auto-start flag.
                 first._on_model_ready()
