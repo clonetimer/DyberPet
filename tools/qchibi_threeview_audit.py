@@ -132,10 +132,7 @@ def audit_role_root(role_root):
             continue
         if folder.is_symlink():
             roles.append(audit_role(folder))
-        elif folder.is_dir() and (
-            (folder / "pet_conf.json").exists() or
-            (folder / "act_conf.json").exists()
-        ):
+        elif folder.is_dir() and (folder / "pet_conf.json").exists():
             roles.append(audit_role(folder))
         if len(roles) > MAX_ROLES:
             raise ValueError("Role directory exceeds bounded audit limit")
