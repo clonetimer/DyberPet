@@ -170,8 +170,18 @@ def main(argv=None):
         args.out.write_text(payload, encoding="utf-8")
     else:
         print(payload, end="")
-    return int(args.fail_on_invalid and
-               report["summary"]["invalid_or_suspicious_evidence"] > 0)
+    rejected = [role for role in report["roles"]
+                if role["status"] in ("invalid_role", "invalid_threeview_evidence",
+                                     "threeview_requires_source_correction")]
+    if args.fail_on_invalid and rejected:
+        for role in rejected[:12]:
+            print("BLOCKED_QCHIBI_ROLE=" +
+                  json.dumps({"role": role["role"], "status": role["status"],
+                              "issues": role["issues"]}, ensure_ascii=False))
+        if len(rejected) > 12:
+            print("BLOCKED_QCHIBI_REMAINING=" + str(len(rejected) - 12))
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
