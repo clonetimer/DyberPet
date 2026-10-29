@@ -24,6 +24,12 @@ if ($env:DYBERPET_QA_KEEP_ABSTRACT_ART -ne "1") {
   & $exe --personal-package-smoke
   if ($LASTEXITCODE -ne 0) { throw "Personal candidate art policy smoke failed" }
 }
+# Retain an honest inventory of ACTUAL bundled source images. Missing
+# independent views are recorded, not fabricated; malformed/mirrored sources
+# block packaging, while normal native-only characters remain playable.
+$threeviewReport = Join-Path $package "THREEVIEW_AUDIT.json"
+python tools/qchibi_threeview_audit.py --role-root (Join-Path $package "res/role") --out $threeviewReport --fail-on-invalid
+if ($LASTEXITCODE -ne 0) { throw "Packaged Q-chibi three-view evidence audit failed" }
 New-Item -ItemType Directory -Force -Path (Join-Path $package "data") | Out-Null
 Copy-Item -LiteralPath (Join-Path $root "docs/pet_assistant.md") -Destination (Join-Path $package "ASSISTANT_GUIDE.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/character_fidelity.md") -Destination (Join-Path $package "CHARACTER_FIDELITY.md")
