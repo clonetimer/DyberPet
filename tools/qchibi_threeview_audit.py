@@ -17,9 +17,11 @@ from PIL import Image, ImageOps
 try:
     from .qchibi_native_threeview import MANIFEST, VIEW_NAMES, _confirmed_threeview
     from .qchibi_pose_geometry import _visible
+    from .strip_generated_demo_art import inspect_generated_art
 except ImportError:
     from qchibi_native_threeview import MANIFEST, VIEW_NAMES, _confirmed_threeview
     from qchibi_pose_geometry import _visible
+    from strip_generated_demo_art import inspect_generated_art
 
 MAX_ROLES = 512
 
@@ -119,8 +121,15 @@ def audit_role_root(role_root):
     root = Path(role_root)
     if root.is_symlink() or not root.is_dir():
         raise ValueError("Role root must be a real installed directory")
+    # These intentionally generated placeholders are kept during CI's
+    # executable smoke and removed before user ZIP upload. They must never
+    # be counted as installed author-art characters in the evidence ledger.
+    demo_folders = inspect_generated_art(root)
+    demo_names = {folder.name for folder in demo_folders}
     roles = []
     for folder in sorted(root.iterdir(), key=lambda p: p.name.casefold()):
+        if folder.name in demo_names:
+            continue
         if folder.is_symlink():
             roles.append(audit_role(folder))
         elif folder.is_dir() and (
@@ -132,6 +141,7 @@ def audit_role_root(role_root):
             raise ValueError("Role directory exceeds bounded audit limit")
     counts = {
         "installed_role_folders": len(roles),
+        "excluded_generated_test_demos": len(demo_folders),
         "source_threeview_candidates": sum(
             x["source_threeview_complete"] for x in roles),
         "missing_source_threeviews": sum(
