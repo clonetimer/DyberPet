@@ -258,7 +258,7 @@ class DoroLocalModelTests(unittest.TestCase):
                 return area == "HitAreaFace" and 10 <= x <= 30 and 10 <= y <= 30
             def HitDrawable(self, x, y, topOnly=False):
                 return ["Body"] if 40 <= x <= 80 and 40 <= y <= 80 else []
-            def SetExpression(self, name):
+            def SetExpression(self, name, fadeoutMs=-1.0):
                 self.expressions.append(name)
             def Drag(self, x, y):
                 pass
