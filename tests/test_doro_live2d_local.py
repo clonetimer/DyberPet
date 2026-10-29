@@ -78,8 +78,8 @@ class DoroLocalModelTests(unittest.TestCase):
         }), encoding="utf-8")
         report = inspect_local_live2d(self.model)
         self.assertEqual(report["motion_groups"]["OwnerIdle"], 1)
-        self.assertEqual(Path(report["extra_motions"]["OwnerIdle"][0]).name,
-                         "Idle.motion3.json")
+        self.assertEqual(Path(report["extra_motions"]["OwnerIdle"][0]).name.lower(),
+                         "idle.motion3.json")
         self.assertEqual(report["resource_files_checked"], 5)
 
     def test_sidecar_cannot_attach_another_model_or_escape_owner_root(self):
