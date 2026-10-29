@@ -17,6 +17,7 @@ ACTION_EFFECTS = {
     "walk_right": (-1, 0), "drop": (0, 0), "land": (0, 0),
 }
 TASK_EFFECTS = {"task_finished": (4, 3), "pomodoro_finished": (2, 1)}
+TASK_COINS = {"task_finished": 5, "pomodoro_finished": 2}
 
 
 def _prepared(pet_data):
@@ -92,7 +93,13 @@ def record_doro_task(pet_data, event):
     value = record[TASK_KEY][event]
     if value >= _MAX_COUNTER:
         return False
+    coins = record.get("coins")
+    if type(coins) is not int or not 0 <= coins <= _MAX_COUNTER:
+        return False
+    if coins > _MAX_COUNTER - TASK_COINS[event]:
+        return False
     record[TASK_KEY][event] = value + 1
+    record["coins"] = coins + TASK_COINS[event]
     _modify(record, TASK_EFFECTS[event])
     _commit(pet_data, record)
     return True
@@ -106,5 +113,6 @@ def snapshot_doro_vitals(pet_data):
     return {
         "energy": record["HP"],
         "bond": record["FV"],
+        "coins": record.get("coins", 0),
         "tasks": deepcopy(record[TASK_KEY]),
     }

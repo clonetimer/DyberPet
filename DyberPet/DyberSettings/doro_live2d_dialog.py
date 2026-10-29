@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt, QSettings, QTimer, Signal, QStandardPaths, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
+    QInputDialog,
     QMenu, QMessageBox, QPushButton, QVBoxLayout,
 )
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
@@ -437,6 +438,47 @@ class DoroDesktopWindow(_DoroGLView):
         self.resize(width, height)
         event.accept()
 
+    def _buy_doro_food(self, name):
+        """One native shop purchase against Doro's own earned coins."""
+        if not self._model_loaded:
+            return False
+        ok = self._doro_bridge().buy_doro_food(name)
+        if not ok:
+            QMessageBox.information(
+                self, "Doro 食物购买", "余额不足、商品不可用或 Doro 的独立库存无法写入。")
+        return ok
+
+    def _feed_doro_food(self, name):
+        """Only consume food in Doro Live2D's inventory, never hidden sprite's."""
+        if not self._model_loaded:
+            return False
+        ok = self._doro_bridge().feed_doro(name)
+        if not ok:
+            QMessageBox.information(
+                self, "Doro 投喂", "Doro 没有这件食物，或该商品已经不可用。")
+        else:
+            if "Amaze" in self.model_info.get("expressions", []):
+                self.express("Amaze", fadeout_ms=700)
+        return ok
+
+    def _browse_doro_food(self):
+        catalog = self._doro_bridge().available_doro_food()
+        if not catalog:
+            return False
+        labels = [
+            "%s · %d 金币（活力 %+d / 亲密 %+d）" %
+            (food["name"], food["cost"], food["energy"], food["bond"])
+            for food in catalog
+        ]
+        choice, confirmed = QInputDialog.getItem(
+            self, "Doro 的食物商店", "选择已有物品目录中的食物", labels, 0, False)
+        if not confirmed:
+            return False
+        try:
+            return self._buy_doro_food(catalog[labels.index(choice)]["name"])
+        except ValueError:
+            return False
+
     def _show_actions(self, position):
         menu = QMenu(self)
         for name in self.model_info["expressions"]:
@@ -497,6 +539,35 @@ class DoroDesktopWindow(_DoroGLView):
                     "Doro 完成任务 · 专注 %d / 番茄 %d" %
                     (finished["task_finished"], finished["pomodoro_finished"]))
                 task_row.setEnabled(False)
+            backpack = context.get("doro_inventory")
+            if backpack is not None:
+                wallet = menu.addAction(
+                    "Doro 自有金币 · %d（只在完成任务后增加）" % backpack["coins"])
+                wallet.setEnabled(False)
+                purchase = menu.addMenu("Doro · 购买食物（使用自有金币）")
+                foods = host.available_doro_food()
+                for food in sorted(foods, key=lambda v: (v["cost"], v["name"]))[:8]:
+                    buy_action = purchase.addAction(
+                        "%s · %d 金币" % (food["name"], food["cost"]))
+                    buy_action.setEnabled(backpack["coins"] >= food["cost"])
+                    buy_action.triggered.connect(
+                        lambda _checked=False, n=food["name"]: self._buy_doro_food(n))
+                if len(foods) > 8:
+                    purchase.addAction("浏览全部已有食物…", self._browse_doro_food)
+                if not foods:
+                    action = purchase.addAction("当前没有可购买的真实消耗品")
+                    action.setEnabled(False)
+                feeding = menu.addMenu("Doro · 投喂（只消耗 Doro 库存）")
+                for food in backpack["food"]:
+                    eat = feeding.addAction(
+                        "%s × %d · 活力 %+d / 亲密 %+d" %
+                        (food["name"], food["quantity"],
+                         food["energy"], food["bond"]))
+                    eat.triggered.connect(
+                        lambda _checked=False, n=food["name"]: self._feed_doro_food(n))
+                if not backpack["food"]:
+                    empty = feeding.addAction("Doro 库存暂无食物，先通过任务赚金币购买")
+                    empty.setEnabled(False)
             snapshot = host.current_host_status()
             if snapshot is not None:
                 status = menu.addAction(

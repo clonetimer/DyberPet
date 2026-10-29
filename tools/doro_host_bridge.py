@@ -14,6 +14,10 @@ from tools.doro_vitals import (
     snapshot_doro_vitals,
 )
 
+from tools.doro_feeding import (
+    source_food_catalog, doro_inventory, buy_doro_food, feed_doro,
+)
+
 
 class DoroHostBridge:
     def __init__(self, app):
@@ -67,6 +71,27 @@ class DoroHostBridge:
     def record_completed_task(self, event):
         return record_doro_task(self._pet_data(), event)
 
+    def _items_data(self):
+        if self.pet is None:
+            return None
+        try:
+            import DyberPet.settings as settings
+            return getattr(settings, "items_data", None)
+        except (ImportError, AttributeError):
+            return None
+
+    def available_doro_food(self):
+        return source_food_catalog(self._items_data())
+
+    def doro_inventory(self):
+        return doro_inventory(self._pet_data(), self._items_data())
+
+    def buy_doro_food(self, name):
+        return buy_doro_food(self._pet_data(), self._items_data(), name)
+
+    def feed_doro(self, name):
+        return feed_doro(self._pet_data(), self._items_data(), name)
+
     def doro_display_context(self):
         source = self.current_host_status()
         return {
@@ -74,6 +99,7 @@ class DoroHostBridge:
             "data_owner": source["base_role"] if source else None,
             "interactions": doro_progress(self._pet_data()),
             "doro_status": snapshot_doro_vitals(self._pet_data()),
+            "doro_inventory": self.doro_inventory(),
         }
 
     def current_host_status(self):
