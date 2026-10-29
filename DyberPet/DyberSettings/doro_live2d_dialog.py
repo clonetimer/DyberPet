@@ -15,12 +15,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from tools.doro_live2d_local import inspect_local_live2d
+from tools.doro_live2d_interaction import click_expression_for_area, is_same_source_area_press
 
 _SETTINGS_KEY = "character/doro_live2d_model3"
 
 
 class _DoroGLView(QOpenGLWidget):
     _framework_ready = False
+    _backend_ready = False
     loadFailed = Signal(str)
     loadSucceeded = Signal()
 
@@ -44,7 +46,11 @@ class _DoroGLView(QOpenGLWidget):
             if not _DoroGLView._framework_ready:
                 live2d.init()
                 _DoroGLView._framework_ready = True
-            live2d.glInit()
+            # The native SDK backend is process-global; initializing once per
+            # QOpenGLWidget fails when preview and pet have separate contexts.
+            if not _DoroGLView._backend_ready:
+                live2d.glInit()
+                _DoroGLView._backend_ready = True
             self.model = live2d.Model()
             self.model.LoadModelJson(self.model_info["model_json"])
             for group, paths in self.model_info.get("extra_motions", {}).items():
@@ -94,6 +100,19 @@ class _DoroGLView(QOpenGLWidget):
             self.model.Drag(point.x(), point.y())
         super().mouseMoveEvent(event)
 
+    def _hit_area_at(self, position):
+        """Use author-declared areas; never guess geometry from window bounds."""
+        if not self.model:
+            return None
+        for name in self.model_info.get("hit_areas", {}):
+            try:
+                if self.model.IsAreaHit(name, float(position.x()), float(position.y())):
+                    return name
+            except (ValueError, RuntimeError, TypeError):
+                # No visible Cubism target means there is no hit/pet feedback.
+                return None
+        return None
+
     def express(self, name):
         if not self.model or name not in self.model_info["expressions"]:
             return False
@@ -132,6 +151,7 @@ class DoroDesktopWindow(_DoroGLView):
         self._press_global = None
         self._window_origin = None
         self._moved = False
+        self._press_area = None
         self.loadFailed.connect(self._on_load_failed)
 
     def _on_load_failed(self, message):
@@ -145,12 +165,14 @@ class DoroDesktopWindow(_DoroGLView):
             self._press_global = event.globalPosition().toPoint()
             self._window_origin = self.pos()
             self._moved = False
+            self._press_area = self._hit_area_at(event.position())
         elif event.button() == Qt.MouseButton.RightButton:
             self._show_actions(event.globalPosition().toPoint())
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if self._press_global is not None and event.buttons() & Qt.MouseButton.LeftButton:
+        if (self._press_global is not None and self._press_area is not None
+                and event.buttons() & Qt.MouseButton.LeftButton):
             offset = event.globalPosition().toPoint() - self._press_global
             if (self._moved or offset.manhattanLength() >=
                     max(6, QApplication.startDragDistance())):
@@ -160,10 +182,15 @@ class DoroDesktopWindow(_DoroGLView):
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton and self._press_global is not None:
-            if not self._moved and self.model:
-                # Only the original model's built-in expressions are used.
-                if self.model_info["expressions"]:
-                    self.model.SetRandomExpression()
+            if not self._moved and self.model and is_same_source_area_press(
+                    self._press_area, self._hit_area_at(event.position())):
+                # Real Doro face/leg hit -> original Cubism expression.
+                # Empty/transparent background never triggers petting.
+                name = click_expression_for_area(
+                    self._press_area, self.model_info["expressions"])
+                if name:
+                    self.express(name)
+            self._press_area = None
             self._press_global = None
             self._window_origin = None
             self._moved = False
@@ -193,6 +220,7 @@ class DoroDesktopWindow(_DoroGLView):
         menu.exec(position)
 
     def closeEvent(self, event):
+        self._press_area = None
         self.stop()
         if self in _ACTIVE_DORO_WINDOWS:
             _ACTIVE_DORO_WINDOWS.remove(self)
