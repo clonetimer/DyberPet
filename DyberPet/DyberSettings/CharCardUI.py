@@ -103,7 +103,7 @@ class CharInterface(ScrollArea):
         self.doroRoleLayout.setContentsMargins(0, 0, 0, 0)
         self.doroRoleLabel = QLabel("Doro · 原版 Live2D（主桌宠显示角色）", self)
         self.doroRoleSelect = PushButton("选择 Doro 作为桌宠", self, FIF.HEART)
-        self.doroRoleReturn = PushButton("切回普通桌宠", self, FIF.RETURN)
+        self.doroRoleReturn = PushButton("切回普通桌宠", self, FIF.HOME)
         self.doroRoleLayout.addWidget(self.doroRoleLabel)
         self.doroRoleLayout.addWidget(self.doroRoleSelect)
         self.doroRoleLayout.addWidget(self.doroRoleReturn)
