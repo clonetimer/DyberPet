@@ -95,6 +95,19 @@ class CharInterface(ScrollArea):
         self.mascotButton = PushButton(self.tr("咕嘎 / Doro"), self, FIF.HEART)
         self.mascotButton.setToolTip(
             self.tr("查看企鹅/四足演示角色以及个人导入的对应素材；不冒充作者原设美术"))
+        # One first-class Live2D visual role; leave the old PetData/
+        # scheduler and its existing sprite-character catalogue untouched.
+        self.doroRoleWidget = QWidget(self)
+        self.doroRoleWidget.setFixedWidth(sizeHintDyber[0]-165)
+        self.doroRoleLayout = QHBoxLayout(self.doroRoleWidget)
+        self.doroRoleLayout.setContentsMargins(0, 0, 0, 0)
+        self.doroRoleLabel = QLabel("Doro · 原版 Live2D（主桌宠显示角色）", self)
+        self.doroRoleSelect = PushButton("选择 Doro 作为桌宠", self, FIF.HEART)
+        self.doroRoleReturn = PushButton("切回普通桌宠", self, FIF.HOME)
+        self.doroRoleLayout.addWidget(self.doroRoleLabel)
+        self.doroRoleLayout.addWidget(self.doroRoleSelect)
+        self.doroRoleLayout.addWidget(self.doroRoleReturn)
+        self.doroRoleLayout.addStretch(1)
 
         # Button to show instructions on how to manually add chars
         #self.instructButton = TransparentPushButton(self.tr("Add Chars Manually"), self, FIF.QUESTION)
@@ -170,7 +183,7 @@ class CharInterface(ScrollArea):
 
     def __initWidget(self):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setViewportMargins(0, 120, 0, 20)
+        self.setViewportMargins(0, 178, 0, 20)
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
 
@@ -184,6 +197,7 @@ class CharInterface(ScrollArea):
     def __initLayout(self):
         self.titleWidget.move(50, 20)
         self.headerWidget.move(55, 75)
+        self.doroRoleWidget.move(55, 122)
  
         # add setting card group to layout
         self.expandLayout.setSpacing(28)
@@ -222,11 +236,36 @@ class CharInterface(ScrollArea):
         self._applyDemoRoleVisibility()
         self.artistSourceButton.clicked.connect(self._installArtistGenshin)
         self.mascotButton.clicked.connect(self._showMascotLibrary)
+        self.doroRoleSelect.clicked.connect(self._selectDoroAsPet)
+        self.doroRoleReturn.clicked.connect(self._returnToOrdinaryPet)
+        self._refreshDoroRoleLabel()
         self.panelHelp.clicked.connect(self.__onShowInstruction)
 
+    def _refreshDoroRoleLabel(self):
+        from .doro_live2d_dialog import doro_visual_role_selected
+        if doro_visual_role_selected():
+            self.doroRoleLabel.setText("Doro · 原版 Live2D（下次启动优先显示）")
+        else:
+            self.doroRoleLabel.setText("Doro · 原版 Live2D（可作为主桌宠显示角色）")
+
+    def _selectDoroAsPet(self):
+        from .doro_live2d_dialog import choose_doro_visual_role
+        window = choose_doro_visual_role(self)
+        if window is not None:
+            window.loadSucceeded.connect(self._refreshDoroRoleLabel)
+            window.loadFailed.connect(lambda _message: self._refreshDoroRoleLabel())
+        self._refreshDoroRoleLabel()
+
+    def _returnToOrdinaryPet(self):
+        from .doro_live2d_dialog import choose_standard_visual_role
+        choose_standard_visual_role()
+        self._refreshDoroRoleLabel()
+
     def __onLaunchClicked(self, petname):
-        # Ignore if it's current char
+        # Even choosing the currently saved original role is a real switch
+        # away from a displayed Doro visual role.
         if settings.petname == petname:
+            self._returnToOrdinaryPet()
             settings.default_pet = petname
             settings.save_settings()
             return True
@@ -236,6 +275,7 @@ class CharInterface(ScrollArea):
         if not self.__showMessageBox(title, content):
             return False
 
+        self._returnToOrdinaryPet()
         self._launchStateTooltip()
         self.change_pet.emit(petname)
         # Switching in the GUI should survive restart.
