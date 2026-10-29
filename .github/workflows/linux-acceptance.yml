@@ -265,12 +265,15 @@ jobs:
           cd "$RUNNER_TEMP/start-from-elsewhere"
           "$GITHUB_WORKSPACE/dist/DyberPetDesktop/DyberPetDesktop" --personal-package-smoke
           cd "$GITHUB_WORKSPACE"
+          # Regenerate from the final downloadable art tree AFTER removing QA demos.
+          python tools/qchibi_threeview_audit.py --role-root "dist/DyberPetDesktop/res/role" --out "dist/DyberPetDesktop/THREEVIEW_AUDIT.json" --fail-on-invalid
           tar -czf DyberPet-Linux-Personal-x86_64.tar.gz -C dist DyberPetDesktop
           python - <<'PY'
           import tarfile
           with tarfile.open("DyberPet-Linux-Personal-x86_64.tar.gz", "r:gz") as tar:
               names=tar.getnames()
           assert "DyberPetDesktop/res/role/Kitty/pet_conf.json" in names
+          assert "DyberPetDesktop/THREEVIEW_AUDIT.json" in names
           assert not any("BUILTIN_CHIBI_DEMO.json" in p or
                          "BUILTIN_MASCOT_DEMO.json" in p for p in names)
           print("LINUX_USER_ART_POLICY_VERIFIED_NO_GENERATED_DEMOS")

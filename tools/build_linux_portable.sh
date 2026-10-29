@@ -40,6 +40,7 @@ python -m PyInstaller --paths . --noconfirm --clean --onedir \
   --hidden-import tools.install_artist_codex \
   --hidden-import tools.install_creator_mascots \
   --hidden-import tools.qchibi_native_threeview \
+  --hidden-import tools.qchibi_threeview_audit \
   --hidden-import tools.native_sprite_canvas \
   --hidden-import tools.pet_pointer_gestures \
   --hidden-import tools.native_gesture_catalog \
@@ -88,9 +89,13 @@ if [[ "${DYBERPET_QA_KEEP_ABSTRACT_ART:-0}" != "1" ]]; then
   python tools/strip_generated_demo_art.py --role-root "$package/res/role" --expected 125
   "$package/DyberPetDesktop" --personal-package-smoke
 fi
+# Source-view inventory of real packaged roles; temporary CI demos are
+# recognized and excluded rather than mistaken for licensed character art.
+python tools/qchibi_threeview_audit.py --role-root "$package/res/role" --out "$package/THREEVIEW_AUDIT.json" --fail-on-invalid
 mkdir -p "$package/data"
 cp docs/pet_assistant.md "$package/ASSISTANT_GUIDE.md"
 cp docs/character_fidelity.md "$package/CHARACTER_FIDELITY.md"
+cp docs/qchibi_threeview_gate.md "$package/THREEVIEW_GUIDE.md"
 cp docs/personal_character_install.md "$package/PERSONAL_CHARACTER_GUIDE.md"
 cp docs/guga_doro_personal_install.md "$package/GUGA_DORO_GUIDE.md"
 cp docs/original_chibi_starter.md "$package/ORIGINAL_MASCOT_GUIDE.md"
