@@ -82,6 +82,88 @@ class DoroLocalModelTests(unittest.TestCase):
                          "idle.motion3.json")
         self.assertEqual(report["resource_files_checked"], 5)
 
+    def test_optional_vtube_hotkey_expressions_use_only_existing_artist_files(self):
+        self._make("Exp1.exp3.json")
+        before = {x.name: x.read_bytes() for x in self.folder.iterdir()}
+        (self.folder / "Doro.vtube.json").write_text(json.dumps({
+            "FileReferences": {"Model": "Doro.model3.json"},
+            "Hotkeys": [
+                {"Action": "ToggleExpression", "Name": "Exp1", "File": "Exp1.exp3.json", "Folder": ""},
+                {"Action": "ToggleExpression", "Name": "Absent", "File": "Absent.exp3.json", "Folder": ""},
+                {"Action": "ToggleExpression", "Name": "happy", "File": "happy.exp3.json", "Folder": ""},
+                {"Action": "ChangeModel", "Name": "Change", "File": "other.exp3.json"},
+            ],
+        }), encoding="utf-8")
+        report = inspect_local_live2d(self.model)
+        self.assertEqual(report["expressions"], ["happy", "Exp1"])
+        self.assertEqual(list(report["extra_expressions"]), ["Exp1"])
+        self.assertEqual(Path(report["extra_expressions"]["Exp1"]).name, "Exp1.exp3.json")
+        self.assertEqual(report["resource_files_checked"], 5)
+        for name, value in before.items():
+            self.assertEqual((self.folder / name).read_bytes(), value)
+
+    def test_vtube_hotkeys_without_installed_file_are_not_claimed(self):
+        (self.folder / "Doro.vtube.json").write_text(json.dumps({
+            "FileReferences": {"Model": "Doro.model3.json"},
+            "Hotkeys": [{"Action": "ToggleExpression",
+                         "Name": "Exp2", "File": "Exp2.exp3.json"}]
+        }), encoding="utf-8")
+        report = inspect_local_live2d(self.model)
+        self.assertEqual(report["expressions"], ["happy"])
+        self.assertEqual(report["extra_expressions"], {})
+
+    def test_unsafe_vtube_hotkey_reference_fails_before_file_probe(self):
+        for path in ("../outside.exp3.json", "C:/secret.exp3.json",
+                     "https://bad/Exp1.exp3.json", r"..\\Exp1.exp3.json"):
+            (self.folder / "Doro.vtube.json").write_text(json.dumps({
+                "FileReferences": {"Model": "Doro.model3.json"},
+                "Hotkeys": [{"Action": "ToggleExpression",
+                             "Name": "Exp1", "File": path}]
+            }), encoding="utf-8")
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                inspect_local_live2d(self.model)
+
+    def test_native_engine_loads_only_installed_vtube_expression(self):
+        from unittest.mock import patch
+        import sys
+        from types import ModuleType
+        from PySide6.QtWidgets import QApplication
+        from DyberPet.DyberSettings.doro_live2d_dialog import _DoroGLView
+
+        app = QApplication.instance() or QApplication([])
+        calls = []
+        class FakeModel:
+            def LoadModelJson(self, path):
+                calls.append(("model", path))
+            def LoadExtraExpression(self, name, path):
+                calls.append(("expression", name, path))
+            def Resize(self, w, h):
+                pass
+
+        fake = ModuleType("live2d")
+        fake.init = lambda: None
+        fake.glInit = lambda: None
+        fake.Model = FakeModel
+        view = _DoroGLView({
+            "model_json": "synthetic.model3.json",
+            "extra_motions": {},
+            "extra_expressions": {"Exp1": "local/Exp1.exp3.json"},
+            "expressions": ["happy", "Exp1"],
+        })
+        original_flags = _DoroGLView._framework_ready, _DoroGLView._backend_ready
+        try:
+            _DoroGLView._framework_ready = False
+            _DoroGLView._backend_ready = False
+            with patch.dict(sys.modules, {"live2d": fake}):
+                view.initializeGL()
+            self.assertIsNone(view.error)
+            self.assertEqual(calls, [
+                ("model", "synthetic.model3.json"),
+                ("expression", "Exp1", "local/Exp1.exp3.json")])
+        finally:
+            view.stop()
+            _DoroGLView._framework_ready, _DoroGLView._backend_ready = original_flags
+
     def test_sidecar_cannot_attach_another_model_or_escape_owner_root(self):
         self._make("Idle.motion3.json")
         sidecar = self.folder / "Doro.vtube.json"
