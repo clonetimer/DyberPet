@@ -154,14 +154,65 @@ def audit_doro(role_dir):
     return output
 
 
+
+def audit_doro_live2d(model_json):
+    """Report real local Cubism inventory, without pretending it proves art completion.
+
+    Cubism is not a DyberPet PNG role directory. Never apply the native
+    sprite requirements directly to the .model3.json path.
+    """
+    try:
+        from .doro_live2d_local import inspect_local_live2d
+    except ImportError:
+        from doro_live2d_local import inspect_local_live2d
+    report = {
+        "role": "Doro",
+        "engine": "Live2D Cubism 3+",
+        "source_model_installed": False,
+        "model_loading_verified_on_real_windows": False,
+        "independent_threeview_complete": False,
+        "all_required_four_foot_animations_verified": False,
+        "art_likeness_human_approved": False,
+        "art_redistribution_permission_verified": False,
+        "complete": False,
+        "status": "blocked",
+        "blockers": [],
+    }
+    try:
+        inventory = inspect_local_live2d(model_json)
+        report["source_model_installed"] = True
+        report["model_inventory"] = {
+            "expressions": inventory["expressions"],
+            "motion_groups": inventory["motion_groups"],
+            "resource_files_checked": inventory["resource_files_checked"],
+        }
+        if not inventory["motion_groups"]:
+            report["blockers"].append("No original Live2D motion sequence declared")
+        if not inventory["expressions"]:
+            report["blockers"].append("No original Live2D expression declared")
+    except (ValueError, OSError, TypeError, KeyError, UnicodeError,
+            json.JSONDecodeError) as exc:
+        report["blockers"].append("Local model cannot be verified: " + str(exc)[:180])
+    report["blockers"].extend([
+        "Live2D front-oriented motion is not an independent same-source front/side/back three-view",
+        "No proven native quadroped left/right gait, petting, drag, fall and landing animation set",
+        "No Windows physical GPU playback + likeness human acceptance record",
+        "No verified permission to include the reference creator's model in a distributed package",
+    ])
+    return report
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--role", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--role", type=Path, help="Existing native PNG role folder")
+    source.add_argument("--live2d-model", type=Path, help="Locally acquired Cubism model3.json")
     parser.add_argument("--out", type=Path, help="Optional JSON report, not source PNG")
     parser.add_argument("--require-complete", action="store_true",
                         help="Fail closed: no Doro finished-product claim while any gate is pending")
     args = parser.parse_args(argv)
-    report = audit_doro(args.role)
+    report = (audit_doro_live2d(args.live2d_model) if args.live2d_model
+              else audit_doro(args.role))
     data = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
