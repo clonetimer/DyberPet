@@ -117,6 +117,98 @@ class DoroLocalModelTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "linked"):
             inspect_local_live2d(self.model)
 
+    def test_original_hit_areas_are_reported_but_no_art_approval(self):
+        self.data["HitAreas"] = [
+            {"Name": "HitAreaFace", "Id": "Face"},
+            {"Name": "HitAreaLegBack", "Id": "Leg_back_L"}
+        ]
+        self._save()
+        report = inspect_local_live2d(self.model)
+        self.assertEqual(report["hit_areas"],
+                         {"HitAreaFace": "Face", "HitAreaLegBack": "Leg_back_L"})
+        self.assertFalse(report["is_user_approved_doro_likeness"])
+
+    def test_malformed_or_duplicate_hit_areas_fail_closed(self):
+        cases = [
+            [{"Name": "HitAreaFace", "Id": "Face"},
+             {"Name": "HitAreaFace", "Id": "Other"}],
+            [{"Name": "HitAreaFace"}], ["untrusted"],
+        ]
+        for areas in cases:
+            self.data["HitAreas"] = areas
+            self._save()
+            with self.subTest(areas=areas), self.assertRaises(ValueError):
+                inspect_local_live2d(self.model)
+
+    def test_doro_click_mapping_uses_only_real_source_expressions(self):
+        from tools.doro_live2d_interaction import (
+            click_expression_for_area, is_same_source_area_press,
+        )
+        expressions = ["Idle", "Doubt", "Amaze", "Sullen"]
+        self.assertEqual(click_expression_for_area("HitAreaFace", expressions),
+                         "Amaze")
+        self.assertEqual(click_expression_for_area("HitAreaLegBack", expressions),
+                         "Doubt")
+        self.assertIsNone(click_expression_for_area("Unknown", expressions))
+        self.assertIsNone(click_expression_for_area("HitAreaFace", ["NoAmaze"]))
+        self.assertFalse(is_same_source_area_press(None, "HitAreaFace"))
+        self.assertFalse(is_same_source_area_press("HitAreaFace", "HitAreaLegBack"))
+        self.assertTrue(is_same_source_area_press("HitAreaFace", "HitAreaFace"))
+
+    def test_qt_shared_context_flag_is_configured_before_application(self):
+        src = (Path(__file__).resolve().parents[1] /
+               "run_DyberPet.py").read_text(encoding="utf-8")
+        self.assertIn("AA_ShareOpenGLContexts, True", src)
+        self.assertLess(src.index("AA_ShareOpenGLContexts, True"),
+                        src.index("class DyberPetApp(QApplication):"))
+
+    def test_native_backend_init_called_only_once_across_two_gl_widgets(self):
+        from unittest.mock import patch
+        import sys
+        from types import SimpleNamespace
+        from PySide6.QtWidgets import QApplication
+        from DyberPet.DyberSettings.doro_live2d_dialog import _DoroGLView
+
+        app = QApplication.instance() or QApplication([])
+        calls = {"glInit": 0, "init": 0}
+
+        class StubModel:
+            def LoadModelJson(self, path):
+                pass
+            def Resize(self, width, height):
+                pass
+
+        def gl_init():
+            calls["glInit"] += 1
+            if calls["glInit"] > 1:
+                raise RuntimeError("native backend already initialized")
+
+        fake = SimpleNamespace(
+            init=lambda: calls.__setitem__("init", calls["init"] + 1),
+            glInit=gl_init, Model=StubModel)
+        old_flags = _DoroGLView._framework_ready, _DoroGLView._backend_ready
+        first = _DoroGLView({
+            "model_json": "synthetic.model3.json",
+            "extra_motions": {}, "hit_areas": {},
+        })
+        second = _DoroGLView({
+            "model_json": "synthetic.model3.json",
+            "extra_motions": {}, "hit_areas": {},
+        })
+        try:
+            _DoroGLView._framework_ready = False
+            _DoroGLView._backend_ready = False
+            with patch.dict(sys.modules, {"live2d": fake}):
+                first.initializeGL()
+                second.initializeGL()
+            self.assertEqual(calls, {"glInit": 1, "init": 1})
+            self.assertIsNone(first.error)
+            self.assertIsNone(second.error)
+        finally:
+            first.stop()
+            second.stop()
+            _DoroGLView._framework_ready, _DoroGLView._backend_ready = old_flags
+
     def test_qt_dialog_hook_has_real_doro_only_action(self):
         source = (Path(__file__).resolve().parents[1]
                   / "DyberPet" / "DyberSettings" / "CharCardUI.py").read_text("utf-8")
