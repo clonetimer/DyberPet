@@ -85,6 +85,7 @@ def inspect_local_live2d(model_json):
     # beside Doro.model3.json in a VTube Studio sidecar, not under Motions.
     # Only accept a same-directory sidecar pointing back to THIS model file.
     extra_motions = {}
+    extra_expressions = {}
     vtube = root / (model.name.removesuffix(".model3.json") + ".vtube.json")
     if vtube.exists():
         if vtube.is_symlink() or not vtube.is_file() or vtube.stat().st_size > MAX_JSON_BYTES:
@@ -105,6 +106,44 @@ def inspect_local_live2d(model_json):
             extra_motions["OwnerIdle"] = [str((root / idle).resolve())]
             motion_groups["OwnerIdle"] = 1
             assets.append(idle)
+        # Some author VTube Studio packages have additional EXP shortcuts
+        # outside the core model3.json expression list. Load ONLY actual
+        # same-folder files; missing shortcut files are not claimed as art.
+        hotkeys = vt.get("Hotkeys", [])
+        if not isinstance(hotkeys, list) or len(hotkeys) > 128:
+            raise ValueError("Invalid local VTube Studio hotkey metadata")
+        for entry in hotkeys:
+            if not isinstance(entry, dict):
+                raise ValueError("Invalid VTube Studio hotkey")
+            if entry.get("Action") != "ToggleExpression":
+                continue
+            name, file = entry.get("Name"), entry.get("File")
+            if (not isinstance(name, str) or not (1 <= len(name) <= 80)
+                    or not isinstance(file, str)
+                    or not file.lower().endswith(".exp3.json")):
+                raise ValueError("Invalid VTube Studio expression shortcut")
+            # Do not use the raw global keyboard shortcut, or create a
+            # Windows-wide hook. Expose local expression via existing UI.
+            if name in expression_ids or name in extra_expressions:
+                continue
+            if entry.get("Folder") not in ("", None):
+                continue  # other folders aren't inside this model's owner tree
+            # A referenced VTubeStudio shortcut can be optional/uninstalled.
+            # Validate the path *even when absent* before checking existence.
+            rel = PurePosixPath(file)
+            if (rel.is_absolute() or ":" in file or "\\" in file
+                    or "\x00" in file or len(rel.parts) != 1
+                    or file in (".", "..")):
+                raise ValueError("Unsafe VTube Studio expression shortcut")
+            candidate = root / file
+            if not candidate.exists():
+                continue
+            _resource(root, file)
+            extra_expressions[name] = str(candidate.resolve())
+            expression_ids.append(name)
+            assets.append(file)
+            if len(extra_expressions) > 32 or len(assets) > MAX_RESOURCES:
+                raise ValueError("Too many local VTube Studio expressions")
     for item in assets:
         _resource(root, item)
     # Only report hit areas actually declared by the selected source model.
@@ -127,6 +166,7 @@ def inspect_local_live2d(model_json):
         "model_type": "Cubism 3+",
         "resource_files_checked": len(assets),
         "expressions": expression_ids,
+        "extra_expressions": extra_expressions,
         "hit_areas": hit_areas,
         "motion_groups": motion_groups,
         "extra_motions": extra_motions,
