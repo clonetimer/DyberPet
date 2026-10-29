@@ -9,8 +9,8 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QSettings, QTimer
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
-    QMessageBox, QPushButton, QVBoxLayout,
+    QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
+    QMenu, QMessageBox, QPushButton, QVBoxLayout,
 )
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
@@ -85,6 +85,94 @@ class _DoroGLView(QOpenGLWidget):
         self.model = None
 
 
+_ACTIVE_DORO_WINDOWS = []
+
+
+class DoroDesktopWindow(_DoroGLView):
+    """Actual independent, frameless Doro Live2D desktop window.
+
+    Only the locally owned source model is rendered. Pointer drag moves the
+    whole pet window; right click offers its REAL expression/motion groups.
+    """
+
+    def __init__(self, model_info):
+        super().__init__(model_info, parent=None)
+        self.setWindowTitle("Doro · 真实 Live2D 单角色桌宠")
+        self.setWindowFlags(
+            Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.resize(360, 370)
+        self._press_global = None
+        self._window_origin = None
+        self._moved = False
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._press_global = event.globalPosition().toPoint()
+            self._window_origin = self.pos()
+            self._moved = False
+        elif event.button() == Qt.MouseButton.RightButton:
+            self._show_actions(event.globalPosition().toPoint())
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._press_global is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            offset = event.globalPosition().toPoint() - self._press_global
+            if (self._moved or offset.manhattanLength() >=
+                    max(6, QApplication.startDragDistance())):
+                self._moved = True
+                self.move(self._window_origin + offset)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and self._press_global is not None:
+            if not self._moved and self.model:
+                # Only the original model's built-in expressions are used.
+                if self.model_info["expressions"]:
+                    self.model.SetRandomExpression()
+            self._press_global = None
+            self._window_origin = None
+            self._moved = False
+        super().mouseReleaseEvent(event)
+
+    def wheelEvent(self, event):
+        factor = 1.08 if event.angleDelta().y() > 0 else 1 / 1.08
+        width = min(1000, max(200, round(self.width() * factor)))
+        height = min(1000, max(200, round(self.height() * factor)))
+        self.resize(width, height)
+        event.accept()
+
+    def _show_actions(self, position):
+        menu = QMenu(self)
+        for name in self.model_info["expressions"]:
+            action = menu.addAction("表情 · " + name)
+            action.triggered.connect(lambda _checked=False, n=name: self.express(n))
+        if self.model_info["expressions"]:
+            menu.addSeparator()
+        for group, count in self.model_info["motion_groups"].items():
+            for idx in range(count):
+                action = menu.addAction("原生动作 · %s / %d" % (group, idx + 1))
+                action.triggered.connect(
+                    lambda _checked=False, g=group, i=idx: self.motion(g, i))
+        menu.addSeparator()
+        menu.addAction("关闭 Doro 桌宠", self.close)
+        menu.exec(position)
+
+    def closeEvent(self, event):
+        self.stop()
+        if self in _ACTIVE_DORO_WINDOWS:
+            _ACTIVE_DORO_WINDOWS.remove(self)
+        super().closeEvent(event)
+
+
+def open_doro_desktop(model_info):
+    window = DoroDesktopWindow(model_info)
+    _ACTIVE_DORO_WINDOWS.append(window)
+    window.show()
+    return window
+
+
 class DoroLive2DPreviewDialog(QDialog):
     """Render locally obtained target artwork directly, without exporting sprites."""
 
@@ -122,6 +210,9 @@ class DoroLive2DPreviewDialog(QDialog):
                sum(self.model_info["motion_groups"].values())), self)
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
+        desktop = QPushButton("在桌面独立运行 Doro（置顶、拖动、滚轮缩放）", self)
+        desktop.clicked.connect(lambda: open_doro_desktop(self.model_info))
+        layout.addWidget(desktop)
         close = QPushButton("关闭（保留原始本地模型文件）", self)
         close.clicked.connect(self.close)
         layout.addWidget(close)
