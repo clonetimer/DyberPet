@@ -5,6 +5,8 @@ on:
     paths:
       - "tools/doro_live2d_local.py"
       - "tools/doro_personal_setup.py"
+      - "tools/doro_window_placement.py"
+      - "tests/test_doro_window_placement.py"
       - "tests/test_doro_personal_setup.py"
       - "tools/doro_live2d_interaction.py"
       - "run_DyberPet.py"
@@ -18,6 +20,8 @@ on:
     paths:
       - "tools/doro_live2d_local.py"
       - "tools/doro_personal_setup.py"
+      - "tools/doro_window_placement.py"
+      - "tests/test_doro_window_placement.py"
       - "tests/test_doro_personal_setup.py"
       - "tools/doro_live2d_interaction.py"
       - "run_DyberPet.py"
@@ -51,6 +55,7 @@ jobs:
           python -m py_compile tools/doro_live2d_local.py DyberPet/DyberSettings/doro_live2d_dialog.py
           python -m unittest discover -s tests -p "test_doro_live2d_local.py" -v
           python -m unittest discover -s tests -p "test_doro_personal_setup.py" -v
+          python -m unittest discover -s tests -p "test_doro_window_placement.py" -v
       - name: Verify the PR does not require/store artist model
         shell: pwsh
         run: |

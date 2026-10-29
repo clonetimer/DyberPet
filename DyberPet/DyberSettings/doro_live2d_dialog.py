@@ -19,9 +19,11 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from tools.doro_live2d_local import inspect_local_live2d
 from tools.doro_live2d_interaction import click_expression_for_area, is_same_source_area_press
 from tools.doro_personal_setup import find_doro_archives_in_directories, setup_personal_doro_zip
+from tools.doro_window_placement import place_doro_window
 
 _SETTINGS_KEY = "character/doro_live2d_model3"
 _AUTOSTART_KEY = "character/doro_live2d_auto_start"
+_WINDOW_GEOMETRY_KEY = "character/doro_live2d_window_geometry"
 
 
 class _DoroGLView(QOpenGLWidget):
@@ -170,15 +172,44 @@ class DoroDesktopWindow(_DoroGLView):
         self._press_area = None
         self._pressed_model = False
         self._legacy_hidden_by_doro = False
+        self._model_loaded = False
+        self.loadSucceeded.connect(self._on_model_ready)
         self.loadFailed.connect(self._on_load_failed)
+        self._restore_window_geometry()
 
-    def showEvent(self, event):
-        super().showEvent(event)
+    @staticmethod
+    def _available_screens():
         app = QApplication.instance()
-        if (app and hasattr(app, "p") and not self._legacy_hidden_by_doro
-                and QSettings("DyberPet", "DyberPet").value(
-                    _AUTOSTART_KEY, False, type=bool)
-                and app.p.isVisible()):
+        if not app:
+            return []
+        primary = app.primaryScreen()
+        screens = ([primary] if primary else [])
+        screens.extend(s for s in app.screens() if s is not primary)
+        return [
+            (s.availableGeometry().x(), s.availableGeometry().y(),
+             s.availableGeometry().width(), s.availableGeometry().height())
+            for s in screens
+        ]
+
+    def _restore_window_geometry(self):
+        saved = QSettings("DyberPet", "DyberPet").value(
+            _WINDOW_GEOMETRY_KEY, None)
+        x, y, w, h = place_doro_window(saved, self._available_screens())
+        self.resize(w, h)
+        self.move(x, y)
+
+    def _recover_screen_position(self):
+        x, y, w, h = place_doro_window(None, self._available_screens())
+        self.resize(w, h)
+        self.move(x, y)
+
+    def _on_model_ready(self):
+        # Hide the original only AFTER Cubism loaded; this also covers a
+        # manually launched Doro when 'start with Doro' is not enabled.
+        self._model_loaded = True
+        app = QApplication.instance()
+        if (app and hasattr(app, "p") and app.p.isVisible()
+                and not self._legacy_hidden_by_doro):
             app.p.hide()
             self._legacy_hidden_by_doro = True
 
@@ -246,10 +277,15 @@ class DoroDesktopWindow(_DoroGLView):
                 action.triggered.connect(
                     lambda _checked=False, g=group, i=idx: self.motion(g, i))
         menu.addSeparator()
-        menu.addAction("关闭 Doro 桌宠", self.close)
+        menu.addAction("移回主显示器（恢复位置）", self._recover_screen_position)
+        menu.addAction("关闭 Doro · 恢复原桌宠", self.close)
         menu.exec(position)
 
     def closeEvent(self, event):
+        if self._model_loaded:
+            QSettings("DyberPet", "DyberPet").setValue(
+                _WINDOW_GEOMETRY_KEY,
+                [self.x(), self.y(), self.width(), self.height()])
         self._press_area = None
         self._pressed_model = False
         self.stop()
