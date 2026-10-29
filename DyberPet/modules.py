@@ -415,6 +415,13 @@ class Interaction_worker(QObject):
             return 'customized'
 
     def start_interact(self, interact, act_name=None):
+        # Directly selected author-native gestures must already be present
+        # in this current PetConfig. Reject stale names after role switches.
+        if interact == "native_action":
+            from tools.native_gesture_catalog import native_gesture_catalog
+            if act_name not in native_gesture_catalog(self.pet_conf):
+                return False
+            self._native_tick = 0
         # If Act selected from menu/panel, judge animation type first
         if interact == "actlist":
             interact = self._get_animation_type(act_name)
@@ -632,6 +639,45 @@ class Interaction_worker(QObject):
             if settings.previous_img != settings.current_img or settings.previous_anchor != settings.current_anchor:
                 self.sig_setimg_inter.emit()
                 self._move(act)
+
+    def native_action(self, act_name):
+        """Play one authentic native action once and resume ordinary pet life.
+
+        Uses the same current-image, anchor, repaint and optional movement
+        signals as original Interaction_worker, without synthesizing frames.
+        """
+        from tools.native_gesture_catalog import (
+            gesture_timing, gesture_frame_index, native_gesture_catalog,
+        )
+        if act_name not in native_gesture_catalog(self.pet_conf):
+            self.stop_interact()
+            return
+        act = self.pet_conf.act_dict[act_name]
+        plan = gesture_timing(act, self.pet_conf.interact_speed)
+        tick = getattr(self, "_native_tick", 0)
+        if plan is None or tick >= plan["ticks"]:
+            self.stop_interact()
+            return
+        frame = gesture_frame_index(tick, act, self.pet_conf.interact_speed)
+        next_image = act.images[frame]
+        settings.previous_img = settings.current_img
+        settings.previous_anchor = settings.current_anchor
+        settings.current_img = next_image
+        settings.current_anchor = [
+            int(value * settings.tunable_scale) for value in act.anchor
+        ]
+        # Move on source-frame transitions, not on every 20 ms timer tick:
+        # otherwise a 120 ms original walk frame advances six times too far.
+        prior_frame = (gesture_frame_index(tick - 1, act, self.pet_conf.interact_speed)
+                       if tick else None)
+        if (settings.previous_img != next_image
+                or settings.previous_anchor != settings.current_anchor):
+            self.sig_setimg_inter.emit()
+        if prior_frame != frame:
+            self._move(act)
+        self._native_tick = tick + 1
+        if self._native_tick >= plan["ticks"]:
+            self.stop_interact()
 
     def patpat(self, act_name):
         acts = [self.pet_conf.patpat[self.pat_idx]]
