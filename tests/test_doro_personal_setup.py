@@ -10,7 +10,7 @@ import unittest
 import zipfile
 
 from tools.doro_personal_setup import (
-    find_doro_archives, setup_personal_doro_zip,
+    find_doro_archives, find_doro_archives_in_directories, setup_personal_doro_zip,
 )
 
 
@@ -80,6 +80,22 @@ class PersonalDoroSetupTests(unittest.TestCase):
         (self.base / "DoroOther.zip").write_bytes(self.zip.read_bytes())
         self.assertEqual(find_doro_archives(self.downloads), [self.zip])
 
+    def test_finds_redirected_downloads_and_deduplicates_known_folder(self):
+        moved = self.base / "OneDrive" / "Downloads"
+        moved.mkdir(parents=True)
+        source = moved / self.zip.name
+        source.write_bytes(self.zip.read_bytes())
+        legacy = find_doro_archives(self.downloads)
+        combined = find_doro_archives_in_directories(
+            [moved, self.downloads, moved, self.base / "not-exist"])
+        self.assertEqual(set(combined), set(legacy + [source]))
+        self.assertEqual(len(combined), 2)
+
+    def test_both_downloads_paths_empty_returns_empty(self):
+        result = find_doro_archives_in_directories(
+            [self.base / "not-exist", None, "", self.base / "also-missing"])
+        self.assertEqual(result, [])
+
     def test_reject_traversal_and_preserve_private_folder(self):
         self.files["OriginalDoro/Doro/../../../escape.png"] = b"BAD"
         self.make_archive()
@@ -136,7 +152,8 @@ class PersonalDoroSetupTests(unittest.TestCase):
         source = (Path(__file__).resolve().parents[1] / "DyberPet" /
                   "DyberSettings" / "doro_live2d_dialog.py").read_text("utf-8")
         self.assertIn("_select_local_doro_model", source)
-        self.assertIn("find_doro_archives(Path.home() / \"Downloads\")", source)
+        self.assertIn("_find_personal_doro_downloads()", source)
+        self.assertIn("QStandardPaths.StandardLocation.DownloadLocation", source)
         self.assertIn("setup_personal_doro_zip", source)
         self.assertIn("https://booth.pm/zh-cn/items/5867617", source)
         self.assertIn("QStandardPaths.StandardLocation.AppLocalDataLocation", source)
