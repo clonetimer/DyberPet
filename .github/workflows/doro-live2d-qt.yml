@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "tools/doro_live2d_local.py"
+      - "tools/doro_personal_setup.py"
+      - "tests/test_doro_personal_setup.py"
       - "tools/doro_live2d_interaction.py"
       - "run_DyberPet.py"
       - "DyberPet/DyberSettings/doro_live2d_dialog.py"
@@ -15,6 +17,8 @@ on:
   push:
     paths:
       - "tools/doro_live2d_local.py"
+      - "tools/doro_personal_setup.py"
+      - "tests/test_doro_personal_setup.py"
       - "tools/doro_live2d_interaction.py"
       - "run_DyberPet.py"
       - "DyberPet/DyberSettings/doro_live2d_dialog.py"
@@ -46,6 +50,7 @@ jobs:
         run: |
           python -m py_compile tools/doro_live2d_local.py DyberPet/DyberSettings/doro_live2d_dialog.py
           python -m unittest discover -s tests -p "test_doro_live2d_local.py" -v
+          python -m unittest discover -s tests -p "test_doro_personal_setup.py" -v
       - name: Verify the PR does not require/store artist model
         shell: pwsh
         run: |
