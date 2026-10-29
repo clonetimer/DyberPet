@@ -19,6 +19,8 @@ on:
       - "tools/doro_personal_setup.py"
       - "tools/doro_window_placement.py"
       - "tools/doro_native_gait.py"
+      - "tools/doro_touch_drop.py"
+      - "tests/test_doro_touch_drop.py"
       - "tests/test_doro_native_gait.py"
       - "tests/test_doro_window_placement.py"
       - "tests/test_doro_personal_setup.py"
@@ -90,6 +92,8 @@ on:
       - "tools/doro_personal_setup.py"
       - "tools/doro_window_placement.py"
       - "tools/doro_native_gait.py"
+      - "tools/doro_touch_drop.py"
+      - "tests/test_doro_touch_drop.py"
       - "tests/test_doro_native_gait.py"
       - "tests/test_doro_window_placement.py"
       - "tests/test_doro_personal_setup.py"
@@ -175,6 +179,7 @@ jobs:
           python -m unittest discover -s tests -p "test_doro_personal_setup.py" -v
           python -m unittest discover -s tests -p "test_doro_window_placement.py" -v
           python -m unittest discover -s tests -p "test_doro_native_gait.py" -v
+          python -m unittest discover -s tests -p "test_doro_touch_drop.py" -v
           python -m unittest discover -s tests -p "test_doro_single_role_gate.py" -v
       - name: Verify evidence-based Q-chibi three-view packaging gate
         run: python -m unittest discover -s tests -p "test_qchibi_threeview_audit.py" -v
