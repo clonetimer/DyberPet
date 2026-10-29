@@ -68,6 +68,32 @@ class DoroLocalModelTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing"):
             inspect_local_live2d(self.model)
 
+    def test_real_doro_sidecar_owner_idle_is_registered(self):
+        self._make("Idle.motion3.json")
+        (self.folder / "Doro.vtube.json").write_text(json.dumps({
+            "FileReferences": {
+                "Model": "Doro.model3.json", "IdleAnimation": "Idle.motion3.json",
+                "IdleAnimationWhenTrackingLost": ""
+            }
+        }), encoding="utf-8")
+        report = inspect_local_live2d(self.model)
+        self.assertEqual(report["motion_groups"]["OwnerIdle"], 1)
+        self.assertEqual(Path(report["extra_motions"]["OwnerIdle"][0]).name,
+                         "Idle.motion3.json")
+        self.assertEqual(report["resource_files_checked"], 5)
+
+    def test_sidecar_cannot_attach_another_model_or_escape_owner_root(self):
+        self._make("Idle.motion3.json")
+        sidecar = self.folder / "Doro.vtube.json"
+        for model_name, motion in (("Other.model3.json", "Idle.motion3.json"),
+                                   ("Doro.model3.json", "../Idle.motion3.json")):
+            sidecar.write_text(json.dumps({
+                "FileReferences": {"Model": model_name, "IdleAnimation": motion}
+            }), encoding="utf-8")
+            with self.subTest(model_name=model_name, motion=motion):
+                with self.assertRaises(ValueError):
+                    inspect_local_live2d(self.model)
+
     def test_missing_motions_are_not_fabricated(self):
         self.data["FileReferences"]["Motions"] = {}
         self._save()
