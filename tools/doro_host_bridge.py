@@ -6,6 +6,10 @@ is active but its existing system panels and scheduler continue to work.
 """
 from __future__ import annotations
 
+from tools.doro_role_progress import (
+    ROLE_KEY, ensure_doro_profile, record_doro_action, doro_progress,
+)
+
 
 class DoroHostBridge:
     def __init__(self, app):
@@ -34,6 +38,31 @@ class DoroHostBridge:
     def open_dashboard(self):
         """Existing status/tasks/inventory/notifications panel."""
         return self._send("show_dashboard")
+
+    def _pet_data(self):
+        # The existing application owns PetData as a singleton; import
+        # lazily so independent Doro previews have no data side effects.
+        if self.pet is None:
+            return None
+        try:
+            import DyberPet.settings as settings
+            return getattr(settings, "pet_data", None)
+        except (ImportError, AttributeError):
+            return None
+
+    def activate_doro_profile(self):
+        return ensure_doro_profile(self._pet_data())
+
+    def record_doro_action(self, action):
+        return record_doro_action(self._pet_data(), action)
+
+    def doro_display_context(self):
+        source = self.current_host_status()
+        return {
+            "display_role": ROLE_KEY,
+            "data_owner": source["base_role"] if source else None,
+            "interactions": doro_progress(self._pet_data()),
+        }
 
     def current_host_status(self):
         """Read-only snapshot; clearly label the *underlying* saved role."""
