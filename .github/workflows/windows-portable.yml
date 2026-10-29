@@ -23,6 +23,8 @@ on:
       - "tools/doro_host_bridge.py"
       - "tests/test_doro_host_bridge.py"
       - "tests/test_doro_visual_role_selection.py"
+      - "tools/doro_role_progress.py"
+      - "tests/test_doro_role_progress.py"
       - "tests/test_doro_touch_drop.py"
       - "tests/test_doro_native_gait.py"
       - "tests/test_doro_window_placement.py"
@@ -99,6 +101,8 @@ on:
       - "tools/doro_host_bridge.py"
       - "tests/test_doro_host_bridge.py"
       - "tests/test_doro_visual_role_selection.py"
+      - "tools/doro_role_progress.py"
+      - "tests/test_doro_role_progress.py"
       - "tests/test_doro_touch_drop.py"
       - "tests/test_doro_native_gait.py"
       - "tests/test_doro_window_placement.py"
@@ -188,6 +192,7 @@ jobs:
           python -m unittest discover -s tests -p "test_doro_touch_drop.py" -v
           python -m unittest discover -s tests -p "test_doro_host_bridge.py" -v
           python -m unittest discover -s tests -p "test_doro_visual_role_selection.py" -v
+          python -m unittest discover -s tests -p "test_doro_role_progress.py" -v
           python -m unittest discover -s tests -p "test_doro_single_role_gate.py" -v
       - name: Verify evidence-based Q-chibi three-view packaging gate
         run: python -m unittest discover -s tests -p "test_qchibi_threeview_audit.py" -v
