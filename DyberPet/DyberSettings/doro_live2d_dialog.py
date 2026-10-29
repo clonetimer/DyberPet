@@ -59,6 +59,11 @@ class _DoroGLView(QOpenGLWidget):
                 _DoroGLView._backend_ready = True
             self.model = live2d.Model()
             self.model.LoadModelJson(self.model_info["model_json"])
+            # Optional VTube Studio face shortcuts may reference local
+            # author expression files not present in the Cubism model3 list.
+            # Never synthesize missing assets or install global hotkeys.
+            for name, path in self.model_info.get("extra_expressions", {}).items():
+                self.model.LoadExtraExpression(name, path)
             for group, paths in self.model_info.get("extra_motions", {}).items():
                 for path in paths:
                     self.model.LoadExtraMotion(group, path)
