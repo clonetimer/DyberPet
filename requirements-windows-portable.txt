@@ -15,3 +15,6 @@ pyttsx3==2.99
 # R52: Doro Cubism rendering ENGINE only; author model files are not bundled.
 live2d-py==1.0.0
 PyOpenGL==3.1.10
+
+# PySide6 6.5.2 binary wheels require the NumPy 1.x ABI for safe Qt imports.
+numpy==1.26.4
