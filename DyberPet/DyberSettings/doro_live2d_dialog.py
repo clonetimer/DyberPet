@@ -438,7 +438,8 @@ class DoroDesktopWindow(_DoroGLView):
             menu.addAction("主程序 · 角色管理／设置", host.open_control_panel)
         menu.addSeparator()
         menu.addAction("移回主显示器（恢复位置）", self._recover_screen_position)
-        menu.addAction("关闭 Doro · 恢复原桌宠", self.close)
+        menu.addAction("切换回普通桌宠（记住此选择）", choose_standard_visual_role)
+        menu.addAction("暂时关闭 Doro（下次仍优先）", self.close)
         menu.exec(position)
 
     def closeEvent(self, event):
@@ -461,18 +462,80 @@ class DoroDesktopWindow(_DoroGLView):
         super().closeEvent(event)
 
 
-def open_doro_desktop(model_info):
-    """One live Doro per application; do not exhaust GPU or duplicate pets."""
+def open_doro_desktop(model_info, on_ready=None, on_failed=None):
+    """One visible Doro, with caller callbacks wired BEFORE the GL show event."""
     for existing in tuple(_ACTIVE_DORO_WINDOWS):
-        if existing.isVisible() and existing.model_info["model_json"] == model_info["model_json"]:
+        if (existing.isVisible() and
+                existing.model_info["model_json"] == model_info["model_json"]):
+            if callable(on_ready):
+                if existing._model_loaded:
+                    on_ready()
+                else:
+                    existing.loadSucceeded.connect(on_ready)
+            if callable(on_failed):
+                existing.loadFailed.connect(on_failed)
             existing.raise_()
             existing.activateWindow()
             return existing
         existing.close()
     window = DoroDesktopWindow(model_info)
+    if callable(on_ready):
+        window.loadSucceeded.connect(on_ready)
+    if callable(on_failed):
+        window.loadFailed.connect(on_failed)
     _ACTIVE_DORO_WINDOWS.append(window)
     window.show()
     return window
+
+
+def doro_visual_role_selected():
+    """One persistent character-visual choice; saved native PetData is intact."""
+    return QSettings("DyberPet", "DyberPet").value(
+        _AUTOSTART_KEY, False, type=bool)
+
+
+def choose_doro_visual_role(parent=None):
+    """Select Doro as the primary *displayed* pet through character management.
+
+    The official model is resolved locally; if unavailable, offer the existing
+    one-time author ZIP chooser. Commit the choice only once GL actually loads.
+    """
+    cfg = QSettings("DyberPet", "DyberPet")
+    selected = _resolve_installed_doro(cfg.value(_SETTINGS_KEY, "", type=str))
+    if not selected:
+        selected = _select_local_doro_model(parent)
+    if not selected:
+        return None
+    try:
+        info = inspect_local_live2d(selected)
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        QMessageBox.warning(parent, "Doro 角色无法选择", str(exc)[:350])
+        return None
+
+    def confirmed():
+        current = QSettings("DyberPet", "DyberPet")
+        current.setValue(_SETTINGS_KEY, selected)
+        current.setValue(_AUTOSTART_KEY, True)
+
+    # Do not persist an invalid model as the primary character when the
+    # native Cubism engine crashes. The original PetWidget remains visible.
+    def failed(_message):
+        if not doro_visual_role_selected():
+            QSettings("DyberPet", "DyberPet").setValue(_AUTOSTART_KEY, False)
+
+    try:
+        return open_doro_desktop(info, on_ready=confirmed, on_failed=failed)
+    except (RuntimeError, ValueError, OSError, TypeError) as exc:
+        QMessageBox.warning(parent, "Doro 角色启动失败", str(exc)[:350])
+        return None
+
+
+def choose_standard_visual_role():
+    """Return to the existing ordinary pet and persist that choice."""
+    QSettings("DyberPet", "DyberPet").setValue(_AUTOSTART_KEY, False)
+    for window in tuple(_ACTIVE_DORO_WINDOWS):
+        window.close()
+    return True
 
 
 class DoroLive2DPreviewDialog(QDialog):
