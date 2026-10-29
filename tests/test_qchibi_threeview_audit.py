@@ -106,6 +106,20 @@ class QChibiPackagedEvidenceTests(unittest.TestCase):
         self.assertEqual(report["roles"][0]["status"],
                          "invalid_threeview_evidence")
 
+    def test_generated_ci_demo_art_is_not_counted_as_real_source_character(self):
+        demo = self.root / "DemoG_fixture"
+        demo.mkdir()
+        (demo / "BUILTIN_CHIBI_DEMO.json").write_text(json.dumps({
+            "generator": "DyberPet-first-party-abstract-chibi-v1",
+            "profile": "genshin_fixture",
+            "official_character_art": False,
+            "original_illustration": True,
+        }), encoding="utf-8")
+        report = audit_role_root(self.root)
+        self.assertEqual(report["summary"]["installed_role_folders"], 1)
+        self.assertEqual(report["summary"]["excluded_generated_test_demos"], 1)
+        self.assertEqual(report["summary"]["source_threeview_candidates"], 0)
+
     def test_cli_writes_report_but_never_changes_role_art(self):
         self._manifest()
         dest = self.root.parent.parent / "audit.json"
