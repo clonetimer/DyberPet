@@ -302,6 +302,9 @@ class DoroLive2DPreviewDialog(QDialog):
         desktop = QPushButton("在桌面独立运行 Doro（置顶、拖动、滚轮缩放）", self)
         desktop.clicked.connect(lambda: open_doro_desktop(self.model_info))
         layout.addWidget(desktop)
+        auto = QPushButton("从下载文件夹自动启用原版 Doro（个人本地）", self)
+        auto.clicked.connect(self._auto_install_from_downloads)
+        layout.addWidget(auto)
         choose = QPushButton("更换本机 Live2D 模型文件", self)
         choose.clicked.connect(self._choose_another_model)
         layout.addWidget(choose)
@@ -309,11 +312,28 @@ class DoroLive2DPreviewDialog(QDialog):
         close.clicked.connect(self.close)
         layout.addWidget(close)
 
-    def _choose_another_model(self):
-        selected, _ = QFileDialog.getOpenFileName(
-            self, "选择另一个已合法取得的 Live2D 模型",
-            str(Path(self.model_info["model_json"]).parent),
-            "Live2D Cubism (*.model3.json)")
+    def _auto_install_from_downloads(self):
+        archives = find_doro_archives(Path.home() / "Downloads")
+        if not archives:
+            QMessageBox.information(
+                self, "Doro 原模型尚未下载",
+                "未发现原作者的 Doro ZIP。请从作者页面下载一次。\n"
+                + _CREATOR_DORO_URL)
+            return
+        errors = []
+        for archive in archives:
+            try:
+                selected = str(setup_personal_doro_zip(
+                    archive, _personal_doro_root()))
+                self._switch_to_model(selected)
+                return
+            except (ValueError, OSError, KeyError, TypeError,
+                    zipfile.BadZipFile) as exc:
+                errors.append(archive.name + ": " + str(exc)[:120])
+        QMessageBox.warning(self, "Doro ZIP 自动检查未通过",
+                            "\n".join(errors[:3]))
+
+    def _switch_to_model(self, selected):
         if not selected or selected == self.model_info["model_json"]:
             return
         try:
@@ -326,6 +346,13 @@ class DoroLive2DPreviewDialog(QDialog):
         self.hide()
         replacement.exec()
         self.close()
+
+    def _choose_another_model(self):
+        selected, _ = QFileDialog.getOpenFileName(
+            self, "选择另一个已合法取得的 Live2D 模型",
+            str(Path(self.model_info["model_json"]).parent),
+            "Live2D Cubism (*.model3.json)")
+        self._switch_to_model(selected)
 
     def _on_model_failed(self, message):
         self.status.setText("Doro Live2D 模型加载失败：" + message)
