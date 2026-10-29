@@ -410,6 +410,7 @@ class PetWidget(QWidget):
         self.is_follow_mouse = False
         self.mouse_moving = False
         self.mouse_drag_pos = self.pos()
+        self._drag_press_global = None
         self.mouse_pos = [0, 0]
 
         # Record too frequent mouse clicking
@@ -498,18 +499,13 @@ class PetWidget(QWidget):
             self._show_Staus_menu()
             
         if event.button() == Qt.LeftButton:
-            # 左键绑定拖拽
+            # A press or 1px jitter is petting, not a native drag. Defer
+            # all image/physics changes until the user's real mouse movement.
             self.is_follow_mouse = True
+            self.mouse_moving = False
+            self._drag_press_global = event.globalPos()
             self.mouse_drag_pos = event.globalPos() - self.pos()
-            
-            if settings.onfloor == 0:
-            # Left press activates Drag interaction
-                if settings.set_fall:              
-                    settings.onfloor=0
-                settings.draging=1
-                self.workers['Animation'].pause()
-                self.workers['Interaction'].start_interact('mousedrag')
-            
+
             # Record click
             if self.click_timer.isValid() and self.click_timer.elapsed() <= self.click_interval:
                 self.click_count += 1
@@ -528,10 +524,26 @@ class PetWidget(QWidget):
         :return:
         """
         
-        if Qt.LeftButton and self.is_follow_mouse:
-            self.move(event.globalPos() - self.mouse_drag_pos)
-
+        if not self.is_follow_mouse or not (event.buttons() & Qt.LeftButton):
+            return
+        if not self.mouse_moving:
+            from tools.pet_pointer_gestures import deliberate_drag
+            start = getattr(self, "_drag_press_global", None)
+            if start is None or not deliberate_drag(
+                    start.x(), start.y(),
+                    event.globalPos().x(), event.globalPos().y(),
+                    QApplication.startDragDistance()):
+                event.accept()
+                return
             self.mouse_moving = True
+            if settings.set_fall:
+                settings.onfloor = 0
+            settings.draging = 1
+            self.workers['Animation'].pause()
+            self.workers['Interaction'].start_interact('mousedrag')
+
+        if self.mouse_moving:
+            self.move(event.globalPos() - self.mouse_drag_pos)
             self.setCursor(self.cursor_dragged)
 
             if settings.mouseposx3 == 0:
@@ -556,14 +568,6 @@ class PetWidget(QWidget):
                 settings.mouseposy3=settings.mouseposy2
                 settings.mouseposy2=settings.mouseposy1
                 settings.mouseposy1=QCursor.pos().y()
-
-            if settings.onfloor == 1:
-                if settings.set_fall:
-                    settings.onfloor=0
-                settings.draging=1
-                self.workers['Animation'].pause()
-                self.workers['Interaction'].start_interact('mousedrag')
-            
 
             event.accept()
             #print(self.pos().x(), self.pos().y())
@@ -625,6 +629,7 @@ class PetWidget(QWidget):
                     self.set_img()
                     self.workers['Animation'].resume()
             self.mouse_moving = False
+            self._drag_press_global = None
 
 
     def _init_widget(self) -> None:
