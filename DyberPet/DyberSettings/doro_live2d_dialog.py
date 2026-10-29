@@ -412,8 +412,14 @@ class DoroDesktopWindow(_DoroGLView):
             action = menu.addAction("当前模型无可用 ParamStep，不能播放步态")
             action.setEnabled(False)
         menu.addSeparator()
-        menu.addAction("摸摸头 · 原生角度反馈", self.start_pat)
-        menu.addAction("轻跃下落、落地恢复 · 原生弹性反馈", self.start_drop)
+        pat_action = menu.addAction("摸摸头 · 原生角度反馈", self.start_pat)
+        pat_action.setEnabled(self._model_loaded and
+                              "ParamAngleZ" in self._touch_drop.parameters)
+        landing_label = ("轻跃下落、落地恢复 · 原生弹性反馈"
+                         if ("ParamBounceInput1" in self._touch_drop.parameters or
+                             "ParamBodyAngleZ" in self._touch_drop.parameters)
+                         else "轻跃下落、落地恢复 · 仅窗口物理运动")
+        menu.addAction(landing_label, self.start_drop)
         menu.addSeparator()
         menu.addAction("移回主显示器（恢复位置）", self._recover_screen_position)
         menu.addAction("关闭 Doro · 恢复原桌宠", self.close)
