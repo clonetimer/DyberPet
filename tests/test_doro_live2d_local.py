@@ -227,7 +227,7 @@ class DoroLocalModelTests(unittest.TestCase):
     def test_native_backend_init_called_only_once_across_two_gl_widgets(self):
         from unittest.mock import patch
         import sys
-        from types import SimpleNamespace
+        from types import ModuleType
         from PySide6.QtWidgets import QApplication
         from DyberPet.DyberSettings.doro_live2d_dialog import _DoroGLView
 
@@ -245,9 +245,10 @@ class DoroLocalModelTests(unittest.TestCase):
             if calls["glInit"] > 1:
                 raise RuntimeError("native backend already initialized")
 
-        fake = SimpleNamespace(
-            init=lambda: calls.__setitem__("init", calls["init"] + 1),
-            glInit=gl_init, Model=StubModel)
+        fake = ModuleType("live2d")
+        fake.init = lambda: calls.__setitem__("init", calls["init"] + 1)
+        fake.glInit = gl_init
+        fake.Model = StubModel
         old_flags = _DoroGLView._framework_ready, _DoroGLView._backend_ready
         first = _DoroGLView({
             "model_json": "synthetic.model3.json",
