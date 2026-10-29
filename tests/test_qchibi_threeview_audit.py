@@ -106,6 +106,14 @@ class QChibiPackagedEvidenceTests(unittest.TestCase):
         self.assertEqual(report["roles"][0]["status"],
                          "invalid_threeview_evidence")
 
+    def test_shared_system_action_directory_is_not_a_playable_role(self):
+        sysdir = self.root / "sys"
+        sysdir.mkdir()
+        (sysdir / "act_conf.json").write_text("{}", encoding="utf-8")
+        report = audit_role_root(self.root)
+        self.assertEqual(report["summary"]["installed_role_folders"], 1)
+        self.assertEqual(report["summary"]["invalid_or_suspicious_evidence"], 0)
+
     def test_generated_ci_demo_art_is_not_counted_as_real_source_character(self):
         demo = self.root / "DemoG_fixture"
         demo.mkdir()
