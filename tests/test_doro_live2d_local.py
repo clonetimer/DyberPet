@@ -162,6 +162,56 @@ class DoroLocalModelTests(unittest.TestCase):
         self.assertLess(src.index("AA_ShareOpenGLContexts, True"),
                         src.index("class DyberPetApp(QApplication):"))
 
+    def test_actual_qt_pointer_events_trigger_only_real_face_hits(self):
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtCore import Qt, QEvent, QPointF
+        from DyberPet.DyberSettings.doro_live2d_dialog import DoroDesktopWindow
+
+        app = QApplication.instance() or QApplication([])
+        class FakeModel:
+            def __init__(self):
+                self.expressions = []
+            def IsAreaHit(self, area, x, y):
+                return area == "HitAreaFace" and 10 <= x <= 30 and 10 <= y <= 30
+            def SetExpression(self, name):
+                self.expressions.append(name)
+            def Drag(self, x, y):
+                pass
+
+        info = {"model_json": "synthetic.model3.json",
+                "hit_areas": {"HitAreaFace": "Face", "HitAreaLegBack": "Leg_back_L"},
+                "motion_groups": {}, "expressions": ["Amaze", "Idle"]}
+        window = DoroDesktopWindow(info)
+        engine = FakeModel()
+        window.model = engine
+
+        def mouse(typ, x, y, button, buttons):
+            return QMouseEvent(typ, QPointF(x,y), QPointF(x,y),
+                               button, buttons, Qt.KeyboardModifier.NoModifier)
+        try:
+            # Clicking outside character (transparent viewport) cannot pet.
+            window.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, 150, 150,
+                                         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton))
+            window.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, 150, 150,
+                                           Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton))
+            self.assertEqual(engine.expressions, [])
+            # Genuine model face hit triggers an original source expression.
+            window.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, 15, 15,
+                                         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton))
+            window.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, 15, 15,
+                                           Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton))
+            self.assertEqual(engine.expressions, ["Amaze"])
+            # Starting on the face and releasing outside does not trigger petting.
+            window.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, 15, 15,
+                                         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton))
+            window.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, 150, 150,
+                                           Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton))
+            self.assertEqual(engine.expressions, ["Amaze"])
+        finally:
+            window.model = None
+            window.close()
+
     def test_native_backend_init_called_only_once_across_two_gl_widgets(self):
         from unittest.mock import patch
         import sys
