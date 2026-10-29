@@ -23,6 +23,7 @@ from tools.doro_personal_setup import find_doro_archives_in_directories, setup_p
 from tools.doro_window_placement import place_doro_window
 from tools.doro_native_gait import STEP_ID, source_step_gait
 from tools.doro_touch_drop import DoroTouchDrop, read_source_ranges
+from tools.doro_host_bridge import DoroHostBridge
 
 _SETTINGS_KEY = "character/doro_live2d_model3"
 _AUTOSTART_KEY = "character/doro_live2d_auto_start"
@@ -420,6 +421,21 @@ class DoroDesktopWindow(_DoroGLView):
                              "ParamBodyAngleZ" in self._touch_drop.parameters)
                          else "轻跃下落、落地恢复 · 仅窗口物理运动")
         menu.addAction(landing_label, self.start_drop)
+        menu.addSeparator()
+        # The original PySide6 PetWidget remains the unique owner of
+        # tasks, status, inventory and saves. Surface those existing windows
+        # from Doro rather than creating a second, divergent system.
+        host = DoroHostBridge(QApplication.instance())
+        if host.pet is not None:
+            menu.addSeparator()
+            snapshot = host.current_host_status()
+            if snapshot is not None:
+                status = menu.addAction(
+                    "主程序状态（%s） · 饱食 %d / 好感 %d" %
+                    (snapshot["base_role"], snapshot["hp"], snapshot["fv"]))
+                status.setEnabled(False)
+            menu.addAction("主程序 · 任务／背包／状态面板", host.open_dashboard)
+            menu.addAction("主程序 · 角色管理／设置", host.open_control_panel)
         menu.addSeparator()
         menu.addAction("移回主显示器（恢复位置）", self._recover_screen_position)
         menu.addAction("关闭 Doro · 恢复原桌宠", self.close)

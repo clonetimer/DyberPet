@@ -14,6 +14,7 @@ STEP_ID = "ParamStep"
 SPEED_PX_PER_SEC = 72.0
 CYCLE_HZ = 1.8
 MAX_WALK_SECONDS = 5.0
+BLEND_SECONDS = 0.28
 
 
 class NativeStepGait:
@@ -29,6 +30,7 @@ class NativeStepGait:
         self.direction = 0
         self.remaining = 0.0
         self.phase = 0.0
+        self.elapsed = 0.0
 
     @property
     def active(self) -> bool:
@@ -39,13 +41,15 @@ class NativeStepGait:
             return False
         self.direction = direction
         self.remaining = min(float(seconds), MAX_WALK_SECONDS)
-        self.phase = 0.0
+        self.phase = -math.pi / 2
+        self.elapsed = 0.0
         return True
 
     def stop(self) -> None:
         self.direction = 0
         self.remaining = 0.0
         self.value = self.default
+        self.elapsed = 0.0
 
     def tick(self, dt: float, x: float, left: float, right: float) -> float:
         """Advance source ParamStep and window position deterministically."""
@@ -64,11 +68,16 @@ class NativeStepGait:
             self.stop()
             return x
         self.phase += dt * (2 * math.pi * CYCLE_HZ)
-        # Traverse the actual Cubism Step parameter's native range. Do not
-        # flip the artwork or synthesize a nonexistent four-leg sprite frame.
-        self.value = (self.minimum + self.maximum) / 2 + (
+        self.elapsed += dt
+        remaining = max(0.0, self.remaining - dt)
+        # Ease the author's real Step parameter in/out. The source default
+        # need not be the midpoint (e.g. source may be 0..1, default 0).
+        progress = min(1.0, self.elapsed / BLEND_SECONDS, remaining / BLEND_SECONDS)
+        fade = progress * progress * (3.0 - 2.0 * progress)
+        target = (self.minimum + self.maximum) / 2 + (
             (self.maximum - self.minimum) / 2 * math.sin(self.phase))
-        self.remaining -= dt
+        self.value = self.default + fade * (target - self.default)
+        self.remaining = remaining
         if self.remaining <= 1e-9 or (
                 next_x <= left + 1e-8 and self.direction == -1) or (
                 next_x >= right - 1e-8 and self.direction == 1):
