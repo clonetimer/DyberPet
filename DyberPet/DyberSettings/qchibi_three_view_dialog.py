@@ -26,6 +26,15 @@ class QChibiThreeViewDialog(QDialog):
     def __init__(self, role_directory, parent=None):
         super().__init__(parent)
         self.plan = native_threeview_interactions(role_directory)
+        self.designEvidence = audit_role(role_directory)
+        self.untrustedViews = set()
+        for issue in self.designEvidence["issues"]:
+            # If two directions are just the same image / its exact mirror,
+            # keep the first view and hide the suspicious later direction.
+            if ":identical_visible_pixels" in issue or ":exact_horizontal_mirror" in issue:
+                pair = issue.split(":", 1)[0].split("_")
+                if len(pair) == 2:
+                    self.untrustedViews.add(pair[1])
         self.frame_index = 0
         self.current_action = None
         self.timer = QTimer(self)
@@ -51,7 +60,9 @@ class QChibiThreeViewDialog(QDialog):
             sprite.setAlignment(Qt.AlignmentFlag.AlignCenter)
             sprite.setFixedSize(222, 228)
             view = self.plan["views"][name]
-            if view["file"] is None:
+            if name in self.untrustedViews:
+                sprite.setText("此方向与另一视图重复/镜像，不作为独立三视图")
+            elif view["file"] is None:
                 sprite.setText("缺少独立背面原画" if name == "back" else "无可靠方向图")
             else:
                 sprite.setPixmap(self._grounded_pixmap(
@@ -67,7 +78,6 @@ class QChibiThreeViewDialog(QDialog):
 
         # Native action previews alone are not orthographic source views.
         # Reject source sheets that just copy/flip the same pose.
-        self.designEvidence = audit_role(role_directory)
         if self.designEvidence["ready_for_manual_art_review"]:
             reviewed = "三视图源图已核验为独立候选；原设和人设一致性仍待人工验收"
         elif self.designEvidence["status"] == "threeview_requires_source_correction":
