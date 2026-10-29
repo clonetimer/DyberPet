@@ -11,16 +11,17 @@ import zipfile
 from PySide6.QtCore import Qt, QSettings, QTimer, Signal, QStandardPaths, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
-    QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
+    QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
     QMenu, QMessageBox, QPushButton, QVBoxLayout,
 )
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from tools.doro_live2d_local import inspect_local_live2d
 from tools.doro_live2d_interaction import click_expression_for_area, is_same_source_area_press
-from tools.doro_personal_setup import find_doro_archives, setup_personal_doro_zip
+from tools.doro_personal_setup import find_doro_archives_in_directories, setup_personal_doro_zip
 
 _SETTINGS_KEY = "character/doro_live2d_model3"
+_AUTOSTART_KEY = "character/doro_live2d_auto_start"
 
 
 class _DoroGLView(QOpenGLWidget):
@@ -168,7 +169,18 @@ class DoroDesktopWindow(_DoroGLView):
         self._moved = False
         self._press_area = None
         self._pressed_model = False
+        self._legacy_hidden_by_doro = False
         self.loadFailed.connect(self._on_load_failed)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        app = QApplication.instance()
+        if (app and hasattr(app, "p") and not self._legacy_hidden_by_doro
+                and QSettings("DyberPet", "DyberPet").value(
+                    _AUTOSTART_KEY, False, type=bool)
+                and app.p.isVisible()):
+            app.p.hide()
+            self._legacy_hidden_by_doro = True
 
     def _on_load_failed(self, message):
         self.close()
@@ -243,6 +255,11 @@ class DoroDesktopWindow(_DoroGLView):
         self.stop()
         if self in _ACTIVE_DORO_WINDOWS:
             _ACTIVE_DORO_WINDOWS.remove(self)
+        if self._legacy_hidden_by_doro:
+            self._legacy_hidden_by_doro = False
+            app = QApplication.instance()
+            if app and hasattr(app, "p"):
+                app.p.show()
         super().closeEvent(event)
 
 
@@ -302,6 +319,12 @@ class DoroLive2DPreviewDialog(QDialog):
         desktop = QPushButton("在桌面独立运行 Doro（置顶、拖动、滚轮缩放）", self)
         desktop.clicked.connect(lambda: open_doro_desktop(self.model_info))
         layout.addWidget(desktop)
+        self.start_with_doro = QCheckBox(
+            "以后启动 DyberPet 时优先显示 Doro（原桌宠暂时隐藏；关闭 Doro 后恢复）", self)
+        self.start_with_doro.setChecked(QSettings("DyberPet", "DyberPet").value(
+            _AUTOSTART_KEY, False, type=bool))
+        self.start_with_doro.toggled.connect(self._set_doro_as_startup)
+        layout.addWidget(self.start_with_doro)
         auto = QPushButton("从下载文件夹自动启用原版 Doro（个人本地）", self)
         auto.clicked.connect(self._auto_install_from_downloads)
         layout.addWidget(auto)
@@ -312,8 +335,11 @@ class DoroLive2DPreviewDialog(QDialog):
         close.clicked.connect(self.close)
         layout.addWidget(close)
 
+    def _set_doro_as_startup(self, checked):
+        QSettings("DyberPet", "DyberPet").setValue(_AUTOSTART_KEY, bool(checked))
+
     def _auto_install_from_downloads(self):
-        archives = find_doro_archives(Path.home() / "Downloads")
+        archives = _find_personal_doro_downloads()
         if not archives:
             QMessageBox.information(
                 self, "Doro 原模型尚未下载",
@@ -391,19 +417,54 @@ def _personal_doro_root():
     return Path(base) / "PersonalDoro"
 
 
+def _find_personal_doro_downloads():
+    """Windows native Downloads KnownFolder, with legacy path fallback."""
+    windows_downloads = QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.DownloadLocation)
+    return find_doro_archives_in_directories(
+        [windows_downloads, Path.home() / "Downloads"])
+
+
+def _resolve_installed_doro(remembered=""):
+    """No dialogue, no network. Existing valid art or user's own local ZIP."""
+    if remembered and Path(remembered).is_file():
+        try:
+            inspect_local_live2d(remembered)
+            return str(Path(remembered))
+        except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile):
+            pass
+    for archive in _find_personal_doro_downloads():
+        try:
+            return str(setup_personal_doro_zip(
+                archive, _personal_doro_root()))
+        except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile):
+            continue
+    return ""
+
+
+def launch_personal_doro_at_startup():
+    """Opt-in only. Never show a chooser on boot or hide the original on failure."""
+    cfg = QSettings("DyberPet", "DyberPet")
+    if not cfg.value(_AUTOSTART_KEY, False, type=bool):
+        return False
+    model = _resolve_installed_doro(cfg.value(_SETTINGS_KEY, "", type=str))
+    if not model:
+        # Keep the original pet visible if source ZIP has been moved/deleted.
+        return False
+    try:
+        info = inspect_local_live2d(model)
+        open_doro_desktop(info)
+        cfg.setValue(_SETTINGS_KEY, model)
+        return True
+    except (ValueError, OSError, RuntimeError, TypeError, KeyError):
+        return False
+
+
 def _select_local_doro_model(parent, remembered=""):
     """No importing procedure for the user: find official ZIP in Downloads."""
-    if remembered and Path(remembered).is_file():
-        return remembered
-    downloaded = find_doro_archives(Path.home() / "Downloads")
-    for item in downloaded:
-        try:
-            model = setup_personal_doro_zip(item, _personal_doro_root())
-            return str(model)
-        except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile):
-            # A Doro-named ZIP may contain unrelated creator notes. Do not
-            # destructively delete or modify it; let user choose one explicitly.
-            continue
+    resolved = _resolve_installed_doro(remembered)
+    if resolved:
+        return resolved
     choice = QMessageBox(parent)
     choice.setWindowTitle("Doro · 个人本地使用")
     choice.setText("DyberPet 会自动从「下载」文件夹识别并安装原版 Doro ZIP，"
