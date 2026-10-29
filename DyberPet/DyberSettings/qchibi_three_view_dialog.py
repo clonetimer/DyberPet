@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from tools.qchibi_native_threeview import native_threeview_interactions
+from tools.qchibi_threeview_audit import audit_role
 
 VIEW_LABELS = {"front": "正面参考", "side": "侧面参考", "back": "背面参考"}
 BUTTONS = ("default", "left", "right", "patpat", "drag", "on_floor", "fall")
@@ -64,9 +65,15 @@ class QChibiThreeViewDialog(QDialog):
             panel.addWidget(note, 2, index)
         layout.addLayout(panel)
 
-        reviewed = ("有同源三视图原图证据；仍需人工核对"
-                    if self.plan["source_threeview_complete"]
-                    else "尚无三视图完整证据，所示正/侧仅为动作参考，不能算三视图通过")
+        # Native action previews alone are not orthographic source views.
+        # Reject source sheets that just copy/flip the same pose.
+        self.designEvidence = audit_role(role_directory)
+        if self.designEvidence["ready_for_manual_art_review"]:
+            reviewed = "三视图源图已核验为独立候选；原设和人设一致性仍待人工验收"
+        elif self.designEvidence["status"] == "threeview_requires_source_correction":
+            reviewed = "三视图来源可疑（复制/水平镜像/比例异常）：不得标记完成。"
+        else:
+            reviewed = "尚无可用的独立三视图证据，所示正/侧仅为动作参考，不能算三视图通过"
         self.sourceStatus = QLabel(reviewed, self)
         self.sourceStatus.setWordWrap(True)
         layout.addWidget(self.sourceStatus)
