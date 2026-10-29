@@ -7,7 +7,11 @@ is active but its existing system panels and scheduler continue to work.
 from __future__ import annotations
 
 from tools.doro_role_progress import (
-    ROLE_KEY, ensure_doro_profile, record_doro_action, doro_progress,
+    ROLE_KEY, ensure_doro_profile, doro_progress,
+)
+from tools.doro_vitals import (
+    ensure_doro_vitals, record_doro_activity, record_doro_task,
+    snapshot_doro_vitals,
 )
 
 
@@ -51,10 +55,17 @@ class DoroHostBridge:
             return None
 
     def activate_doro_profile(self):
-        return ensure_doro_profile(self._pet_data())
+        data = self._pet_data()
+        profile = ensure_doro_profile(data)
+        if profile is not None:
+            ensure_doro_vitals(data)
+        return profile
 
     def record_doro_action(self, action):
-        return record_doro_action(self._pet_data(), action)
+        return record_doro_activity(self._pet_data(), action)
+
+    def record_completed_task(self, event):
+        return record_doro_task(self._pet_data(), event)
 
     def doro_display_context(self):
         source = self.current_host_status()
@@ -62,6 +73,7 @@ class DoroHostBridge:
             "display_role": ROLE_KEY,
             "data_owner": source["base_role"] if source else None,
             "interactions": doro_progress(self._pet_data()),
+            "doro_status": snapshot_doro_vitals(self._pet_data()),
         }
 
     def current_host_status(self):
