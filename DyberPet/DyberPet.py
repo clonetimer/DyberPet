@@ -1267,6 +1267,10 @@ class PetWidget(QWidget):
         settings.tunable_scale = settings.scale_dict.get(pet_name, 1.0)
         pic_dict = _load_all_pic(pet_name)
         self.pet_conf = PetConfig.init_config(self.curr_pet_name, pic_dict) #settings.size_factor)
+        # Live R47 normalization is limited to real original actions whose
+        # source PNG canvas sizes vary. Consistent author art is left alone.
+        from tools.native_sprite_canvas import NativeSpriteCanvas
+        self._sprite_canvas = NativeSpriteCanvas(self.pet_conf)
         
         self.margin_value = 0 #0.1 * max(self.pet_conf.width, self.pet_conf.height) # 用于将widgets调整到合适的大小
         # Add customized animation
@@ -1419,8 +1423,11 @@ class PetWidget(QWidget):
     def reset_size(self, setImg=True):
         #self.setFixedSize((max(self.pet_hp.width()+statbar_h,self.pet_conf.width)+self.margin_value)*max(1.0,settings.tunable_scale),
         #                  (self.margin_value+4*statbar_h+self.pet_conf.height)*max(1.0, settings.tunable_scale))
-        self.setFixedSize( int(max(self.tomato_time.width()+statbar_h,self.pet_conf.width*settings.tunable_scale)),
-                           int(2*statbar_h+self.pet_conf.height*settings.tunable_scale)
+        canvas = getattr(self, "_sprite_canvas", None)
+        canvas_w = canvas.width if canvas is not None and canvas.enabled else self.pet_conf.width
+        canvas_h = canvas.height if canvas is not None and canvas.enabled else self.pet_conf.height
+        self.setFixedSize( int(max(self.tomato_time.width()+statbar_h,canvas_w*settings.tunable_scale)),
+                           int(2*statbar_h+canvas_h*settings.tunable_scale)
                          )
 
         #self.label.setFixedWidth(self.width())
@@ -1454,13 +1461,21 @@ class PetWidget(QWidget):
             self.move(self.pos().x()-settings.previous_anchor[0]+settings.current_anchor[0],
                       self.pos().y()-settings.previous_anchor[1]+settings.current_anchor[1])
 
-        width_tmp = int(settings.current_img.width()*settings.tunable_scale)
-        height_tmp = int(settings.current_img.height()*settings.tunable_scale)
-
-        # HighDPI-compatible scaling solution
-        # self.label.setScaledContents(True)
-        self.label.setFixedSize(width_tmp, height_tmp)
-        self.label.setPixmap(settings.current_img) #QPixmap.fromImage(settings.current_img))
+        canvas = getattr(self, "_sprite_canvas", None)
+        if canvas is not None and canvas.enabled:
+            # This runs on the *actual desktop pet*, not only R43 QA viewer.
+            # All source QPixmaps remain unmodified, and the label has a
+            # fixed canvas throughout every native action transition.
+            drawn = canvas.render(settings.current_img, settings.tunable_scale)
+            self.label.setFixedSize(drawn.width(), drawn.height())
+            self.label.setScaledContents(False)
+            self.label.setPixmap(drawn)
+        else:
+            width_tmp = int(settings.current_img.width()*settings.tunable_scale)
+            height_tmp = int(settings.current_img.height()*settings.tunable_scale)
+            self.label.setFixedSize(width_tmp, height_tmp)
+            self.label.setScaledContents(True)
+            self.label.setPixmap(settings.current_img)
         # previous scaling soluton
         #self.label.resize(width_tmp, height_tmp)
         #self.label.setPixmap(QPixmap.fromImage(settings.current_img.scaled(width_tmp, height_tmp,
