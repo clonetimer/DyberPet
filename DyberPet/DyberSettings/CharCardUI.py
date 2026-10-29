@@ -244,9 +244,20 @@ class CharInterface(ScrollArea):
     def _refreshDoroRoleLabel(self):
         from .doro_live2d_dialog import doro_visual_role_selected
         if doro_visual_role_selected():
-            self.doroRoleLabel.setText("Doro · 原版 Live2D（下次启动优先显示）")
+            from tools.doro_host_bridge import DoroHostBridge
+            state = DoroHostBridge(QApplication.instance()).doro_display_context()
+            progress = state.get("interactions")
+            count = sum(progress.values()) if progress is not None else 0
+            self.doroRoleLabel.setText(
+                "Doro · Live2D（已选中 · 互动 %d 次）" % count)
         else:
             self.doroRoleLabel.setText("Doro · 原版 Live2D（可作为主桌宠显示角色）")
+
+    def showEvent(self, event):
+        # Refresh the displayed role's real progress from the same PetData
+        # whenever users re-open character management after interactions.
+        super().showEvent(event)
+        self._refreshDoroRoleLabel()
 
     def _selectDoroAsPet(self):
         from .doro_live2d_dialog import choose_doro_visual_role
