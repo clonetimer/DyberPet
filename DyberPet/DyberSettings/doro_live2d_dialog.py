@@ -6,8 +6,10 @@ remain in the owner's original local folder; no PNG conversion or upload.
 from __future__ import annotations
 
 from pathlib import Path
+import zipfile
 
-from PySide6.QtCore import Qt, QSettings, QTimer, Signal
+from PySide6.QtCore import Qt, QSettings, QTimer, Signal, QStandardPaths, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
     QMenu, QMessageBox, QPushButton, QVBoxLayout,
@@ -16,6 +18,7 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from tools.doro_live2d_local import inspect_local_live2d
 from tools.doro_live2d_interaction import click_expression_for_area, is_same_source_area_press
+from tools.doro_personal_setup import find_doro_archives, setup_personal_doro_zip
 
 _SETTINGS_KEY = "character/doro_live2d_model3"
 
@@ -349,22 +352,81 @@ class DoroLive2DPreviewDialog(QDialog):
         super().closeEvent(event)
 
 
+_CREATOR_DORO_URL = "https://booth.pm/zh-cn/items/5867617"
+
+
+def _personal_doro_root():
+    """User-writable local files: never inside a cloned repository/release."""
+    base = QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.AppLocalDataLocation)
+    if not base:
+        raise OSError("Could not find local app data directory")
+    return Path(base) / "PersonalDoro"
+
+
+def _select_local_doro_model(parent, remembered=""):
+    """No importing procedure for the user: find official ZIP in Downloads."""
+    if remembered and Path(remembered).is_file():
+        return remembered
+    downloaded = find_doro_archives(Path.home() / "Downloads")
+    for item in downloaded:
+        try:
+            model = setup_personal_doro_zip(item, _personal_doro_root())
+            return str(model)
+        except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile):
+            # A Doro-named ZIP may contain unrelated creator notes. Do not
+            # destructively delete or modify it; let user choose one explicitly.
+            continue
+    choice = QMessageBox(parent)
+    choice.setWindowTitle("Doro · 个人本地使用")
+    choice.setText("DyberPet 会自动从「下载」文件夹识别并安装原版 Doro ZIP，"
+                   "不用手动解压、导入或安装开发环境。")
+    choice.setInformativeText(
+        "当前未发现有效的原作者模型。下载一次后重新进入即可自动启用；"
+        "所有文件只保存到当前 Windows 用户本机，不会上传 GitHub。")
+    get_original = choice.addButton(
+        "打开原作者免费下载页", QMessageBox.ButtonRole.ActionRole)
+    select_zip = choice.addButton(
+        "选择已经下载的 ZIP（自动安装）", QMessageBox.ButtonRole.ActionRole)
+    select_model = choice.addButton(
+        "使用已有解压模型", QMessageBox.ButtonRole.ActionRole)
+    choice.addButton("取消", QMessageBox.ButtonRole.RejectRole)
+    choice.exec()
+    action = choice.clickedButton()
+    if action is get_original:
+        QDesktopServices.openUrl(QUrl(_CREATOR_DORO_URL))
+        return ""
+    if action is select_zip:
+        file, _ = QFileDialog.getOpenFileName(
+            parent, "选择原作者下载的 Doro ZIP",
+            str(Path.home() / "Downloads"), "Doro ZIP (*.zip)")
+        if not file:
+            return ""
+        try:
+            return str(setup_personal_doro_zip(file, _personal_doro_root()))
+        except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile) as exc:
+            QMessageBox.warning(parent, "Doro 本地安装失败",
+                                "源 ZIP 未被修改。\n" + str(exc)[:450])
+            return ""
+    if action is select_model:
+        file, _ = QFileDialog.getOpenFileName(
+            parent, "选择已在本机取得的 Cubism Doro 模型",
+            str(Path.home()), "Live2D Cubism (*.model3.json)")
+        return file
+    return ""
+
+
 def open_doro_live2d(parent=None):
-    """Remember only a path, never copy restricted model files into app data."""
+    """Own-use setup: local ZIP auto-install and model launch, with no uploads."""
     settings = QSettings("DyberPet", "DyberPet")
     remembered = settings.value(_SETTINGS_KEY, "", type=str)
-    if remembered and Path(remembered).is_file():
-        selected = remembered
-    else:
-        selected, _ = QFileDialog.getOpenFileName(
-            parent, "选择已合法取得的 Doro Cubism 模型（只需选择一次）",
-            str(Path.home()), "Live2D Cubism (*.model3.json)")
+    selected = _select_local_doro_model(parent, remembered)
     if not selected:
         return False
     try:
         dialog = DoroLive2DPreviewDialog(selected, parent)
     except (ValueError, OSError, TypeError, KeyError, ImportError) as exc:
-        QMessageBox.warning(parent, "Doro 源模型加载前检查未通过", str(exc)[:450])
+        QMessageBox.warning(parent, "Doro 原版模型检查失败", str(exc)[:450])
         return False
     settings.setValue(_SETTINGS_KEY, selected)
     dialog.exec()
