@@ -113,6 +113,18 @@ class _DoroGLView(QOpenGLWidget):
                 return None
         return None
 
+    def _visible_model_hit(self, position):
+        """Allow dragging from real visible drawables, not the transparent box."""
+        if not self.model:
+            return False
+        if self._hit_area_at(position):
+            return True
+        try:
+            return bool(self.model.HitDrawable(
+                float(position.x()), float(position.y()), topOnly=True))
+        except (ValueError, RuntimeError, TypeError):
+            return False
+
     def express(self, name):
         if not self.model or name not in self.model_info["expressions"]:
             return False
@@ -152,6 +164,7 @@ class DoroDesktopWindow(_DoroGLView):
         self._window_origin = None
         self._moved = False
         self._press_area = None
+        self._pressed_model = False
         self.loadFailed.connect(self._on_load_failed)
 
     def _on_load_failed(self, message):
@@ -166,12 +179,13 @@ class DoroDesktopWindow(_DoroGLView):
             self._window_origin = self.pos()
             self._moved = False
             self._press_area = self._hit_area_at(event.position())
+            self._pressed_model = self._visible_model_hit(event.position())
         elif event.button() == Qt.MouseButton.RightButton:
             self._show_actions(event.globalPosition().toPoint())
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if (self._press_global is not None and self._press_area is not None
+        if (self._press_global is not None and self._pressed_model
                 and event.buttons() & Qt.MouseButton.LeftButton):
             offset = event.globalPosition().toPoint() - self._press_global
             if (self._moved or offset.manhattanLength() >=
@@ -191,6 +205,7 @@ class DoroDesktopWindow(_DoroGLView):
                 if name:
                     self.express(name)
             self._press_area = None
+            self._pressed_model = False
             self._press_global = None
             self._window_origin = None
             self._moved = False
@@ -221,6 +236,7 @@ class DoroDesktopWindow(_DoroGLView):
 
     def closeEvent(self, event):
         self._press_area = None
+        self._pressed_model = False
         self.stop()
         if self in _ACTIVE_DORO_WINDOWS:
             _ACTIVE_DORO_WINDOWS.remove(self)
