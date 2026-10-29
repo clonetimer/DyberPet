@@ -40,3 +40,16 @@ R7 的 Doro 是其他画师的旧版 PNG 图集，并不是用户认可的 **六
 - **单角色完成门禁**：新增原生 Live2D 入口 `python tools/doro_single_role_gate.py --live2d-model "Doro.model3.json" --out DORO_STATUS.json`；显示本机资源、表情、原生动作以及缺失的三视图、四足动画、Windows 实机和授权证据。即使引擎工作正常，报告仍然 **complete=false**，直到实际通过完整验收。
 
 这轮**没有补画或声称完成独立三视图**，也没有修改 0x4682B4 模型的图像内容。
+
+
+## R54：真模型命中区与双窗口 OpenGL 修复
+
+这是 **Doro 单角色** 的继续收敛，未增加新角色、绘画或导出任何第三方模型。
+
+- **引擎重复初始化修复**：预览和桌面窗口会分别创建 QOpenGLWidget。live2d-py 的 `glInit()` 是进程级后端初始化，不能每打开一个窗口重复调用。R54 只初始化一次，并在 DyberPet 创建 QApplication 之前启用 Qt `AA_ShareOpenGLContexts`，让两个窗口具备共享 OpenGL 资源的必要条件。
+- **原画命中区域**：作者 Doro 模型在 `HitAreas` 中登记 `HitAreaFace` 和 `HitAreaLegBack`。R54 使用 Cubism `IsAreaHit` 判断按下/抬起是否命中相同部位；只有该模型本身具有原生表情时才反馈。脸部点击优先原生 `Amaze`，后腿点击优先 `Doubt`，其他不存在的表情不会生成。
+- **透明区域不触发反馈**：点空白不再触发 R53 的随机表情；鼠标离开按下区域、不算点击。窗口只有按在真正可见的源模型绘制区域（由 `HitDrawable` 验证）时才开始拖动；不改动作源文件。
+- **仍然只是原生表达反馈**：`Amaze` / `Doubt` 是作者已有表情，**不是承诺存在额外的摸头逐帧动作，也不是完整四足跑步、睡眠或独立背面三视图**。
+- **测试**：本地模型 JSON 假数据 + Qt offscreen 真实鼠标事件，验证脸/后腿/透明背景、身体拖动、双窗只调用一次 GL 初始化；Windows 便携包另做 PyInstaller 及启动 smoke。
+
+如角色模型版本不同、没有对应 `HitAreas` 或表情，本程序不会将相似名称当作已有动作。R51 完成门禁仍维持未完成状态，直到独立美术、动作、Windows 实机和交付权利全部有真实证据。

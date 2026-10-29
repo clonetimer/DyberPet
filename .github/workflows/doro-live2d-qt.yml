@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "tools/doro_live2d_local.py"
+      - "tools/doro_live2d_interaction.py"
+      - "run_DyberPet.py"
       - "DyberPet/DyberSettings/doro_live2d_dialog.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tests/test_doro_live2d_local.py"
@@ -13,6 +15,8 @@ on:
   push:
     paths:
       - "tools/doro_live2d_local.py"
+      - "tools/doro_live2d_interaction.py"
+      - "run_DyberPet.py"
       - "DyberPet/DyberSettings/doro_live2d_dialog.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tests/test_doro_live2d_local.py"

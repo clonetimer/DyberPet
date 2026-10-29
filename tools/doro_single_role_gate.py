@@ -184,6 +184,7 @@ def audit_doro_live2d(model_json):
         report["model_inventory"] = {
             "expressions": inventory["expressions"],
             "motion_groups": inventory["motion_groups"],
+            "author_hit_areas": inventory.get("hit_areas", {}),
             "resource_files_checked": inventory["resource_files_checked"],
         }
         if not inventory["motion_groups"]:

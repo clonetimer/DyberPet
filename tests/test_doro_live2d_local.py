@@ -117,6 +117,162 @@ class DoroLocalModelTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "linked"):
             inspect_local_live2d(self.model)
 
+    def test_original_hit_areas_are_reported_but_no_art_approval(self):
+        self.data["HitAreas"] = [
+            {"Name": "HitAreaFace", "Id": "Face"},
+            {"Name": "HitAreaLegBack", "Id": "Leg_back_L"}
+        ]
+        self._save()
+        report = inspect_local_live2d(self.model)
+        self.assertEqual(report["hit_areas"],
+                         {"HitAreaFace": "Face", "HitAreaLegBack": "Leg_back_L"})
+        self.assertFalse(report["is_user_approved_doro_likeness"])
+
+    def test_malformed_or_duplicate_hit_areas_fail_closed(self):
+        cases = [
+            [{"Name": "HitAreaFace", "Id": "Face"},
+             {"Name": "HitAreaFace", "Id": "Other"}],
+            [{"Name": "HitAreaFace"}], ["untrusted"],
+        ]
+        for areas in cases:
+            self.data["HitAreas"] = areas
+            self._save()
+            with self.subTest(areas=areas), self.assertRaises(ValueError):
+                inspect_local_live2d(self.model)
+
+    def test_doro_click_mapping_uses_only_real_source_expressions(self):
+        from tools.doro_live2d_interaction import (
+            click_expression_for_area, is_same_source_area_press,
+        )
+        expressions = ["Idle", "Doubt", "Amaze", "Sullen"]
+        self.assertEqual(click_expression_for_area("HitAreaFace", expressions),
+                         "Amaze")
+        self.assertEqual(click_expression_for_area("HitAreaLegBack", expressions),
+                         "Doubt")
+        self.assertIsNone(click_expression_for_area("Unknown", expressions))
+        self.assertIsNone(click_expression_for_area("HitAreaFace", ["NoAmaze"]))
+        self.assertFalse(is_same_source_area_press(None, "HitAreaFace"))
+        self.assertFalse(is_same_source_area_press("HitAreaFace", "HitAreaLegBack"))
+        self.assertTrue(is_same_source_area_press("HitAreaFace", "HitAreaFace"))
+
+    def test_qt_shared_context_flag_is_configured_before_application(self):
+        src = (Path(__file__).resolve().parents[1] /
+               "run_DyberPet.py").read_text(encoding="utf-8")
+        self.assertIn("AA_ShareOpenGLContexts, True", src)
+        self.assertLess(src.index("AA_ShareOpenGLContexts, True"),
+                        src.index("class DyberPetApp(QApplication):"))
+
+    def test_actual_qt_pointer_events_trigger_only_real_face_hits(self):
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtCore import Qt, QEvent, QPointF
+        from DyberPet.DyberSettings.doro_live2d_dialog import DoroDesktopWindow
+
+        app = QApplication.instance() or QApplication([])
+        class FakeModel:
+            def __init__(self):
+                self.expressions = []
+            def IsAreaHit(self, area, x, y):
+                return area == "HitAreaFace" and 10 <= x <= 30 and 10 <= y <= 30
+            def HitDrawable(self, x, y, topOnly=False):
+                return ["Body"] if 40 <= x <= 80 and 40 <= y <= 80 else []
+            def SetExpression(self, name):
+                self.expressions.append(name)
+            def Drag(self, x, y):
+                pass
+
+        info = {"model_json": "synthetic.model3.json",
+                "hit_areas": {"HitAreaFace": "Face", "HitAreaLegBack": "Leg_back_L"},
+                "motion_groups": {}, "expressions": ["Amaze", "Idle"]}
+        window = DoroDesktopWindow(info)
+        engine = FakeModel()
+        window.model = engine
+
+        def mouse(typ, x, y, button, buttons):
+            return QMouseEvent(typ, QPointF(x,y), QPointF(x,y),
+                               button, buttons, Qt.KeyboardModifier.NoModifier)
+        try:
+            # Clicking outside character (transparent viewport) cannot pet.
+            window.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, 150, 150,
+                                         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton))
+            window.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, 150, 150,
+                                           Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton))
+            self.assertEqual(engine.expressions, [])
+            # Genuine model face hit triggers an original source expression.
+            window.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, 15, 15,
+                                         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton))
+            window.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, 15, 15,
+                                           Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton))
+            self.assertEqual(engine.expressions, ["Amaze"])
+            # Starting on the face and releasing outside does not trigger petting.
+            window.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, 15, 15,
+                                         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton))
+            window.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, 150, 150,
+                                           Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton))
+            self.assertEqual(engine.expressions, ["Amaze"])
+            # Real visible non-face body is draggable but not a 'pet' hit.
+            window.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, 50, 50,
+                                         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton))
+            self.assertTrue(window._pressed_model)
+            window.mouseMoveEvent(mouse(QEvent.Type.MouseMove, 80, 80,
+                                        Qt.MouseButton.NoButton, Qt.MouseButton.LeftButton))
+            self.assertTrue(window._moved)
+            window.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, 80, 80,
+                                           Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton))
+            self.assertEqual(engine.expressions, ["Amaze"])
+        finally:
+            window.model = None
+            window.close()
+
+    def test_native_backend_init_called_only_once_across_two_gl_widgets(self):
+        from unittest.mock import patch
+        import sys
+        from types import ModuleType
+        from PySide6.QtWidgets import QApplication
+        from DyberPet.DyberSettings.doro_live2d_dialog import _DoroGLView
+
+        app = QApplication.instance() or QApplication([])
+        calls = {"glInit": 0, "init": 0}
+
+        class StubModel:
+            def LoadModelJson(self, path):
+                pass
+            def Resize(self, width, height):
+                pass
+
+        def gl_init():
+            calls["glInit"] += 1
+            if calls["glInit"] > 1:
+                raise RuntimeError("native backend already initialized")
+
+        fake = ModuleType("live2d")
+        fake.init = lambda: calls.__setitem__("init", calls["init"] + 1)
+        fake.glInit = gl_init
+        fake.Model = StubModel
+        old_flags = _DoroGLView._framework_ready, _DoroGLView._backend_ready
+        first = _DoroGLView({
+            "model_json": "synthetic.model3.json",
+            "extra_motions": {}, "hit_areas": {},
+        })
+        second = _DoroGLView({
+            "model_json": "synthetic.model3.json",
+            "extra_motions": {}, "hit_areas": {},
+        })
+        try:
+            _DoroGLView._framework_ready = False
+            _DoroGLView._backend_ready = False
+            with patch.dict(sys.modules, {"live2d": fake}):
+                first.initializeGL()
+                second.initializeGL()
+            self.assertEqual(calls, {"glInit": 1, "init": 1},
+                             f"first={first.error!r}, second={second.error!r}")
+            self.assertIsNone(first.error)
+            self.assertIsNone(second.error)
+        finally:
+            first.stop()
+            second.stop()
+            _DoroGLView._framework_ready, _DoroGLView._backend_ready = old_flags
+
     def test_qt_dialog_hook_has_real_doro_only_action(self):
         source = (Path(__file__).resolve().parents[1]
                   / "DyberPet" / "DyberSettings" / "CharCardUI.py").read_text("utf-8")

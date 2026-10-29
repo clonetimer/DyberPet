@@ -92,6 +92,9 @@ from DyberPet.Accessory import DPAccessory
 from PySide6.QtWidgets import QApplication
 from PySide6 import QtCore
 from PySide6.QtCore import Qt, QLocale, QTimer, QDateTime, QDate, Signal, QTime
+# R54: preview and independent Doro OpenGL pet share native Cubism textures.
+# Must be set BEFORE the first QApplication is constructed.
+QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
 
 from qfluentwidgets import  FluentTranslator, setThemeColor
 from DyberPet.DyberSettings.DyberControlPanel import ControlMainWindow
