@@ -202,6 +202,10 @@ jobs:
           $exe = (Resolve-Path "dist/DyberPet/DyberPet.exe").Path
           $proc = Start-Process -FilePath $exe -ArgumentList "--personal-package-smoke" -WorkingDirectory $env:RUNNER_TEMP -Wait -PassThru
           if ($proc.ExitCode -ne 0) { throw "Stripped EXE does not pass personal package smoke" }
+          # The earlier EXE smoke intentionally kept 125 disposable demo roles.
+          # Re-audit the FINAL stripped resource tree before ZIP upload.
+          python tools/qchibi_threeview_audit.py --role-root $roleDir --out "dist/DyberPet/THREEVIEW_AUDIT.json" --fail-on-invalid
+          if ($LASTEXITCODE -ne 0) { throw "Final downloadable character evidence audit failed" }
           $zipPath = "DyberPet-Windows-Personal-PR5.zip"
           Remove-Item -LiteralPath $zipPath -Force
           Compress-Archive -Path "dist/DyberPet/*" -DestinationPath $zipPath -CompressionLevel Optimal
