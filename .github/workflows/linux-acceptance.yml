@@ -273,6 +273,7 @@ jobs:
           with tarfile.open("DyberPet-Linux-Personal-x86_64.tar.gz", "r:gz") as tar:
               names=tar.getnames()
           assert "DyberPetDesktop/res/role/Kitty/pet_conf.json" in names
+          assert "DyberPetDesktop/THREEVIEW_AUDIT.json" in names
           assert not any("BUILTIN_CHIBI_DEMO.json" in p or
                          "BUILTIN_MASCOT_DEMO.json" in p for p in names)
           print("LINUX_USER_ART_POLICY_VERIFIED_NO_GENERATED_DEMOS")
