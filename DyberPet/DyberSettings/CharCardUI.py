@@ -248,8 +248,14 @@ class CharInterface(ScrollArea):
             state = DoroHostBridge(QApplication.instance()).doro_display_context()
             progress = state.get("interactions")
             count = sum(progress.values()) if progress is not None else 0
-            self.doroRoleLabel.setText(
-                "Doro · Live2D（已选中 · 互动 %d 次）" % count)
+            status = state.get("doro_status")
+            if status is not None:
+                self.doroRoleLabel.setText(
+                    "Doro · Live2D（活力 %d / 亲密 %d / 互动 %d）" %
+                    (status["energy"], status["bond"], count))
+            else:
+                self.doroRoleLabel.setText(
+                    "Doro · Live2D（已选中 · 互动 %d 次）" % count)
         else:
             self.doroRoleLabel.setText("Doro · 原版 Live2D（可作为主桌宠显示角色）")
 
