@@ -237,11 +237,20 @@ class DoroDesktopWindow(_DoroGLView):
         self._walk_x = float(self.x())
         self._last_gait_tick = time.monotonic()
         self._last_action_tick = self._last_gait_tick
+        # Only create Doro's progress after the actual Cubism model loads.
+        # Uses the same PetData writer, never changes current sprite role.
+        self._doro_bridge().activate_doro_profile()
         app = QApplication.instance()
         if (app and hasattr(app, "p") and app.p.isVisible()
                 and not self._legacy_hidden_by_doro):
             app.p.hide()
             self._legacy_hidden_by_doro = True
+
+    def _doro_bridge(self):
+        return DoroHostBridge(QApplication.instance())
+
+    def _record_doro_action(self, action):
+        return self._doro_bridge().record_doro_action(action)
 
     def start_walk(self, direction):
         """Walk with the original Cubism ParamStep rig only, never fake motion."""
@@ -250,7 +259,10 @@ class DoroDesktopWindow(_DoroGLView):
         self._touch_drop.cancel()
         self._walk_x = float(self.x())
         self._last_gait_tick = time.monotonic()
-        return self._gait.start(direction)
+        started = self._gait.start(direction)
+        if started:
+            self._record_doro_action("walk_left" if direction == -1 else "walk_right")
+        return started
 
     def stop_walk(self):
         if self._gait is not None:
@@ -263,7 +275,10 @@ class DoroDesktopWindow(_DoroGLView):
         if "Amaze" in self.model_info.get("expressions", []):
             self.express("Amaze", fadeout_ms=700)
         self._last_action_tick = time.monotonic()
-        return self._touch_drop.pat()
+        began = self._touch_drop.pat()
+        if began:
+            self._record_doro_action("pat")
+        return began
 
     def start_drop(self, from_drag=False):
         """Physical desktop fall; optional native rig bounce on landing."""
@@ -290,7 +305,12 @@ class DoroDesktopWindow(_DoroGLView):
             start = max(screen[1], floor - 85)
             self.move(self.x(), round(start))
         self._last_action_tick = time.monotonic()
-        return self._touch_drop.drop(start, floor)
+        falling = self._touch_drop.drop(start, floor)
+        if self._touch_drop.active:
+            self._record_doro_action("drop")
+            if self._touch_drop.phase == "land":
+                self._record_doro_action("land")
+        return falling
 
 
     def _after_native_update(self):
@@ -307,7 +327,10 @@ class DoroDesktopWindow(_DoroGLView):
         dt_action = min(0.08, max(0.0, now - self._last_action_tick))
         self._last_action_tick = now
         if self.model and self._touch_drop.active:
+            previous_phase = self._touch_drop.phase
             y = self._touch_drop.tick(dt_action)
+            if previous_phase == "fall" and self._touch_drop.phase == "land":
+                self._record_doro_action("land")
             if self._touch_drop.phase in ("fall", "land"):
                 if round(y) != self.y():
                     self.move(self.x(), round(y))
@@ -375,6 +398,7 @@ class DoroDesktopWindow(_DoroGLView):
                     self.express(name, fadeout_ms=700)
                 if self._press_area == "HitAreaFace":
                     self._touch_drop.pat()
+                    self._record_doro_action("pat")
             elif self._moved and self._pressed_model and self.model:
                 # Releasing a dragged pet lets it drop to the active floor.
                 self.start_drop(from_drag=True)
@@ -428,6 +452,19 @@ class DoroDesktopWindow(_DoroGLView):
         host = DoroHostBridge(QApplication.instance())
         if host.pet is not None:
             menu.addSeparator()
+            context = host.doro_display_context()
+            interactions = context.get("interactions")
+            if interactions is not None:
+                total = sum(interactions.values())
+                role = menu.addAction(
+                    "当前角色 · Doro Live2D（累计互动 %d 次）" % total)
+                role.setEnabled(False)
+                counts = menu.addAction(
+                    "摸头 %d / 行走 %d / 落地 %d" %
+                    (interactions["pat"],
+                     interactions["walk_left"] + interactions["walk_right"],
+                     interactions["land"]))
+                counts.setEnabled(False)
             snapshot = host.current_host_status()
             if snapshot is not None:
                 status = menu.addAction(
