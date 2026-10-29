@@ -30,7 +30,9 @@ def gesture_timing(act, tick_ms):
     duration = len(images) * count * seconds
     if duration > MAX_GESTURE_SECONDS or not math.isfinite(duration):
         return None
-    ticks = max(1, math.ceil(duration * 1000 / tick))
+    # Floating-point 0.1 * 2 * 3 may yield 0.6000000000000001;
+    # allow sub-nanotick rounding, never add a phantom last animation tick.
+    ticks = max(1, math.ceil(duration * 1000 / tick - 1e-9))
     return {"frames": len(images), "repeats": count, "frame_seconds": seconds,
             "duration_seconds": round(duration, 2), "tick_ms": tick,
             "ticks": ticks}
