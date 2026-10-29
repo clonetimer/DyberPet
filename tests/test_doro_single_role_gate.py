@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.doro_single_role_gate import audit_doro, main, REFERENCE_URL
+from tools.doro_single_role_gate import audit_doro, audit_doro_live2d, main, REFERENCE_URL
 
 
 class DoroOneAtATimeGateTests(unittest.TestCase):
@@ -80,6 +80,34 @@ class DoroOneAtATimeGateTests(unittest.TestCase):
                                "--require-complete"]), 1)
         self.assertEqual(before, {f.name: f.read_bytes() for f in self.role.iterdir()})
         self.assertFalse(json.loads(report.read_text(encoding="utf-8"))["complete"])
+
+    def test_valid_local_live2d_inventory_is_not_a_finished_doro(self):
+        model_dir = self.root / "Cubism"
+        model_dir.mkdir()
+        for name in ("Doro.moc3", "texture.png", "Idle.motion3.json"):
+            (model_dir / name).write_bytes(b"TEST_FIXTURE_NO_REAL_DORO")
+        path = model_dir / "Doro.model3.json"
+        path.write_text(json.dumps({
+            "FileReferences": {
+                "Moc": "Doro.moc3", "Textures": ["texture.png"],
+                "Motions": {"Idle": [{"File": "Idle.motion3.json"}]}
+            }
+        }), encoding="utf-8")
+        before = {p.name: p.read_bytes() for p in model_dir.iterdir()}
+        result = audit_doro_live2d(path)
+        self.assertTrue(result["source_model_installed"])
+        self.assertEqual(result["model_inventory"]["motion_groups"], {"Idle": 1})
+        self.assertFalse(result["complete"])
+        self.assertFalse(result["independent_threeview_complete"])
+        self.assertFalse(result["art_redistribution_permission_verified"])
+        self.assertEqual(main(["--live2d-model", str(path), "--require-complete"]), 1)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in model_dir.iterdir()})
+
+    def test_missing_live2d_model_fails_closed_without_modifying_files(self):
+        output = audit_doro_live2d(self.root / "not-installed.model3.json")
+        self.assertFalse(output["source_model_installed"])
+        self.assertFalse(output["complete"])
+        self.assertIn("Local model cannot be verified", output["blockers"][0])
 
     def test_missing_role_is_explicitly_blocked(self):
         report = audit_doro(self.root / "does-not-exist")

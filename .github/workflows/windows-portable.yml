@@ -14,6 +14,11 @@ on:
       - "tests/test_first_run_guide.py"
       - "DyberPet/modules.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
+      - "DyberPet/DyberSettings/doro_live2d_dialog.py"
+      - "tools/doro_live2d_local.py"
+      - "tools/doro_single_role_gate.py"
+      - "tests/test_doro_live2d_local.py"
+      - "tests/test_doro_single_role_gate.py"
       - "DyberPet/DyberSettings/GameSaveUI.py"
       - "tools/personal_role_import.py"
       - "tools/create_original_mascot.py"
@@ -73,6 +78,11 @@ on:
       - "tests/test_first_run_guide.py"
       - "DyberPet/assistant/**"
       - "DyberPet/DyberSettings/CharCardUI.py"
+      - "DyberPet/DyberSettings/doro_live2d_dialog.py"
+      - "tools/doro_live2d_local.py"
+      - "tools/doro_single_role_gate.py"
+      - "tests/test_doro_live2d_local.py"
+      - "tests/test_doro_single_role_gate.py"
       - "DyberPet/DyberSettings/GameSaveUI.py"
       - "tools/personal_role_import.py"
       - "tools/create_original_mascot.py"
@@ -145,6 +155,10 @@ jobs:
         run: python -m unittest discover -s tests -p "test_default_pet_order.py" -v
       - name: Verify offline first-use selection guards
         run: python -m unittest discover -s tests -p "test_first_run_guide.py" -v
+      - name: Verify actual Doro Live2D and strict one-role completion regressions
+        run: |
+          python -m unittest discover -s tests -p "test_doro_live2d_local.py" -v
+          python -m unittest discover -s tests -p "test_doro_single_role_gate.py" -v
       - name: Verify evidence-based Q-chibi three-view packaging gate
         run: python -m unittest discover -s tests -p "test_qchibi_threeview_audit.py" -v
       - name: Build portable Windows onedir candidate
