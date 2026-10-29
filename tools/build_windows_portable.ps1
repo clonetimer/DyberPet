@@ -33,6 +33,7 @@ if ($LASTEXITCODE -ne 0) { throw "Packaged Q-chibi three-view evidence audit fai
 New-Item -ItemType Directory -Force -Path (Join-Path $package "data") | Out-Null
 Copy-Item -LiteralPath (Join-Path $root "docs/pet_assistant.md") -Destination (Join-Path $package "ASSISTANT_GUIDE.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/character_fidelity.md") -Destination (Join-Path $package "CHARACTER_FIDELITY.md")
+Copy-Item -LiteralPath (Join-Path $root "docs/qchibi_threeview_gate.md") -Destination (Join-Path $package "THREEVIEW_GUIDE.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/personal_character_install.md") -Destination (Join-Path $package "PERSONAL_CHARACTER_GUIDE.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/guga_doro_personal_install.md") -Destination (Join-Path $package "GUGA_DORO_GUIDE.md")
 Copy-Item -LiteralPath (Join-Path $root "docs/original_chibi_starter.md") -Destination (Join-Path $package "ORIGINAL_MASCOT_GUIDE.md")
