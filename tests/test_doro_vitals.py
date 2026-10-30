@@ -141,7 +141,7 @@ class DoroVitalTests(unittest.TestCase):
         self.assertIn('getattr(pet, "task_phase_changed", None)', s)
         self.assertIn('self._task_settlement.transition(status)', s)
         self.assertIn("signal.disconnect(callback)", s)
-        self.assertIn("self._model_loaded and self.isVisible()", s)
+        self.assertIn("not self._model_loaded or not self.isVisible()", s)
         self.assertIn("Doro 自身 · 活力", s)
 
 
