@@ -17,12 +17,15 @@ on:
       - "tests/test_doro_vitals.py"
       - "tools/doro_feeding.py"
       - "tests/test_doro_feeding.py"
+      - "tools/doro_task_settlement.py"
+      - "tests/test_doro_task_settlement.py"
       - "tests/test_doro_touch_drop.py"
       - "tests/test_doro_native_gait.py"
       - "tests/test_doro_window_placement.py"
       - "tests/test_doro_personal_setup.py"
       - "tools/doro_live2d_interaction.py"
       - "run_DyberPet.py"
+      - "DyberPet/DyberPet.py"
       - "DyberPet/DyberSettings/doro_live2d_dialog.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tests/test_doro_live2d_local.py"
@@ -45,12 +48,15 @@ on:
       - "tests/test_doro_vitals.py"
       - "tools/doro_feeding.py"
       - "tests/test_doro_feeding.py"
+      - "tools/doro_task_settlement.py"
+      - "tests/test_doro_task_settlement.py"
       - "tests/test_doro_touch_drop.py"
       - "tests/test_doro_native_gait.py"
       - "tests/test_doro_window_placement.py"
       - "tests/test_doro_personal_setup.py"
       - "tools/doro_live2d_interaction.py"
       - "run_DyberPet.py"
+      - "DyberPet/DyberPet.py"
       - "DyberPet/DyberSettings/doro_live2d_dialog.py"
       - "DyberPet/DyberSettings/CharCardUI.py"
       - "tests/test_doro_live2d_local.py"
@@ -89,6 +95,7 @@ jobs:
           python -m unittest discover -s tests -p "test_doro_role_progress.py" -v
           python -m unittest discover -s tests -p "test_doro_vitals.py" -v
           python -m unittest discover -s tests -p "test_doro_feeding.py" -v
+          python -m unittest discover -s tests -p "test_doro_task_settlement.py" -v
       - name: Verify the PR does not require/store artist model
         shell: pwsh
         run: |
