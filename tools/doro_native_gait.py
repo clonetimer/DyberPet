@@ -39,10 +39,14 @@ class NativeStepGait:
     def start(self, direction: int, seconds: float = 3.0) -> bool:
         if direction not in (-1, 1) or not math.isfinite(seconds) or seconds <= 0:
             return False
+        # A left/right reversal is one continuous walk, not a fresh
+        # animation. Preserve source Step phase and blend so feet do not
+        # suddenly pop to home during an opposite-direction command.
+        if not self.active:
+            self.phase = -math.pi / 2
+            self.elapsed = 0.0
         self.direction = direction
         self.remaining = min(float(seconds), MAX_WALK_SECONDS)
-        self.phase = -math.pi / 2
-        self.elapsed = 0.0
         return True
 
     def stop(self) -> None:
