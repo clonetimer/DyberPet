@@ -19,6 +19,8 @@ on:
       - "tools/doro_personal_setup.py"
       - "tools/doro_window_placement.py"
       - "tools/doro_native_gait.py"
+      - "tools/doro_native_heading.py"
+      - "tests/test_doro_native_heading.py"
       - "tools/doro_touch_drop.py"
       - "tools/doro_host_bridge.py"
       - "tests/test_doro_host_bridge.py"
@@ -103,6 +105,8 @@ on:
       - "tools/doro_personal_setup.py"
       - "tools/doro_window_placement.py"
       - "tools/doro_native_gait.py"
+      - "tools/doro_native_heading.py"
+      - "tests/test_doro_native_heading.py"
       - "tools/doro_touch_drop.py"
       - "tools/doro_host_bridge.py"
       - "tests/test_doro_host_bridge.py"
@@ -201,6 +205,7 @@ jobs:
           python -m unittest discover -s tests -p "test_doro_personal_setup.py" -v
           python -m unittest discover -s tests -p "test_doro_window_placement.py" -v
           python -m unittest discover -s tests -p "test_doro_native_gait.py" -v
+          python -m unittest discover -s tests -p "test_doro_native_heading.py" -v
           python -m unittest discover -s tests -p "test_doro_touch_drop.py" -v
           python -m unittest discover -s tests -p "test_doro_host_bridge.py" -v
           python -m unittest discover -s tests -p "test_doro_visual_role_selection.py" -v
