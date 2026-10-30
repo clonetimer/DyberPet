@@ -25,6 +25,7 @@ from tools.doro_window_placement import place_doro_window
 from tools.doro_native_gait import STEP_ID, source_step_gait
 from tools.doro_touch_drop import DoroTouchDrop, read_source_ranges
 from tools.doro_host_bridge import DoroHostBridge
+from tools.doro_task_settlement import DoroTaskSettlement
 
 _SETTINGS_KEY = "character/doro_live2d_model3"
 _AUTOSTART_KEY = "character/doro_live2d_auto_start"
@@ -241,8 +242,11 @@ class DoroDesktopWindow(_DoroGLView):
         # Only create Doro's progress after the actual Cubism model loads.
         # Uses the same PetData writer, never changes current sprite role.
         self._doro_bridge().activate_doro_profile()
+        self._task_settlement = DoroTaskSettlement()
         self._connect_host_task_signals()
         app = QApplication.instance()
+        if app and hasattr(app, "p"):
+            app.p._doro_live2d_active = True
         if (app and hasattr(app, "p") and app.p.isVisible()
                 and not self._legacy_hidden_by_doro):
             app.p.hide()
@@ -255,17 +259,20 @@ class DoroDesktopWindow(_DoroGLView):
         pet = getattr(app, "p", None)
         if pet is None:
             return
-        for name, event in (("taskUI_task_end", "task_finished"),
-                            ("single_pomo_done", "pomodoro_finished")):
-            signal = getattr(pet, name, None)
-            if not callable(getattr(signal, "connect", None)):
-                continue
-            callback = lambda e=event: self._on_host_task_completed(e)
+        # Listen to one authoritative scheduler lifecycle feed, not the
+        # two ambiguous legacy completion signals (which can coincide).
+        signal = getattr(pet, "task_phase_changed", None)
+        if callable(getattr(signal, "connect", None)):
+            callback = self._on_host_task_phase
             signal.connect(callback)
             self._host_task_links.append((signal, callback))
 
-    def _on_host_task_completed(self, event):
-        if self._model_loaded and self.isVisible():
+    def _on_host_task_phase(self, status):
+        if not self._model_loaded or not self.isVisible():
+            self._task_settlement.reset()
+            return
+        event = self._task_settlement.transition(status)
+        if event is not None:
             self._doro_bridge().record_completed_task(event)
 
     def _doro_bridge(self):
@@ -589,6 +596,11 @@ class DoroDesktopWindow(_DoroGLView):
             except (RuntimeError, TypeError):
                 pass
         self._host_task_links = []
+        if hasattr(self, "_task_settlement"):
+            self._task_settlement.reset()
+        app = QApplication.instance()
+        if app is not None and hasattr(app, "p"):
+            app.p._doro_live2d_active = False
         self.stop_walk()
         self._touch_drop.cancel()
         if self._model_loaded:
