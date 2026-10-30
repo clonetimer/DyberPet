@@ -281,9 +281,30 @@ class DoroDesktopWindow(_DoroGLView):
     def _record_doro_action(self, action):
         return self._doro_bridge().record_doro_action(action)
 
+    def _walk_limits(self):
+        center_x = self.x() + self.width() // 2
+        center_y = self.y() + self.height() // 2
+        screens = self._available_screens()
+        active = next((
+            r for r in screens if
+            r[0] <= center_x < r[0] + r[2] and
+            r[1] <= center_y < r[1] + r[3]
+        ), screens[0] if screens else None)
+        if active is None:
+            return None
+        return (active[0], active[0] + active[2] - self.width())
+
     def start_walk(self, direction):
-        """Walk with the original Cubism ParamStep rig only, never fake motion."""
-        if not self._model_loaded or self._gait is None:
+        """Only charge a real Step action if a step can move on-screen."""
+        if not self._model_loaded or self._gait is None or direction not in (-1, 1):
+            return False
+        limits = self._walk_limits()
+        if limits is None:
+            return False
+        left, right = limits
+        if (right <= left or
+                (direction < 0 and self.x() <= left) or
+                (direction > 0 and self.x() >= right)):
             return False
         self._touch_drop.cancel()
         self._walk_x = float(self.x())
@@ -367,19 +388,11 @@ class DoroDesktopWindow(_DoroGLView):
             now = time.monotonic()
             dt = min(0.1, max(0.0, now - self._last_gait_tick))
             self._last_gait_tick = now
-            screen = self._available_screens()
-            center_x = self.x() + self.width() // 2
-            center_y = self.y() + self.height() // 2
-            active_screen = next((
-                r for r in screen
-                if r[0] <= center_x < r[0] + r[2]
-                and r[1] <= center_y < r[1] + r[3]
-            ), screen[0] if screen else None)
-            if active_screen is None:
+            limits = self._walk_limits()
+            if limits is None:
                 self.stop_walk()
             else:
-                left = active_screen[0]
-                right = active_screen[0] + active_screen[2] - self.width()
+                left, right = limits
                 self._walk_x = self._gait.tick(dt, self._walk_x, left, right)
                 new_x = round(self._walk_x)
                 if new_x != self.x():
