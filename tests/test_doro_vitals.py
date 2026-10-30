@@ -138,8 +138,8 @@ class DoroVitalTests(unittest.TestCase):
     def test_gui_has_genuine_host_signal_binding_and_disconnection(self):
         s = (Path(__file__).resolve().parents[1] / "DyberPet" /
              "DyberSettings" / "doro_live2d_dialog.py").read_text("utf8")
-        self.assertIn('("taskUI_task_end", "task_finished")', s)
-        self.assertIn('("single_pomo_done", "pomodoro_finished")', s)
+        self.assertIn('getattr(pet, "task_phase_changed", None)', s)
+        self.assertIn('self._task_settlement.transition(status)', s)
         self.assertIn("signal.disconnect(callback)", s)
         self.assertIn("self._model_loaded and self.isVisible()", s)
         self.assertIn("Doro 自身 · 活力", s)
