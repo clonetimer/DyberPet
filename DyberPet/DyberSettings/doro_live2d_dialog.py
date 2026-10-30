@@ -23,6 +23,7 @@ from tools.doro_live2d_interaction import click_expression_for_area, is_same_sou
 from tools.doro_personal_setup import find_doro_archives_in_directories, setup_personal_doro_zip
 from tools.doro_window_placement import place_doro_window
 from tools.doro_native_gait import STEP_ID, source_step_gait
+from tools.doro_native_heading import source_direction_cue
 from tools.doro_touch_drop import DoroTouchDrop, read_source_ranges
 from tools.doro_host_bridge import DoroHostBridge
 from tools.doro_task_settlement import DoroTaskSettlement
@@ -190,6 +191,7 @@ class DoroDesktopWindow(_DoroGLView):
         self._legacy_hidden_by_doro = False
         self._model_loaded = False
         self._gait = None
+        self._heading = None
         self._touch_drop = DoroTouchDrop()
         self._last_action_tick = 0.0
         self._walk_x = 0.0
@@ -236,6 +238,7 @@ class DoroDesktopWindow(_DoroGLView):
             self._touch_drop = DoroTouchDrop(read_source_ranges(self.model))
         except (AttributeError, RuntimeError, TypeError, ValueError):
             self._touch_drop = DoroTouchDrop()
+        self._heading = source_direction_cue(self.model)
         self._walk_x = float(self.x())
         self._last_gait_tick = time.monotonic()
         self._last_action_tick = self._last_gait_tick
@@ -311,12 +314,16 @@ class DoroDesktopWindow(_DoroGLView):
         self._last_gait_tick = time.monotonic()
         started = self._gait.start(direction)
         if started:
+            if self._heading is not None:
+                self._heading.start(direction)
             self._record_doro_action("walk_left" if direction == -1 else "walk_right")
         return started
 
     def stop_walk(self):
         if self._gait is not None:
             self._gait.stop()
+        if self._heading is not None:
+            self._heading.release()
 
     def start_pat(self):
         if not self._model_loaded or not self.model:
@@ -368,6 +375,10 @@ class DoroDesktopWindow(_DoroGLView):
         # after Update() so source motions do not overwrite our gait value.
         if self.model is not None and self._gait is not None:
             self.model.SetParamById(STEP_ID, self._gait.value)
+        if self.model is not None and self._heading is not None:
+            cue = self._heading.override
+            if cue is not None:
+                self.model.SetParamById(*cue)
         if self.model is not None:
             for key, value in self._touch_drop.overrides.items():
                 self.model.SetParamById(key, value)
@@ -397,6 +408,12 @@ class DoroDesktopWindow(_DoroGLView):
                 new_x = round(self._walk_x)
                 if new_x != self.x():
                     self.move(new_x, self.y())
+        if self._heading is not None:
+            # Walk ends can be timer- or edge-triggered. Both release yaw
+            # without snapping back or overriding the source idle forever.
+            if self._gait is None or not self._gait.active:
+                self._heading.release()
+            self._heading.tick(dt_action)
         super()._tick()
 
     def _on_load_failed(self, message):
@@ -519,6 +536,12 @@ class DoroDesktopWindow(_DoroGLView):
         else:
             action = menu.addAction("当前模型无可用 ParamStep，不能播放步态")
             action.setEnabled(False)
+        cue_kind = (self._heading.kind if self._heading is not None else None)
+        label = ("原生身体朝向微调（非侧面原画）" if cue_kind == "body"
+                 else "原生头部朝向微调（非侧面原画）" if cue_kind == "head"
+                 else "模型未提供原生朝向参数，仍为正面步态")
+        capability = menu.addAction(label)
+        capability.setEnabled(False)
         menu.addSeparator()
         pat_action = menu.addAction("摸摸头 · 原生角度反馈", self.start_pat)
         pat_action.setEnabled(self._model_loaded and
