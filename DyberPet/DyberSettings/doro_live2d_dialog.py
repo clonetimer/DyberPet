@@ -325,6 +325,15 @@ class DoroDesktopWindow(_DoroGLView):
         if self._heading is not None:
             self._heading.release()
 
+    def motion(self, group, index):
+        """Source-authored motion has priority over our Step/yaw overlay."""
+        if (not self.model or
+                index not in range(self.model_info["motion_groups"].get(group, 0))):
+            return False
+        self.stop_walk()
+        self._touch_drop.cancel()
+        return super().motion(group, index)
+
     def start_pat(self):
         if not self._model_loaded or not self.model:
             return False
