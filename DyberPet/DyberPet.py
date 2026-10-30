@@ -385,6 +385,8 @@ class PetWidget(QWidget):
     taskUI_Timer_update = Signal(name="taskUI_Timer_update")
     taskUI_task_end = Signal(name="taskUI_task_end")
     single_pomo_done = Signal(name="single_pomo_done")
+    # Status provenance for Doro; original completion signals remain intact.
+    task_phase_changed = Signal(str, name="task_phase_changed")
 
     refresh_acts = Signal(name='refresh_acts')
 
@@ -397,6 +399,7 @@ class PetWidget(QWidget):
         """
         super(PetWidget, self).__init__(parent) #, flags=Qt.WindowFlags())
         self.pets = settings.pets
+        self._doro_live2d_active = False
         if curr_pet_name is None:
             self.curr_pet_name = settings.default_pet
         else:
@@ -1505,6 +1508,11 @@ class PetWidget(QWidget):
 
 
     def _change_status(self, status, change_value, from_mod='Scheduler', send_note=False):
+        # Inactive sprite roles must not collect scheduler HP/FV while a
+        # Doro model is the visible pet. Explicit inventory interactions
+        # still use the legacy sprite system until fully migrated.
+        if from_mod == 'Scheduler' and self._doro_live2d_active:
+            return
         # Check system status
         if from_mod == 'Scheduler' and is_system_locked() and settings.auto_lock:
             print("System locked, skip HP and FV changes")
@@ -1551,6 +1559,10 @@ class PetWidget(QWidget):
 
 
     def _change_time(self, status, timeleft):
+        if status in ('tomato_start', 'tomato_rest', 'tomato_end',
+                      'tomato_cencel', 'focus_start', 'focus_end',
+                      'focus_cancel'):
+            self.task_phase_changed.emit(status)
         if status not in ['tomato','tomato_start','tomato_rest','tomato_end',
                           'focus_start','focus','focus_end','tomato_cencel','focus_cancel']:
             return
@@ -1677,6 +1689,13 @@ class PetWidget(QWidget):
             self._change_status('fv', 
                                 int(settings.items_data.item_dict[item_name]['effect_FV']*reward_factor),
                                 from_mod='inventory', send_note=True)
+
+    def _add_item_from_scheduler(self, n_items):
+        # Scheduler's random rewards follow the VISIBLE pet. While Doro is
+        # active its dedicated reward is the already persisted task coins,
+        # not an extra random drop for a hidden legacy sprite character.
+        if not self._doro_live2d_active:
+            self.add_item(n_items)
 
     def add_item(self, n_items, item_names=[]):
         self.addItem_toInven.emit(n_items, item_names)
@@ -2017,7 +2036,7 @@ class PetWidget(QWidget):
         self.workers['Scheduler'].sig_focus_end.connect(self.change_focus_menu)
         self.workers['Scheduler'].sig_tomato_end.connect(self.change_tomato_menu)
         self.workers['Scheduler'].sig_settime_sche.connect(self._change_time)
-        self.workers['Scheduler'].sig_addItem_sche.connect(self.add_item)
+        self.workers['Scheduler'].sig_addItem_sche.connect(self._add_item_from_scheduler)
         self.workers['Scheduler'].sig_setup_bubble.connect(self._process_greeting_mssg)
 
         # Start the thread
