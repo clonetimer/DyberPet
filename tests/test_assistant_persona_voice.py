@@ -268,7 +268,7 @@ class PersonaContractTests(unittest.TestCase):
             def __exit__(self, *args):
                 return False
             def read(self, frames):
-                return (b"\\x00" * frames * 2, False)
+                return (b"\x00" * frames * 2, False)
 
         stop = threading.Event()
         partials = []
