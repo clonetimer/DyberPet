@@ -251,10 +251,13 @@ class PetAssistantDialog(QDialog):
         create_button = QPushButton("创建文件")
         delete_button = QPushButton("删除到可恢复区")
         restore_button = QPushButton("恢复文件")
+        self.save_reply_button = QPushButton("将 AI 回复保存为便签")
+        self.save_reply_button.clicked.connect(self.save_reply_as_note)
         create_button.clicked.connect(self.create_file)
         delete_button.clicked.connect(self.delete_file)
         restore_button.clicked.connect(self.restore_file)
-        for widget in (create_button, delete_button, restore_button):
+        for widget in (create_button, delete_button, restore_button,
+                       self.save_reply_button):
             file_row.addWidget(widget)
         body.addLayout(file_row)
         self.status = QLabel("麦克风默认关闭；所有文件动作均须用户亲自选择。")
@@ -1009,6 +1012,36 @@ class PetAssistantDialog(QDialog):
         self.workspace = PetWorkspace(self._default_workspace)
         self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
         self.status.setText("已回到默认专属文件目录；临时授权已撤销。")
+
+    def save_reply_as_note(self):
+        if not self._last_reply.strip():
+            self._job_error("还没有可保存的 AI 回复")
+            return
+        name, ok = QInputDialog.getText(
+            self, "保存 AI 回复为便签", "便签文件名（.md/.txt）：",
+            QLineEdit.EchoMode.Normal, "AI回复便签.md")
+        if not ok:
+            return
+        try:
+            validated = self.workspace.validate_name(name)
+            if Path(validated).suffix.lower() not in (".md", ".txt"):
+                raise WorkspaceError("AI 回复便签只允许 .md 或 .txt 格式")
+        except WorkspaceError as exc:
+            self._job_error(str(exc))
+            return
+        if QMessageBox.question(
+                self, "确认保存 AI 回复",
+                "仅在当前授权的桌宠工作区新建文件，不覆盖已有文件：\\n"
+                + str(self.workspace.root / validated),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            path = self.workspace.create(validated, self._last_reply)
+            self.status.setText("AI 回复已保存为便签：" + str(path))
+            self._notice("已保存便签：" + path.name)
+        except (WorkspaceError, OSError) as exc:
+            self._job_error("保存 AI 回复失败：" + str(exc))
 
     def create_file(self):
         name, ok = QInputDialog.getText(
