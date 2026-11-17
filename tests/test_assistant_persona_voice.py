@@ -10,7 +10,8 @@ from DyberPet.assistant.persona import (
     make_system_prompt, session_id,
 )
 from DyberPet.assistant.voice import (
-    VoiceUnavailable, recognize_once, recognize_until_stopped, speak_once,
+    VoiceUnavailable, recognize_once, recognize_until_stopped,
+    speak_interruptible, speak_once,
 )
 
 
@@ -289,6 +290,49 @@ class PersonaContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(VoiceUnavailable, "stop event"):
                 recognize_until_stopped(folder, None)
+
+    def test_interruptible_tts_stops_without_cross_thread_driver_calls(self):
+        import sys
+        import threading
+        from types import SimpleNamespace
+
+        class FakeEngine:
+            def __init__(self):
+                self.callback = None
+                self.stopped = False
+                self.ended = False
+            def setProperty(self, *args):
+                pass
+            def connect(self, name, callback):
+                self.callback = callback
+            def say(self, text):
+                self.text = text
+            def startLoop(self, use_driver_loop):
+                self.assert_external_loop = not use_driver_loop
+            def iterate(self):
+                stop.set()
+            def stop(self):
+                self.stopped = True
+            def endLoop(self):
+                self.ended = True
+
+        engine = FakeEngine()
+        stop = threading.Event()
+        ready = []
+        with patch.dict(sys.modules, {
+            "pyttsx3": SimpleNamespace(init=lambda: engine)
+        }):
+            result = speak_interruptible(
+                "你好", stop, on_ready=lambda: ready.append(True))
+        self.assertFalse(result)
+        self.assertTrue(engine.stopped)
+        self.assertTrue(engine.ended)
+        self.assertTrue(engine.assert_external_loop)
+        self.assertEqual(ready, [True])
+
+    def test_interruptible_tts_requires_stop_event(self):
+        with self.assertRaisesRegex(VoiceUnavailable, "stop event"):
+            speak_interruptible("hello", None)
 
     def test_voice_not_triggered_without_local_model(self):
         with self.assertRaises(VoiceUnavailable):
