@@ -20,7 +20,10 @@ from .persona import (
     DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, PPLCharacterClient,
     chat_local, stream_local_chat, list_local_models, AssistantServiceError,
 )
-from .voice import recognize_once, recognize_until_stopped, speak_once, VoiceUnavailable
+from .voice import (
+    recognize_once, recognize_until_stopped, speak_interruptible, speak_once,
+    VoiceUnavailable,
+)
 from .guga_audio import record_local_clip, play_local_clip, load_local_clip
 from .character_fidelity import (
     inspect_guga_role, inspect_character_role, inspect_mini_character_role,
@@ -78,7 +81,8 @@ class PetAssistantDialog(QDialog):
         self._stream_reply_open = False
         self._listen_stop_event = None
         self._listening = False
-        self._closing_after_listen = False
+        self._speech_stop_event = None
+        self._closing_after_worker = False
         self._speaking_session = None
         self._speech_has_started = False
         self.voice_engine_ready.connect(self._on_voice_engine_ready)
@@ -199,11 +203,15 @@ class PetAssistantDialog(QDialog):
         self.stop_listen_button.clicked.connect(self.stop_listening)
         self.speak_button = QPushButton("朗读上一条回复")
         self.speak_button.clicked.connect(self.read_reply)
+        self.stop_speak_button = QPushButton("停止朗读")
+        self.stop_speak_button.setEnabled(False)
+        self.stop_speak_button.clicked.connect(self.stop_speaking)
         self.ppl_button = QPushButton("向 PPL 发送安慰事件")
         self.ppl_button.clicked.connect(self.comfort)
         voice_row.addWidget(self.listen_button)
         voice_row.addWidget(self.stop_listen_button)
         voice_row.addWidget(self.speak_button)
+        voice_row.addWidget(self.stop_speak_button)
         voice_row.addWidget(self.ppl_button)
         body.addLayout(voice_row)
 
@@ -260,6 +268,9 @@ class PetAssistantDialog(QDialog):
             self._listen_stop_event.set()
             self._listening = False
             self.stop_listen_button.setEnabled(False)
+        if self._speech_stop_event is not None:
+            self._speech_stop_event.set()
+            self.stop_speak_button.setEnabled(False)
         self._finish_speech_visuals()
         self._stream_reply_open = False
         self._session_generation += 1
@@ -669,14 +680,16 @@ class PetAssistantDialog(QDialog):
         self._job = None
         self._listening = False
         self._listen_stop_event = None
+        self._speech_stop_event = None
         self.stop_listen_button.setEnabled(False)
+        self.stop_speak_button.setEnabled(False)
         for button in (self.send_button, self.listen_button,
                        self.ppl_button, self.speak_button):
             button.setEnabled(True)
         if job is not None:
             job.deleteLater()
-        if self._closing_after_listen:
-            self._closing_after_listen = False
+        if self._closing_after_worker:
+            self._closing_after_worker = False
             QTimer.singleShot(0, self.close)
 
     def _on_voice_engine_ready(self, character, text):
@@ -697,7 +710,9 @@ class PetAssistantDialog(QDialog):
     def _job_error(self, detail: str):
         self._listening = False
         self._listen_stop_event = None
+        self._speech_stop_event = None
         self.stop_listen_button.setEnabled(False)
+        self.stop_speak_button.setEnabled(False)
         if self._stream_reply_open:
             self.chat_log.appendPlainText("（回复中断）")
             self._stream_reply_open = False
@@ -915,9 +930,21 @@ class PetAssistantDialog(QDialog):
         self.status.setText("正在使用本机语音合成…")
         self._speaking_session = (character, self._session_generation)
         self._speech_has_started = False
-        self._submit(speak_once, lambda _: self.status.setText("朗读结束"),
-                     text, on_ready=lambda: self.voice_engine_ready.emit(
-                         character, text[:120]))
+        self._speech_stop_event = threading.Event()
+        stop_event = self._speech_stop_event
+        self.stop_speak_button.setEnabled(True)
+        self._submit(
+            speak_interruptible,
+            lambda completed: self.status.setText(
+                "朗读结束" if completed else "朗读已停止"),
+            text, stop_event, on_ready=lambda: self.voice_engine_ready.emit(
+                character, text[:120]))
+
+    def stop_speaking(self):
+        if self._speech_stop_event is not None and self._speaking_session is not None:
+            self._speech_stop_event.set()
+            self.stop_speak_button.setEnabled(False)
+            self.status.setText("正在停止本机语音合成…")
 
     def comfort(self):
         if not self.ppl_enabled.isChecked():
@@ -961,9 +988,10 @@ class PetAssistantDialog(QDialog):
             self._job_error(str(exc))
 
     def closeEvent(self, event):
-        if self._listening and self._job is not None:
-            self._closing_after_listen = True
+        if self._job is not None and (self._listening or self._speaking_session is not None):
+            self._closing_after_worker = True
             self.stop_listening()
+            self.stop_speaking()
             event.ignore()
             return
         self._finish_speech_visuals()
