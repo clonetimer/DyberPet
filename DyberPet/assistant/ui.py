@@ -173,8 +173,11 @@ class PetAssistantDialog(QDialog):
         self.remember_button.clicked.connect(self.remember_fact)
         self.memory_manage_button = QPushButton("管理本角色记忆")
         self.memory_manage_button.clicked.connect(self.manage_memories)
+        self.clear_history_button = QPushButton("清空本角色聊天")
+        self.clear_history_button.clicked.connect(self.clear_character_history)
         memory_row.addWidget(self.remember_button)
         memory_row.addWidget(self.memory_manage_button)
+        memory_row.addWidget(self.clear_history_button)
         body.addLayout(memory_row)
 
         message_row = QHBoxLayout()
@@ -282,6 +285,23 @@ class PetAssistantDialog(QDialog):
                 self.chat_log.appendPlainText(prefix + item["content"])
         except (OSError, ValueError) as exc:
             self.chat_log.appendPlainText("历史读取失败：" + str(exc))
+
+    def clear_character_history(self):
+        if not self._conversation_store:
+            self._job_error("本地历史数据库不可用")
+            return
+        if QMessageBox.question(
+                self, "清空当前角色聊天记录",
+                "只删除“" + self.character_name + "”的本地聊天记录；已保存的角色记忆不会删除。\\n确认继续？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            count = self._conversation_store.clear_history(self.character_name)
+            self._restore_character_history()
+            self.status.setText("已清空当前角色聊天记录（" + str(count) + " 条）。角色记忆保留。")
+        except (OSError, ValueError) as exc:
+            self._job_error("清空聊天记录失败：" + str(exc))
 
     def remember_fact(self):
         if not self._conversation_store:
