@@ -75,6 +75,7 @@ def recognize_until_stopped(model_dir: str | Path, stop_event, *, on_partial=Non
         model = vosk.Model(str(path))
         recognizer = vosk.KaldiRecognizer(model, sample_rate)
         last_partial = ""
+        final_segments = []
         elapsed = 0.0
         with sd.RawInputStream(samplerate=sample_rate, blocksize=4000,
                                channels=1, dtype="int16") as microphone:
@@ -86,17 +87,23 @@ def recognize_until_stopped(model_dir: str | Path, stop_event, *, on_partial=Non
                 elapsed += len(audio) / 2 / sample_rate
                 if recognizer.AcceptWaveform(audio):
                     result = json.loads(recognizer.Result()).get("text", "").strip()
-                    if result and on_partial is not None:
-                        on_partial(result[:2000])
+                    if result:
+                        final_segments.append(result)
+                        if on_partial is not None:
+                            on_partial(" ".join(final_segments)[-2000:])
                     last_partial = ""
                 else:
                     partial = json.loads(recognizer.PartialResult()).get("partial", "").strip()
                     if partial and partial != last_partial and on_partial is not None:
-                        on_partial(partial[:2000])
+                        preview = " ".join(final_segments + [partial])
+                        on_partial(preview[-2000:])
                     last_partial = partial
         final = json.loads(recognizer.FinalResult()).get("text", "").strip()
         if final:
-            return final[:2000]
+            final_segments.append(final)
+        transcript = " ".join(final_segments).strip()
+        if transcript:
+            return transcript[:2000]
         if stop_event.is_set():
             raise VoiceUnavailable("没有识别到语音；可以重新开始监听")
         raise VoiceUnavailable("连续监听达到安全时长上限；请检查识别结果并重新开始")
