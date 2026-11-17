@@ -246,7 +246,7 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
     if memory_context:
         if not isinstance(memory_context, str) or len(memory_context) > 1800:
             raise AssistantServiceError("Retrieved memory context exceeds 1800 characters")
-        system_prompt += "\\n[USER-APPROVED CHARACTER MEMORY]\\n" + memory_context
+        system_prompt += "\n[USER-APPROVED CHARACTER MEMORY]\n" + memory_context
     messages = [{"role": "system", "content": system_prompt}]
     if history is not None:
         if not isinstance(history, list) or len(history) > 50:
