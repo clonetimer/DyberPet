@@ -223,3 +223,95 @@ def chat_local(text: str, *, persona_key="companion", state=None, ppl_prompt="",
     if not isinstance(answer, str) or not answer.strip():
         raise AssistantServiceError("Local model returned empty response")
     return answer[:2000]
+
+
+def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=None,
+                      ppl_prompt="", base_url=DEFAULT_CHAT_URL, model="", timeout=25,
+                      max_response_bytes=512 * 1024) -> str:
+    """Stream OpenAI-compatible SSE text from an explicitly local model.
+
+    Only text deltas are surfaced. The endpoint remains loopback-only, proxy-free
+    and redirect-blocked; model output is never interpreted as a tool call.
+    """
+    if not text or len(text) > 2000:
+        raise AssistantServiceError("Message must contain 1–2000 characters")
+    if not callable(on_delta):
+        raise AssistantServiceError("A streaming text callback is required")
+    if not model.strip() or len(model) > 120:
+        raise AssistantServiceError("Enter the exact model ID loaded in LM Studio")
+    if not 1024 <= max_response_bytes <= 2 * 1024 * 1024:
+        raise AssistantServiceError("Invalid streaming response limit")
+
+    payload = json.dumps({
+        "model": model.strip(), "stream": True,
+        "messages": [{"role": "system", "content": make_system_prompt(persona_key, state, ppl_prompt)},
+                     {"role": "user", "content": text}],
+        "temperature": 0.65, "max_tokens": 300
+    }, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        _local_base(base_url) + "/v1/chat/completions", payload,
+        headers={"Accept": "text/event-stream",
+                 "Content-Type": "application/json",
+                 "Connection": "close"},
+        method="POST")
+    output = []
+    output_chars = 0
+    total_bytes = 0
+    try:
+        with _OPENER.open(request, timeout=timeout) as response:
+            if response.status != 200:
+                raise AssistantServiceError("Unexpected streaming response status")
+            while True:
+                line = response.readline(65537)
+                if not line:
+                    break
+                total_bytes += len(line)
+                if len(line) > 65536 or total_bytes > max_response_bytes:
+                    raise AssistantServiceError("Streaming response exceeds the configured limit")
+                try:
+                    decoded = line.decode("utf-8").strip()
+                except UnicodeDecodeError as exc:
+                    raise AssistantServiceError("Streaming response is not valid UTF-8") from exc
+                if not decoded or decoded.startswith(":") or not decoded.startswith("data:"):
+                    continue
+                data = decoded[5:].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    event = json.loads(data)
+                except ValueError as exc:
+                    raise AssistantServiceError("Malformed local model stream event") from exc
+                if isinstance(event, dict) and event.get("error"):
+                    detail = event["error"]
+                    message = detail.get("message") if isinstance(detail, dict) else str(detail)
+                    raise AssistantServiceError("Local model stream error: " + str(message)[:300])
+                choices = event.get("choices") if isinstance(event, dict) else None
+                if not isinstance(choices, list) or not choices:
+                    continue
+                choice = choices[0] if isinstance(choices[0], dict) else {}
+                delta = choice.get("delta", {})
+                content = delta.get("content") if isinstance(delta, dict) else None
+                if isinstance(content, str) and content:
+                    remaining = 2000 - output_chars
+                    if remaining <= 0:
+                        raise AssistantServiceError("Local model response exceeds 2000 characters")
+                    piece = content[:remaining]
+                    output.append(piece)
+                    output_chars += len(piece)
+                    on_delta(piece)
+                    if len(piece) < len(content):
+                        raise AssistantServiceError("Local model response exceeds 2000 characters")
+                if choice.get("finish_reason") == "content_filter":
+                    raise AssistantServiceError("Local model stopped the response due to content filtering")
+    except AssistantServiceError:
+        raise
+    except urllib.error.HTTPError as exc:
+        raise AssistantServiceError(
+            f"Local service HTTP {exc.code}", status_code=exc.code) from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise AssistantServiceError("Local model stream failed: " + str(exc)) from exc
+
+    answer = "".join(output).strip()
+    if not answer:
+        raise AssistantServiceError("Local model returned an empty stream")
+    return answer
