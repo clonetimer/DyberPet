@@ -6,6 +6,8 @@ mic activation, cloud recognition, recording retention or background uploads.
 from __future__ import annotations
 
 import json
+import threading
+import time
 from pathlib import Path
 
 
@@ -134,3 +136,63 @@ def speak_once(text: str, *, rate: int = 170, on_ready=None) -> None:
         engine.stop()
     except Exception as exc:
         raise VoiceUnavailable("Offline speech output failed: " + str(exc)) from exc
+
+
+def speak_interruptible(text: str, stop_event, *, rate: int = 170,
+                        on_ready=None, max_seconds: float = 180.0) -> bool:
+    """Speak locally while pumping the engine loop; return False if interrupted.
+
+    The engine is created and driven on the calling worker thread. The UI only
+    sets a thread-safe event; it never calls into the speech driver cross-thread.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return True
+    if stop_event is None or not callable(getattr(stop_event, "is_set", None)):
+        raise VoiceUnavailable("A stop event is required for interruptible speech")
+    if not 100 <= rate <= 230:
+        raise VoiceUnavailable("Speech rate must be 100–230")
+    if not 1 <= max_seconds <= 300:
+        raise VoiceUnavailable("Speech timeout must be 1–300 seconds")
+    try:
+        import pyttsx3
+    except ImportError as exc:
+        raise VoiceUnavailable("Offline TTS requires pip install pyttsx3") from exc
+
+    engine = None
+    loop_started = False
+    finished = threading.Event()
+    try:
+        engine = pyttsx3.init()
+        engine.setProperty("rate", rate)
+        engine.connect("finished-utterance",
+                       lambda name, completed: finished.set())
+        engine.say(text[:500])
+        engine.startLoop(False)
+        loop_started = True
+        if on_ready is not None:
+            on_ready()
+        deadline = time.monotonic() + max_seconds
+        while not finished.is_set() and not stop_event.is_set():
+            if time.monotonic() >= deadline:
+                raise VoiceUnavailable("Speech playback exceeded its safety timeout")
+            engine.iterate()
+            time.sleep(0.01)
+        interrupted = stop_event.is_set() and not finished.is_set()
+        if interrupted:
+            engine.stop()
+        return not interrupted
+    except VoiceUnavailable:
+        raise
+    except Exception as exc:
+        raise VoiceUnavailable("Interruptible offline speech failed: " + str(exc)) from exc
+    finally:
+        if engine is not None:
+            try:
+                engine.stop()
+            except Exception:
+                pass
+            if loop_started:
+                try:
+                    engine.endLoop()
+                except Exception:
+                    pass
