@@ -271,6 +271,7 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
     output = []
     output_chars = 0
     total_bytes = 0
+    saw_done = False
     try:
         with _OPENER.open(request, timeout=timeout) as response:
             if response.status != 200:
@@ -290,6 +291,7 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
                     continue
                 data = decoded[5:].strip()
                 if data == "[DONE]":
+                    saw_done = True
                     break
                 try:
                     event = json.loads(data)
@@ -325,6 +327,8 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise AssistantServiceError("Local model stream failed: " + str(exc)) from exc
 
+    if not saw_done:
+        raise AssistantServiceError("Local model stream ended before the completion marker")
     answer = "".join(output).strip()
     if not answer:
         raise AssistantServiceError("Local model returned an empty stream")
