@@ -239,6 +239,51 @@ class PersonaContractTests(unittest.TestCase):
         self.assertEqual(result, "你好")
         self.assertEqual(partials, ["你好"])
 
+    def test_continuous_voice_accumulates_multiple_vosk_utterances(self):
+        import sys
+        import threading
+        from types import SimpleNamespace
+
+        class FakeRecognizer:
+            def __init__(self, *args):
+                self.count = 0
+            def AcceptWaveform(self, data):
+                self.count += 1
+                if self.count == 2:
+                    stop.set()
+                    return False
+                return True
+            def Result(self):
+                return json.dumps({"text": "第一句"})
+            def PartialResult(self):
+                return json.dumps({"partial": "第二句"})
+            def FinalResult(self):
+                return json.dumps({"text": "第二句"})
+
+        class FakeStream:
+            def __init__(self, **kwargs):
+                pass
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, frames):
+                return (b"\\x00" * frames * 2, False)
+
+        stop = threading.Event()
+        partials = []
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.dict(sys.modules, {
+                "sounddevice": SimpleNamespace(RawInputStream=FakeStream),
+                "vosk": SimpleNamespace(Model=lambda path: object(),
+                                        KaldiRecognizer=FakeRecognizer),
+            }):
+                result = recognize_until_stopped(
+                    folder, stop, on_partial=partials.append, max_seconds=10)
+            self.assertEqual(list(Path(folder).iterdir()), [])
+        self.assertEqual(result, "第一句 第二句")
+        self.assertEqual(partials[-1], "第一句 第二句")
+
     def test_continuous_voice_requires_explicit_stop_event(self):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(VoiceUnavailable, "stop event"):
