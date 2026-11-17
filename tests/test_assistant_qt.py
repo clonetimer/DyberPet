@@ -24,7 +24,9 @@ class AssistantQtTests(unittest.TestCase):
         from DyberPet.assistant.ui import PetAssistantDialog
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.dialog = PetAssistantDialog("咕嘎", Path(self.tmp.name) / "files")
+        self.dialog = PetAssistantDialog(
+            "咕嘎", Path(self.tmp.name) / "files",
+            store_path=Path(self.tmp.name) / "companion.sqlite3")
         self.addCleanup(self.dialog.close)
 
     def test_dialog_persona_and_file_actions_exist(self):
