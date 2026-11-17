@@ -31,6 +31,7 @@ from .character_audio import (
     play as play_character_audio,
 )
 from .preferences import load as load_preferences, save as save_preferences, defaults as default_preferences
+from .conversation_store import CompanionStore
 
 
 class _AssistantJob(QThread):
@@ -79,6 +80,12 @@ class PetAssistantDialog(QDialog):
         self.voice_engine_ready.connect(self._on_voice_engine_ready)
         self._ppl_snapshot = ""
         self._session_generation = 0
+        self._store_error = ""
+        try:
+            self._conversation_store = CompanionStore()
+        except (OSError, ValueError) as exc:
+            self._conversation_store = None
+            self._store_error = str(exc)
         try:
             self._prefs = load_preferences()
             self._prefs_error = ""
@@ -88,6 +95,9 @@ class PetAssistantDialog(QDialog):
         self._build_ui()
         self._apply_preferences()
         self._sync_guga_controls()
+        self._restore_character_history()
+        if self._store_error:
+            self.status.setText("本地记忆暂不可用：" + self._store_error)
         if self._prefs_error:
             self.status.setText("旧配置未加载（未覆盖原文件）：" + self._prefs_error)
 
@@ -154,6 +164,15 @@ class PetAssistantDialog(QDialog):
             "桌宠助手已打开。聊天需要本地模型服务和正确的模型 ID；"
             "PPL 只管理关系状态，不直接生成回复。")
         body.addWidget(self.chat_log, 1)
+
+        memory_row = QHBoxLayout()
+        self.remember_button = QPushButton("记住这件事")
+        self.remember_button.clicked.connect(self.remember_fact)
+        self.memory_manage_button = QPushButton("管理本角色记忆")
+        self.memory_manage_button.clicked.connect(self.manage_memories)
+        memory_row.addWidget(self.remember_button)
+        memory_row.addWidget(self.memory_manage_button)
+        body.addLayout(memory_row)
 
         message_row = QHBoxLayout()
         self.message = QLineEdit()
@@ -227,6 +246,8 @@ class PetAssistantDialog(QDialog):
         if self.character_name == name:
             return
         self._finish_speech_visuals()
+        self._stream_reply_open = False
+        self._session_generation += 1
         self.character_name = name
         self.setWindowTitle("桌宠助手 · " + name)
         self._sync_guga_controls()
@@ -239,6 +260,73 @@ class PetAssistantDialog(QDialog):
             self.persona.setCurrentIndex(self.persona.findData(saved))
         self._last_reply = ""
         self._ppl_snapshot = ""  # Persona snapshots belong to the previous character
+        self._restore_character_history()
+
+    def _restore_character_history(self):
+        self.chat_log.clear()
+        self.chat_log.appendPlainText("桌宠助手 · " + self.character_name)
+        if not self._conversation_store:
+            self.chat_log.appendPlainText("本地历史/记忆数据库不可用。")
+            return
+        try:
+            for item in self._conversation_store.recent_messages(
+                    self.character_name, limit=40):
+                prefix = "你：" if item["role"] == "user" else self.character_name + "："
+                self.chat_log.appendPlainText(prefix + item["content"])
+        except (OSError, ValueError) as exc:
+            self.chat_log.appendPlainText("历史读取失败：" + str(exc))
+
+    def remember_fact(self):
+        if not self._conversation_store:
+            self._job_error("本地记忆数据库不可用")
+            return
+        content, ok = QInputDialog.getMultiLineText(
+            self, "保存本角色记忆", "输入你明确希望这个角色记住的事实：")
+        if not ok or not content.strip():
+            return
+        content = content.strip()
+        if QMessageBox.question(
+                self, "确认保存记忆",
+                "仅保存到本机，并且只对当前角色可见：\\n" + content,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._conversation_store.add_memory(self.character_name, content, importance=2)
+            self.status.setText("已保存到当前角色的本地记忆。")
+        except (OSError, ValueError) as exc:
+            self._job_error("记忆保存失败：" + str(exc))
+
+    def manage_memories(self):
+        if not self._conversation_store:
+            self._job_error("本地记忆数据库不可用")
+            return
+        try:
+            memories = self._conversation_store.list_memories(self.character_name)
+        except (OSError, ValueError) as exc:
+            self._job_error("记忆读取失败：" + str(exc))
+            return
+        if not memories:
+            QMessageBox.information(self, "角色记忆", "当前角色还没有保存的记忆。")
+            return
+        labels = [item["content"] for item in memories]
+        selected, ok = QInputDialog.getItem(
+            self, "管理本角色记忆", "选择一条记忆（删除需要再次确认）：",
+            labels, 0, False)
+        if not ok:
+            return
+        item = memories[labels.index(selected)]
+        if QMessageBox.question(
+                self, "删除记忆",
+                "确认从本机删除这条当前角色记忆？\\n" + selected,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._conversation_store.delete_memory(self.character_name, item["id"])
+            self.status.setText("已删除所选角色记忆。")
+        except (OSError, ValueError) as exc:
+            self._job_error("记忆删除失败：" + str(exc))
 
     def set_actions(self, names):
         """Only accept actual currently-unlocked animations from PetWidget."""
@@ -650,12 +738,18 @@ class PetAssistantDialog(QDialog):
         self.chat_log.appendPlainText(character + "：")
         self._stream_reply_open = True
 
+        history = (self._conversation_store.recent_messages(character, limit=12)
+                   if self._conversation_store else [])
+        memory_context = (self._conversation_store.memory_context(
+            character, text, limit=5) if self._conversation_store else "")
+
         def task(on_delta):
             state = PPLCharacterClient(ppl).state(character) if ppl else None
             answer = stream_local_chat(
                 text, on_delta=on_delta, persona_key=persona, state=state,
-                ppl_prompt=snapshot, base_url=endpoint, model=model)
-            return character, generation, answer
+                ppl_prompt=snapshot, history=history, memory_context=memory_context,
+                base_url=endpoint, model=model)
+            return character, generation, text, answer
 
         self._submit(
             task, self._message_reply, stream=True,
@@ -664,12 +758,18 @@ class PetAssistantDialog(QDialog):
 
     def _message_reply(self, result):
         if isinstance(result, tuple):
-            if len(result) == 3:
+            if len(result) == 4:
+                character, generation, user_text, reply = result
+                if generation != self._session_generation:
+                    return
+            elif len(result) == 3:
                 character, generation, reply = result
+                user_text = None
                 if generation != self._session_generation:
                     return
             else:
                 character, reply = result
+                user_text = None
             if character != self.character_name:
                 self.chat_log.appendPlainText(
                     "[旧角色回复已丢弃] 切换角色后不展示之前的人设内容")
@@ -677,6 +777,11 @@ class PetAssistantDialog(QDialog):
         else:
             reply = result
         self._last_reply = reply
+        if isinstance(result, tuple) and len(result) == 4 and self._conversation_store:
+            try:
+                self._conversation_store.append_turn(character, user_text, reply)
+            except (OSError, ValueError) as exc:
+                self.status.setText("回复已生成，但本地历史保存失败：" + str(exc))
         if not self._stream_reply_open:
             self.chat_log.appendPlainText(self.character_name + "：" + reply)
         self._stream_reply_open = False
@@ -771,6 +876,7 @@ class PetAssistantDialog(QDialog):
         self._session_generation += 1
         self._ppl_snapshot = ""
         self._last_reply = ""
+        self._stream_reply_open = False
         self.workspace = PetWorkspace(self._default_workspace)
         self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
         super().closeEvent(event)
