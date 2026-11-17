@@ -8,7 +8,9 @@ from DyberPet.assistant.persona import (
     _local_base, chat_local, stream_local_chat, list_local_models,
     make_system_prompt, session_id,
 )
-from DyberPet.assistant.voice import VoiceUnavailable, recognize_once, speak_once
+from DyberPet.assistant.voice import (
+    VoiceUnavailable, recognize_once, recognize_until_stopped, speak_once,
+)
 
 
 class PersonaContractTests(unittest.TestCase):
@@ -197,6 +199,49 @@ class PersonaContractTests(unittest.TestCase):
         with self.assertRaises(AssistantServiceError):
             chat_local("你好")
         self.assertIn("文件", make_system_prompt("doro"))
+
+    def test_continuous_voice_stops_on_user_event_without_saving_audio(self):
+        import sys
+        import threading
+        from types import SimpleNamespace
+
+        class FakeRecognizer:
+            def __init__(self, *args):
+                pass
+            def AcceptWaveform(self, data):
+                return False
+            def PartialResult(self):
+                return json.dumps({"partial": "你好"})
+            def FinalResult(self):
+                return json.dumps({"text": "你好"})
+
+        class FakeStream:
+            def __init__(self, **kwargs):
+                pass
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, frames):
+                stop.set()
+                return (b"\\x00" * frames * 2, False)
+
+        stop = threading.Event()
+        partials = []
+        fake_sd = SimpleNamespace(RawInputStream=FakeStream)
+        fake_vosk = SimpleNamespace(Model=lambda path: object(),
+                                    KaldiRecognizer=FakeRecognizer)
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.dict(sys.modules, {"sounddevice": fake_sd, "vosk": fake_vosk}):
+                result = recognize_until_stopped(
+                    folder, stop, on_partial=partials.append, max_seconds=10)
+        self.assertEqual(result, "你好")
+        self.assertEqual(partials, ["你好"])
+
+    def test_continuous_voice_requires_explicit_stop_event(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(VoiceUnavailable, "stop event"):
+                recognize_until_stopped(folder, None)
 
     def test_voice_not_triggered_without_local_model(self):
         with self.assertRaises(VoiceUnavailable):
