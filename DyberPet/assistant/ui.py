@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 from .files import PetWorkspace, WorkspaceError, validate_session_folder
 from .persona import (
     DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, PPLCharacterClient,
-    chat_local, list_local_models, AssistantServiceError,
+    chat_local, stream_local_chat, list_local_models, AssistantServiceError,
 )
 from .voice import recognize_once, speak_once, VoiceUnavailable
 from .guga_audio import record_local_clip, play_local_clip, load_local_clip
@@ -36,14 +36,21 @@ from .preferences import load as load_preferences, save as save_preferences, def
 class _AssistantJob(QThread):
     success = Signal(object)
     failed = Signal(str)
+    progress = Signal(str)
 
-    def __init__(self, task, *args, **kwargs):
+    def __init__(self, task, *args, stream=False, **kwargs):
         super().__init__()
         self._task, self._args, self._kwargs = task, args, kwargs
+        self._stream = stream
 
     def run(self):
         try:
-            self.success.emit(self._task(*self._args, **self._kwargs))
+            if self._stream:
+                result = self._task(*self._args, on_delta=self.progress.emit,
+                                    **self._kwargs)
+            else:
+                result = self._task(*self._args, **self._kwargs)
+            self.success.emit(result)
         except Exception as exc:
             self.failed.emit(str(exc))
 
@@ -66,6 +73,7 @@ class PetAssistantDialog(QDialog):
         self.workspace = PetWorkspace(self._default_workspace)
         self._job = None
         self._last_reply = ""
+        self._stream_reply_open = False
         self._speaking_session = None
         self._speech_has_started = False
         self.voice_engine_ready.connect(self._on_voice_engine_ready)
@@ -510,7 +518,15 @@ class PetAssistantDialog(QDialog):
             self.action_notice.emit(text[:120])
         self._emit_selected_animation()
 
-    def _submit(self, task, on_success, *args, **kwargs):
+    def _append_stream_delta(self, piece, character, generation):
+        if generation != self._session_generation or character != self.character_name:
+            return
+        self.chat_log.insertPlainText(piece)
+        self.chat_log.verticalScrollBar().setValue(
+            self.chat_log.verticalScrollBar().maximum())
+
+    def _submit(self, task, on_success, *args, stream=False,
+                on_progress=None, **kwargs):
         if self._job is not None:
             self.status.setText("上一项语音/对话任务仍在执行")
             return
@@ -518,10 +534,12 @@ class PetAssistantDialog(QDialog):
         self.listen_button.setEnabled(False)
         self.ppl_button.setEnabled(False)
         self.speak_button.setEnabled(False)
-        job = _AssistantJob(task, *args, **kwargs)
+        job = _AssistantJob(task, *args, stream=stream, **kwargs)
         self._job = job
         job.success.connect(on_success)
         job.failed.connect(self._job_error)
+        if stream and on_progress is not None:
+            job.progress.connect(on_progress)
         job.finished.connect(self._job_finished)
         job.start()
 
@@ -551,6 +569,9 @@ class PetAssistantDialog(QDialog):
             self.speech_finished.emit(session[0])
 
     def _job_error(self, detail: str):
+        if self._stream_reply_open:
+            self.chat_log.appendPlainText("（回复中断）")
+            self._stream_reply_open = False
         # A local speech engine may be missing. Preserve the model response
         # in the bubble even if auto-reading cannot begin.
         if (self._speaking_session is not None and not self._speech_has_started
@@ -626,12 +647,20 @@ class PetAssistantDialog(QDialog):
         self.message.clear()
         self.chat_log.appendPlainText("你：" + text)
         self.status.setText("正在请求本地模型…")
-        def task():
+        self.chat_log.appendPlainText(character + "：")
+        self._stream_reply_open = True
+
+        def task(on_delta):
             state = PPLCharacterClient(ppl).state(character) if ppl else None
-            answer = chat_local(text, persona_key=persona, state=state,
-                                ppl_prompt=snapshot, base_url=endpoint, model=model)
+            answer = stream_local_chat(
+                text, on_delta=on_delta, persona_key=persona, state=state,
+                ppl_prompt=snapshot, base_url=endpoint, model=model)
             return character, generation, answer
-        self._submit(task, self._message_reply)
+
+        self._submit(
+            task, self._message_reply, stream=True,
+            on_progress=lambda piece: self._append_stream_delta(
+                piece, character, generation))
 
     def _message_reply(self, result):
         if isinstance(result, tuple):
@@ -648,7 +677,9 @@ class PetAssistantDialog(QDialog):
         else:
             reply = result
         self._last_reply = reply
-        self.chat_log.appendPlainText(self.character_name + "：" + reply)
+        if not self._stream_reply_open:
+            self.chat_log.appendPlainText(self.character_name + "：" + reply)
+        self._stream_reply_open = False
         # When auto-read is enabled, the native bubble appears when TTS
         # starts, not seconds earlier during model response handling.
         will_speak = self.auto_speak.isChecked() and self.isVisible()
