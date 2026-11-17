@@ -9,6 +9,7 @@ import re
 import sqlite3
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 from .preferences import default_preference_path
@@ -54,6 +55,7 @@ class CompanionStore:
             raise ValueError("Companion database path cannot be a symlink")
         self._initialize()
 
+    @contextmanager
     def _connect(self):
         if self.path.is_symlink():
             raise ValueError("Companion database path cannot be a symlink")
@@ -61,7 +63,14 @@ class CompanionStore:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA busy_timeout=5000")
         connection.execute("PRAGMA foreign_keys=ON")
-        return connection
+        try:
+            yield connection
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
 
     def _initialize(self):
         with self._connect() as db:
