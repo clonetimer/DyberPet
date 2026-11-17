@@ -117,7 +117,7 @@ class PersonaContractTests(unittest.TestCase):
                 return next(self.lines, b"")
 
         with patch("DyberPet.assistant.persona._OPENER.open",
-                   return_value=FakeResponse([b"data: [DONE]\\n"])):
+                   return_value=FakeResponse([b"data: [DONE]\n"])):
             with self.assertRaisesRegex(AssistantServiceError, "empty stream"):
                 stream_local_chat("hi", on_delta=lambda _: None, model="m")
         with patch("DyberPet.assistant.persona._OPENER.open",
