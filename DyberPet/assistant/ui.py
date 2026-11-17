@@ -66,7 +66,7 @@ class PetAssistantDialog(QDialog):
     voice_engine_ready = Signal(str, str)
 
     def __init__(self, character_name: str, workspace: Path, parent=None,
-                 role_root: Path | None = None):
+                 role_root: Path | None = None, store_path: Path | None = None):
         super().__init__(parent)
         self.character_name = character_name
         self.role_root = Path(role_root) if role_root is not None else Path.cwd() / "res" / "role"
@@ -82,7 +82,7 @@ class PetAssistantDialog(QDialog):
         self._session_generation = 0
         self._store_error = ""
         try:
-            self._conversation_store = CompanionStore()
+            self._conversation_store = CompanionStore(store_path)
         except (OSError, ValueError) as exc:
             self._conversation_store = None
             self._store_error = str(exc)
