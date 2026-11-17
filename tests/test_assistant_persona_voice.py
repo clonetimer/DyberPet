@@ -242,6 +242,7 @@ class PersonaContractTests(unittest.TestCase):
     def test_continuous_voice_accumulates_multiple_vosk_utterances(self):
         import sys
         import threading
+        from pathlib import Path
         from types import SimpleNamespace
 
         class FakeRecognizer:
