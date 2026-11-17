@@ -5,6 +5,7 @@ permissions or triggers filesystem actions. No network calls on the Qt thread.
 """
 from __future__ import annotations
 
+import threading
 import uuid
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from .persona import (
     DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, PPLCharacterClient,
     chat_local, stream_local_chat, list_local_models, AssistantServiceError,
 )
-from .voice import recognize_once, speak_once, VoiceUnavailable
+from .voice import recognize_once, recognize_until_stopped, speak_once, VoiceUnavailable
 from .guga_audio import record_local_clip, play_local_clip, load_local_clip
 from .character_fidelity import (
     inspect_guga_role, inspect_character_role, inspect_mini_character_role,
@@ -75,6 +76,8 @@ class PetAssistantDialog(QDialog):
         self._job = None
         self._last_reply = ""
         self._stream_reply_open = False
+        self._listen_stop_event = None
+        self._listening = False
         self._speaking_session = None
         self._speech_has_started = False
         self.voice_engine_ready.connect(self._on_voice_engine_ready)
@@ -185,13 +188,17 @@ class PetAssistantDialog(QDialog):
         body.addLayout(message_row)
 
         voice_row = QHBoxLayout()
-        self.listen_button = QPushButton("录音识别（4秒）")
-        self.listen_button.clicked.connect(self.listen_once)
+        self.listen_button = QPushButton("开始连续监听")
+        self.listen_button.clicked.connect(self.listen_continuously)
+        self.stop_listen_button = QPushButton("停止监听")
+        self.stop_listen_button.setEnabled(False)
+        self.stop_listen_button.clicked.connect(self.stop_listening)
         self.speak_button = QPushButton("朗读上一条回复")
         self.speak_button.clicked.connect(self.read_reply)
         self.ppl_button = QPushButton("向 PPL 发送安慰事件")
         self.ppl_button.clicked.connect(self.comfort)
         voice_row.addWidget(self.listen_button)
+        voice_row.addWidget(self.stop_listen_button)
         voice_row.addWidget(self.speak_button)
         voice_row.addWidget(self.ppl_button)
         body.addLayout(voice_row)
@@ -635,6 +642,9 @@ class PetAssistantDialog(QDialog):
         self._finish_speech_visuals()
         job = self._job
         self._job = None
+        self._listening = False
+        self._listen_stop_event = None
+        self.stop_listen_button.setEnabled(False)
         for button in (self.send_button, self.listen_button,
                        self.ppl_button, self.speak_button):
             button.setEnabled(True)
@@ -657,6 +667,9 @@ class PetAssistantDialog(QDialog):
             self.speech_finished.emit(session[0])
 
     def _job_error(self, detail: str):
+        self._listening = False
+        self._listen_stop_event = None
+        self.stop_listen_button.setEnabled(False)
         if self._stream_reply_open:
             self.chat_log.appendPlainText("（回复中断）")
             self._stream_reply_open = False
@@ -801,12 +814,52 @@ class PetAssistantDialog(QDialog):
             self.read_reply()
 
     def listen_once(self):
+        """Compatibility entry point for the existing bounded four-second mode."""
         model = self.voice_model.text().strip()
         if not model:
             self._job_error("请先设置已安装的 Vosk 离线识别模型目录")
             return
         self.status.setText("正在录音 4 秒；只在这次点击后开启麦克风…")
         self._submit(recognize_once, self._heard, model, seconds=4)
+
+    def listen_continuously(self):
+        if self._job is not None:
+            self.status.setText("上一项语音/对话任务仍在执行")
+            return
+        model = self.voice_model.text().strip()
+        if not model:
+            self._job_error("请先设置已安装的 Vosk 离线识别模型目录")
+            return
+        self._listen_stop_event = threading.Event()
+        self._listening = True
+        self.listen_button.setEnabled(False)
+        self.stop_listen_button.setEnabled(True)
+        self.status.setText("本地连续监听已启动；音频只在内存中处理，点击“停止监听”结束。")
+
+        def task(on_delta):
+            return recognize_until_stopped(
+                model, self._listen_stop_event, on_partial=on_delta,
+                max_seconds=120)
+
+        self._submit(task, self._heard_continuous, stream=True,
+                     on_progress=self._heard_partial)
+
+    def stop_listening(self):
+        if self._listen_stop_event is not None and self._listening:
+            self._listen_stop_event.set()
+            self.stop_listen_button.setEnabled(False)
+            self.status.setText("正在停止麦克风并完成最后一段识别…")
+
+    def _heard_partial(self, text):
+        if self._listening:
+            self.status.setText("正在识别：" + text[:100])
+
+    def _heard_continuous(self, text):
+        self._listening = False
+        self._listen_stop_event = None
+        if text:
+            self.message.setText(text)
+            self.status.setText("语音识别完成；请检查文字后点击“发送”。")
 
     def _heard(self, text):
         self.message.setText(text)
@@ -870,6 +923,8 @@ class PetAssistantDialog(QDialog):
             self._job_error(str(exc))
 
     def closeEvent(self, event):
+        if self._listen_stop_event is not None:
+            self._listen_stop_event.set()
         self._finish_speech_visuals()
         # QDialog.close() does not necessarily destroy the dialog; release
         # any user-granted folder even when the widget is reopened later.
