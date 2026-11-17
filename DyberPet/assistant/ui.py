@@ -78,6 +78,7 @@ class PetAssistantDialog(QDialog):
         self._stream_reply_open = False
         self._listen_stop_event = None
         self._listening = False
+        self._closing_after_listen = False
         self._speaking_session = None
         self._speech_has_started = False
         self.voice_engine_ready.connect(self._on_voice_engine_ready)
@@ -255,6 +256,10 @@ class PetAssistantDialog(QDialog):
     def set_character(self, name: str):
         if self.character_name == name:
             return
+        if self._listen_stop_event is not None:
+            self._listen_stop_event.set()
+            self._listening = False
+            self.stop_listen_button.setEnabled(False)
         self._finish_speech_visuals()
         self._stream_reply_open = False
         self._session_generation += 1
@@ -670,6 +675,9 @@ class PetAssistantDialog(QDialog):
             button.setEnabled(True)
         if job is not None:
             job.deleteLater()
+        if self._closing_after_listen:
+            self._closing_after_listen = False
+            QTimer.singleShot(0, self.close)
 
     def _on_voice_engine_ready(self, character, text):
         if (self._speaking_session is None
@@ -851,15 +859,18 @@ class PetAssistantDialog(QDialog):
             self._job_error("请先设置已安装的 Vosk 离线识别模型目录")
             return
         self._listen_stop_event = threading.Event()
+        stop_event = self._listen_stop_event
+        character = self.character_name
+        generation = self._session_generation
         self._listening = True
         self.listen_button.setEnabled(False)
         self.stop_listen_button.setEnabled(True)
         self.status.setText("本地连续监听已启动；音频只在内存中处理，点击“停止监听”结束。")
 
         def task(on_delta):
-            return recognize_until_stopped(
-                model, self._listen_stop_event, on_partial=on_delta,
-                max_seconds=120)
+            text = recognize_until_stopped(
+                model, stop_event, on_partial=on_delta, max_seconds=120)
+            return character, generation, text
 
         self._submit(task, self._heard_continuous, stream=True,
                      on_progress=self._heard_partial)
@@ -874,9 +885,16 @@ class PetAssistantDialog(QDialog):
         if self._listening:
             self.status.setText("正在识别：" + text[:100])
 
-    def _heard_continuous(self, text):
+    def _heard_continuous(self, result):
         self._listening = False
         self._listen_stop_event = None
+        if not isinstance(result, tuple) or len(result) != 3:
+            self._job_error("连续语音识别返回了无效结果")
+            return
+        character, generation, text = result
+        if character != self.character_name or generation != self._session_generation:
+            self.status.setText("角色已切换，已丢弃旧角色的语音识别结果。")
+            return
         if text:
             self.message.setText(text)
             self.status.setText("语音识别完成；请检查文字后点击“发送”。")
@@ -943,8 +961,11 @@ class PetAssistantDialog(QDialog):
             self._job_error(str(exc))
 
     def closeEvent(self, event):
-        if self._listen_stop_event is not None:
-            self._listen_stop_event.set()
+        if self._listening and self._job is not None:
+            self._closing_after_listen = True
+            self.stop_listening()
+            event.ignore()
+            return
         self._finish_speech_visuals()
         # QDialog.close() does not necessarily destroy the dialog; release
         # any user-granted folder even when the widget is reopened later.
