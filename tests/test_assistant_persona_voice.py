@@ -225,7 +225,7 @@ class PersonaContractTests(unittest.TestCase):
                 return False
             def read(self, frames):
                 stop.set()
-                return (b"\\x00" * frames * 2, False)
+                return (b"\x00" * frames * 2, False)
 
         stop = threading.Event()
         partials = []
