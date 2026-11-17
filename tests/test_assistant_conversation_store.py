@@ -28,6 +28,15 @@ class CompanionStoreTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.store.recent_messages("鲸鱼娘", limit=51)
 
+    def test_clear_history_is_character_scoped_and_preserves_memories(self):
+        self.store.append_turn("鲸鱼娘", "你好", "你好呀")
+        self.store.append_turn("Doro", "汪", "Doro!")
+        memory = self.store.add_memory("鲸鱼娘", "保留这条角色记忆")
+        self.assertEqual(self.store.clear_history("鲸鱼娘"), 2)
+        self.assertEqual(self.store.recent_messages("鲸鱼娘"), [])
+        self.assertEqual(len(self.store.recent_messages("Doro")), 2)
+        self.assertEqual(self.store.list_memories("鲸鱼娘")[0]["id"], memory["id"])
+
     def test_memory_requires_explicit_add_and_deduplicates(self):
         one = self.store.add_memory("鲸鱼娘", "用户喜欢航天器仿真", importance=3)
         two = self.store.add_memory("鲸鱼娘", "用户喜欢航天器仿真", importance=2, pinned=True)
