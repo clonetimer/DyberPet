@@ -226,8 +226,8 @@ def chat_local(text: str, *, persona_key="companion", state=None, ppl_prompt="",
 
 
 def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=None,
-                      ppl_prompt="", base_url=DEFAULT_CHAT_URL, model="", timeout=25,
-                      max_response_bytes=512 * 1024) -> str:
+                      ppl_prompt="", history=None, memory_context="", base_url=DEFAULT_CHAT_URL,
+                      model="", timeout=25, max_response_bytes=512 * 1024) -> str:
     """Stream OpenAI-compatible SSE text from an explicitly local model.
 
     Only text deltas are surfaced. The endpoint remains loopback-only, proxy-free
@@ -242,10 +242,24 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
     if not 1024 <= max_response_bytes <= 2 * 1024 * 1024:
         raise AssistantServiceError("Invalid streaming response limit")
 
+    system_prompt = make_system_prompt(persona_key, state, ppl_prompt)
+    if memory_context:
+        if not isinstance(memory_context, str) or len(memory_context) > 1800:
+            raise AssistantServiceError("Retrieved memory context exceeds 1800 characters")
+        system_prompt += "\\n[USER-APPROVED CHARACTER MEMORY]\\n" + memory_context
+    messages = [{"role": "system", "content": system_prompt}]
+    if history is not None:
+        if not isinstance(history, list) or len(history) > 50:
+            raise AssistantServiceError("Conversation history must be a list of at most 50 messages")
+        for item in history:
+            if (not isinstance(item, dict) or item.get("role") not in ("user", "assistant")
+                    or not isinstance(item.get("content"), str)
+                    or not item["content"].strip() or len(item["content"]) > 2000):
+                raise AssistantServiceError("Invalid conversation history entry")
+            messages.append({"role": item["role"], "content": item["content"]})
+    messages.append({"role": "user", "content": text})
     payload = json.dumps({
-        "model": model.strip(), "stream": True,
-        "messages": [{"role": "system", "content": make_system_prompt(persona_key, state, ppl_prompt)},
-                     {"role": "user", "content": text}],
+        "model": model.strip(), "stream": True, "messages": messages,
         "temperature": 0.65, "max_tokens": 300
     }, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
