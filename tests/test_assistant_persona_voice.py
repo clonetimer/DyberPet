@@ -86,9 +86,9 @@ class PersonaContractTests(unittest.TestCase):
                 return next(self.lines, b"")
 
         events = [
-            b'data: {"choices":[{"delta":{"content":"\\u4f60"}}]}\\n',
-            b'data: {"choices":[{"delta":{"content":"\\u597d"}}]}\\n',
-            b'data: [DONE]\\n',
+            b'data: {"choices":[{"delta":{"content":"\\u4f60"}}]}\n',
+            b'data: {"choices":[{"delta":{"content":"\\u597d"}}]}\n',
+            b'data: [DONE]\n',
         ]
         emitted = []
         with patch("DyberPet.assistant.persona._OPENER.open",
