@@ -97,6 +97,15 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog._listening = False
         self.dialog._closing_after_listen = False
 
+    def test_tts_stop_button_sets_worker_event(self):
+        import threading
+        self.dialog._speech_stop_event = threading.Event()
+        self.dialog._speaking_session = ("咕嘎", self.dialog._session_generation)
+        self.dialog.stop_speak_button.setEnabled(True)
+        self.dialog.stop_speaking()
+        self.assertTrue(self.dialog._speech_stop_event.is_set())
+        self.assertFalse(self.dialog.stop_speak_button.isEnabled())
+
     def test_continuous_voice_controls_are_explicit_and_stop_event_is_set(self):
         import threading
         self.assertEqual(self.dialog.listen_button.text(), "开始连续监听")
