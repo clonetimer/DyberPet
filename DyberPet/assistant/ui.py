@@ -287,7 +287,7 @@ class PetAssistantDialog(QDialog):
         content = content.strip()
         if QMessageBox.question(
                 self, "确认保存记忆",
-                "仅保存到本机，并且只对当前角色可见：\\n" + content,
+                "仅保存到本机，并且只对当前角色可见：\n" + content,
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
             return
@@ -318,7 +318,7 @@ class PetAssistantDialog(QDialog):
         item = memories[labels.index(selected)]
         if QMessageBox.question(
                 self, "删除记忆",
-                "确认从本机删除这条当前角色记忆？\\n" + selected,
+                "确认从本机删除这条当前角色记忆？\n" + selected,
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
             return
