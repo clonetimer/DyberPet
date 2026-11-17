@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 from DyberPet.assistant.persona import (
     AssistantServiceError, PPLCharacterClient, PERSONAS,
-    _local_base, chat_local, list_local_models, make_system_prompt, session_id,
+    _local_base, chat_local, stream_local_chat, list_local_models,
+    make_system_prompt, session_id,
 )
 from DyberPet.assistant.voice import VoiceUnavailable, recognize_once, speak_once
 
@@ -71,6 +72,58 @@ class PersonaContractTests(unittest.TestCase):
         self.assertIn("咕嘎", PERSONAS["guga"].name)
         self.assertIn("0.87", body["messages"][0]["content"])
         self.assertEqual(body["messages"][1]["content"], "你好")
+
+    def test_local_stream_emits_sse_text_deltas(self):
+        class FakeResponse:
+            status = 200
+            def __init__(self, lines):
+                self.lines = iter(lines)
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def readline(self, limit):
+                return next(self.lines, b"")
+
+        events = [
+            b'data: {"choices":[{"delta":{"content":"\\u4f60"}}]}\\n',
+            b'data: {"choices":[{"delta":{"content":"\\u597d"}}]}\\n',
+            b'data: [DONE]\\n',
+        ]
+        emitted = []
+        with patch("DyberPet.assistant.persona._OPENER.open",
+                   return_value=FakeResponse(events)) as opened:
+            answer = stream_local_chat(
+                "你好", on_delta=emitted.append, model="local-model")
+        self.assertEqual(answer, "你好")
+        self.assertEqual(emitted, ["你", "好"])
+        request = opened.call_args.args[0]
+        body = json.loads(request.data.decode("utf-8"))
+        self.assertIs(body["stream"], True)
+        self.assertEqual(body["model"], "local-model")
+        self.assertEqual(request.get_header("Accept"), "text/event-stream")
+        self.assertNotIn("tools", body)
+
+    def test_local_stream_rejects_empty_and_oversized_events(self):
+        class FakeResponse:
+            status = 200
+            def __init__(self, lines):
+                self.lines = iter(lines)
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def readline(self, limit):
+                return next(self.lines, b"")
+
+        with patch("DyberPet.assistant.persona._OPENER.open",
+                   return_value=FakeResponse([b"data: [DONE]\\n"])):
+            with self.assertRaisesRegex(AssistantServiceError, "empty stream"):
+                stream_local_chat("hi", on_delta=lambda _: None, model="m")
+        with patch("DyberPet.assistant.persona._OPENER.open",
+                   return_value=FakeResponse([b"x" * 65537])):
+            with self.assertRaisesRegex(AssistantServiceError, "exceeds"):
+                stream_local_chat("hi", on_delta=lambda _: None, model="m")
 
     def test_local_model_discovery_deduplicates(self):
         with patch("DyberPet.assistant.persona._json_request",
