@@ -99,6 +99,24 @@ class PersonaContractTests(unittest.TestCase):
         self.assertIn("用户正在做桌宠项目", body["messages"][0]["content"])
         self.assertEqual(body["messages"][-1]["content"], "继续")
 
+    def test_local_stream_rejects_truncated_stream_without_done_marker(self):
+        class FakeResponse:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def readline(self, limit):
+                if not hasattr(self, "sent"):
+                    self.sent = True
+                    return b'data: {"choices":[{"delta":{"content":"partial"}}]}\\n'
+                return b""
+
+        with patch("DyberPet.assistant.persona._OPENER.open",
+                   return_value=FakeResponse()):
+            with self.assertRaisesRegex(AssistantServiceError, "completion marker"):
+                stream_local_chat("hi", on_delta=lambda _: None, model="m")
+
     def test_local_stream_rejects_invalid_history(self):
         with self.assertRaisesRegex(AssistantServiceError, "history"):
             stream_local_chat(
