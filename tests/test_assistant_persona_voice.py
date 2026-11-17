@@ -1,5 +1,6 @@
 """Contract tests for optional PPL Character service and local LM Studio."""
 import json
+import tempfile
 import unittest
 from unittest.mock import patch
 
