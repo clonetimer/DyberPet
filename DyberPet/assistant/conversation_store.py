@@ -145,6 +145,13 @@ class CompanionStore:
         return [{"role": row["role"], "content": row["content"],
                  "created_at": row["created_at"]} for row in reversed(rows)]
 
+    def clear_history(self, character: str) -> int:
+        """Delete only one character's chat transcript; preserve memories."""
+        character = self._character(character)
+        with self._connect() as db:
+            cursor = db.execute("DELETE FROM messages WHERE character=?", (character,))
+        return cursor.rowcount
+
     def add_memory(self, character: str, content: str, *, importance: int = 2,
                    pinned: bool = False) -> dict:
         character = self._character(character)
