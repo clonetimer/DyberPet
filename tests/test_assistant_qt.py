@@ -68,6 +68,35 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(self.dialog._conversation_store.list_memories("Doro"), [])
         self.assertEqual(len(self.dialog._conversation_store.list_memories("咕嘎")), 1)
 
+    def test_switching_character_stops_listening_and_discards_old_transcript(self):
+        import threading
+        self.dialog._listen_stop_event = threading.Event()
+        self.dialog._listening = True
+        generation = self.dialog._session_generation
+        self.dialog.set_character("Doro")
+        self.assertTrue(self.dialog._listen_stop_event.is_set())
+        self.assertFalse(self.dialog._listening)
+        self.dialog._heard_continuous(("咕嘎", generation, "旧角色语音"))
+        self.assertNotIn("旧角色语音", self.dialog.message.text())
+
+    def test_close_waits_for_continuous_microphone_worker(self):
+        import threading
+        class FakeEvent:
+            def __init__(self):
+                self.ignored = False
+            def ignore(self):
+                self.ignored = True
+        self.dialog._listen_stop_event = threading.Event()
+        self.dialog._listening = True
+        self.dialog._job = object()
+        event = FakeEvent()
+        self.dialog.closeEvent(event)
+        self.assertTrue(event.ignored)
+        self.assertTrue(self.dialog._listen_stop_event.is_set())
+        self.dialog._job = None
+        self.dialog._listening = False
+        self.dialog._closing_after_listen = False
+
     def test_continuous_voice_controls_are_explicit_and_stop_event_is_set(self):
         import threading
         self.assertEqual(self.dialog.listen_button.text(), "开始连续监听")
