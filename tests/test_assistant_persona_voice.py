@@ -84,6 +84,9 @@ class PersonaContractTests(unittest.TestCase):
                 if not hasattr(self, "done"):
                     self.done = True
                     return b'data: {"choices":[{"delta":{"content":"ok"}}]}\n'
+                if not hasattr(self, "done_marker"):
+                    self.done_marker = True
+                    return b"data: [DONE]\n"
                 return b""
 
         with patch("DyberPet.assistant.persona._OPENER.open",
