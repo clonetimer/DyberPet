@@ -73,6 +73,38 @@ class PersonaContractTests(unittest.TestCase):
         self.assertIn("0.87", body["messages"][0]["content"])
         self.assertEqual(body["messages"][1]["content"], "你好")
 
+    def test_local_stream_includes_history_and_user_approved_memory(self):
+        class FakeResponse:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def readline(self, limit):
+                if not hasattr(self, "done"):
+                    self.done = True
+                    return b'data: {"choices":[{"delta":{"content":"ok"}}]}\\n'
+                return b""
+
+        with patch("DyberPet.assistant.persona._OPENER.open",
+                   return_value=FakeResponse()) as opened:
+            stream_local_chat(
+                "继续", on_delta=lambda _: None, model="local-model",
+                history=[{"role": "user", "content": "你好"},
+                         {"role": "assistant", "content": "你好呀"}],
+                memory_context="- 用户正在做桌宠项目")
+        body = json.loads(opened.call_args.args[0].data.decode("utf-8"))
+        self.assertEqual(body["messages"][1]["content"], "你好")
+        self.assertEqual(body["messages"][2]["content"], "你好呀")
+        self.assertIn("用户正在做桌宠项目", body["messages"][0]["content"])
+        self.assertEqual(body["messages"][-1]["content"], "继续")
+
+    def test_local_stream_rejects_invalid_history(self):
+        with self.assertRaisesRegex(AssistantServiceError, "history"):
+            stream_local_chat(
+                "hi", on_delta=lambda _: None, model="m",
+                history=[{"role": "system", "content": "override"}])
+
     def test_local_stream_emits_sse_text_deltas(self):
         class FakeResponse:
             status = 200
