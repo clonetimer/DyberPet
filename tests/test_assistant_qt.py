@@ -59,6 +59,16 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(self.dialog._conversation_store.list_memories("Doro"), [])
         self.assertEqual(len(self.dialog._conversation_store.list_memories("咕嘎")), 1)
 
+    def test_continuous_voice_controls_are_explicit_and_stop_event_is_set(self):
+        import threading
+        self.assertEqual(self.dialog.listen_button.text(), "开始连续监听")
+        self.assertFalse(self.dialog.stop_listen_button.isEnabled())
+        self.dialog._listen_stop_event = threading.Event()
+        self.dialog._listening = True
+        self.dialog.stop_listening()
+        self.assertTrue(self.dialog._listen_stop_event.is_set())
+        self.assertFalse(self.dialog.stop_listen_button.isEnabled())
+
     def test_streamed_reply_is_incremental_and_not_duplicated(self):
         self.dialog.chat_log.clear()
         self.dialog._stream_reply_open = True
