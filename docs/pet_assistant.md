@@ -64,3 +64,10 @@ Doro 的原生左右移动动作需在安装的角色中提供**每个方向至�
 
 tests/test_assistant_files.py、tests/test_assistant_persona_voice.py 覆盖文件隔离、删除恢复、PPL 会话/event 协议、语音输入保护和本地模型通信条件。tests/test_assistant_qt.py 验证 Qt 离屏 GUI 操作。GitHub Actions 提供 Windows/Linux Python3.9/3.11 及 Windows PySide6 冒烟。
 实机麦克风、Vosk 中文准确度、pyttsx3 中文 TTS、真实 LM Studio/PPL 进程及 Windows EXE 安装仍需要独立验收。当前 PPL 连接使用已公开的 Character Governance HTTP API，并未自动启动、改写或内置 PPL 服务。
+
+
+## P1：本地模型流式回复
+
+桌宠助手对 LM Studio 的聊天请求现支持 OpenAI-compatible SSE 流式响应。回复文本在工作线程收到增量后逐段显示，Qt 主线程只负责呈现，不等待模型生成完整答案。请求仍限制为 loopback 本地服务、禁用代理和重定向；响应行、总字节数和回复字符数均有上限。模型输出只作为文本展示，不解析为工具调用。
+
+流式请求失败时，已收到的文本会保留并明确标记“回复中断”；不会把部分回复误报为成功，也不会写入文件。该能力需要 LM Studio 当前加载的模型与服务端支持流式 Chat Completions。传统 chat_local API 保留供兼容调用。
