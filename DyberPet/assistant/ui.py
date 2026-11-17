@@ -292,7 +292,7 @@ class PetAssistantDialog(QDialog):
             return
         if QMessageBox.question(
                 self, "清空当前角色聊天记录",
-                "只删除“" + self.character_name + "”的本地聊天记录；已保存的角色记忆不会删除。\\n确认继续？",
+                "只删除“" + self.character_name + "”的本地聊天记录；已保存的角色记忆不会删除。\n确认继续？",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
             return
