@@ -47,6 +47,33 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(len(replies), 1)
         self.assertNotIn("old persona text", self.dialog.chat_log.toPlainText())
 
+    def test_streamed_reply_is_incremental_and_not_duplicated(self):
+        self.dialog.chat_log.clear()
+        self.dialog._stream_reply_open = True
+        generation = self.dialog._session_generation
+        self.dialog._append_stream_delta("第一段", "咕嘎", generation)
+        self.dialog._append_stream_delta("第二段", "咕嘎", generation)
+        self.assertIn("第一段第二段", self.dialog.chat_log.toPlainText())
+        before = self.dialog.chat_log.toPlainText()
+        self.dialog._message_reply(("咕嘎", generation, "第一段第二段"))
+        self.assertEqual(self.dialog.chat_log.toPlainText(), before)
+        self.assertFalse(self.dialog._stream_reply_open)
+
+    def test_stream_delta_from_previous_role_generation_is_ignored(self):
+        self.dialog.chat_log.clear()
+        self.dialog._append_stream_delta("stale", "咕嘎", self.dialog._session_generation - 1)
+        self.dialog._append_stream_delta("wrong role", "Doro", self.dialog._session_generation)
+        self.assertEqual(self.dialog.chat_log.toPlainText(), "")
+
+    def test_interrupted_stream_is_explicitly_marked(self):
+        self.dialog.chat_log.clear()
+        self.dialog._stream_reply_open = True
+        self.dialog._append_stream_delta("partial", "咕嘎", self.dialog._session_generation)
+        self.dialog._job_error("connection closed")
+        self.assertIn("partial", self.dialog.chat_log.toPlainText())
+        self.assertIn("回复中断", self.dialog.chat_log.toPlainText())
+        self.assertFalse(self.dialog._stream_reply_open)
+
     def test_speech_lifecycle_only_reports_selected_character(self):
         started, stopped = [], []
         self.dialog.speech_started.connect(
