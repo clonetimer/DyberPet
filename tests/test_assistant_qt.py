@@ -47,6 +47,16 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(len(replies), 1)
         self.assertNotIn("old persona text", self.dialog.chat_log.toPlainText())
 
+    def test_character_history_restores_and_memory_is_role_scoped(self):
+        self.dialog._conversation_store.append_turn("咕嘎", "你好", "你好呀")
+        self.dialog._conversation_store.append_turn("Doro", "汪", "Doro!")
+        self.dialog.set_character("Doro")
+        self.assertIn("Doro：Doro!", self.dialog.chat_log.toPlainText())
+        self.assertNotIn("你好呀", self.dialog.chat_log.toPlainText())
+        self.dialog._conversation_store.add_memory("咕嘎", "用户喜欢航天器仿真")
+        self.assertEqual(self.dialog._conversation_store.list_memories("Doro"), [])
+        self.assertEqual(len(self.dialog._conversation_store.list_memories("咕嘎")), 1)
+
     def test_streamed_reply_is_incremental_and_not_duplicated(self):
         self.dialog.chat_log.clear()
         self.dialog._stream_reply_open = True
