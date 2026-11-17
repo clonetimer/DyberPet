@@ -29,6 +29,24 @@ class AssistantQtTests(unittest.TestCase):
             store_path=Path(self.tmp.name) / "companion.sqlite3")
         self.addCleanup(self.dialog.close)
 
+    def test_ai_reply_note_is_created_only_after_user_confirmation(self):
+        self.dialog._last_reply = "这是 AI 生成的便签内容。"
+        with patch("PySide6.QtWidgets.QInputDialog.getText",
+                   return_value=("AI便签.md", True)):
+            with patch("PySide6.QtWidgets.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.Yes):
+                self.dialog.save_reply_as_note()
+        saved = self.dialog.workspace.root / "AI便签.md"
+        self.assertTrue(saved.is_file())
+        self.assertEqual(saved.read_text(encoding="utf-8"), "这是 AI 生成的便签内容。")
+
+    def test_ai_reply_note_cancel_does_not_write_file(self):
+        self.dialog._last_reply = "不应保存"
+        with patch("PySide6.QtWidgets.QInputDialog.getText",
+                   return_value=("", False)):
+            self.dialog.save_reply_as_note()
+        self.assertEqual(self.dialog.workspace.list_files(), [])
+
     def test_dialog_persona_and_file_actions_exist(self):
         self.assertEqual(self.dialog.persona.currentData(), "guga")
         self.assertFalse(self.dialog.ppl_enabled.isChecked())
