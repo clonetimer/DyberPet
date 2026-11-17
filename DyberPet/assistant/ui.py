@@ -1031,7 +1031,7 @@ class PetAssistantDialog(QDialog):
             return
         if QMessageBox.question(
                 self, "确认保存 AI 回复",
-                "仅在当前授权的桌宠工作区新建文件，不覆盖已有文件：\\n"
+                "仅在当前授权的桌宠工作区新建文件，不覆盖已有文件：\n"
                 + str(self.workspace.root / validated),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
