@@ -49,6 +49,15 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(len(replies), 1)
         self.assertNotIn("old persona text", self.dialog.chat_log.toPlainText())
 
+    def test_clear_character_history_keeps_memories(self):
+        self.dialog._conversation_store.append_turn("咕嘎", "你好", "你好呀")
+        self.dialog._conversation_store.add_memory("咕嘎", "保留的记忆")
+        with patch("PySide6.QtWidgets.QMessageBox.question",
+                   return_value=QMessageBox.StandardButton.Yes):
+            self.dialog.clear_character_history()
+        self.assertEqual(self.dialog._conversation_store.recent_messages("咕嘎"), [])
+        self.assertEqual(len(self.dialog._conversation_store.list_memories("咕嘎")), 1)
+
     def test_character_history_restores_and_memory_is_role_scoped(self):
         self.dialog._conversation_store.append_turn("咕嘎", "你好", "你好呀")
         self.dialog._conversation_store.append_turn("Doro", "汪", "Doro!")
