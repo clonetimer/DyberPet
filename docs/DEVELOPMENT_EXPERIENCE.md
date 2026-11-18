@@ -473,7 +473,7 @@
 
 - **改了什么：** Linux CI 新增独立的 PipeWire 会话：先停止 PulseAudio daemon，再在隔离 D-Bus/XDG_RUNTIME_DIR 下启动 pipewire、WirePlumber 和 pipewire-pulse，创建命名 null source，最后复用产品的 PulseAudio/PortAudio 采集集成测试。
 - **为什么：** 许多 Linux 桌面使用 PipeWire 提供 PulseAudio 兼容服务。仅在原生 PulseAudio daemon 下通过，不能证明 pipewire-pulse 兼容层的设备枚举、采样率协商和输入流打开可用。
-- **踩坑：** 两种服务不能争用同一个 PulseAudio socket；必须先停止原 daemon，再创建独立用户运行目录和 D-Bus 会话。该测试验证 PipeWire 的 PulseAudio 兼容层，不等于 PortAudio 原生 PipeWire host API 或 ALSA 直连硬件已通过。
+- **踩坑：** 两种服务不能争用同一个 PulseAudio socket；必须先停止原 daemon，再创建独立用户运行目录和 D-Bus 会话。PipeWire 的 `pipewire-pulse` 不一定实现 PulseAudio 的 `module-null-source`，应使用兼容层支持的 `module-null-sink` monitor source。该测试验证 PipeWire 的 PulseAudio 兼容层，不等于 PortAudio 原生 PipeWire host API 或 ALSA 直连硬件已通过。
 - **验证：** 专用 CI step 使用 `pipewire`、`wireplumber`、`pipewire-pulse` 独立启动，要求 `pactl info` 就绪并创建精确命名 source，再显式运行真实 PortAudio 采集测试；不允许回退到其他输入设备。
 
 

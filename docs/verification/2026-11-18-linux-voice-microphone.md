@@ -42,7 +42,7 @@ This proves the PulseAudio server → PortAudio → DyberPet capture path for a 
 
 ## PipeWire PulseAudio-compatibility integration
 
-A second Linux integration session is added separately from the native PulseAudio test. CI first stops the PulseAudio daemon, starts `pipewire`, `wireplumber` and `pipewire-pulse` inside an isolated D-Bus session and `XDG_RUNTIME_DIR`, creates a named 48 kHz null source via the PulseAudio compatibility protocol, then runs the same product `probe_microphone` PortAudio capture test with exact host/device matching.
+A second Linux integration session is added separately from the native PulseAudio test. CI first stops the PulseAudio daemon, starts `pipewire`, `wireplumber` and `pipewire-pulse` inside an isolated D-Bus session and `XDG_RUNTIME_DIR`, creates a named 48 kHz null sink and selects its `.monitor` source via the PulseAudio compatibility protocol, then runs the same product `probe_microphone` PortAudio capture test with exact host/device matching.
 
 This specifically validates the PipeWire-provided PulseAudio compatibility server. It does not claim native PipeWire PortAudio host API support or physical ALSA hardware support. Final status must be taken from the Linux workflow for the new PR head.
 
@@ -61,3 +61,8 @@ The Linux source and frozen jobs now use apt Acquire retry and HTTP/HTTPS timeou
 ## Exact-source selection hardening
 
 The PulseAudio integration test now reads `pactl get-default-source` and requires a unique exact-name match in the PortAudio PulseAudio host catalog before opening the input. This prevents a machine with multiple physical, monitor or virtual sources from accidentally testing the wrong device. PipeWire's compatibility test uses a `module-null-sink` monitor source and selects its exact default-source name. The integration test fails on missing or ambiguous source identity and never falls back to the first enumerated input.
+
+
+## PipeWire module compatibility correction
+
+The first PipeWire CI attempt failed before PortAudio capture: `pipewire-pulse` returned `Failure: No such entity` for PulseAudio's `module-null-source`. This is a compatibility-module availability difference, not an input-stream failure. The test now creates `module-null-sink` (supported by pipewire-pulse) and selects its `.monitor` source. Both PulseAudio and PipeWire tests now read `pactl get-default-source` and require a unique exact-name match in the PortAudio catalog before calling the product capture function. The corrected result must be read from the new head's Linux CI.
