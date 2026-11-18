@@ -451,3 +451,11 @@
 - **为什么：** `pactl` 能看到 PulseAudio source，只证明音频服务器有虚拟源；它不能证明应用实际使用的 PortAudio 后端能枚举并打开该源。必须走与桌面应用相同的设备选择和采集代码。
 - **踩坑：** 不需要真实麦克风即可验证音频服务器到应用的采集链路，但 null source 只能证明路由和 PCM 流可用，不能证明物理麦克风权限、硬件增益、扬声器或语音质量。测试必须精确匹配 PulseAudio host/device，不能悄悄回退到系统默认输入。
 - **验证：** Linux X11 acceptance 安装 PulseAudio，创建独立命名 null source，并显式运行 `test_assistant_pulseaudio_probe_integration.py`。若 PortAudio 未暴露 PulseAudio 输入，则测试失败而不是跳过。
+
+
+## 60. 音频栈集成测试必须显式启用，不能混入无音频依赖的通用套件
+
+- **改了什么：** PulseAudio 真实输入测试改为仅在 Linux 且显式设置 `DYBERPET_PULSEAUDIO_INTEGRATION=1` 时执行；通用单测发现时若未安装 sounddevice 或没有专用音频服务器则清晰跳过。Linux acceptance job 在启动 PulseAudio null source 后显式设置该环境变量运行测试。
+- **为什么：** 项目通用助手回归刻意不安装 sounddevice，也不启动 PulseAudio。把真实音频栈集成测试自动混入通用 unittest discovery，会让不具备音频服务器的 Windows/Linux 单测因缺少 sounddevice 或虚拟 source 而失败。
+- **踩坑：** 不能简单把测试永久 skip 掉，否则 Linux 专用门禁也会跳过。用显式环境开关区分通用套件和真实集成 job，并在专用 job 中安装依赖、启动服务、要求实际发现并打开 PulseAudio 输入。
+- **验证：** 通用套件覆盖该测试时不导入 sounddevice；专用 Linux job 显式开启测试并要求真实 PortAudio PulseAudio 输入。无默认输入回退。

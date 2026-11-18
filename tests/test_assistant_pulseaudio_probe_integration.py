@@ -1,4 +1,6 @@
 """Real PortAudio capture through a PulseAudio null source; no physical microphone required."""
+import importlib.util
+import os
 import sys
 import threading
 import unittest
@@ -9,6 +11,10 @@ from DyberPet.assistant.audio_probe import probe_microphone
 @unittest.skipUnless(sys.platform.startswith("linux"), "PulseAudio integration is Linux-only")
 class PulseAudioProbeIntegrationTests(unittest.TestCase):
     def test_selected_pulse_input_source_can_be_opened_and_captured(self):
+        if os.environ.get("DYBERPET_PULSEAUDIO_INTEGRATION") != "1":
+            self.skipTest("explicit PulseAudio integration environment is not enabled")
+        if importlib.util.find_spec("sounddevice") is None:
+            self.skipTest("sounddevice is installed only in the Linux audio integration environment")
         import sounddevice as sd
 
         hosts = sd.query_hostapis()
