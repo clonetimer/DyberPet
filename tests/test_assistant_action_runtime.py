@@ -74,7 +74,7 @@ class ActionRuntimeTests(unittest.TestCase):
         self.assertNotIn("first line", repr(self.runtime.audit_log()))
 
     def test_read_file_rejects_binary_invalid_utf8_and_large_context(self):
-        (self.workspace.root / "binary.txt").write_bytes(b"\\xff")
+        (self.workspace.root / "binary.txt").write_bytes(bytes([255]))
         plan = self.runtime.prepare("read_file", {"name": "binary.txt"})
         self.runtime.approve(plan["request_id"], True)
         with self.assertRaisesRegex(ActionDenied, "UTF-8"):
