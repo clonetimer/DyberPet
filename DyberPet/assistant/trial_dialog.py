@@ -19,7 +19,7 @@ _REPORT_BYTE_LIMIT = 64 * 1024
 _KIND_LABELS = {
     "chat": "普通聊天", "model_probe": "模型试聊", "plan": "任务规划",
     "listen": "连续监听", "speech": "朗读", "models": "检查可用模型",
-    "voice_check": "检查语音配置", "other": "其他操作",
+    "voice_check": "检查语音配置", "voice_options": "读取设备与音色", "other": "其他操作",
 }
 _OUTCOME_LABELS = {
     "running": "进行中", "completed": "程序已完成", "cancelled": "已停止",
@@ -174,7 +174,8 @@ class TrialDialog(QDialog):
         layout.addWidget(heading)
         layout.addWidget(self._label(
             "打开本窗口不会启动模型或音频。选择下方操作开始试用，"
-            "再按实际看到、听到的结果填写反馈。", content))
+            "再按实际看到、听到的结果填写反馈。"
+            "监听和试听使用主窗口当前选择的麦克风、音色与语速。", content))
 
         actions = QGroupBox("本机试用", content)
         action_layout = QGridLayout(actions)

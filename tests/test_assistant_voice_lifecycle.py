@@ -27,6 +27,7 @@ class _RecognitionDriver:
         self.final = final
         self.enter_error = enter_error
         self.events = []
+        self.closed = False
         self.sounddevice = _driver_module("sounddevice", RawInputStream=self.stream)
         self.vosk = _driver_module("vosk", Model=self.model,
                                   KaldiRecognizer=self.recognizer)
@@ -56,6 +57,11 @@ class _RecognitionDriver:
 
     def __exit__(self, *_args):
         self.record("exit")
+        self.closed = True
+
+    def close(self):
+        self.closed = True
+        self.record("close")
 
     def read(self, frames):
         self.record("read")
@@ -90,6 +96,10 @@ class _SpeechDriver:
         self.events = []
         self.threads = []
         self.finished = None
+        self.error = None
+        self.utterance_name = None
+        self.configured = False
+        self.busy = True
 
     def record(self, event):
         self.events.append(event)
@@ -106,18 +116,39 @@ class _SpeechDriver:
 
     def connect(self, name, callback):
         self.record("connect")
-        self.finished = callback
+        if name == "finished-utterance":
+            self.finished = callback
+        elif name == "error":
+            self.error = callback
+        return name
 
-    def say(self, text):
+    def disconnect(self, name):
+        self.threads.append(threading.get_ident())
+        if name == "finished-utterance":
+            self.finished = None
+        elif name == "error":
+            self.error = None
+
+    def say(self, text, name=None):
+        self.utterance_name = name
         self.record("say")
 
     def startLoop(self, driver_loop):
         self.record("start")
 
+    def isBusy(self):
+        self.threads.append(threading.get_ident())
+        return self.busy
+
     def iterate(self):
+        if not self.configured:
+            self.record("configure")
+            self.configured = True
+            self.busy = False
+            return
         self.record("iterate")
         if self.finish_on_iterate:
-            self.finished("utterance", self.finish_completed)
+            self.finished(self.utterance_name, self.finish_completed)
             if self.stop_after_finish:
                 self.stop_event.set()
         else:
@@ -233,12 +264,14 @@ class VoiceLifecycleTests(unittest.TestCase):
         self.assertNotIn("ready", driver.events)
         self.assertEqual(driver.events[-1], "stop")
 
-    def test_stopping_after_queue_does_not_start_loop(self):
+    def test_stopping_after_queue_does_not_announce_or_iterate_speech(self):
         driver = _SpeechDriver(threading.Event(), stop_at="say")
         self.assertFalse(self.speak(driver, on_ready=lambda: driver.record("ready")))
-        self.assertNotIn("start", driver.events)
+        # The loop first validates queued properties without an utterance.
+        self.assertEqual(driver.events.count("start"), 1)
+        self.assertNotIn("iterate", driver.events)
         self.assertNotIn("ready", driver.events)
-        self.assertEqual(driver.events[-1], "stop")
+        self.assertEqual(driver.events[-2:], ["stop", "end"])
 
     def test_stopping_in_start_loop_suppresses_ready_and_ends_loop(self):
         driver = _SpeechDriver(threading.Event(), stop_at="start")
@@ -262,8 +295,8 @@ class VoiceLifecycleTests(unittest.TestCase):
         self.assertFalse(worker.is_alive())
         self.assertEqual(results, [True])
         self.assertEqual(driver.events,
-                         ["init", "property", "connect", "say", "start", "ready",
-                          "iterate", "stop", "end"])
+                         ["init", "connect", "connect", "property", "start",
+                          "configure", "say", "ready", "iterate", "stop", "end"])
         self.assertEqual(set(driver.threads), set(worker_ids))
         self.assertNotEqual(worker_ids, [threading.get_ident()])
 

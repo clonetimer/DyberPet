@@ -261,11 +261,14 @@ class PersonaContractTests(unittest.TestCase):
 
         class FakeStream:
             def __init__(self, **kwargs):
-                pass
+                self.closed = False
             def __enter__(self):
                 return self
             def __exit__(self, *args):
+                self.closed = True
                 return False
+            def close(self):
+                self.closed = True
             def read(self, frames):
                 stop.set()
                 return (b"\x00" * frames * 2, False)
@@ -305,11 +308,14 @@ class PersonaContractTests(unittest.TestCase):
 
         class FakeStream:
             def __init__(self, **kwargs):
-                pass
+                self.closed = False
             def __enter__(self):
                 return self
             def __exit__(self, *args):
+                self.closed = True
                 return False
+            def close(self):
+                self.closed = True
             def read(self, frames):
                 return (b"\x00" * frames * 2, False)
 
@@ -339,17 +345,32 @@ class PersonaContractTests(unittest.TestCase):
         class FakeEngine:
             def __init__(self):
                 self.callback = None
+                self.callbacks = {}
                 self.stopped = False
                 self.ended = False
+                self.prepared = False
+                self.busy = True
             def setProperty(self, *args):
                 pass
             def connect(self, name, callback):
-                self.callback = callback
-            def say(self, text):
+                self.callbacks[name] = callback
+                if name == "finished-utterance":
+                    self.callback = callback
+                return name
+            def disconnect(self, name):
+                self.callbacks.pop(name)
+            def say(self, text, name=None):
                 self.text = text
+                self.utterance_name = name
             def startLoop(self, use_driver_loop):
                 self.assert_external_loop = not use_driver_loop
+            def isBusy(self):
+                return self.busy
             def iterate(self):
+                if not self.prepared:
+                    self.prepared = True
+                    self.busy = False
+                    return
                 stop.set()
             def stop(self):
                 self.stopped = True

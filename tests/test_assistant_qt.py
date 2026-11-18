@@ -9,6 +9,7 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
+    from PySide6.QtCore import QCoreApplication, QEvent
     from PySide6.QtWidgets import QApplication, QMessageBox
 except ImportError:
     QApplication = QMessageBox = None
@@ -27,7 +28,17 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog = PetAssistantDialog(
             "咕嘎", Path(self.tmp.name) / "files",
             store_path=Path(self.tmp.name) / "companion.sqlite3")
-        self.addCleanup(self.dialog.close)
+        self.addCleanup(self.dispose_dialog)
+
+    def dispose_dialog(self):
+        self.dialog.close()
+        if self.dialog._job is not None:
+            self.assertTrue(self.dialog._job.wait(3000))
+            self.app.processEvents()
+        # Mock call histories can retain a closed window until a later worker
+        # triggers Python GC. Destroy its native Qt tree on the GUI thread now.
+        self.dialog.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
     def test_ai_reply_note_is_created_only_after_user_confirmation(self):
         self.dialog._last_reply = "这是 AI 生成的便签内容。"

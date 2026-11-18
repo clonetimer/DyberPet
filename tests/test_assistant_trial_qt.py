@@ -207,8 +207,9 @@ class AssistantTrialQtTests(unittest.TestCase):
             self.dialog.send_message()
             self.wait_for(lambda: self.dialog._job is None)
         release, entered = self.gate(), threading.Event()
-        def speak(text, stop_event, *, on_ready):
+        def speak(text, stop_event, *, rate, voice_id, on_ready, on_progress):
             self.assertEqual(text, "SECRET_ANSWER")
+            self.assertEqual((rate, voice_id), (170, ""))
             on_ready()
             entered.set()
             release.wait(2)
@@ -230,7 +231,9 @@ class AssistantTrialQtTests(unittest.TestCase):
     def test_stopped_microphone_preserves_final_transcript_evidence(self):
         self.dialog.voice_model.setText("/PRIVATE_MODEL_PATH")
         entered = threading.Event()
-        def recognize(model, stop_event, *, on_partial, max_seconds, on_ready):
+        def recognize(model, stop_event, *, on_partial, max_seconds, on_ready,
+                      microphone):
+            self.assertIsNone(microphone)
             on_ready()
             entered.set()
             stop_event.wait(2)
@@ -267,7 +270,8 @@ class AssistantTrialQtTests(unittest.TestCase):
         self.dialog.message.setText("MY_DRAFT")
         self.dialog._last_reply = "MY_REPLY"
         spoken = []
-        def speak(text, stop_event, *, on_ready):
+        def speak(text, stop_event, *, rate, voice_id, on_ready, on_progress):
+            self.assertEqual((rate, voice_id), (170, ""))
             spoken.append(text)
             on_ready()
             return True

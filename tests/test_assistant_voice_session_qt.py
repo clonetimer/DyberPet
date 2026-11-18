@@ -5,6 +5,8 @@ import queue
 import tempfile
 import threading
 import time
+import sys
+import types
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -36,6 +38,8 @@ class AudioBoundary:
         self.fail_speech = False
         self.listen_stop_returns_text = False
         self.partials = []
+        self.microphones = []
+        self.speech_settings = []
 
     def enter(self, kind):
         with self.lock:
@@ -54,6 +58,7 @@ class AudioBoundary:
 
         class Recognizer:
             def listen(self, stop_event, *, on_partial=None, on_ready=None, **kwargs):
+                driver.microphones.append(kwargs.get("microphone"))
                 driver.listen_count += 1
                 driver.enter("microphone")
                 try:
@@ -79,6 +84,7 @@ class AudioBoundary:
 
     def speak(self, text, stop_event, *, on_ready=None, **kwargs):
         self.speeches.append(text)
+        self.speech_settings.append((kwargs.get("voice_id"), kwargs.get("rate")))
         self.enter("speaker")
         try:
             if self.fail_speech:
@@ -117,13 +123,15 @@ class VoiceConversationQtTests(unittest.TestCase):
         self.reply_gate.set()
         self.partial_sent = threading.Event()
         self.empty_reply = False
+        self.reply_override = None
         owner = self
 
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 owner.requests.append(body)
-                reply = "" if owner.empty_reply else "本地回复" + str(len(owner.requests))
+                reply = (owner.reply_override if owner.reply_override is not None else
+                         "" if owner.empty_reply else "本地回复" + str(len(owner.requests)))
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream")
                 self.end_headers()
@@ -345,6 +353,111 @@ class VoiceConversationQtTests(unittest.TestCase):
         self.assertFalse(self.audio.overlap)
         self.assertEqual(self.audio.events[-1], "speaker:closed")
 
+    def test_selected_audio_settings_reach_listening_and_reply_playback(self):
+        self.dialog.audio_settings.set_values(
+            {"name": "USB microphone", "host_api": "WASAPI"}, "voice-a", 155)
+        self.start()
+        self.audio.inputs.put("用选定的设备和声音回答")
+        self.wait_for(lambda: self.audio.listen_count == 2)
+        self.assertEqual(self.audio.microphones, [
+            {"name": "USB microphone", "host_api": "WASAPI"},
+            {"name": "USB microphone", "host_api": "WASAPI"}])
+        self.assertEqual(self.audio.speech_settings, [("voice-a", 155)])
+        self.end()
+
+    def _production_speech_engine(self, *, failure=False):
+        from test_assistant_speech_output import QueuedSpeechEngine
+        engine = QueuedSpeechEngine()
+        second_entered, release = threading.Event(), threading.Event()
+        # Successful GUI/audio cleanup is always available even if an assertion fails.
+        self.addCleanup(release.set)
+        def on_event(_engine, event):
+            if event[0] == "init":
+                self.audio.enter("speaker")
+            elif event[0] == "end":
+                self.audio.leave("speaker")
+        def iterate(current):
+            if len(current.started) == 2:
+                second_entered.set()
+                if not release.is_set():
+                    return
+                if failure:
+                    current.notify("error", name=current.current[1],
+                                   exception=RuntimeError("测试第二段驱动失败"))
+                    return
+            current.finish(True)
+        engine.on_event = on_event
+        engine.on_iteration = iterate
+        module = types.ModuleType("pyttsx3")
+        module.init = engine.initialize
+        self.dialog.audio_settings.set_values(None, "voice-a", 155)
+        self.reply_override = "甲" * 500 + "乙" * 500 + "丙" * 200
+        return engine, module, second_entered, release
+
+    def test_production_chunked_reply_reopens_microphone_only_after_final_chunk_and_cleanup(self):
+        from DyberPet.assistant.voice import speak_interruptible
+        engine, module, second, release = self._production_speech_engine()
+        ready = []
+        self.dialog.speech_started.connect(lambda character, _text: ready.append(character))
+        with patch.dict(sys.modules, {"pyttsx3": module}), \
+                patch("DyberPet.assistant.ui.speak_interruptible", new=speak_interruptible):
+            self.start()
+            self.audio.inputs.put("请完整读出这段长回复")
+            self.wait_for(lambda: second.is_set() and "1/3" in self.dialog.voice_chat_status.text())
+            self.assertEqual(self.audio.listen_count, 1)
+            self.assertEqual(engine.completed, ["甲" * 500])
+            self.assertTrue(self.dialog.voice_conversation.active)
+            release.set()
+            self.wait_for(lambda: self.audio.listen_count == 2)
+            self.assertEqual(engine.completed, ["甲" * 500, "乙" * 500, "丙" * 200])
+            self.assertEqual(ready, ["咕嘎"])
+            self.assertEqual([part[2]["voice"] for part in engine.started], ["voice-a"] * 3)
+            self.assertEqual([part[2]["rate"] for part in engine.started], [155] * 3)
+            self.assertFalse(self.audio.overlap)
+            self.assertLess(self.audio.events.index("speaker:closed"),
+                            len(self.audio.events) - 1)
+            self.assertEqual(self.audio.events[-1], "microphone:open")
+            self.assertEqual(self.dialog._last_reply, self.reply_override)
+            self.end()
+
+    def test_end_during_second_production_chunk_discards_remaining_audio_and_never_reopens(self):
+        from DyberPet.assistant.voice import speak_interruptible
+        engine, module, second, release = self._production_speech_engine()
+        with patch.dict(sys.modules, {"pyttsx3": module}), \
+                patch("DyberPet.assistant.ui.speak_interruptible", new=speak_interruptible):
+            self.start()
+            self.audio.inputs.put("在第二段结束对话")
+            self.wait_for(second.is_set)
+            self.dialog.voice_end_button.click()
+            self.wait_for(lambda: self.dialog._job is None)
+            self.pump_events(30)
+        self.assertFalse(release.is_set())
+        self.assertEqual(len(engine.started), 2)
+        self.assertEqual(engine.completed, ["甲" * 500])
+        self.assertEqual(self.audio.listen_count, 1)
+        self.assertFalse(self.dialog.voice_conversation.active)
+        self.assertEqual(self.audio.active, 0)
+        self.assertEqual(self.dialog._last_reply, self.reply_override)
+
+    def test_second_production_chunk_error_retains_answer_but_ends_voice_session(self):
+        from DyberPet.assistant.voice import speak_interruptible
+        engine, module, second, release = self._production_speech_engine(failure=True)
+        with patch.dict(sys.modules, {"pyttsx3": module}), \
+                patch("DyberPet.assistant.ui.speak_interruptible", new=speak_interruptible):
+            self.start()
+            self.audio.inputs.put("第二段音频驱动失败")
+            self.wait_for(second.is_set)
+            release.set()
+            self.wait_for(lambda: self.dialog._job is None)
+            self.pump_events(30)
+        self.assertEqual(len(engine.started), 2)
+        self.assertEqual(engine.completed, ["甲" * 500])
+        self.assertEqual(self.audio.listen_count, 1)
+        self.assertFalse(self.dialog.voice_conversation.active)
+        self.assertEqual(self.audio.active, 0)
+        self.assertEqual(self.dialog._last_reply, self.reply_override)
+        self.assertIn("失败", self.dialog.voice_chat_status.text())
+
     def test_standard_stop_listening_ends_session_and_discards_late_transcript(self):
         self.audio.listen_stop_returns_text = True
         self.start()
@@ -365,6 +478,7 @@ class VoiceConversationQtTests(unittest.TestCase):
             lambda: self.dialog.persona.setCurrentIndex(
                 (self.dialog.persona.currentIndex() + 1) % self.dialog.persona.count()),
             lambda: self.dialog.set_character("Doro"),
+            lambda: self.dialog.audio_settings.rate_spin.setValue(200),
         ]
         for change in changes:
             with self.subTest(change=change):

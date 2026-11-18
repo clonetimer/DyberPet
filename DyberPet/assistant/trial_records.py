@@ -22,7 +22,7 @@ MAX_REPORT_BYTES = 64 * 1024
 MAX_BUILD_INFO_BYTES = 16 * 1024
 MAX_NUMBER = (1 << 53) - 1
 KINDS = frozenset(("chat", "model_probe", "plan", "listen", "speech",
-                   "models", "voice_check", "other"))
+                   "models", "voice_check", "voice_options", "other"))
 OUTCOMES = frozenset(("running", "completed", "cancelled", "failed", "interrupted"))
 STOP_REASONS = frozenset(("user", "scope_changed", "window_closed", "configuration_changed"))
 ERROR_CODES = frozenset(("invalid_endpoint", "connection", "timeout", "http",

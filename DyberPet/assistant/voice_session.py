@@ -45,7 +45,7 @@ class VoiceConversation(QObject):
                 owner.persona.currentData(), owner.llm_endpoint.text(),
                 owner.llm_model.text(), owner.voice_model.text(),
                 owner.ppl_enabled.isChecked(), owner.ppl_endpoint.text(),
-                owner._ppl_snapshot)
+                owner._ppl_snapshot, owner.audio_settings.snapshot())
 
     def _current(self, epoch=None):
         owner = self._owner()
@@ -73,6 +73,7 @@ class VoiceConversation(QObject):
                        owner.voice_check_button):
             button.setEnabled(not busy)
         owner._sync_trial_window()
+        owner._sync_audio_controls()
 
     def start(self):
         owner = self._owner()
@@ -88,6 +89,7 @@ class VoiceConversation(QObject):
             return
         ready = inspect_voice_readiness(owner.voice_model.text().strip())
         if not ready.recognition_ready or not ready.tts_ready:
+            owner.audio_settings.toggle_button.setChecked(True)
             self._notice("语音对话尚未就绪：" + (
                 ready.recognition_message if not ready.recognition_ready else ready.tts_message))
             return
@@ -215,6 +217,7 @@ class VoiceConversation(QObject):
         character, generation = owner.character_name, owner._session_generation
         reference = self._owner
         recognizer = self._recognizer
+        microphone = owner.audio_settings.microphone()
 
         def ready():
             current = reference()
@@ -223,7 +226,7 @@ class VoiceConversation(QObject):
 
         def task(on_delta):
             return recognizer.listen(stop, on_partial=on_delta, on_ready=ready,
-                                     max_seconds=30.0)
+                                     max_seconds=30.0, microphone=microphone)
 
         owner._submit(task, lambda text: self._heard(epoch, text), stream=True,
                       on_progress=lambda text: self._partial(epoch, text))
@@ -239,6 +242,11 @@ class VoiceConversation(QObject):
     def speech_ready(self):
         if self._current() and self.owns_job and self._stage == "speech":
             self._notice("正在朗读；可以打断并继续说。")
+
+    def speech_progress(self, completed, total):
+        if self._current() and self.owns_job and self._stage == "speech":
+            self._notice("正在朗读：" + str(completed) + "/" + str(total)
+                         + " 段完成；可以打断或结束。")
 
     def _heard(self, epoch, text):
         if not self._current(epoch) or self._restart_requested:

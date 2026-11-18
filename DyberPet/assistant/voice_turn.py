@@ -5,7 +5,8 @@ import json
 import time
 from pathlib import Path
 
-from .voice import VoiceUnavailable
+from .voice_devices import resolve_microphone
+from .voice_errors import VoiceUnavailable
 
 
 def _recognition_text(payload, field):
@@ -32,7 +33,8 @@ class VoiceTurnRecognizer:
         self._model = None
 
     def listen(self, stop_event, *, on_partial=None, on_ready=None,
-               sample_rate: int = 16000, max_seconds: float = 30.0) -> str:
+               sample_rate: int = 16000, max_seconds: float = 30.0,
+               microphone=None) -> str:
         """Return one utterance after closing capture, or ``""`` on stop.
 
         A timeout may finish the current nonempty utterance. No speech or a
@@ -80,17 +82,21 @@ class VoiceTurnRecognizer:
             recognizer = vosk.KaldiRecognizer(self._model, sample_rate)
             if stop_event.is_set():
                 return ""
+            device = resolve_microphone(microphone, sd)
+            if stop_event.is_set():
+                return ""
+            device_options = {} if device is None else {"device": device}
 
             frame_limit = max(1, int(max_seconds * sample_rate))
             captured_frames = 0
             last_partial = ""
             transcript = ""
-            microphone = sd.RawInputStream(samplerate=sample_rate, blocksize=4000,
-                                           channels=1, dtype="int16")
+            stream = sd.RawInputStream(samplerate=sample_rate, blocksize=4000,
+                                       channels=1, dtype="int16", **device_options)
             try:
                 if stop_event.is_set():
                     return ""
-                with microphone:
+                with stream:
                     deadline = time.monotonic() + max_seconds
                     if not stop_event.is_set() and on_ready is not None:
                         on_ready()
@@ -98,7 +104,7 @@ class VoiceTurnRecognizer:
                            and captured_frames < frame_limit
                            and time.monotonic() < deadline):
                         frames = min(4000, frame_limit - captured_frames)
-                        payload, overflow = microphone.read(frames)
+                        payload, overflow = stream.read(frames)
                         if stop_event.is_set():
                             break
                         if overflow:
@@ -130,8 +136,8 @@ class VoiceTurnRecognizer:
             finally:
                 # RawInputStream opens in its constructor, then starts in
                 # __enter__. A failed start never reaches __exit__.
-                if not microphone.closed:
-                    microphone.close()
+                if not stream.closed:
+                    stream.close()
 
             # Cancellation can arrive during __exit__, so returning from inside
             # the context manager would risk submitting a cancelled utterance.

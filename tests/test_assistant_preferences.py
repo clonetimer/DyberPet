@@ -64,6 +64,67 @@ class AssistantPreferencesTests(unittest.TestCase):
             load(self.file)
         self.assertEqual(self.file.read_text("utf-8"), "{corrupt")
 
+    def test_old_preferences_load_audio_defaults_without_enumerating_devices(self):
+        old = {"schema_version": 1, "voice_model": "/old/vosk"}
+        loaded = validate(old)
+        self.assertIn("microphone", loaded)
+        self.assertIsNone(loaded["microphone"])
+        self.assertEqual(loaded.get("voice_profiles"), {})
+        self.assertEqual(loaded["voice_model"], "/old/vosk")
+
+    def test_selected_microphone_and_character_voices_survive_roundtrip(self):
+        prefs = defaults()
+        prefs.update({
+            "microphone": {"name": "USB 麦克风", "host_api": "Windows WASAPI"},
+            "voice_profiles": {
+                "咕嘎": {"voice_id": "system-voice-zh", "rate": 160},
+                "Doro": {"voice_id": "system-voice-en", "rate": 210},
+            },
+        })
+        save(prefs, self.file)
+        self.assertEqual(load(self.file), prefs)
+
+    def test_audio_choices_reject_invalid_values_without_replacing_saved_file(self):
+        save(defaults(), self.file)
+        before = self.file.read_bytes()
+        invalid = [
+            {"microphone": 4},
+            {"microphone": {"name": "Mic", "host_api": ""}},
+            {"microphone": {"name": "M" * 257, "host_api": "API"}},
+            {"microphone": {"name": "Mic", "host_api": "A" * 129}},
+            {"voice_profiles": {"Doro": {"voice_id": "v", "rate": True}}},
+            {"voice_profiles": {"Doro": {"voice_id": "v", "rate": 99}}},
+            {"voice_profiles": {"Doro": {"voice_id": "v", "rate": 231}}},
+            {"voice_profiles": {"Doro": {"voice_id": "v" * 513, "rate": 170}}},
+            {"voice_profiles": {"Doro": {"voice_id": "v"}}},
+            {"voice_profiles": {"Doro": "voice"}},
+            {"voice_profiles": {str(i): {"voice_id": "", "rate": 170}
+                                 for i in range(101)}},
+        ]
+        for changes in invalid:
+            with self.subTest(changes=changes):
+                prefs = defaults()
+                prefs.update(changes)
+                with self.assertRaises(ValueError):
+                    save(prefs, self.file)
+                self.assertEqual(self.file.read_bytes(), before)
+
+    def test_audio_profiles_keep_only_selected_identity_and_rate(self):
+        prefs = defaults()
+        prefs.update({
+            "microphone": {"name": "Mic", "host_api": "API", "index": 42,
+                           "capture": "PRIVATE_AUDIO"},
+            "voice_profiles": {"Doro": {"voice_id": "voice", "rate": 170,
+                                         "preview_text": "PRIVATE_REPLY"}},
+            "device_catalog": ["PRIVATE_DEVICE_LIST"],
+        })
+        save(prefs, self.file)
+        loaded = load(self.file)
+        self.assertEqual(loaded.get("microphone"), {"name": "Mic", "host_api": "API"})
+        self.assertEqual(loaded.get("voice_profiles"),
+                         {"Doro": {"voice_id": "voice", "rate": 170}})
+        self.assertNotIn("PRIVATE_", self.file.read_text("utf-8"))
+
 
 class SessionFolderTests(unittest.TestCase):
     def setUp(self):
