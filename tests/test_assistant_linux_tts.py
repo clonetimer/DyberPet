@@ -97,7 +97,7 @@ class LinuxEspeakProcessTests(unittest.TestCase):
         result, processes, calls = self.run_linux(
             "甲" * 1200, stop,
             process_factory=lambda event: _Process(
-                stop_event=event, stop_on_wait=True))
+                stop_event=event, return_code=None, stop_on_wait=True))
         self.assertFalse(result)
         self.assertEqual(len(processes), 1)
         self.assertTrue(processes[0].terminated)
