@@ -279,7 +279,7 @@ LM Studio 对话使用 OpenAI-compatible 流式 Chat Completions，需在助手�
 
 初检不导入音频驱动、不加载模型、不枚举或打开设备。通过只表示前置组件和目录结构存在；实际模型完整性、系统驱动、麦克风和扬声器还没有验证。点击 **开始连续监听** 或在收到回复后点击 **朗读上一条回复** 才会启动相应功能。识别结果仍需你检查后手动发送。
 
-源码运行时，缺少 Python 组件会提示在运行桌宠的 Python 环境安装。Ubuntu/Debian 的 Linux 朗读还需安装系统包 `espeak-ng`（`sudo apt install espeak-ng`）；该命令由桌宠工作线程启动并可随停止操作终止。Linux 便携包不会自动安装系统软件包，缺少时应先安装系统依赖。Windows/macOS 继续使用 pyttsx3 原生驱动。
+源码运行时，缺少 Python 组件会提示在运行桌宠的 Python 环境安装。Ubuntu/Debian 的 Linux 朗读还需安装系统包 `espeak-ng`（`sudo apt install espeak-ng`）；该命令由桌宠工作线程启动并可随停止操作终止。Linux 便携包不会自动安装系统软件包，缺少时应先安装系统依赖。Windows/macOS 继续使用 pyttsx3 原生驱动。实现与自动化边界见 [Linux eSpeak NG 验证记录](verification/2026-11-18-linux-espeak-ng.md)。
 
 ### 3. 保存设置并开始对话
 
