@@ -56,9 +56,9 @@ class ActionRuntimeTests(unittest.TestCase):
             self.runtime.execute(plan["request_id"])
 
     def test_approval_expires(self):
-        plan = self.runtime.prepare("create_note", {"name": "expired.md", "content": "x"})
-        with patch("DyberPet.assistant.action_runtime.time.monotonic",
-                   return_value=10_000_000):
+        with patch("DyberPet.assistant.action_runtime.time.monotonic", return_value=10.0):
+            plan = self.runtime.prepare("create_note", {"name": "expired.md", "content": "x"})
+        with patch("DyberPet.assistant.action_runtime.time.monotonic", return_value=41.0):
             with self.assertRaisesRegex(ActionDenied, "expired"):
                 self.runtime.approve(plan["request_id"], True)
         self.assertFalse((self.workspace.root / "expired.md").exists())
