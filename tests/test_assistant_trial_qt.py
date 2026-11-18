@@ -387,8 +387,7 @@ class AssistantTrialQtTests(unittest.TestCase):
             return engine
         module = types.ModuleType("pyttsx3")
         module.init = initialize
-        with patch.dict(sys.modules, {"pyttsx3": module}), \
-                patch("DyberPet.assistant.speech.sys.platform", "win32"):
+        with patch.dict(sys.modules, {"pyttsx3": module}):
             self.dialog.try_speech()
             self.wait_for(entered.is_set)
             self.dialog.stop_speaking()

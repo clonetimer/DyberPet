@@ -400,7 +400,6 @@ class VoiceConversationQtTests(unittest.TestCase):
         ready = []
         self.dialog.speech_started.connect(lambda character, _text: ready.append(character))
         with patch.dict(sys.modules, {"pyttsx3": module}), \
-                patch("DyberPet.assistant.speech.sys.platform", "win32"), \
                 patch("DyberPet.assistant.ui.speak_interruptible", new=speak_interruptible):
             self.start()
             self.audio.inputs.put("请完整读出这段长回复")
@@ -425,7 +424,6 @@ class VoiceConversationQtTests(unittest.TestCase):
         from DyberPet.assistant.voice import speak_interruptible
         engine, module, second, release = self._production_speech_engine()
         with patch.dict(sys.modules, {"pyttsx3": module}), \
-                patch("DyberPet.assistant.speech.sys.platform", "win32"), \
                 patch("DyberPet.assistant.ui.speak_interruptible", new=speak_interruptible):
             self.start()
             self.audio.inputs.put("在第二段结束对话")
@@ -445,7 +443,6 @@ class VoiceConversationQtTests(unittest.TestCase):
         from DyberPet.assistant.voice import speak_interruptible
         engine, module, second, release = self._production_speech_engine(failure=True)
         with patch.dict(sys.modules, {"pyttsx3": module}), \
-                patch("DyberPet.assistant.speech.sys.platform", "win32"), \
                 patch("DyberPet.assistant.ui.speak_interruptible", new=speak_interruptible):
             self.start()
             self.audio.inputs.put("第二段音频驱动失败")

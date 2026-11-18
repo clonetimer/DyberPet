@@ -45,9 +45,7 @@ class VoiceReadinessTests(unittest.TestCase):
             name: _discoverable_module(name) if name in present else None
             for name in _AUDIO_MODULES
         }
-        with patch.dict(sys.modules, modules), \
-                patch("DyberPet.assistant.voice_readiness.shutil.which",
-                      return_value="/usr/bin/espeak-ng"):
+        with patch.dict(sys.modules, modules):
             return self.voice.inspect_voice_readiness(str(model_dir))
 
     def test_missing_components_name_installation_actions(self):
@@ -172,8 +170,7 @@ class VoiceReadinessTests(unittest.TestCase):
                 modules = {name: _discoverable_module(name) for name in _AUDIO_MODULES}
                 # find_spec raises ValueError for an existing module without a spec.
                 modules[malformed_name] = ModuleType(malformed_name)
-                with patch.dict(sys.modules, modules), \
-                        patch("DyberPet.assistant.voice_readiness.shutil.which", return_value="/usr/bin/espeak-ng"):
+                with patch.dict(sys.modules, modules):
                     result = self.voice.inspect_voice_readiness(str(folder))
                 self.assertEqual(result.recognition_ready, malformed_name == "pyttsx3")
                 self.assertEqual(result.tts_ready, malformed_name != "pyttsx3")
@@ -188,8 +185,7 @@ class VoiceReadinessTests(unittest.TestCase):
                         raise error
                     return importlib.machinery.ModuleSpec(name, loader=None)
 
-                with patch("importlib.util.find_spec", side_effect=discover), \
-                        patch("DyberPet.assistant.voice_readiness.shutil.which", return_value="/usr/bin/espeak-ng"):
+                with patch("importlib.util.find_spec", side_effect=discover):
                     result = self.voice.inspect_voice_readiness(str(folder))
                 self.assertFalse(result.recognition_ready)
                 self.assertIn("vosk", result.recognition_message)
@@ -204,8 +200,7 @@ class VoiceReadinessTests(unittest.TestCase):
                 "raise AssertionError('audio driver imported during passive check')\n",
                 encoding="utf-8",
             )
-        with patch.dict(sys.modules), patch.object(sys, "path", [str(modules_dir)] + sys.path), \
-                patch("DyberPet.assistant.voice_readiness.shutil.which", return_value="/usr/bin/espeak-ng"):
+        with patch.dict(sys.modules), patch.object(sys, "path", [str(modules_dir)] + sys.path):
             for name in _AUDIO_MODULES:
                 sys.modules.pop(name, None)
             importlib.invalidate_caches()

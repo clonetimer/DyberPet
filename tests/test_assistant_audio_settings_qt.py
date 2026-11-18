@@ -131,6 +131,41 @@ class AudioSettingsQtTests(unittest.TestCase):
         self.assertNotIn("USB 麦克风", report)
         self.assertNotIn("voice-zh", report)
 
+
+    def test_microphone_probe_runs_on_worker_and_reports_levels_without_audio(self):
+        from types import SimpleNamespace
+        main_thread = threading.get_ident()
+        workers = []
+        def probe(stop_event, *, microphone=None):
+            workers.append(threading.get_ident())
+            self.assertEqual(microphone, self.panel.microphone())
+            return SimpleNamespace(sample_rate=16000, frames=16000,
+                                   duration_seconds=1.0, rms=840.2,
+                                   peak=2400, clipped_samples=0)
+        with patch("DyberPet.assistant.ui.probe_microphone", new=probe):
+            self.panel.microphone_test_button.click()
+            self.wait_for(lambda: self.dialog._job is None)
+        self.assertTrue(workers and workers[0] != main_thread)
+        self.assertIn("RMS 840.2", self.panel.status_label.text())
+        self.assertIn("音频样本未保存", self.dialog.status.text())
+        self.assertTrue(self.panel.microphone_test_button.isEnabled())
+
+    def test_microphone_probe_stop_is_worker_owned_and_does_not_report_success(self):
+        entered = threading.Event()
+        def probe(stop_event, **_kwargs):
+            entered.set()
+            while not stop_event.is_set():
+                time.sleep(.005)
+            return None
+        with patch("DyberPet.assistant.ui.probe_microphone", new=probe):
+            self.panel.microphone_test_button.click()
+            self.wait_for(entered.is_set)
+            self.panel.stop_button.click()
+            self.wait_for(lambda: self.dialog._job is None)
+        self.assertIn("已停止", self.dialog.activity_status.text())
+        self.assertNotIn("麦克风测试完成", self.panel.status_label.text())
+        self.assertTrue(self.panel.microphone_test_button.isEnabled())
+
     def test_unavailable_saved_choices_are_retained_instead_of_replaced_with_default(self):
         self.panel.set_values({"name": "Missing microphone", "host_api": "API"},
                               "missing-voice", 180)

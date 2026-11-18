@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 class AudioSettingsWidget(QGroupBox):
     settings_changed = Signal()
     refresh_requested = Signal()
+    microphone_test_requested = Signal()
     preview_requested = Signal()
     stop_requested = Signal()
 
@@ -55,12 +56,14 @@ class AudioSettingsWidget(QGroupBox):
         controls = QHBoxLayout()
         self.refresh_button = QPushButton("刷新设备与音色")
         self.preview_button = QPushButton("试听当前音色")
+        self.microphone_test_button = QPushButton("测试麦克风（1 秒）")
         self.stop_button = QPushButton("停止当前语音")
         self.stop_button.setEnabled(False)
         for button in (self.refresh_button, self.preview_button, self.stop_button):
             button.setAutoDefault(False)
             controls.addWidget(button)
         form.addRow(controls)
+        form.addRow(self.microphone_test_button)
         self.status_label = QLabel(
             "点击刷新后读取本机目录，不录音、不发声。音色与语速按角色保存；"
             "输入设备为全局选择。系统音色与角色原声素材独立。")
@@ -75,6 +78,7 @@ class AudioSettingsWidget(QGroupBox):
         self.rate_spin.valueChanged.connect(self._changed)
         self.refresh_button.clicked.connect(self.refresh_requested.emit)
         self.preview_button.clicked.connect(self.preview_requested.emit)
+        self.microphone_test_button.clicked.connect(self.microphone_test_requested.emit)
         self.stop_button.clicked.connect(self.stop_requested.emit)
         self._update_summary()
 
@@ -164,7 +168,7 @@ class AudioSettingsWidget(QGroupBox):
         self.voice_selector.setToolTip(self.voice_id() or "使用系统默认音色")
 
     def set_busy(self, busy, *, can_stop=False):
-        for control in (self.refresh_button, self.preview_button, self.device_selector,
+        for control in (self.refresh_button, self.microphone_test_button, self.preview_button, self.device_selector,
                         self.voice_selector, self.rate_spin):
             control.setEnabled(not busy)
         self.stop_button.setEnabled(can_stop)

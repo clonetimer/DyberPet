@@ -1,10 +1,7 @@
-"""Complete, optional offline speech with platform-specific cancellable backends."""
+"""Complete, optional offline speech driven entirely by its calling worker."""
 from __future__ import annotations
 
 import math
-import shutil
-import subprocess
-import sys
 import threading
 import time
 import uuid
@@ -35,111 +32,19 @@ def split_speech_text(text: str) -> tuple[str, ...]:
     return tuple(chunks)
 
 
-def _terminate_process(process) -> None:
-    """Stop only the child process owned by this speech worker."""
-    try:
-        if process.poll() is not None:
-            return
-        process.terminate()
-        try:
-            process.wait(timeout=0.5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=0.5)
-    except ProcessLookupError:
-        return
-
-
-def _speak_espeak_ng(chunks, stop_event, *, rate, voice_id, on_ready,
-                     on_progress, deadline) -> bool:
-    """Linux eSpeak NG backend: stdin-only text and worker-owned cancellation."""
-    executable = shutil.which("espeak-ng")
-    if not executable:
-        raise VoiceUnavailable(
-            "Linux 离线朗读需要系统安装 eSpeak NG：Ubuntu/Debian 可运行 "
-            "sudo apt install espeak-ng；安装后重新启动桌宠。"
-        )
-    completed_chunks = 0
-    current_chunk = 0
-    current_completed = False
-    ready_sent = False
-    try:
-        for index, chunk in enumerate(chunks, 1):
-            current_chunk = index
-            current_completed = False
-            if stop_event.is_set():
-                return False
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise VoiceUnavailable("Speech playback exceeded its safety timeout")
-            args = [executable, "-s", str(rate)]
-            if voice_id:
-                if voice_id.startswith("-") or any(char.isspace() for char in voice_id):
-                    raise VoiceUnavailable("Invalid Linux system voice ID")
-                args.extend(["-v", voice_id])
-            args.append("--stdin")
-            process = None
-            try:
-                process = subprocess.Popen(
-                    args, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                if process.stdin is None:
-                    raise VoiceUnavailable("eSpeak NG did not provide a text input stream")
-                process.stdin.write(chunk.encode("utf-8"))
-                process.stdin.close()
-                if stop_event.is_set():
-                    return False
-                if not ready_sent and on_ready is not None:
-                    on_ready()
-                ready_sent = True
-                while True:
-                    if stop_event.is_set():
-                        return False
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0:
-                        raise VoiceUnavailable(
-                            "Speech playback exceeded its safety timeout")
-                    try:
-                        return_code = process.wait(timeout=min(0.05, remaining))
-                        break
-                    except subprocess.TimeoutExpired:
-                        continue
-                if return_code != 0:
-                    raise VoiceUnavailable(
-                        "Linux eSpeak NG playback failed (exit " + str(return_code) + ")")
-                if stop_event.is_set():
-                    return False
-                current_completed = True
-                completed_chunks = index
-                if on_progress is not None:
-                    on_progress(index, len(chunks))
-            finally:
-                if process is not None:
-                    if process.stdin is not None and not process.stdin.closed:
-                        process.stdin.close()
-                    _terminate_process(process)
-        return completed_chunks == len(chunks)
-    except VoiceUnavailable as exc:
-        exc.engine_completed = (
-            True if current_completed and current_chunk == len(chunks) else None)
-        raise
-    except Exception as exc:
-        observed = True if current_completed and current_chunk == len(chunks) else None
-        raise VoiceUnavailable(
-            "Linux eSpeak NG playback failed: " + str(exc),
-            engine_completed=observed) from exc
-
-
 def speak_interruptible(text: str, stop_event, *, rate: int = 170,
                         voice_id: str = "", on_ready=None, on_progress=None,
                         max_seconds: float = 300.0) -> bool:
     """Return True only after every named chunk finishes; requested stop is False.
 
-    Linux uses an owned eSpeak NG child process because pyttsx3 2.99's eSpeak
-    driver does not implement the iterator contract required by its external
-    loop. Windows and macOS retain the existing pyttsx3 worker-owned loop.
+    One engine, external loop, ready notification, and deadline cover the whole
+    reply. Properties are applied before speech is queued: pyttsx3 catches queued
+    driver errors and reports them through callbacks instead of raising them.
+    Callbacks therefore only record state; the worker handles that state.
     """
+    # Keep the splitter lossless, but do not queue silent whitespace-only
+    # pieces: pyttsx3 ignores them without a finished-utterance notification.
+    # Progress counts only chunks that can actually be spoken.
     chunks = tuple(chunk for chunk in split_speech_text(text) if chunk.strip())
     if not chunks:
         return True
@@ -160,12 +65,6 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
     if stop_event.is_set():
         return False
     deadline = time.monotonic() + max_seconds
-
-    if sys.platform.startswith("linux"):
-        return _speak_espeak_ng(
-            chunks, stop_event, rate=rate, voice_id=voice_id,
-            on_ready=on_ready, on_progress=on_progress, deadline=deadline)
-
     try:
         import pyttsx3
     except ImportError as exc:
@@ -189,6 +88,8 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
 
     def on_error(name, exception):
         nonlocal driver_error
+        # Property errors have no utterance name. Named stale errors, like
+        # stale finish events, cannot belong to the current chunk.
         if name is not None and name != active_name:
             return
         if driver_error is None:
@@ -196,6 +97,8 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
                             VoiceUnavailable("Speech driver reported an error"))
 
     def can_continue():
+        # A driver failure remains a failure even when the same driver tick
+        # also reports completion or observes a user stop.
         if driver_error is not None:
             raise driver_error
         if stop_event.is_set():
@@ -229,6 +132,10 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
             return False
         engine.startLoop(False)
         loop_started = True
+        if not can_continue():
+            return False
+        # The first external iteration starts the driver and drains queued
+        # properties. Never put a say command behind potentially failing setup.
         engine.iterate()
         if not can_continue():
             return False
@@ -276,6 +183,8 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
                 return False
         return True
     except Exception as exc:
+        # A completed prefix is not evidence that the complete reply played.
+        # Preserve a driver's actual final True / any False / unknown result.
         observed = utterance_completed
         if observed is True and current_chunk < len(chunks):
             observed = None
