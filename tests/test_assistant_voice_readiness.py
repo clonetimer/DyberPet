@@ -172,7 +172,7 @@ class VoiceReadinessTests(unittest.TestCase):
                 modules = {name: _discoverable_module(name) for name in _AUDIO_MODULES}
                 # find_spec raises ValueError for an existing module without a spec.
                 modules[malformed_name] = ModuleType(malformed_name)
-                with patch.dict(sys.modules, modules), \\
+                with patch.dict(sys.modules, modules), \
                         patch("DyberPet.assistant.voice_readiness.shutil.which", return_value="/usr/bin/espeak-ng"):
                     result = self.voice.inspect_voice_readiness(str(folder))
                 self.assertEqual(result.recognition_ready, malformed_name == "pyttsx3")
@@ -188,7 +188,7 @@ class VoiceReadinessTests(unittest.TestCase):
                         raise error
                     return importlib.machinery.ModuleSpec(name, loader=None)
 
-                with patch("importlib.util.find_spec", side_effect=discover), \\
+                with patch("importlib.util.find_spec", side_effect=discover), \
                         patch("DyberPet.assistant.voice_readiness.shutil.which", return_value="/usr/bin/espeak-ng"):
                     result = self.voice.inspect_voice_readiness(str(folder))
                 self.assertFalse(result.recognition_ready)
@@ -204,7 +204,7 @@ class VoiceReadinessTests(unittest.TestCase):
                 "raise AssertionError('audio driver imported during passive check')\n",
                 encoding="utf-8",
             )
-        with patch.dict(sys.modules), patch.object(sys, "path", [str(modules_dir)] + sys.path), \\
+        with patch.dict(sys.modules), patch.object(sys, "path", [str(modules_dir)] + sys.path), \
                 patch("DyberPet.assistant.voice_readiness.shutil.which", return_value="/usr/bin/espeak-ng"):
             for name in _AUDIO_MODULES:
                 sys.modules.pop(name, None)
