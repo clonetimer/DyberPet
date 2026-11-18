@@ -66,6 +66,18 @@ class AssistantQtTests(unittest.TestCase):
             "通过审批中心保存。")
         self.assertIn("executed", [x["status"] for x in self.dialog._action_runtime.audit_log()])
 
+    def test_selected_workspace_file_requires_approval_and_is_role_scoped(self):
+        self.dialog.workspace.create("context.md", "文件里的资料")
+        with patch("PySide6.QtWidgets.QInputDialog.getItem",
+                   return_value=("context.md", True)):
+            with patch("PySide6.QtWidgets.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.Yes):
+                self.dialog.attach_workspace_file()
+        self.assertEqual(self.dialog._pending_file_context["name"], "context.md")
+        self.assertEqual(self.dialog._pending_file_context["content"], "文件里的资料")
+        self.dialog.set_character("Doro")
+        self.assertIsNone(self.dialog._pending_file_context)
+
     def test_dialog_persona_and_file_actions_exist(self):
         self.assertEqual(self.dialog.persona.currentData(), "guga")
         self.assertFalse(self.dialog.ppl_enabled.isChecked())
