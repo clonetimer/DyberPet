@@ -43,6 +43,8 @@ class LinuxEspeakVoiceCompatibilityTests(unittest.TestCase):
                     continue
                 if result.returncode != 0 or not output.is_file() or output.stat().st_size == 0:
                     failures.append((voice_id, "exit=" + str(result.returncode)))
+        print("LINUX_ESPEAK_VOICE_COMPATIBILITY_COUNT=" + str(len(voice_ids)))
+        print("LINUX_ESPEAK_VOICE_COMPATIBILITY_IDS=" + ",".join(voice_ids))
         self.assertEqual(failures, [], "eSpeak CLI rejected pyttsx3 voice IDs")
         self.assertGreater(len(voice_ids), 1, "expected a meaningful installed voice catalogue")
 
