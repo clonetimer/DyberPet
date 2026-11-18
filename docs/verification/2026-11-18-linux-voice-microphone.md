@@ -1,0 +1,40 @@
+# DyberPet Linux voice and microphone acceptance
+
+Current branch: `feat/ai-companion-runtime-20261117`  
+PulseAudio integration head: `1ec0e0197dbd0d7c3324302b230db47cd1cf63fe`
+
+## Linux speech backend
+
+- eSpeak NG CLI 1.51 is used by the cancellable Linux playback backend.
+- Speech text is sent through stdin, never shell text or command-line arguments.
+- Stop and the shared timeout terminate the worker-owned child process; a nonzero exit is not successful playback.
+- 131 real pyttsx3-enumerated voice IDs previously passed CLI WAV synthesis compatibility, including Mandarin and Cantonese voice IDs.
+
+## Microphone sample-rate negotiation
+
+- Prefer 16 kHz.
+- If rejected, try the selected device's reported default sample rate, then a bounded set including 192, 96, 88.2, 48, 44.1, 32, 22.05 and 8 kHz.
+- Return and display the actual opened sample rate; calculate frame count and level metrics using that rate.
+- Unit tests cover 16 kHz rejection followed by 96 kHz device-default success and the all-candidates-rejected path.
+
+## PulseAudio integration evidence
+
+Workflow: [Linux X11 acceptance and portable candidate](https://github.com/clonetimer/DyberPet/actions/runs/44286039855)
+
+The job installed PulseAudio and pulseaudio-utils, started a daemon, created a named 48 kHz null source, and set it as the default source. It then ran the product's own `probe_microphone` through sounddevice/PortAudio against an exact PulseAudio-backed input device.
+
+- Test: `test_selected_pulse_input_source_can_be_opened_and_captured`
+- Result: **1/1 PASS, 0.862 seconds**
+- The test did not silently fall back to a different input device.
+- The same Linux source X11 job continued through real Qt/XCB UI and application smoke checks successfully.
+
+This proves the PulseAudio server → PortAudio → DyberPet capture path for a virtual null source. It does not prove a physical microphone, ALSA hardware, native PipeWire host API, permission prompts, Vosk accuracy or long-duration device stability.
+
+## Remaining real-device acceptance
+
+1. Physical microphone open/capture on the user's Linux device and actual ALSA/PulseAudio/PipeWire setup.
+2. Verify input permissions and device switching after unplug/replug.
+3. Run Vosk recognition on known Mandarin speech and inspect transcript quality.
+4. Listen to eSpeak NG output through the physical speaker/headset and assess Mandarin pronunciation.
+5. Verify repeated stop/restart and long-duration half-duplex voice conversation.
+

@@ -459,3 +459,11 @@
 - **为什么：** 项目通用助手回归刻意不安装 sounddevice，也不启动 PulseAudio。把真实音频栈集成测试自动混入通用 unittest discovery，会让不具备音频服务器的 Windows/Linux 单测因缺少 sounddevice 或虚拟 source 而失败。
 - **踩坑：** 不能简单把测试永久 skip 掉，否则 Linux 专用门禁也会跳过。用显式环境开关区分通用套件和真实集成 job，并在专用 job 中安装依赖、启动服务、要求实际发现并打开 PulseAudio 输入。
 - **验证：** 通用套件覆盖该测试时不导入 sounddevice；专用 Linux job 显式开启测试并要求真实 PortAudio PulseAudio 输入。无默认输入回退。
+
+
+## 61. PulseAudio null-source 端到端采集已在 Linux X11 CI 实测通过
+
+- **改了什么：** Linux CI 安装 PulseAudio 后启动真实 daemon，加载 48 kHz null source，并通过产品的 `probe_microphone` 函数、sounddevice 和 PortAudio 完成实际输入流打开与 PCM 采集。
+- **为什么：** 这比只检查设备目录或 `pactl` source 存在更接近真实桌面运行链路；它验证音频服务器、PortAudio 设备枚举、应用的精确设备身份解析、采样率协商和流清理。
+- **踩坑：** PulseAudio null source 是虚拟输入，不是物理麦克风。测试通过只能证明 server→PortAudio→应用采集链路，不可外推为 ALSA 硬件、PipeWire 原生 host API、权限弹窗或语音识别准确率均已通过。
+- **验证：** PR head `1ec0e01` 的 Linux source X11 job 中，`test_selected_pulse_input_source_can_be_opened_and_captured` 以 0.862 秒完成，1/1 PASS；随后同一 job 的真实 Qt X11 与应用启动检查继续通过。
