@@ -256,7 +256,7 @@ jobs:
       - name: Verify pinned artist source ZIP installer without network
         run: python -m unittest discover -s tests -p "test_artist_genshin_install.py" -v
       - name: Run importer unit tests
-        run: python -m unittest discover -s tests -p "test_*.py" -v
+        run: python -X faulthandler -m unittest discover -s tests -p "test_*.py" -v
 
   verify-real-artist-download:
     name: Verify all reviewed Codex artist sources (no redistribution)

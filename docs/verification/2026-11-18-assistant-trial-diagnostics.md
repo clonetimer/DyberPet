@@ -13,7 +13,7 @@
 
 ## 环境与完整回归
 
-两套 Linux 环境均使用 PyOpenGL 3.1.10、Pillow 12.3.0、`QT_QPA_PLATFORM=offscreen`；各次完整运行使用独立 `XDG_CONFIG_HOME`。
+三套 Linux 环境均使用 PyOpenGL 3.1.10、`QT_QPA_PLATFORM=offscreen`；Python 3.9 使用 Pillow 11.3.0，Python 3.11/3.12 使用 Pillow 12.3.0。各次完整运行使用独立 `XDG_CONFIG_HOME`，下表为任务整合夹具修正后的最终完整回归结果。
 
 ```bash
 QT_QPA_PLATFORM=offscreen python -X faulthandler -m unittest discover -s tests -v
@@ -21,11 +21,12 @@ QT_QPA_PLATFORM=offscreen python -X faulthandler -m unittest discover -s tests -
 
 | 检查 | 实际结果 |
 | --- | --- |
-| Python 3.12.14 / PySide6 6.8.3 完整回归 | **797 项，792 通过，5 环境跳过，0 失败，36.139 秒** |
-| Python 3.11.18 / PySide6 6.5.2 完整回归 | **797 项，792 通过，5 环境跳过，0 失败，36.519 秒** |
+| Python 3.12.14 / PySide6 6.8.3 完整回归 | **797 项，792 通过，5 环境跳过，0 失败，35.119 秒** |
+| Python 3.11.18 / PySide6 6.5.2 完整回归 | **797 项，792 通过，5 环境跳过，0 失败，34.778 秒** |
+| Python 3.9.25 / PySide6 6.5.2 完整回归 | **797 项，792 通过，5 环境跳过，0 失败，35.835 秒** |
 | 新增测试 | **65 项**：记录器 21、诊断窗口 19、助手集成 16、语音生命周期新增 9 |
 | 记录器最低运行时 | 实际 Python 3.9.25 / 3.11.18 / 3.12.14，各 21 项通过 |
-| Python 3.9 最终影响范围 | 实际 Python 3.9.25 执行记录器、语音生命周期、协议和动作反馈共 **72 项，全通过** |
+| Python 3.9 定向影响范围 | 实际 Python 3.9.25 执行记录器、语音生命周期、协议和动作反馈共 **72 项，全通过**；之后又完成上述全部 Qt/全量门禁 |
 | 语音影响范围 | 两套主环境各 51 项通过，覆盖生命周期、协议与动作反馈 |
 | 格式和语法 | 9 个本批 Python 文件通过 Python 3.9 grammar 与 compile；`git diff --check` 通过 |
 
@@ -50,6 +51,20 @@ QT_QPA_PLATFORM=offscreen python -X faulthandler -m unittest discover -s tests -
 通过 faulthandler、固定 61 项序列和 GC/弱引用追踪确认：旧文件夹授权测试的 MagicMock 调用记录持有父窗口，close 后 wrapper 延迟到 HTTP 工作线程的 GC 才释放，下一次 Qt 事件循环崩溃。单窗口引用环/worker GC 的最小脚本也重现同因果链。
 
 修正仅涉及 `test_assistant_qt.py` 的该用例四个固定返回选择器，改为不保留调用记录的函数替身。原授权、文件创建和重置断言保留。原顺序 61 项与追踪版本都通过，窗口改为在自身用例结束时于 MAIN 线程释放；随后两套完整 797 项回归通过。没有关闭 GC、重排测试、跳过测试或用生产改动掩盖夹具问题。
+
+## Windows / Python 3.9 完整回归后的夹具修复
+
+首个功能提交 `1020d9f696602f69383aeacdc835a7e5f4ec63ca` 的 5 个 PR 工作流中，助手、Doro、Linux X11 和 Windows 打包成功；完整导入器工作流有 1 个 Windows / Python 3.9 作业失败，并导致其依赖产物作业跳过，总计 15 成功、1 失败、1 跳过。其 Windows 候选包虽生成，不能把打包成功等同于整批回归通过。
+
+[失败作业](https://github.com/clonetimer/DyberPet/actions/runs/44253642180/job/134630027117)使用 Python 3.9.13 / PySide6 6.5.2，在 `test_cancel_after_one_write_preserves_file_and_stops_remainder` 打印名称后直接 exit 1；没有 unittest 断言、总计或原生堆栈。前序任务整合、任务会话和真实 HTTP 规划测试均显示通过。
+
+本地在实际 Python 3.9.25 / Qt 6.5.2 保留这四个模块的原顺序 50 项，并追踪窗口 wrapper 和原生 Qt 对象。仅在随后首个真实 HTTP 回调内额外执行一次 `gc.collect()`，即可观察到前序任务整合窗口在 WORKER 回收，随后于同一个任务窗口测试的 `app.processEvents()` 发生 segmentation fault，尚未点击任何审批按钮。对照在前序夹具结束时于 GUI 线程销毁窗口后，同样的 HTTP GC 条件下 50 项全部通过。
+
+正式修复只更改 `test_assistant_task_integration_qt.py` 的清理：关闭、收敛尚未结束的 worker、`deleteLater()`、处理 `DeferredDelete`。保留所有生成/审批断言和原 Mock；无产品改动、无关闭 GC、无重排或跳过。修复后原顺序 50 项与相同 GC 压力序列各 50/50 通过。原生 Qt 对象在 MAIN 销毁，Python wrapper 之后即使在 WORKER 回收也不再涉及原生窗口析构。
+
+这证明一个必须修复的夹具生命周期漏洞，但原 Windows 日志没有捕获自动 GC，不能将诊断里的显式 GC 说成原 CI 的直接根因证据。完整 CI 命令同时启用 `-X faulthandler`，使之后的原生退出能留下定位信息；修复效果仍由新 SHA 的原 Windows 工作流确认。
+
+补跑 Python 3.9 的首轮完整 797 项还遇到一次独立环境问题：授权目录用例向 home 临时目录写入时得到 `ENOSPC`，该挂载点实际可用空间为零。已将本会话可再下载的 Qt 包缓存移出该挂载点并保留副本，恢复写入空间；没有据此修改产品文件写入逻辑。清理和夹具修正后，Python 3.9 / 3.11 / 3.12 各自完整 797 项均通过，具体耗时与跳过项见上表。
 
 ## 资源与构建身份
 

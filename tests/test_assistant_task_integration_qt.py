@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
+    from PySide6.QtCore import QCoreApplication, QEvent
     from PySide6.QtWidgets import QApplication, QMessageBox
 except ImportError:
     QApplication = QMessageBox = None
@@ -25,8 +26,19 @@ class TaskIntegrationQtTests(unittest.TestCase):
         self.dialog = PetAssistantDialog(
             "咕嘎", Path(self.tmp.name) / "files",
             store_path=Path(self.tmp.name) / "companion.sqlite3")
-        self.addCleanup(self.dialog.close)
+        self.addCleanup(self.dispose_dialog)
         self.dialog.llm_model.setText("local-model")
+
+    def dispose_dialog(self):
+        self.dialog.close()
+        job = self.dialog._job
+        if job is not None:
+            self.assertTrue(job.wait(3000), "Assistant worker did not finish during cleanup")
+            self.app.processEvents()
+        # Mock call histories can retain the Python wrapper until a later HTTP
+        # thread's GC. Destroy the Qt widget tree on its GUI thread first.
+        self.dialog.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
     def plan(self):
         from DyberPet.assistant.task_plan import parse_task_plan
