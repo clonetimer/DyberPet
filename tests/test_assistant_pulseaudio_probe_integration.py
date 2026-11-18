@@ -1,6 +1,7 @@
 """Real PortAudio capture through a PulseAudio null source; no physical microphone required."""
 import importlib.util
 import os
+import subprocess
 import sys
 import threading
 import unittest
@@ -19,6 +20,7 @@ class PulseAudioProbeIntegrationTests(unittest.TestCase):
 
         hosts = sd.query_hostapis()
         devices = sd.query_devices()
+        default = subprocess.run(["pactl", "get-default-source"], check=True, text=True, capture_output=True, timeout=5).stdout.strip()
         candidates = []
         for device in devices:
             if not isinstance(device, dict) or device.get("max_input_channels", 0) < 1:
@@ -30,8 +32,10 @@ class PulseAudioProbeIntegrationTests(unittest.TestCase):
             device_name = str(device.get("name", ""))
             if "pulse" in host_name.lower() or "pulse" in device_name.lower():
                 candidates.append((device_name, host_name))
-        self.assertTrue(candidates, "PortAudio does not expose the PulseAudio input source")
-        name, host_api = candidates[0]
+        exact = [item for item in candidates if item[0] == default]
+        self.assertTrue(exact, "PortAudio does not expose the exact default PulseAudio source: " + default)
+        self.assertEqual(len(exact), 1, "default PulseAudio source identity is ambiguous")
+        name, host_api = exact[0]
         result = probe_microphone(
             threading.Event(),
             microphone={"name": name, "host_api": host_api},

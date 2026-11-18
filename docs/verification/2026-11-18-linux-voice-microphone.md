@@ -56,3 +56,8 @@ This verifies the PortAudio ALSA host API against a virtual null PCM. It does no
 ## CI dependency installation bounds
 
 The Linux source and frozen jobs now use apt Acquire retry and HTTP/HTTPS timeout options plus an 8-minute outer timeout for package index and system package installation. This makes mirror/network stalls fail within a bounded interval rather than holding the Linux acceptance workflow indefinitely.
+
+
+## Exact-source selection hardening
+
+The PulseAudio integration test now reads `pactl get-default-source` and requires a unique exact-name match in the PortAudio PulseAudio host catalog before opening the input. This prevents a machine with multiple physical, monitor or virtual sources from accidentally testing the wrong device. PipeWire's compatibility test uses a `module-null-sink` monitor source and selects its exact default-source name. The integration test fails on missing or ambiguous source identity and never falls back to the first enumerated input.

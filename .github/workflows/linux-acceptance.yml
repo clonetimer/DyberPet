@@ -156,8 +156,8 @@ jobs:
             done
             test "$ready" = 1
             pactl info
-            pactl load-module module-null-source source_name=dyberpet_pipewire_probe rate=48000 channels=1
-            pactl set-default-source dyberpet_pipewire_probe
+            pactl load-module module-null-sink sink_name=dyberpet_pipewire_probe rate=48000 channels=1
+            pactl set-default-source dyberpet_pipewire_probe.monitor
             sleep 1
             DYBERPET_PULSEAUDIO_INTEGRATION=1 python -m unittest discover -s tests -p "test_assistant_pulseaudio_probe_integration.py" -v
           '

@@ -490,3 +490,11 @@
 - **为什么：** Linux 音频栈测试增加系统依赖后，CI 若卡在 apt 网络或镜像源，会占用整个工作流时限，且无法区分网络问题和产品测试失败。
 - **踩坑：** 不能无限等待，也不能在安装失败时继续把后续测试当成通过。使用明确 timeout 让失败成为可诊断的 job 终态，并保留原始 apt 输出。
 - **验证：** Linux workflow 对 source/frozen 两处系统依赖安装使用相同的有界策略；最终以新 head 的两项 Linux job 状态为准。
+
+
+## 65. 音频栈集成测试必须选择刚创建的确切输入源
+
+- **改了什么：** PulseAudio/pipewire-pulse 集成测试读取 `pactl get-default-source`，再将该名称与 PortAudio 的 PulseAudio host 输入设备精确匹配；不再从所有输入设备中任意选第一项。PipeWire 测试使用 `module-null-sink` 的 monitor source 作为确定性输入。
+- **为什么：** 桌面音频栈可能同时暴露物理麦克风、monitor source、蓝牙输入和虚拟设备。任意选择第一项会让测试实际打开错误设备，造成与新建 null source 无关的假阳性或不稳定失败。
+- **踩坑：** 服务端的 default source 名称与 PortAudio 设备名必须精确对应，并检查唯一性；PipeWire Pulse 兼容层优先使用其稳定支持的 null-sink monitor，不假设所有 PulseAudio 模块均已实现。
+- **验证：** 两种音频服务均设置确定的 default source；集成测试只打开与该名称完全匹配的 PortAudio 设备，缺失或歧义时直接失败，不回退。
