@@ -459,23 +459,31 @@ class AssistantQtTests(unittest.TestCase):
             self.dialog.create_file()
         self.assertEqual(self.dialog.workspace.list_files(), ["note.txt"])
 
-    def test_delete_requires_confirmation_and_supports_restore(self):
+    def test_delete_and_restore_each_require_approval(self):
         self.dialog.workspace.create("pet.md", "hello")
         with patch("PySide6.QtWidgets.QInputDialog.getItem",
                    return_value=("pet.md", True)), patch(
-                       "PySide6.QtWidgets.QMessageBox.warning",
+                       "PySide6.QtWidgets.QMessageBox.question",
                        return_value=QMessageBox.StandardButton.No):
             self.dialog.delete_file()
         self.assertEqual(self.dialog.workspace.list_files(), ["pet.md"])
         with patch("PySide6.QtWidgets.QInputDialog.getItem",
                    return_value=("pet.md", True)), patch(
-                       "PySide6.QtWidgets.QMessageBox.warning",
+                       "PySide6.QtWidgets.QMessageBox.question",
                        return_value=QMessageBox.StandardButton.Yes):
             self.dialog.delete_file()
         self.assertEqual(self.dialog.workspace.list_files(), [])
         record = self.dialog.workspace.deleted_files()[0]
         with patch("PySide6.QtWidgets.QInputDialog.getItem",
-                   return_value=(record, True)):
+                   return_value=(record, True)), patch(
+                       "PySide6.QtWidgets.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.No):
+            self.dialog.restore_file()
+        self.assertEqual(self.dialog.workspace.list_files(), [])
+        with patch("PySide6.QtWidgets.QInputDialog.getItem",
+                   return_value=(record, True)), patch(
+                       "PySide6.QtWidgets.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.Yes):
             self.dialog.restore_file()
         self.assertEqual(self.dialog.workspace.list_files(), ["pet.md"])
 
