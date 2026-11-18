@@ -73,5 +73,8 @@
 - [x] Run `QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -v`; read failure/skip details.
 - [x] Check Python 3.9 grammar, compile, diff and packaging inclusion of new modules.
 - [x] Independent review of the complete batch; fix material findings with regression evidence.
+- [x] Reproduce the first published batch's Python 3.9/3.11 failures on actual runtimes; validate raw loopback authority and recognize both timeout classes, with regression coverage.
+- [x] Isolate the native-renderer gait fixture's settings and screen/position preconditions; preserve all rendering and edge-protection assertions.
+- [x] Re-run the complete suite on Python 3.12 / Qt 6.8 and Python 3.11 / Qt 6.5 after CI fixes: each 732 tests, 727 passed, 5 environment skips, 0 failures. Record the failed first batch and the fixes in verification and development experience.
 - 发布后门禁：推送到既有 PR #99，使用已核对的分支 SHA；核验新 SHA 的 workflows、jobs 和 Windows artifact，结果写入 PR 的本批 Validation。
 - 发布后报告：在 PR 记录新提交验证、候选包元数据与真实设备边界，向用户汇报已完成阶段和链接。

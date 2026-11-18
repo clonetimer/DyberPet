@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import http.client
 import json
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -46,6 +47,12 @@ def _local_base(url: str) -> str:
             "Only local HTTP service base URLs are supported", code="invalid_endpoint")
     if port is None or port == 0:
         raise AssistantServiceError("Specify local service TCP port", code="invalid_endpoint")
+    # Older urlsplit implementations discard extra text around IPv6 brackets
+    # when deriving hostname/port. Check the original authority as well.
+    authority_host, _, authority_port = parsed.netloc.rpartition(":")
+    if (authority_host.lower() not in ("127.0.0.1", "localhost", "[::1]")
+            or not authority_port.isascii() or not authority_port.isdecimal()):
+        raise AssistantServiceError("Invalid local service authority", code="invalid_endpoint")
     return base.rstrip("/")
 
 
@@ -59,7 +66,7 @@ def _http_error(status: int) -> AssistantServiceError:
 
 def _transport_error(error: Exception) -> AssistantServiceError:
     reason = error.reason if isinstance(error, urllib.error.URLError) else error
-    if isinstance(reason, TimeoutError):
+    if isinstance(reason, (TimeoutError, socket.timeout)):
         return AssistantServiceError("Local service request timed out", code="timeout")
     if isinstance(reason, http.client.HTTPException):
         return AssistantServiceError("Invalid local service HTTP response", code="response")

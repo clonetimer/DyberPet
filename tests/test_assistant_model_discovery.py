@@ -5,6 +5,7 @@ import os
 import socket
 import threading
 import unittest
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import patch
 
@@ -185,6 +186,22 @@ class ModelDiscoveryTests(unittest.TestCase):
                 self.assert_service_error("invalid_endpoint", lambda: _local_base(endpoint))
         self.assertEqual(_local_base("http://[::1]:1234/"), "http://[::1]:1234")
 
+    def test_legacy_parser_cannot_hide_extra_ipv6_authority_text(self):
+        # Older Python patch releases parse these authorities as host ::1 and
+        # port 1234. Validate our boundary independently of parser hardening.
+        for authority in ("[::1]unexpected:1234", "prefix[::1]:1234"):
+            parsed = urllib.parse.SplitResult("http", authority, "", "", "")
+            with self.subTest(authority=authority), patch(
+                    "DyberPet.assistant.persona.urllib.parse.urlsplit", return_value=parsed):
+                self.assert_service_error(
+                    "invalid_endpoint", lambda: _local_base("http://" + authority))
+
+    def test_explicit_loopback_authorities_remain_supported(self):
+        for base in ("http://127.0.0.1:1234", "http://localhost:1234",
+                     "http://LOCALHOST:01234", "http://[::1]:1234"):
+            with self.subTest(base=base):
+                self.assertEqual(_local_base(base + "/"), base)
+
     def test_redirects_are_categorized_and_never_followed(self):
         self.body = b""
         for status in (300, 301, 302, 303, 304, 307, 308):
@@ -221,6 +238,14 @@ class ModelDiscoveryTests(unittest.TestCase):
             with self.subTest(cancellable=token is not None):
                 self.assert_service_error("timeout", lambda: _json_request(
                     self.endpoint + "/v1/models", timeout=0.08, cancel_token=token))
+
+    def test_stream_header_timeout_uses_same_category_in_both_transports(self):
+        self.mode = "stall_headers"
+        for token in (None, self.token()):
+            with self.subTest(cancellable=token is not None):
+                self.assert_service_error("timeout", lambda: stream_local_chat(
+                    "hello", model="model", base_url=self.endpoint, timeout=0.08,
+                    on_delta=lambda _: None, cancel_token=token))
 
     def test_pre_cancelled_discovery_never_contacts_service(self):
         token = self.token()
