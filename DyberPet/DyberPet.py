@@ -1111,7 +1111,11 @@ class PetWidget(QWidget):
         if character != self.curr_pet_name:
             return
         self._assistant_voice_active = True
-        self._assistant_reply_bubble(message)
+        assistant = getattr(self, "_pet_assistant", None)
+        # Bubble visibility is independent from speech state and native actions.
+        # Legacy callers without a dialog keep the global bubble preference.
+        if assistant is None or assistant.bubble_enabled.isChecked():
+            self._assistant_reply_bubble(message)
         options = settings.act_data.allAct_params.get(self.curr_pet_name, {})
         talk = available_talk_action(options)
         if talk is not None:

@@ -74,6 +74,43 @@ class NativeGaitSignalTests(unittest.TestCase):
 
 
 class ActualPetSpeechBridgeTests(unittest.TestCase):
+    def test_tts_bubble_preference_keeps_native_speech_state_and_action(self):
+        settings = types.SimpleNamespace(
+            bubble_on=True,
+            act_data=types.SimpleNamespace(allAct_params={
+                "Doro": {"talk": {"unlocked": True,
+                                    "act_type": "random_act"}}}))
+        start = method_from_source(
+            "DyberPet.py", "PetWidget", "_assistant_speech_started",
+            {"available_talk_action": available_talk_action,
+             "settings": settings})
+        bubble = method_from_source(
+            "DyberPet.py", "PetWidget", "_assistant_reply_bubble",
+            {"settings": settings})
+        action = method_from_source(
+            "DyberPet.py", "PetWidget", "_assistant_play_action",
+            {"settings": settings})
+        for checked in (False, True):
+            with self.subTest(bubbles_enabled=checked):
+                bubbles, actions = [], []
+                pet = types.SimpleNamespace(
+                    curr_pet_name="Doro",
+                    _pet_assistant=types.SimpleNamespace(
+                        bubble_enabled=types.SimpleNamespace(
+                            isChecked=lambda: checked)),
+                    register_bubbleText=bubbles.append,
+                    _show_act=actions.append)
+                pet._assistant_reply_bubble = types.MethodType(bubble, pet)
+                pet._assistant_play_action = types.MethodType(action, pet)
+
+                start(pet, "Doro", "你好")
+
+                self.assertTrue(pet._assistant_voice_active)
+                self.assertEqual(actions, ["talk"])
+                self.assertEqual(
+                    bubbles, [{"message": "你好", "timeout": 6}]
+                    if checked else [])
+
     def test_tts_start_matches_character_and_real_unlocked_action(self):
         start = method_from_source(
             "DyberPet.py", "PetWidget", "_assistant_speech_started",

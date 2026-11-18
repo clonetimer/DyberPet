@@ -51,11 +51,14 @@ def recognize_once(model_dir: str | Path, *, seconds: float = 4.0,
 
 
 def recognize_until_stopped(model_dir: str | Path, stop_event, *, on_partial=None,
+                            on_ready=None,
                             sample_rate: int = 16000, max_seconds: float = 120.0) -> str:
     """Capture opt-in microphone audio until user stops or the safety limit.
 
     Audio is processed in memory by Vosk and never written to disk. Partial
     recognition is callback-only; the final transcript is returned once.
+    Ready means the input stream has opened, not merely that model loading began.
+    Stopping during preparation returns an empty transcript without starting capture.
     """
     if not 1 <= max_seconds <= 300:
         raise VoiceUnavailable("Continuous listening limit must be 1–300 seconds")
@@ -63,6 +66,10 @@ def recognize_until_stopped(model_dir: str | Path, stop_event, *, on_partial=Non
         raise VoiceUnavailable("A stop event is required for continuous listening")
     if on_partial is not None and not callable(on_partial):
         raise VoiceUnavailable("Partial transcript callback must be callable")
+    if on_ready is not None and not callable(on_ready):
+        raise VoiceUnavailable("Microphone ready callback must be callable")
+    if stop_event.is_set():
+        return ""
     path = Path(model_dir).expanduser().resolve()
     if not path.is_dir():
         raise VoiceUnavailable("Select an installed offline Vosk language model folder")
@@ -74,13 +81,23 @@ def recognize_until_stopped(model_dir: str | Path, stop_event, *, on_partial=Non
             "Offline recognition requires pip install vosk sounddevice"
         ) from exc
     try:
+        if stop_event.is_set():
+            return ""
         model = vosk.Model(str(path))
+        if stop_event.is_set():
+            return ""
         recognizer = vosk.KaldiRecognizer(model, sample_rate)
+        if stop_event.is_set():
+            return ""
         last_partial = ""
         final_segments = []
         elapsed = 0.0
         with sd.RawInputStream(samplerate=sample_rate, blocksize=4000,
                                channels=1, dtype="int16") as microphone:
+            if stop_event.is_set():
+                return ""
+            if on_ready is not None:
+                on_ready()
             while not stop_event.is_set() and elapsed < max_seconds:
                 payload, overflow = microphone.read(4000)
                 if overflow:
@@ -153,6 +170,8 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
         raise VoiceUnavailable("Speech rate must be 100–230")
     if not 1 <= max_seconds <= 300:
         raise VoiceUnavailable("Speech timeout must be 1–300 seconds")
+    if stop_event.is_set():
+        return False
     try:
         import pyttsx3
     except ImportError as exc:
@@ -162,13 +181,25 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
     loop_started = False
     finished = threading.Event()
     try:
+        if stop_event.is_set():
+            return False
         engine = pyttsx3.init()
+        # Driver initialization can block. Once it returns, a cancelled request
+        # must not queue an utterance or report that speaking has started.
+        if stop_event.is_set():
+            return False
         engine.setProperty("rate", rate)
         engine.connect("finished-utterance",
                        lambda name, completed: finished.set())
+        if stop_event.is_set():
+            return False
         engine.say(text[:500])
+        if stop_event.is_set():
+            return False
         engine.startLoop(False)
         loop_started = True
+        if stop_event.is_set():
+            return False
         if on_ready is not None:
             on_ready()
         deadline = time.monotonic() + max_seconds

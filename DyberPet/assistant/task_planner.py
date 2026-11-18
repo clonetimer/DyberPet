@@ -72,12 +72,14 @@ def _decode_response(text):
 
 
 def generate_task_plan(text: str, *, base_url=DEFAULT_CHAT_URL, model="",
-                       file_context=None) -> TaskPlan:
+                       file_context=None, cancel_token=None) -> TaskPlan:
     """Return validated immutable data; a complete answer never implies approval.
 
     Uses LM Studio's Chat Completions JSON Schema contract. Unsupported schemas,
     refusals, tool calls and incomplete responses fail without a text fallback.
     """
+    if cancel_token is not None:
+        cancel_token.raise_if_cancelled()
     text = _valid_text(text, label="任务要求", minimum=1, maximum=2000)
     if not text.strip():
         raise AssistantServiceError("请先输入文件任务要求")
@@ -100,7 +102,8 @@ def generate_task_plan(text: str, *, base_url=DEFAULT_CHAT_URL, model="",
     messages.append({"role": "user", "content": text})
     try:
         url = _local_base(base_url) + "/v1/chat/completions"
-        result = _json_request(url, timeout=45, json_decoder=_decode_response, data={
+        result = _json_request(url, timeout=45, json_decoder=_decode_response,
+                               cancel_token=cancel_token, data={
             "model": model, "stream": False, "messages": messages,
             "response_format": {"type": "json_schema", "json_schema": {
                 "name": "dyberpet_file_task", "strict": True, "schema": _PLAN_SCHEMA,
@@ -126,6 +129,9 @@ def generate_task_plan(text: str, *, base_url=DEFAULT_CHAT_URL, model="",
             or (refusal is not None and (not isinstance(refusal, str) or refusal))):
         raise AssistantServiceError("模型返回了拒绝或工具调用，不能作为文件任务草案")
     try:
-        return parse_task_plan(message.get("content"))
+        plan = parse_task_plan(message.get("content"))
+        if cancel_token is not None:
+            cancel_token.raise_if_cancelled()
+        return plan
     except TaskPlanError as exc:
         raise AssistantServiceError("任务草案未通过校验：" + str(exc)) from exc

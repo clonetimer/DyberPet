@@ -7,12 +7,15 @@ OpenAI-compatible endpoint; model replies are never interpreted as tool calls.
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from typing import Any
+
+from .request_control import cancellable_response
 
 DEFAULT_PPL_URL = "http://127.0.0.1:8790"
 DEFAULT_CHAT_URL = "http://127.0.0.1:1234"
@@ -44,7 +47,9 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
 
 def _json_request(url: str, *, data: dict | None = None, timeout: float = 5,
-                  json_decoder=None):
+                  json_decoder=None, cancel_token=None):
+    if cancel_token is not None:
+        cancel_token.raise_if_cancelled()
     raw = None if data is None else json.dumps(
         data, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
@@ -54,18 +59,31 @@ def _json_request(url: str, *, data: dict | None = None, timeout: float = 5,
                  "Connection": "close"},
         method="GET" if raw is None else "POST")
     try:
-        with _OPENER.open(request, timeout=timeout) as response:
+        context = (_OPENER.open(request, timeout=timeout) if cancel_token is None else
+                   cancellable_response(request, timeout=timeout, cancel_token=cancel_token))
+        with context as response:
+            if 300 <= response.status < 400:
+                raise AssistantServiceError("Service redirect blocked")
+            if response.status >= 400:
+                raise AssistantServiceError(
+                    f"Local service HTTP {response.status}", status_code=response.status)
             if response.status not in (200, 201):
                 raise AssistantServiceError("Unexpected response status")
             payload = response.read(512 * 1024 + 1)
+            if cancel_token is not None:
+                cancel_token.raise_if_cancelled()
             if len(payload) > 512 * 1024:
                 raise AssistantServiceError("Response exceeds 512 KiB")
             decoder = json.loads if json_decoder is None else json_decoder
-            return decoder(payload.decode("utf-8"))
+            result = decoder(payload.decode("utf-8"))
+            if cancel_token is not None:
+                cancel_token.raise_if_cancelled()
+            return result
     except urllib.error.HTTPError as exc:
         raise AssistantServiceError(
             f"Local service HTTP {exc.code}", status_code=exc.code) from exc
-    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError,
+            http.client.HTTPException) as exc:
         raise AssistantServiceError("Local service request failed: " + str(exc)) from exc
 
 
@@ -125,29 +143,33 @@ class PPLCharacterClient:
     def __init__(self, base_url: str = DEFAULT_PPL_URL):
         self.base_url = _local_base(base_url)
 
-    def health(self):
-        return _json_request(self.base_url + "/health")
+    def health(self, *, cancel_token=None):
+        options = {} if cancel_token is None else {"cancel_token": cancel_token}
+        return _json_request(self.base_url + "/health", **options)
 
-    def state(self, character: str) -> dict:
+    def state(self, character: str, *, cancel_token=None) -> dict:
+        options = {} if cancel_token is None else {"cancel_token": cancel_token}
         sid = session_id(character)
         path = self.base_url + "/v1/sessions/" + sid
         try:
-            session = _json_request(path)
+            session = _json_request(path, **options)
         except AssistantServiceError as exc:
             # Only create a missing PPL session after explicit HTTP 404;
             # never overwrite / retry on 500 errors or a broken connection.
             if exc.status_code != 404:
                 raise
-            self.health()
+            self.health(**options)
             try:
                 session = _json_request(
                     self.base_url + "/v1/sessions",
                     data={"sessionId": sid, "characterId": character,
-                          "userId": "dyberpet-desktop"})
+                          "userId": "dyberpet-desktop"}, **options)
             except AssistantServiceError:
-                session = _json_request(path)
+                session = _json_request(path, **options)
         if session.get("sessionId") != sid or not isinstance(session.get("state"), dict):
             raise AssistantServiceError("PPL returned an invalid character session")
+        if cancel_token is not None:
+            cancel_token.raise_if_cancelled()
         return session["state"]
 
     def event(self, character: str, type: str, event_id: str) -> dict:
@@ -230,12 +252,14 @@ def chat_local(text: str, *, persona_key="companion", state=None, ppl_prompt="",
 def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=None,
                       ppl_prompt="", history=None, memory_context="", file_context=None,
                       base_url=DEFAULT_CHAT_URL, model="", timeout=25,
-                      max_response_bytes=512 * 1024) -> str:
+                      max_response_bytes=512 * 1024, cancel_token=None) -> str:
     """Stream OpenAI-compatible SSE text from an explicitly local model.
 
     Only text deltas are surfaced. The endpoint remains loopback-only, proxy-free
     and redirect-blocked; model output is never interpreted as a tool call.
     """
+    if cancel_token is not None:
+        cancel_token.raise_if_cancelled()
     if not text or len(text) > 2000:
         raise AssistantServiceError("Message must contain 1–2000 characters")
     if not callable(on_delta):
@@ -300,11 +324,22 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
     total_bytes = 0
     saw_done = False
     try:
-        with _OPENER.open(request, timeout=timeout) as response:
+        context = (_OPENER.open(request, timeout=timeout) if cancel_token is None else
+                   cancellable_response(request, timeout=timeout, cancel_token=cancel_token))
+        with context as response:
+            if 300 <= response.status < 400:
+                raise AssistantServiceError("Service redirect blocked")
+            if response.status >= 400:
+                raise AssistantServiceError(
+                    f"Local service HTTP {response.status}", status_code=response.status)
             if response.status != 200:
                 raise AssistantServiceError("Unexpected streaming response status")
             while True:
+                if cancel_token is not None:
+                    cancel_token.raise_if_cancelled()
                 line = response.readline(65537)
+                if cancel_token is not None:
+                    cancel_token.raise_if_cancelled()
                 if not line:
                     break
                 total_bytes += len(line)
@@ -341,7 +376,11 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
                     piece = content[:remaining]
                     output.append(piece)
                     output_chars += len(piece)
+                    if cancel_token is not None:
+                        cancel_token.raise_if_cancelled()
                     on_delta(piece)
+                    if cancel_token is not None:
+                        cancel_token.raise_if_cancelled()
                     if len(piece) < len(content):
                         raise AssistantServiceError("Local model response exceeds 2000 characters")
                 if choice.get("finish_reason") == "content_filter":
@@ -351,9 +390,12 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
     except urllib.error.HTTPError as exc:
         raise AssistantServiceError(
             f"Local service HTTP {exc.code}", status_code=exc.code) from exc
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError,
+            http.client.HTTPException) as exc:
         raise AssistantServiceError("Local model stream failed: " + str(exc)) from exc
 
+    if cancel_token is not None:
+        cancel_token.raise_if_cancelled()
     if not saw_done:
         raise AssistantServiceError("Local model stream ended before the completion marker")
     answer = "".join(output).strip()
