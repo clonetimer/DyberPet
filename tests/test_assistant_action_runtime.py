@@ -1,6 +1,8 @@
 """Approval, replay, audit and scope tests for the local action runtime."""
 import tempfile
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
@@ -143,3 +145,57 @@ class ActionRuntimeTests(unittest.TestCase):
         self.runtime.set_workspace(other)
         with self.assertRaises(ActionDenied):
             self.runtime.approve(plan["request_id"], True)
+
+    def test_workspace_switch_cannot_leave_old_preview_pending(self):
+        other = PetWorkspace(Path(self.temp.name) / "other")
+        request = self.run_before_workspace_switch(
+            "validate_name", other, self.runtime.prepare, "create_file", {"name": "preview.md"})
+
+        self.assertIn(str(self.workspace.root / "preview.md"), request["preview"])
+        with self.assertRaises(ActionDenied):
+            self.runtime.approve(request["request_id"], True)
+        self.assertEqual(other.list_files(), [])
+
+    def test_workspace_switch_waits_for_write_to_approved_workspace(self):
+        request = self.runtime.prepare("create_file", {"name": "approved.md", "content": "exact"})
+        self.runtime.approve(request["request_id"], True)
+        other = PetWorkspace(Path(self.temp.name) / "other")
+        result = self.run_before_workspace_switch(
+            "create", other, self.runtime.execute, request["request_id"])
+
+        path = self.workspace.root / "approved.md"
+        self.assertEqual(result["result"]["path"], str(path))
+        self.assertEqual(path.read_bytes(), b"exact")
+        self.assertEqual(other.list_files(), [])
+
+    def run_before_workspace_switch(self, method_name, other, operation, *args):
+        operation_entered = threading.Event()
+        release_operation = threading.Event()
+        switch_started = threading.Event()
+        switch_finished = threading.Event()
+        original = getattr(self.workspace, method_name)
+
+        def pause_workspace_operation(*args):
+            operation_entered.set()
+            if not release_operation.wait(5):
+                raise TimeoutError("Workspace operation was not released")
+            return original(*args)
+
+        def switch_workspace():
+            switch_started.set()
+            self.runtime.set_workspace(other)
+            switch_finished.set()
+
+        with patch.object(self.workspace, method_name, side_effect=pause_workspace_operation):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                action = executor.submit(operation, *args)
+                try:
+                    self.assertTrue(operation_entered.wait(5))
+                    switch = executor.submit(switch_workspace)
+                    self.assertTrue(switch_started.wait(5))
+                    self.assertFalse(switch_finished.wait(0.1))
+                finally:
+                    release_operation.set()
+                result = action.result(timeout=5)
+                switch.result(timeout=5)
+        return result

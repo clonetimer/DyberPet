@@ -37,6 +37,9 @@ from .character_audio import (
 )
 from .preferences import load as load_preferences, save as save_preferences, defaults as default_preferences
 from .conversation_store import CompanionStore
+from .task_plan import TaskSession
+from .task_planner import generate_task_plan
+from .task_review import TaskReviewDialog
 
 
 class _AssistantJob(QThread):
@@ -89,6 +92,12 @@ class PetAssistantDialog(QDialog):
             self._action_runtime = None
             self._action_runtime_error = str(exc)
         self._job = None
+        self._job_generation = None
+        self._job_success_handler = None
+        self._job_progress_handler = None
+        self._task_generation = 0
+        self._task_session = None
+        self._task_review_dialog = None
         self._last_reply = ""
         self._stream_reply_open = False
         self._listen_stop_event = None
@@ -114,6 +123,7 @@ class PetAssistantDialog(QDialog):
             self._prefs_error = str(exc)
         self._build_ui()
         self._apply_preferences()
+        self.persona.currentIndexChanged.connect(self._persona_changed)
         self._sync_guga_controls()
         self._restore_character_history()
         if self._store_error:
@@ -206,8 +216,11 @@ class PetAssistantDialog(QDialog):
         self.message.returnPressed.connect(self.send_message)
         self.send_button = QPushButton("发送")
         self.send_button.clicked.connect(self.send_message)
+        self.plan_button = QPushButton("生成任务草案")
+        self.plan_button.clicked.connect(self.propose_task)
         message_row.addWidget(self.message, 1)
         message_row.addWidget(self.send_button)
+        message_row.addWidget(self.plan_button)
         body.addLayout(message_row)
 
         voice_row = QHBoxLayout()
@@ -278,12 +291,14 @@ class PetAssistantDialog(QDialog):
             file_row.addWidget(widget)
         body.addLayout(file_row)
         self.status = QLabel("麦克风默认关闭；所有文件动作均须用户亲自选择。")
+        self.status.setTextFormat(Qt.TextFormat.PlainText)
         self.status.setWordWrap(True)
         body.addWidget(self.status)
 
     def set_character(self, name: str):
         if self.character_name == name:
             return
+        self._invalidate_assistant_scope("角色已切换，旧任务草案已取消。")
         if self._listen_stop_event is not None:
             self._listen_stop_event.set()
             self._listening = False
@@ -293,17 +308,20 @@ class PetAssistantDialog(QDialog):
             self.stop_speak_button.setEnabled(False)
         self._finish_speech_visuals()
         self._stream_reply_open = False
-        self._session_generation += 1
         self.character_name = name
         self.setWindowTitle("桌宠助手 · " + name)
         self._sync_guga_controls()
         profile = resolve_profile(name)
         persona = profile.key if profile and profile.key in PERSONAS else "companion"
-        self.persona.setCurrentIndex(max(0, self.persona.findData(persona)))
-        self.chat_log.appendPlainText("已切换当前桌宠：" + name)
         saved = self._prefs["personas"].get(name)
         if saved in PERSONAS:
-            self.persona.setCurrentIndex(self.persona.findData(saved))
+            persona = saved
+        blocked = self.persona.blockSignals(True)
+        try:
+            self.persona.setCurrentIndex(max(0, self.persona.findData(persona)))
+        finally:
+            self.persona.blockSignals(blocked)
+        self.chat_log.appendPlainText("已切换当前桌宠：" + name)
         self._last_reply = ""
         self._pending_file_context = None
         self._ppl_snapshot = ""  # Persona snapshots belong to the previous character
@@ -327,14 +345,18 @@ class PetAssistantDialog(QDialog):
         if not self._conversation_store:
             self._job_error("本地历史数据库不可用")
             return
+        character, generation = self.character_name, self._session_generation
         if QMessageBox.question(
                 self, "清空当前角色聊天记录",
                 "只删除“" + self.character_name + "”的本地聊天记录；已保存的角色记忆不会删除。\n确认继续？",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
             return
+        if character != self.character_name or generation != self._session_generation:
+            return
         try:
             count = self._conversation_store.clear_history(self.character_name)
+            self._invalidate_assistant_scope("会话已清空，旧任务草案已取消。")
             self._restore_character_history()
             self.status.setText("已清空当前角色聊天记录（" + str(count) + " 条）。角色记忆保留。")
         except (OSError, ValueError) as exc:
@@ -683,28 +705,54 @@ class PetAssistantDialog(QDialog):
             self.status.setText("上一项语音/对话任务仍在执行")
             return
         self.send_button.setEnabled(False)
+        self.plan_button.setEnabled(False)
         self.listen_button.setEnabled(False)
         self.ppl_button.setEnabled(False)
         self.speak_button.setEnabled(False)
         job = _AssistantJob(task, *args, stream=stream, **kwargs)
         self._job = job
-        job.success.connect(on_success)
-        job.failed.connect(self._job_error)
+        self._job_generation = self._session_generation
+        self._job_success_handler = on_success
+        self._job_progress_handler = on_progress
+        job.success.connect(self._job_succeeded)
+        job.failed.connect(self._job_failed)
         if stream and on_progress is not None:
-            job.progress.connect(on_progress)
+            job.progress.connect(self._job_progress)
         job.finished.connect(self._job_finished)
         job.start()
+
+    def _job_succeeded(self, result):
+        if (self._job_generation == self._session_generation
+                and not self._closing_after_worker
+                and self._job_success_handler is not None):
+            self._job_success_handler(result)
+
+    def _job_progress(self, piece):
+        if (self._job_generation == self._session_generation
+                and not self._closing_after_worker
+                and self._job_progress_handler is not None):
+            self._job_progress_handler(piece)
+
+    def _scoped_job_error(self, detail, generation):
+        if generation == self._session_generation and not self._closing_after_worker:
+            self._job_error(detail)
+
+    def _job_failed(self, detail):
+        self._scoped_job_error(detail, self._job_generation)
 
     def _job_finished(self):
         self._finish_speech_visuals()
         job = self._job
         self._job = None
+        self._job_generation = None
+        self._job_success_handler = None
+        self._job_progress_handler = None
         self._listening = False
         self._listen_stop_event = None
         self._speech_stop_event = None
         self.stop_listen_button.setEnabled(False)
         self.stop_speak_button.setEnabled(False)
-        for button in (self.send_button, self.listen_button,
+        for button in (self.send_button, self.plan_button, self.listen_button,
                        self.ppl_button, self.speak_button):
             button.setEnabled(True)
         if job is not None:
@@ -798,6 +846,9 @@ class PetAssistantDialog(QDialog):
             self._job_error(str(exc))
 
     def send_message(self):
+        if self._job is not None:
+            self.status.setText("上一项语音/对话任务仍在执行，输入已保留。")
+            return
         text = self.message.text().strip()
         if not text:
             return
@@ -885,6 +936,113 @@ class PetAssistantDialog(QDialog):
     def _auto_read_reply(self):
         if self._job is None and self.auto_speak.isChecked() and self.isVisible():
             self.read_reply()
+
+    def _cancel_task_plan(self, reason):
+        self._task_generation += 1
+        session, review = self._task_session, self._task_review_dialog
+        # Detach first so cancellation callbacks cannot rewrite the new scope.
+        self._task_session = None
+        self._task_review_dialog = None
+        if review is not None:
+            review.invalidate(reason)
+            review.close()
+            review.progress_changed.disconnect(self._task_progress)
+            # Release the hidden child without queuing deletion against a parent
+            # that may itself be closing. Python now owns its remaining lifetime.
+            review.setParent(None)
+        elif session is not None:
+            session.cancel()
+
+    def _invalidate_assistant_scope(self, reason):
+        self._session_generation += 1
+        self._cancel_task_plan(reason)
+        if self._action_runtime is not None:
+            self._action_runtime.invalidate_pending()
+        self._pending_file_context = None
+        self._last_reply = ""
+        self._stream_reply_open = False
+        self.stop_listening()
+        self._listening = False
+        self.stop_speaking()
+        self._finish_speech_visuals()
+
+    def _persona_changed(self, _index):
+        self._invalidate_assistant_scope("人设已切换，旧任务草案已取消。")
+        self._ppl_snapshot = ""
+        self.status.setText("人设已切换；旧回复、附件和任务草案已失效。")
+
+    def propose_task(self):
+        if self._job is not None:
+            self.status.setText("上一项语音/对话任务仍在执行，输入已保留。")
+            return
+        text = self.message.text().strip()
+        if not text:
+            self.status.setText("先输入要创建的文件和内容要求，再生成任务草案。")
+            return
+        if self._action_runtime is None:
+            self._job_error("安全操作中心不可用：" + self._action_runtime_error)
+            return
+        self._cancel_task_plan("已请求新草案，先前未完成的步骤已取消。")
+        task_generation = self._task_generation
+        generation, character = self._session_generation, self.character_name
+        workspace = self.workspace
+        endpoint, model = self.llm_endpoint.text(), self.llm_model.text()
+        file_context = (dict(self._pending_file_context)
+                        if self._pending_file_context is not None else None)
+        self.status.setText("正在生成文件任务草案；生成后逐步查看和批准。")
+
+        def task():
+            plan = generate_task_plan(text, base_url=endpoint, model=model,
+                                      file_context=file_context)
+            return task_generation, generation, character, workspace, text, file_context, plan
+
+        self._submit(task, self._task_plan_reply)
+
+    def _task_plan_reply(self, result):
+        task_generation, generation, character, workspace, text, file_context, plan = result
+        if (task_generation != self._task_generation
+                or generation != self._session_generation
+                or character != self.character_name or workspace is not self.workspace
+                or self._closing_after_worker):
+            return
+        if self._pending_file_context == file_context:
+            self._pending_file_context = None
+        if self.message.text().strip() == text:
+            self.message.clear()
+        session = TaskSession(plan, self._action_runtime)
+        self._task_session = session
+
+        def current():
+            return (self._task_session is session and task_generation == self._task_generation
+                    and generation == self._session_generation
+                    and character == self.character_name and workspace is self.workspace
+                    and not self._closing_after_worker)
+
+        review = TaskReviewDialog(session, self, scope_is_current=current)
+        self._task_review_dialog = review
+        review.progress_changed.connect(self._task_progress)
+        self.chat_log.appendPlainText(
+            "[任务草案] " + plan.title + "（" + str(len(plan.steps)) + " 步；尚未执行）")
+        self._task_progress(session)
+        review.show()
+
+    def _task_progress(self, session):
+        if session is not self._task_session:
+            return
+        count, total = len(session.completed), len(session.plan.steps)
+        states = {"ready": "等待查看下一步", "awaiting_approval": "等待本步批准",
+                  "completed": "全部完成", "cancelled": "剩余步骤已取消", "failed": "已停止"}
+        message = "任务 " + str(count) + "/" + str(total) + "：" + states[session.state]
+        if count:
+            message += "；已创建：" + "、".join(
+                item["result"]["name"] for item in session.completed)
+        if session.error:
+            message += "；" + str(session.error)
+        warnings = [item.get("audit_warning", "") for item in session.completed
+                    if item.get("audit_warning")]
+        if warnings:
+            message += "；" + "；".join(warnings)
+        self.status.setText(message)
 
     def listen_once(self):
         """Compatibility entry point for the existing bounded four-second mode."""
@@ -1011,7 +1169,9 @@ class PetAssistantDialog(QDialog):
                 ) != QMessageBox.StandardButton.Yes:
             return
         try:
-            self.workspace = PetWorkspace(approved)
+            workspace = PetWorkspace(approved)
+            self._invalidate_assistant_scope("文件夹已切换，旧任务草案已取消。")
+            self.workspace = workspace
             self._pending_file_context = None
             if self._action_runtime is not None:
                 self._action_runtime.set_workspace(self.workspace)
@@ -1020,8 +1180,14 @@ class PetAssistantDialog(QDialog):
         except (WorkspaceError, OSError) as exc:
             self._job_error(str(exc))
 
+    def reject(self):
+        # QDialog's default Escape route hides it without calling closeEvent.
+        self.close()
+
     def closeEvent(self, event):
         if self._job is not None:
+            if not self._closing_after_worker:
+                self._invalidate_assistant_scope("助手正在关闭，旧任务草案已取消。")
             self._closing_after_worker = True
             self.stop_listening()
             self.stop_speaking()
@@ -1030,7 +1196,7 @@ class PetAssistantDialog(QDialog):
         self._finish_speech_visuals()
         # QDialog.close() does not necessarily destroy the dialog; release
         # any user-granted folder even when the widget is reopened later.
-        self._session_generation += 1
+        self._invalidate_assistant_scope("助手已关闭，未完成任务已取消。")
         self._ppl_snapshot = ""
         self._last_reply = ""
         self._stream_reply_open = False
@@ -1039,10 +1205,14 @@ class PetAssistantDialog(QDialog):
         if self._action_runtime is not None:
             self._action_runtime.set_workspace(self.workspace)
         self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
-        super().closeEvent(event)
+        # Calling QDialog.closeEvent here would invoke our reject() again.
+        QDialog.done(self, QDialog.DialogCode.Rejected)
+        event.accept()
 
     def reset_workspace(self):
-        self.workspace = PetWorkspace(self._default_workspace)
+        workspace = PetWorkspace(self._default_workspace)
+        self._invalidate_assistant_scope("目录授权已撤销，旧任务草案已取消。")
+        self.workspace = workspace
         self._pending_file_context = None
         if self._action_runtime is not None:
             self._action_runtime.set_workspace(self.workspace)
@@ -1102,11 +1272,15 @@ class PetAssistantDialog(QDialog):
         except (ActionDenied, WorkspaceError, OSError, ValueError) as exc:
             self._job_error(str(exc))
             return None
+        generation = self._session_generation
         answer = QMessageBox.question(
             self, title,
             plan["preview"] + "\n\n此操作需要本次明确授权；授权 60 秒内有效且只能使用一次。",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
+        if generation != self._session_generation or self._closing_after_worker:
+            self.status.setText("角色、目录或会话已改变，旧操作授权已失效。")
+            return None
         try:
             if answer != QMessageBox.StandardButton.Yes:
                 self._action_runtime.approve(plan["request_id"], False)

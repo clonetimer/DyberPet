@@ -76,7 +76,7 @@ jobs:
       - name: Test actual assistant UI offscreen
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests -p "test_assistant_qt.py" -v
+        run: python -m unittest discover -s tests -p "test_assistant_*qt.py" -v
 
   ppl-real-contract:
     runs-on: ubuntu-latest

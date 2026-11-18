@@ -46,6 +46,7 @@ class ActionRuntime:
             raise ValueError("Action audit database cannot be a symlink")
         self._pending: Dict[str, dict] = {}
         self._lock = threading.RLock()
+        self._scope_revision = 0
         self._initialize()
 
     @contextmanager
@@ -86,8 +87,30 @@ class ActionRuntime:
         if not isinstance(workspace, PetWorkspace):
             raise TypeError("workspace must be a PetWorkspace")
         with self._lock:
-            self._pending.clear()
+            self.invalidate_pending()
             self.workspace = workspace
+
+    def invalidate_pending(self, request_id: Optional[str] = None):
+        """Revoke one request, or all requests and their existing workspace bindings."""
+        with self._lock:
+            if request_id is None:
+                self._pending.clear()
+                self._scope_revision += 1
+            else:
+                self._pending.pop(request_id, None)
+
+    def workspace_binding(self) -> tuple[PetWorkspace, int]:
+        with self._lock:
+            return self.workspace, self._scope_revision
+
+    @contextmanager
+    def workspace_scope(self, binding: tuple[PetWorkspace, int]):
+        """Keep related operations atomic within the caller's workspace binding."""
+        with self._lock:
+            workspace, revision = binding
+            if self.workspace is not workspace or self._scope_revision != revision:
+                raise ActionDenied("The workspace or approval session changed; generate a new plan")
+            yield
 
     def _record(self, request_id: str, action: str, target: str,
                 status: str, detail: str = ""):
@@ -104,14 +127,19 @@ class ActionRuntime:
             """, (MAX_AUDIT_ROWS,))
 
     def prepare(self, action: str, arguments: dict) -> dict:
+        with self._lock:
+            return self._prepare(action, arguments)
+
+    def _prepare(self, action: str, arguments: dict) -> dict:
         if action not in self.ALLOWED_ACTIONS:
             raise ActionDenied("Action is not registered in the local allow-list")
         if not isinstance(arguments, dict):
             raise ActionDenied("Action arguments must be an object")
+        workspace = self.workspace
         args = dict(arguments)
         target = ""
         if action in ("create_file", "create_note"):
-            name = self.workspace.validate_name(args.get("name", ""))
+            name = workspace.validate_name(args.get("name", ""))
             content = args.get("content", "")
             if not isinstance(content, str):
                 raise ActionDenied("File content must be text")
@@ -120,14 +148,14 @@ class ActionRuntime:
             suffix = Path(name).suffix.lower()
             if action == "create_note" and suffix not in (".md", ".txt"):
                 raise ActionDenied("Notes must use .md or .txt")
-            if (self.workspace.root / name).exists():
+            if (workspace.root / name).exists():
                 raise ActionDenied("Target already exists; overwrite is disabled")
             args = {"name": name, "content": content}
-            target = str(self.workspace.root / name)
+            target = str(workspace.root / name)
             preview = "Create new file (no overwrite): " + target
         elif action == "trash_file":
-            name = self.workspace.validate_name(args.get("name", ""))
-            path = self.workspace.root / name
+            name = workspace.validate_name(args.get("name", ""))
+            path = workspace.root / name
             if path.is_symlink() or not path.is_file():
                 raise ActionDenied("Only an existing regular workspace file can be moved")
             args = {"name": name}
@@ -135,17 +163,17 @@ class ActionRuntime:
             preview = "Move to recoverable workspace trash: " + target
         elif action == "restore_file":
             key = args.get("key", "")
-            if not isinstance(key, str) or key not in self.workspace.deleted_files():
+            if not isinstance(key, str) or key not in workspace.deleted_files():
                 raise ActionDenied("Restore key is not present in the workspace trash")
             name = key.split("__", 1)[1]
-            if (self.workspace.root / name).exists():
+            if (workspace.root / name).exists():
                 raise ActionDenied("Restore target already exists; overwrite is disabled")
             args = {"key": key}
-            target = str(self.workspace.root / name)
+            target = str(workspace.root / name)
             preview = "Restore workspace file to: " + target
         else:
-            name = self.workspace.validate_name(args.get("name", ""))
-            path = self.workspace.root / name
+            name = workspace.validate_name(args.get("name", ""))
+            path = workspace.root / name
             if path.is_symlink() or not path.is_file():
                 raise ActionDenied("Only an existing regular workspace file can be read")
             if path.stat().st_size > MAX_ACTION_CONTENT:
@@ -161,25 +189,23 @@ class ActionRuntime:
 
         request_id = uuid.uuid4().hex
         created = time.monotonic()
-        with self._lock:
-            expired = [key for key, value in self._pending.items()
-                       if created - value["created"] > self.approval_ttl]
-            for key in expired:
-                self._pending.pop(key, None)
-            if len(self._pending) >= 128:
-                raise ActionDenied("Too many pending actions; finish or cancel an existing request")
-            self._pending[request_id] = {
-                "action": action, "arguments": args, "target": target,
-                "created": created, "approved": False,
-            }
+        expired = [key for key, value in self._pending.items()
+                   if created - value["created"] > self.approval_ttl]
+        for key in expired:
+            self._pending.pop(key, None)
+        if len(self._pending) >= 128:
+            raise ActionDenied("Too many pending actions; finish or cancel an existing request")
+        self._pending[request_id] = {
+            "workspace": workspace, "action": action, "arguments": args,
+            "target": target, "created": created, "approved": False,
+        }
         try:
             self._record(request_id, action, target, "prepared", "Awaiting explicit user approval")
         except Exception:
-            with self._lock:
-                self._pending.pop(request_id, None)
+            self._pending.pop(request_id, None)
             raise
         return {
-            "request_id": request_id, "action": action, "preview": preview,
+            "request_id": request_id, "action": action, "preview": preview, "target": target,
             "approval_required": True, "expires_in_seconds": self.approval_ttl,
         }
 
@@ -206,31 +232,35 @@ class ActionRuntime:
 
     def execute(self, request_id: str) -> dict:
         with self._lock:
-            pending = self._pending.get(request_id)
-            if pending is None:
-                raise ActionDenied("Action request is missing, expired or already consumed")
-            if not pending["approved"]:
-                raise ActionDenied("Action has not been approved by the user")
-            if time.monotonic() - pending["approved_at"] > self.approval_ttl:
-                self._pending.pop(request_id, None)
-                self._record(request_id, pending["action"], pending["target"],
-                             "expired", "Approval expired before execution")
-                raise ActionDenied("Action approval expired; prepare it again")
-            self._pending.pop(request_id, None)
+            return self._execute(request_id)
 
+    def _execute(self, request_id: str) -> dict:
+        pending = self._pending.get(request_id)
+        if pending is None:
+            raise ActionDenied("Action request is missing, expired or already consumed")
+        if not pending["approved"]:
+            raise ActionDenied("Action has not been approved by the user")
+        if time.monotonic() - pending["approved_at"] > self.approval_ttl:
+            self._pending.pop(request_id, None)
+            self._record(request_id, pending["action"], pending["target"],
+                         "expired", "Approval expired before execution")
+            raise ActionDenied("Action approval expired; prepare it again")
+        self._pending.pop(request_id, None)
+
+        workspace = pending["workspace"]
         action, args = pending["action"], pending["arguments"]
         try:
             if action in ("create_file", "create_note"):
-                result = self.workspace.create(args["name"], args["content"])
+                result = workspace.create(args["name"], args["content"])
                 value = {"path": str(result), "name": result.name}
             elif action == "trash_file":
-                key = self.workspace.soft_delete(args["name"])
+                key = workspace.soft_delete(args["name"])
                 value = {"trash_key": key, "name": args["name"]}
             elif action == "restore_file":
-                result = self.workspace.restore(args["key"])
+                result = workspace.restore(args["key"])
                 value = {"path": str(result), "name": result.name}
             elif action == "read_file":
-                path = self.workspace.root / args["name"]
+                path = workspace.root / args["name"]
                 if path.is_symlink() or not path.is_file():
                     raise ActionDenied("Selected file is no longer a regular workspace file")
                 file_bytes = path.read_bytes()

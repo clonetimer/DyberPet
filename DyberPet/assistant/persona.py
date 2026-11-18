@@ -43,7 +43,8 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
 
-def _json_request(url: str, *, data: dict | None = None, timeout: float = 5):
+def _json_request(url: str, *, data: dict | None = None, timeout: float = 5,
+                  json_decoder=None):
     raw = None if data is None else json.dumps(
         data, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
@@ -59,7 +60,8 @@ def _json_request(url: str, *, data: dict | None = None, timeout: float = 5):
             payload = response.read(512 * 1024 + 1)
             if len(payload) > 512 * 1024:
                 raise AssistantServiceError("Response exceeds 512 KiB")
-            return json.loads(payload.decode("utf-8"))
+            decoder = json.loads if json_decoder is None else json_decoder
+            return decoder(payload.decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise AssistantServiceError(
             f"Local service HTTP {exc.code}", status_code=exc.code) from exc
