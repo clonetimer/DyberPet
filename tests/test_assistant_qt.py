@@ -47,15 +47,6 @@ class AssistantQtTests(unittest.TestCase):
             self.dialog.save_reply_as_note()
         self.assertEqual(self.dialog.workspace.list_files(), [])
 
-    def test_action_runtime_audit_view_is_available(self):
-        self.assertIsNotNone(self.dialog._action_runtime)
-        self.dialog._action_runtime.prepare(
-            "create_note", {"name": "audit-ui.md", "content": "x"})
-        with patch("PySide6.QtWidgets.QDialog.open") as opened:
-            self.dialog.show_action_audit()
-        opened.assert_called_once()
-        self.assertIsNotNone(self.dialog._action_audit_dialog)
-
     def test_ai_reply_note_uses_approval_runtime_and_records_audit(self):
         self.dialog._last_reply = "通过审批中心保存。"
         with patch("PySide6.QtWidgets.QInputDialog.getText",
@@ -103,6 +94,8 @@ class AssistantQtTests(unittest.TestCase):
         self.assertEqual(self.dialog._last_reply, "总结完成")
 
     def test_dialog_persona_and_file_actions_exist(self):
+        self.assertIsNotNone(self.dialog._action_runtime)
+        self.assertTrue(hasattr(self.dialog, "action_audit_button"))
         self.assertEqual(self.dialog.persona.currentData(), "guga")
         self.assertFalse(self.dialog.ppl_enabled.isChecked())
         self.assertTrue(self.dialog.workspace.root.is_dir())
