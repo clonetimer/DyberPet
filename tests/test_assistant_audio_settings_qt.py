@@ -146,6 +146,7 @@ class AudioSettingsQtTests(unittest.TestCase):
             self.panel.microphone_test_button.click()
             self.wait_for(lambda: self.dialog._job is None)
         self.assertTrue(workers and workers[0] != main_thread)
+        self.assertIn("16000 Hz", self.panel.status_label.text())
         self.assertIn("RMS 840.2", self.panel.status_label.text())
         self.assertIn("音频样本未保存", self.dialog.status.text())
         self.assertTrue(self.panel.microphone_test_button.isEnabled())
