@@ -64,13 +64,13 @@ class ActionRuntimeTests(unittest.TestCase):
         self.assertFalse((self.workspace.root / "expired.md").exists())
 
     def test_read_file_requires_approval_and_returns_utf8_text(self):
-        path = self.workspace.create("analysis.md", "first line\\nsecond line")
+        path = self.workspace.create("analysis.md", "first line\nsecond line")
         plan = self.runtime.prepare("read_file", {"name": path.name})
         with self.assertRaises(ActionDenied):
             self.runtime.execute(plan["request_id"])
         self.runtime.approve(plan["request_id"], True)
         result = self.runtime.execute(plan["request_id"])
-        self.assertEqual(result["result"]["content"], "first line\\nsecond line")
+        self.assertEqual(result["result"]["content"], "first line\nsecond line")
         self.assertNotIn("first line", repr(self.runtime.audit_log()))
 
     def test_read_file_rejects_binary_invalid_utf8_and_large_context(self):
