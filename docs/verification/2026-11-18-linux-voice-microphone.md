@@ -82,3 +82,8 @@ This avoids both false negatives from comparing unlike names and false positives
 ## Sample-rate threshold correction
 
 A code review found that the minimum 250 ms capture-frame threshold still used the originally requested sample rate after fallback. This incorrectly rejected a valid 8 kHz capture (2,000 frames over 250 ms) when the requested rate was 16 kHz. The implementation now calculates the threshold using the successfully opened `selected_rate`. A regression test covers 16 kHz rejection followed by 8 kHz device-default success and verifies exactly 2,000 frames are accepted.
+
+
+## PortAudio per-Host-API default device correction
+
+The PulseAudio integration now reads `default_input_device` from the unique PortAudio PulseAudio Host API entry, rather than using `sd.default.device` (the global PortAudio default, which may belong to ALSA). It confirms the device's `hostapi` index and passes that exact PortAudio identity to the product capture function. The server-side expected default source is still checked independently using `pactl get-default-source`.

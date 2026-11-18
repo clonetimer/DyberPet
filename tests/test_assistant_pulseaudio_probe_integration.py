@@ -25,16 +25,19 @@ class PulseAudioProbeIntegrationTests(unittest.TestCase):
         expected = os.environ.get("DYBERPET_EXPECTED_PULSE_SOURCE", "")
         self.assertTrue(expected, "CI must declare the exact PulseAudio source under test")
         self.assertEqual(default, expected, "PulseAudio default source is not the test source")
-        default_input = sd.default.device[0]
-        self.assertIsInstance(default_input, int, "PortAudio has no default input device")
+        pulse_hosts = [
+            (index, host) for index, host in enumerate(hosts)
+            if isinstance(host, dict) and "pulse" in str(host.get("name", "")).lower()
+        ]
+        self.assertEqual(len(pulse_hosts), 1, "PortAudio must expose exactly one PulseAudio Host API")
+        host_index, host = pulse_hosts[0]
+        default_input = host.get("default_input_device")
+        self.assertIsInstance(default_input, int, "PulseAudio Host API has no default input device")
+        self.assertGreaterEqual(default_input, 0)
         device = sd.query_devices(default_input, "input")
         self.assertIsInstance(device, dict)
-        host_index = device.get("hostapi")
-        self.assertIsInstance(host_index, int)
-        self.assertTrue(0 <= host_index < len(hosts))
-        host_api = str(hosts[host_index].get("name", ""))
-        self.assertIn("pulse", host_api.lower(),
-                      "PortAudio default input is not using the PulseAudio host API: " + host_api)
+        self.assertEqual(device.get("hostapi"), host_index)
+        host_api = str(host.get("name", ""))
         name = str(device.get("name", ""))
         self.assertTrue(name, "PortAudio default PulseAudio input has no name")
         result = probe_microphone(

@@ -514,3 +514,11 @@
 - **为什么：** 采样率协商会改变同一时间窗口所需的帧数。8 kHz 下 0.25 秒为 2000 帧，而 16 kHz 下为 4000 帧；沿用请求采样率会误判低采样率设备采集不足。
 - **踩坑：** 所有依赖时间的采集指标（目标帧数、最短帧数、耗时解释）都必须基于实际成功打开的采样率，不能混用请求值和实际值。
 - **验证：** 新增 8 kHz 回退测试，断言 2000 帧按实际 8 kHz 等于 0.25 秒且流正常关闭；与 96 kHz 默认回退测试并行覆盖高低两端。
+
+
+## 68. PortAudio 的全局默认设备与某个 Host API 的默认设备不能混用
+
+- **改了什么：** PulseAudio 集成测试不再使用 `sd.default.device` 的全局默认输入索引，而是先找到唯一的 PulseAudio Host API，再读取该 Host API 自己的 `default_input_device`，并确认设备记录的 hostapi 索引一致。
+- **为什么：** PortAudio 可同时暴露 ALSA、PulseAudio 等多个 Host API。全局默认输入可能落在 ALSA，即使 PulseAudio Host API 正常工作；用它判断 PulseAudio 路径会产生与目标后端无关的失败。
+- **踩坑：** 先验证 PulseAudio server 的 default source 名称，再验证 PulseAudio Host API 自己的默认输入设备身份；两者分别属于服务端与 PortAudio 层，不能假设名称或索引相同。
+- **验证：** 新测试要求唯一 PulseAudio Host API、有效的该 Host API 默认输入索引及匹配 hostapi，再将确切设备名/host API 交给产品采集函数。PulseAudio 与 pipewire-pulse 共用此测试，但在隔离服务会话中分别运行。
