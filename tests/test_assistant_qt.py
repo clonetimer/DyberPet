@@ -51,8 +51,10 @@ class AssistantQtTests(unittest.TestCase):
         self.assertIsNotNone(self.dialog._action_runtime)
         self.dialog._action_runtime.prepare(
             "create_note", {"name": "audit-ui.md", "content": "x"})
-        with patch("PySide6.QtWidgets.QDialog.exec", return_value=0):
+        with patch("PySide6.QtWidgets.QDialog.open") as opened:
             self.dialog.show_action_audit()
+        opened.assert_called_once()
+        self.assertIsNotNone(self.dialog._action_audit_dialog)
 
     def test_ai_reply_note_uses_approval_runtime_and_records_audit(self):
         self.dialog._last_reply = "通过审批中心保存。"
