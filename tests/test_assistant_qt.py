@@ -78,6 +78,28 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog.set_character("Doro")
         self.assertIsNone(self.dialog._pending_file_context)
 
+    def test_attached_file_is_passed_to_one_local_turn_and_then_consumed(self):
+        self.dialog.llm_model.setText("local-model")
+        self.dialog.message.setText("请总结文件")
+        self.dialog._pending_file_context = {
+            "name": "brief.md", "content": "用户选定的参考资料"}
+        captured = {}
+
+        def fake_submit(task, on_success, *args, stream=False, on_progress=None, **kwargs):
+            result = task(lambda _: None)
+            captured["result"] = result
+            on_success(result)
+
+        with patch("DyberPet.assistant.ui.stream_local_chat",
+                   return_value="总结完成") as stream:
+            with patch.object(self.dialog, "_submit", side_effect=fake_submit):
+                self.dialog.send_message()
+        self.assertEqual(stream.call_args.kwargs["file_context"], {
+            "name": "brief.md", "content": "用户选定的参考资料"})
+        self.assertEqual(captured["result"][4]["name"], "brief.md")
+        self.assertIsNone(self.dialog._pending_file_context)
+        self.assertEqual(self.dialog._last_reply, "总结完成")
+
     def test_dialog_persona_and_file_actions_exist(self):
         self.assertEqual(self.dialog.persona.currentData(), "guga")
         self.assertFalse(self.dialog.ppl_enabled.isChecked())
