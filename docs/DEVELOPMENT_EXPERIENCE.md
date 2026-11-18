@@ -443,3 +443,11 @@
 - **为什么：** Vosk 常用 16 kHz，但 ALSA 直连硬件、PulseAudio/PipeWire 虚拟设备和驱动组合对采样率的接受范围不同。固定 16 kHz 可能把“采样率不支持”误报成“麦克风不可用”。
 - **踩坑：** 不应无界扫描采样率，也不能在采集成功后仍把请求采样率写入结果。必须用实际打开的采样率计算帧数、RMS 和时长，并保留停止检查与 stream 清理。
 - **验证：** 新增 16 kHz 被拒绝后回退到设备默认 96 kHz 的测试，以及所有候选采样率均被拒绝时的明确错误测试。自动化不替代真实 ALSA/PulseAudio/PipeWire 设备验收。
+
+
+## 59. PulseAudio 兼容性必须走真实 PortAudio 输入流，而不是只测 pactl
+
+- **改了什么：** Linux CI 启动 PulseAudio daemon，创建 48 kHz null source，并通过 sounddevice/PortAudio 枚举该输入设备，再调用产品的 `probe_microphone` 实际打开设备、读取 PCM、计算电平并关闭流。
+- **为什么：** `pactl` 能看到 PulseAudio source，只证明音频服务器有虚拟源；它不能证明应用实际使用的 PortAudio 后端能枚举并打开该源。必须走与桌面应用相同的设备选择和采集代码。
+- **踩坑：** 不需要真实麦克风即可验证音频服务器到应用的采集链路，但 null source 只能证明路由和 PCM 流可用，不能证明物理麦克风权限、硬件增益、扬声器或语音质量。测试必须精确匹配 PulseAudio host/device，不能悄悄回退到系统默认输入。
+- **验证：** Linux X11 acceptance 安装 PulseAudio，创建独立命名 null source，并显式运行 `test_assistant_pulseaudio_probe_integration.py`。若 PortAudio 未暴露 PulseAudio 输入，则测试失败而不是跳过。
