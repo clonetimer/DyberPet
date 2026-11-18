@@ -134,8 +134,8 @@ class PersonaContractTests(unittest.TestCase):
             def readline(self, limit):
                 if not hasattr(self, "done"):
                     self.done = True
-                    return b'data: {"choices":[{"delta":{"content":"ok"}}]}\\n'
-                return b"data: [DONE]\\n"
+                    return b'data: {"choices":[{"delta":{"content":"ok"}}]}\n'
+                return b"data: [DONE]\n"
 
         with patch("DyberPet.assistant.persona._OPENER.open",
                    return_value=FakeResponse()) as opened:
