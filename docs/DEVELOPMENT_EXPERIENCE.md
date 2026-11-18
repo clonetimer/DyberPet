@@ -467,3 +467,11 @@
 - **为什么：** 这比只检查设备目录或 `pactl` source 存在更接近真实桌面运行链路；它验证音频服务器、PortAudio 设备枚举、应用的精确设备身份解析、采样率协商和流清理。
 - **踩坑：** PulseAudio null source 是虚拟输入，不是物理麦克风。测试通过只能证明 server→PortAudio→应用采集链路，不可外推为 ALSA 硬件、PipeWire 原生 host API、权限弹窗或语音识别准确率均已通过。
 - **验证：** PR head `1ec0e01` 的 Linux source X11 job 中，`test_selected_pulse_input_source_can_be_opened_and_captured` 以 0.862 秒完成，1/1 PASS；随后同一 job 的真实 Qt X11 与应用启动检查继续通过。
+
+
+## 62. PipeWire 的 pipewire-pulse 兼容层应与原生 PulseAudio 服务分别启动验收
+
+- **改了什么：** Linux CI 新增独立的 PipeWire 会话：先停止 PulseAudio daemon，再在隔离 D-Bus/XDG_RUNTIME_DIR 下启动 pipewire、WirePlumber 和 pipewire-pulse，创建命名 null source，最后复用产品的 PulseAudio/PortAudio 采集集成测试。
+- **为什么：** 许多 Linux 桌面使用 PipeWire 提供 PulseAudio 兼容服务。仅在原生 PulseAudio daemon 下通过，不能证明 pipewire-pulse 兼容层的设备枚举、采样率协商和输入流打开可用。
+- **踩坑：** 两种服务不能争用同一个 PulseAudio socket；必须先停止原 daemon，再创建独立用户运行目录和 D-Bus 会话。该测试验证 PipeWire 的 PulseAudio 兼容层，不等于 PortAudio 原生 PipeWire host API 或 ALSA 直连硬件已通过。
+- **验证：** 专用 CI step 使用 `pipewire`、`wireplumber`、`pipewire-pulse` 独立启动，要求 `pactl info` 就绪并创建精确命名 source，再显式运行真实 PortAudio 采集测试；不允许回退到其他输入设备。

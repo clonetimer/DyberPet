@@ -38,3 +38,10 @@ This proves the PulseAudio server → PortAudio → DyberPet capture path for a 
 4. Listen to eSpeak NG output through the physical speaker/headset and assess Mandarin pronunciation.
 5. Verify repeated stop/restart and long-duration half-duplex voice conversation.
 
+
+
+## PipeWire PulseAudio-compatibility integration
+
+A second Linux integration session is added separately from the native PulseAudio test. CI first stops the PulseAudio daemon, starts `pipewire`, `wireplumber` and `pipewire-pulse` inside an isolated D-Bus session and `XDG_RUNTIME_DIR`, creates a named 48 kHz null source via the PulseAudio compatibility protocol, then runs the same product `probe_microphone` PortAudio capture test with exact host/device matching.
+
+This specifically validates the PipeWire-provided PulseAudio compatibility server. It does not claim native PipeWire PortAudio host API support or physical ALSA hardware support. Final status must be taken from the Linux workflow for the new PR head.
