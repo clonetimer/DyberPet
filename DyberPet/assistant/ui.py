@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from .files import PetWorkspace, WorkspaceError, validate_session_folder
+from .action_runtime import ActionRuntime, ActionDenied
 from .persona import (
     DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, PPLCharacterClient,
     chat_local, stream_local_chat, list_local_models, AssistantServiceError,
@@ -76,6 +77,16 @@ class PetAssistantDialog(QDialog):
         self.role_root = Path(role_root) if role_root is not None else Path.cwd() / "res" / "role"
         self._default_workspace = Path(workspace)
         self.workspace = PetWorkspace(self._default_workspace)
+        self._action_runtime_error = ""
+        try:
+            action_audit_path = (
+                Path(store_path).parent / "assistant-actions.sqlite3"
+                if store_path is not None else None)
+            self._action_runtime = ActionRuntime(
+                self.workspace, audit_path=action_audit_path)
+        except (OSError, ValueError) as exc:
+            self._action_runtime = None
+            self._action_runtime_error = str(exc)
         self._job = None
         self._last_reply = ""
         self._stream_reply_open = False
@@ -180,9 +191,12 @@ class PetAssistantDialog(QDialog):
         self.memory_manage_button.clicked.connect(self.manage_memories)
         self.clear_history_button = QPushButton("清空本角色聊天")
         self.clear_history_button.clicked.connect(self.clear_character_history)
+        self.action_audit_button = QPushButton("查看操作记录")
+        self.action_audit_button.clicked.connect(self.show_action_audit)
         memory_row.addWidget(self.remember_button)
         memory_row.addWidget(self.memory_manage_button)
         memory_row.addWidget(self.clear_history_button)
+        memory_row.addWidget(self.action_audit_button)
         body.addLayout(memory_row)
 
         message_row = QHBoxLayout()
@@ -985,6 +999,8 @@ class PetAssistantDialog(QDialog):
             return
         try:
             self.workspace = PetWorkspace(approved)
+            if self._action_runtime is not None:
+                self._action_runtime.set_workspace(self.workspace)
             self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
             self.status.setText("此目录仅在当前窗口会话中获得授权。")
         except (WorkspaceError, OSError) as exc:
@@ -1005,11 +1021,15 @@ class PetAssistantDialog(QDialog):
         self._last_reply = ""
         self._stream_reply_open = False
         self.workspace = PetWorkspace(self._default_workspace)
+        if self._action_runtime is not None:
+            self._action_runtime.set_workspace(self.workspace)
         self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
         super().closeEvent(event)
 
     def reset_workspace(self):
         self.workspace = PetWorkspace(self._default_workspace)
+        if self._action_runtime is not None:
+            self._action_runtime.set_workspace(self.workspace)
         self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
         self.status.setText("已回到默认专属文件目录；临时授权已撤销。")
 
@@ -1036,12 +1056,65 @@ class PetAssistantDialog(QDialog):
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
             return
+        result = self._execute_user_approved_action(
+            "create_note", {"name": validated, "content": self._last_reply},
+            title="确认保存 AI 回复")
+        if result is not None:
+            self.status.setText("AI 回复已保存为便签：" + result["result"]["path"])
+            self._notice("已保存便签：" + result["result"]["name"])
+
+    def _execute_user_approved_action(self, action, arguments, *, title):
+        if self._action_runtime is None:
+            self._job_error("安全操作中心不可用：" + self._action_runtime_error)
+            return None
         try:
-            path = self.workspace.create(validated, self._last_reply)
-            self.status.setText("AI 回复已保存为便签：" + str(path))
-            self._notice("已保存便签：" + path.name)
-        except (WorkspaceError, OSError) as exc:
-            self._job_error("保存 AI 回复失败：" + str(exc))
+            plan = self._action_runtime.prepare(action, arguments)
+        except (ActionDenied, WorkspaceError, OSError, ValueError) as exc:
+            self._job_error(str(exc))
+            return None
+        answer = QMessageBox.question(
+            self, title,
+            plan["preview"] + "\\n\\n此操作需要本次明确授权；授权 60 秒内有效且只能使用一次。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        try:
+            if answer != QMessageBox.StandardButton.Yes:
+                self._action_runtime.approve(plan["request_id"], False)
+                self.status.setText("已取消操作，未修改文件。")
+                return None
+            self._action_runtime.approve(plan["request_id"], True)
+            return self._action_runtime.execute(plan["request_id"])
+        except (ActionDenied, WorkspaceError, OSError, ValueError) as exc:
+            self._job_error("安全操作未完成：" + str(exc))
+            return None
+
+    def show_action_audit(self):
+        if self._action_runtime is None:
+            self._job_error("安全操作中心不可用：" + self._action_runtime_error)
+            return
+        from datetime import datetime
+        dialog = QDialog(self)
+        dialog.setWindowTitle("桌宠助手 · 安全操作记录")
+        dialog.resize(680, 420)
+        layout = QVBoxLayout(dialog)
+        view = QPlainTextEdit()
+        view.setReadOnly(True)
+        rows = self._action_runtime.audit_log(limit=100)
+        if not rows:
+            view.setPlainText("暂无操作记录。")
+        else:
+            lines = []
+            for row in rows:
+                stamp = datetime.fromtimestamp(row["created_at"]).strftime("%Y-%m-%d %H:%M:%S")
+                lines.append(
+                    f'{stamp}  [{row["status"]}]  {row["action"]}\\n'
+                    f'目标：{row["target"]}\\n说明：{row["detail"]}')
+            view.setPlainText("\\n\\n".join(lines))
+        layout.addWidget(view)
+        close_button = QPushButton("关闭")
+        close_button.clicked.connect(dialog.accept)
+        layout.addWidget(close_button)
+        dialog.exec()
 
     def create_file(self):
         name, ok = QInputDialog.getText(
@@ -1057,12 +1130,12 @@ class PetAssistantDialog(QDialog):
                 f"仅在当前授权目录内创建：{name}\n{self.workspace.root}\n不覆盖任何已有文件。"
                 ) != QMessageBox.StandardButton.Yes:
             return
-        try:
-            path = self.workspace.create(name, content)
-            self.status.setText("已创建：" + str(path))
-            self._notice("文件已创建：" + path.name)
-        except (WorkspaceError, OSError) as exc:
-            self._job_error(str(exc))
+        result = self._execute_user_approved_action(
+            "create_file", {"name": name, "content": content},
+            title="确认创建文件")
+        if result is not None:
+            self.status.setText("已创建：" + result["result"]["path"])
+            self._notice("文件已创建：" + result["result"]["name"])
 
     def delete_file(self):
         entries = self.workspace.list_files()
@@ -1081,12 +1154,12 @@ class PetAssistantDialog(QDialog):
                 QMessageBox.StandardButton.No
                 ) != QMessageBox.StandardButton.Yes:
             return
-        try:
-            key = self.workspace.soft_delete(name)
+        result = self._execute_user_approved_action(
+            "trash_file", {"name": name}, title="确认移入可恢复区")
+        if result is not None:
+            key = result["result"]["trash_key"]
             self.status.setText("文件已移入可恢复区：" + key)
             self._notice("已移入可恢复区：" + name)
-        except (WorkspaceError, OSError) as exc:
-            self._job_error(str(exc))
 
     def restore_file(self):
         entries = self.workspace.deleted_files()
@@ -1097,9 +1170,8 @@ class PetAssistantDialog(QDialog):
             self, "恢复文件", "选择需要恢复的记录：", entries, 0, False)
         if not ok:
             return
-        try:
-            target = self.workspace.restore(key)
-            self.status.setText("已恢复：" + str(target))
-            self._notice("文件已恢复：" + target.name)
-        except (WorkspaceError, OSError) as exc:
-            self._job_error(str(exc))
+        result = self._execute_user_approved_action(
+            "restore_file", {"key": key}, title="确认恢复文件")
+        if result is not None:
+            self.status.setText("已恢复：" + result["result"]["path"])
+            self._notice("文件已恢复：" + result["result"]["name"])
