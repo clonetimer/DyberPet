@@ -110,9 +110,10 @@ class LinuxEspeakProcessTests(unittest.TestCase):
         class StubbornProcess(_Process):
             def wait(self, timeout=None):
                 self.wait_calls += 1
-                if self.wait_calls == 1:
+                if not self.terminated:
                     stop.set()
-                if self.terminated and not self.killed:
+                    raise subprocess.TimeoutExpired("espeak-ng", timeout)
+                if not self.killed:
                     raise subprocess.TimeoutExpired("espeak-ng", timeout)
                 return self.return_code
 
