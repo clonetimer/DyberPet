@@ -78,6 +78,7 @@ class PetAssistantDialog(QDialog):
         self._default_workspace = Path(workspace)
         self.workspace = PetWorkspace(self._default_workspace)
         self._action_runtime_error = ""
+        self._pending_file_context = None
         try:
             action_audit_path = (
                 Path(store_path).parent / "assistant-actions.sqlite3"
@@ -267,11 +268,13 @@ class PetAssistantDialog(QDialog):
         restore_button = QPushButton("恢复文件")
         self.save_reply_button = QPushButton("将 AI 回复保存为便签")
         self.save_reply_button.clicked.connect(self.save_reply_as_note)
+        self.attach_file_button = QPushButton("选择文件供 AI 分析")
+        self.attach_file_button.clicked.connect(self.attach_workspace_file)
         create_button.clicked.connect(self.create_file)
         delete_button.clicked.connect(self.delete_file)
         restore_button.clicked.connect(self.restore_file)
         for widget in (create_button, delete_button, restore_button,
-                       self.save_reply_button):
+                       self.save_reply_button, self.attach_file_button):
             file_row.addWidget(widget)
         body.addLayout(file_row)
         self.status = QLabel("麦克风默认关闭；所有文件动作均须用户亲自选择。")
@@ -302,6 +305,7 @@ class PetAssistantDialog(QDialog):
         if saved in PERSONAS:
             self.persona.setCurrentIndex(self.persona.findData(saved))
         self._last_reply = ""
+        self._pending_file_context = None
         self._ppl_snapshot = ""  # Persona snapshots belong to the previous character
         self._restore_character_history()
 
@@ -805,8 +809,11 @@ class PetAssistantDialog(QDialog):
         generation = self._session_generation
         ppl = (self.ppl_endpoint.text() if self.ppl_enabled.isChecked()
                else None)
+        file_context = self._pending_file_context
         self.message.clear()
         self.chat_log.appendPlainText("你：" + text)
+        if file_context:
+            self.chat_log.appendPlainText("本轮已附加用户确认的文件：" + file_context["name"])
         self.status.setText("正在请求本地模型…")
         self.chat_log.appendPlainText(character + "：")
         self._stream_reply_open = True
@@ -821,8 +828,8 @@ class PetAssistantDialog(QDialog):
             answer = stream_local_chat(
                 text, on_delta=on_delta, persona_key=persona, state=state,
                 ppl_prompt=snapshot, history=history, memory_context=memory_context,
-                base_url=endpoint, model=model)
-            return character, generation, text, answer
+                file_context=file_context, base_url=endpoint, model=model)
+            return character, generation, text, answer, file_context
 
         self._submit(
             task, self._message_reply, stream=True,
@@ -831,7 +838,13 @@ class PetAssistantDialog(QDialog):
 
     def _message_reply(self, result):
         if isinstance(result, tuple):
-            if len(result) == 4:
+            if len(result) == 5:
+                character, generation, user_text, reply, file_context = result
+                if generation != self._session_generation:
+                    return
+                if self._pending_file_context == file_context:
+                    self._pending_file_context = None
+            elif len(result) == 4:
                 character, generation, user_text, reply = result
                 if generation != self._session_generation:
                     return
@@ -850,7 +863,7 @@ class PetAssistantDialog(QDialog):
         else:
             reply = result
         self._last_reply = reply
-        if isinstance(result, tuple) and len(result) == 4 and self._conversation_store:
+        if isinstance(result, tuple) and len(result) in (4, 5) and self._conversation_store:
             try:
                 self._conversation_store.append_turn(character, user_text, reply)
             except (OSError, ValueError) as exc:
@@ -1020,6 +1033,7 @@ class PetAssistantDialog(QDialog):
         self._ppl_snapshot = ""
         self._last_reply = ""
         self._stream_reply_open = False
+        self._pending_file_context = None
         self.workspace = PetWorkspace(self._default_workspace)
         if self._action_runtime is not None:
             self._action_runtime.set_workspace(self.workspace)
@@ -1032,6 +1046,27 @@ class PetAssistantDialog(QDialog):
             self._action_runtime.set_workspace(self.workspace)
         self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
         self.status.setText("已回到默认专属文件目录；临时授权已撤销。")
+
+    def attach_workspace_file(self):
+        entries = self.workspace.list_files()
+        if not entries:
+            self._job_error("当前工作区没有可供 AI 分析的文本文件")
+            return
+        name, ok = QInputDialog.getItem(
+            self, "选择文件供 AI 分析", "选择一个 UTF-8 文本文件：", entries, 0, False)
+        if not ok:
+            return
+        result = self._execute_user_approved_action(
+            "read_file", {"name": name}, title="确认将文件内容发送给本地 AI")
+        if result is None:
+            return
+        payload = result["result"]
+        self._pending_file_context = {"name": payload["name"], "content": payload["content"]}
+        self.status.setText(
+            "已附加 " + payload["name"] + "（" + str(payload["characters"])
+            + " 字符）；仅用于下一轮本地模型请求。")
+        self.chat_log.appendPlainText(
+            "[已选择文件：" + payload["name"] + "；发送问题后只使用一次]")
 
     def save_reply_as_note(self):
         if not self._last_reply.strip():
