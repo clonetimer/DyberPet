@@ -103,6 +103,29 @@ class LinuxEspeakProcessTests(unittest.TestCase):
         self.assertTrue(processes[0].terminated)
         self.assertEqual(len(calls), 1)
 
+
+    def test_stop_escalates_to_kill_when_child_ignores_terminate(self):
+        stop = threading.Event()
+
+        class StubbornProcess(_Process):
+            def wait(self, timeout=None):
+                self.wait_calls += 1
+                if self.wait_calls == 1:
+                    stop.set()
+                if self.terminated and not self.killed:
+                    raise subprocess.TimeoutExpired("espeak-ng", timeout)
+                return self.return_code
+
+        result, processes, calls = self.run_linux(
+            "甲" * 1200, stop,
+            process_factory=lambda event: StubbornProcess(
+                stop_event=event, return_code=None, stop_on_wait=True))
+        self.assertFalse(result)
+        self.assertEqual(len(processes), 1)
+        self.assertTrue(processes[0].terminated)
+        self.assertTrue(processes[0].killed)
+        self.assertEqual(len(calls), 1)
+
     def test_nonzero_exit_is_not_reported_as_success(self):
         with patch("DyberPet.assistant.speech.sys.platform", "linux"), \
                 patch("DyberPet.assistant.speech.shutil.which", return_value="/usr/bin/espeak-ng"), \

@@ -404,3 +404,11 @@
 - **为什么：** unittest discovery 会在所有平台导入 `tests/` 下的模块。即使工作流仅在 Linux acceptance job 中显式执行新测试，助手通用全量套件仍会发现它；模块顶层导入 `pyttsx3` 会让不安装可选音频依赖的环境在测试执行前直接失败。
 - **踩坑：** 平台专用测试应在模块导入时只依赖标准库；平台和可选依赖检查放在测试方法内部。使用 `skipTest` 仅用于不具备该集成环境的通用套件，不能在专用 Linux acceptance job 中跳过。
 - **验证：** Ubuntu/Windows Python 3.9/3.11 通用助手套件重新运行；Linux X11 acceptance 单独执行真实 pyttsx3 音色目录到 eSpeak NG CLI 的逐项 WAV 合成验证。以最新 CI 结果记录通过数和实际音色数。
+
+
+## 54. 子进程取消需要验证 terminate 超时后的 kill 兜底
+
+- **改了什么：** 为 Linux eSpeak NG 子进程补充“忽略 terminate”的故障注入测试，确认工作线程在短等待窗口结束后升级为 kill，并且不会启动下一段语音。
+- **为什么：** 正常停止测试只证明协作式子进程会退出；系统音频后端卡死或子进程处于不可及时响应状态时，单独调用 terminate 并不构成有界取消保证。
+- **踩坑：** 不能只断言 stop_event 被置位，也不能只断言 terminate 被调用；必须模拟子进程忽略 terminate，检查 kill 确实发生并最终 wait 回收。
+- **验证：** 新增 Linux 进程合约测试，检查 terminate 超时后 kill 升级、当前子进程回收、后续语音段不启动；由 Linux X11 acceptance job 执行。

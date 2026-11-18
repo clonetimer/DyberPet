@@ -89,3 +89,8 @@ PR head `3f36ab0` 的 Linux X11 job 在真实 Ubuntu 24.04 音色目录中由 py
 覆盖包含普通话 `sit/cmn`、普通话拼音 `sit/cmn-latn-pinyin`、粤语 `sit/yue`、粤语拼音 `sit/yue-latn-jyutping` 等 ID。完整 ID 清单保存在 [Linux X11 CI 日志](https://github.com/clonetimer/DyberPet/actions/runs/44279268751) 的 `LINUX_ESPEAK_VOICE_COMPATIBILITY_IDS` 输出中。
 
 这证明当前 CI 安装的 pyttsx3/eSpeak 音色目录与 eSpeak NG CLI 参数兼容，不代表所有发行版、第三方 voice data、或中文发音质量均相同；用户目标机器仍应执行实际试听。
+
+
+## 取消兜底故障注入补充
+
+新增 Linux 子进程合约 `test_stop_escalates_to_kill_when_child_ignores_terminate`：模拟当前 eSpeak NG 子进程在收到 terminate 后仍不退出，确认 500 ms 等待窗口后升级 kill，最终回收当前进程且不启动下一语音段。此项覆盖有界取消的强制兜底，不代表对内核不可中断睡眠（D 状态）进程可以保证立即终止。
