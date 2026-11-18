@@ -2,6 +2,7 @@
 import json
 import tempfile
 import unittest
+from types import ModuleType
 from unittest.mock import patch
 
 from DyberPet.assistant.persona import (
@@ -13,6 +14,12 @@ from DyberPet.assistant.voice import (
     VoiceUnavailable, recognize_once, recognize_until_stopped,
     speak_interruptible, speak_once,
 )
+
+
+def _driver_module(name, **attributes):
+    module = ModuleType(name)
+    module.__dict__.update(attributes)
+    return module
 
 
 class PersonaContractTests(unittest.TestCase):
@@ -241,7 +248,6 @@ class PersonaContractTests(unittest.TestCase):
     def test_continuous_voice_stops_on_user_event_without_saving_audio(self):
         import sys
         import threading
-        from types import SimpleNamespace
 
         class FakeRecognizer:
             def __init__(self, *args):
@@ -266,9 +272,9 @@ class PersonaContractTests(unittest.TestCase):
 
         stop = threading.Event()
         partials = []
-        fake_sd = SimpleNamespace(RawInputStream=FakeStream)
-        fake_vosk = SimpleNamespace(Model=lambda path: object(),
-                                    KaldiRecognizer=FakeRecognizer)
+        fake_sd = _driver_module("sounddevice", RawInputStream=FakeStream)
+        fake_vosk = _driver_module("vosk", Model=lambda path: object(),
+                                   KaldiRecognizer=FakeRecognizer)
         with tempfile.TemporaryDirectory() as folder:
             with patch.dict(sys.modules, {"sounddevice": fake_sd, "vosk": fake_vosk}):
                 result = recognize_until_stopped(
@@ -280,7 +286,6 @@ class PersonaContractTests(unittest.TestCase):
         import sys
         import threading
         from pathlib import Path
-        from types import SimpleNamespace
 
         class FakeRecognizer:
             def __init__(self, *args):
@@ -312,9 +317,9 @@ class PersonaContractTests(unittest.TestCase):
         partials = []
         with tempfile.TemporaryDirectory() as folder:
             with patch.dict(sys.modules, {
-                "sounddevice": SimpleNamespace(RawInputStream=FakeStream),
-                "vosk": SimpleNamespace(Model=lambda path: object(),
-                                        KaldiRecognizer=FakeRecognizer),
+                "sounddevice": _driver_module("sounddevice", RawInputStream=FakeStream),
+                "vosk": _driver_module("vosk", Model=lambda path: object(),
+                                       KaldiRecognizer=FakeRecognizer),
             }):
                 result = recognize_until_stopped(
                     folder, stop, on_partial=partials.append, max_seconds=10)
@@ -330,7 +335,6 @@ class PersonaContractTests(unittest.TestCase):
     def test_interruptible_tts_stops_without_cross_thread_driver_calls(self):
         import sys
         import threading
-        from types import SimpleNamespace
 
         class FakeEngine:
             def __init__(self):
@@ -356,7 +360,7 @@ class PersonaContractTests(unittest.TestCase):
         stop = threading.Event()
         ready = []
         with patch.dict(sys.modules, {
-            "pyttsx3": SimpleNamespace(init=lambda: engine)
+            "pyttsx3": _driver_module("pyttsx3", init=lambda: engine)
         }):
             result = speak_interruptible(
                 "你好", stop, on_ready=lambda: ready.append(True))

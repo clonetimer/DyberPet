@@ -62,6 +62,8 @@
 - **实践：** 一次提交后记录完整 SHA，集中取得该 SHA 的相关运行；让独立作业并行，按有意义的间隔查询整批状态。出现失败才读取相应作业日志。检查工作流的分支与路径过滤：文档变更未触发工作流时，记录“未运行”，不能补写“通过”。产物同时记录运行 ID、artifact ID、大小、摘要和保留期。
 - **验证：** [桌宠工作流](../.github/workflows/pet-assistant.yml) 有 4 个系统/Python 单测组合、1 个 Qt 作业、1 个 PPL 合约作业；[Windows 工作流](../.github/workflows/windows-portable.yml) 单独构建并启动冻结 EXE。最终记录应核对运行所属 SHA 与全部必要作业结论，不能拿上面的旧绿色基线代替本轮结果。
 
+本批额外触发的 [角色导入工作流](../.github/workflows/character-mod-importer.yml) 还暴露了镜像漂移：`ubuntu-latest` 已解析到 Ubuntu 26.04，`setup-python` 找不到 Python 3.9。该矩阵改为 `ubuntu-24.04`，保留 Python 3.9/3.11 覆盖；这种失败应修正环境契约，不能删掉版本检查来取得绿色。
+
 ## 7. 验收结论按证据层级书写
 
 - **问题：** 单测、离屏 GUI、打包后 EXE、真实设备和性能验收混写，会让“能导入模块”看起来像“完整体验已可用”。
@@ -138,6 +140,13 @@
 - **原因：** 最小复现缩小到三项音频/取消测试及主线程 `gc.collect()`。native 栈和销毁记录显示，无父测试窗口进入循环回收时，底部 `QLabel` 的析构经过父布局通知崩溃。仅将 ready 的强窗口引用改为弱引用，同一复现即通过；没有证据把它归为某个已确认的 Qt 缺陷。
 - **实践：** 设备回调保留角色、会话及本次停止事件，窗口仅使用弱引用，接收端继续核对身份和停止状态。生产助手仍由桌宠父对象持有，关闭仍等待 worker 退出。不要用禁用 GC、调整测试顺序或删除定时反馈来掩盖引用生命周期问题。另需区分 [Qt 关闭窗口](https://doc.qt.io/qt-6/qwidget.html#close) 与 [延迟删除对象](https://doc.qt.io/qt-6/qobject.html#deleteLater)：测试临时对象的清理和可复用产品窗口的关闭不能混为一谈。
 - **验证：** [活动 Qt 测试](../tests/test_assistant_activity_qt.py) 的 `test_retained_audio_callback_does_not_keep_a_closed_window_alive` 分别保留朗读回调和麦克风任务，验证关闭窗口可被释放、迟到回调不再访问它。旧实现两个分支均失败，弱引用修复后通过；原三项强制 GC 复现也通过。完整套件结果按本批验证记录另列，不拿单项结果代替全量结论。
+
+## 18. 模块替身要保留真实模块结构
+
+- **问题：** 语音测试在 PySide6 6.8.3 通过，却在完整 PySide6 6.5.2 套件中因 `SimpleNamespace` 缺少 `__name__` 报错；仅运行纯 Python 语音用例无法发现。
+- **原因：** 将模块放入 `sys.modules` 时，只提供业务方法不足以模拟模块。旧版 Shiboken 的导入钩子还会读取模块元数据；Qt 和语音测试处于同一进程时才触发这条路径。
+- **实践：** 使用标准库 `types.ModuleType` 构造 sounddevice、vosk 和 pyttsx3 替身，再挂载受控驱动方法。保留真实生产捕获/播报循环及原行为断言，不降低测试范围。测试运行时应包含实际支持的 Python/Qt 组合，不能只凭更新版本通过推断旧版兼容。
+- **验证：** [既有语音合约](../tests/test_assistant_persona_voice.py) 和 [语音生命周期测试](../tests/test_assistant_voice_lifecycle.py) 的模块替身均采用此结构。首轮失败证据来自 [角色导入 CI 44242637307](https://github.com/clonetimer/DyberPet/actions/runs/44242637307)；修复后的精确版本本地及远端结果见 [本批验证记录](verification/2026-11-18-assistant-activity.md) 与 PR。
 
 ## 后续更新方式
 

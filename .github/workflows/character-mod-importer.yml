@@ -204,7 +204,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Python 3.9 has no setup-python build for the Ubuntu 26.04 image.
+        os: [ubuntu-24.04, windows-latest]
         python-version: ["3.9", "3.11"]
     steps:
       - uses: actions/checkout@v4

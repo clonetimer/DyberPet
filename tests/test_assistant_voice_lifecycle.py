@@ -4,12 +4,18 @@ import sys
 import tempfile
 import threading
 import unittest
-from types import SimpleNamespace
+from types import ModuleType
 from unittest.mock import patch
 
 from DyberPet.assistant.voice import (
     VoiceUnavailable, recognize_until_stopped, speak_interruptible,
 )
+
+
+def _driver_module(name, **attributes):
+    module = ModuleType(name)
+    module.__dict__.update(attributes)
+    return module
 
 
 class _RecognitionDriver:
@@ -21,8 +27,9 @@ class _RecognitionDriver:
         self.final = final
         self.enter_error = enter_error
         self.events = []
-        self.sounddevice = SimpleNamespace(RawInputStream=self.stream)
-        self.vosk = SimpleNamespace(Model=self.model, KaldiRecognizer=self.recognizer)
+        self.sounddevice = _driver_module("sounddevice", RawInputStream=self.stream)
+        self.vosk = _driver_module("vosk", Model=self.model,
+                                  KaldiRecognizer=self.recognizer)
 
     def record(self, event):
         self.events.append(event)
@@ -123,7 +130,9 @@ class VoiceLifecycleTests(unittest.TestCase):
                 return recognize_until_stopped(folder, driver.stop, **kwargs)
 
     def speak(self, driver, **kwargs):
-        with patch.dict(sys.modules, {"pyttsx3": SimpleNamespace(init=driver.init)}):
+        with patch.dict(sys.modules, {
+            "pyttsx3": _driver_module("pyttsx3", init=driver.init)
+        }):
             return speak_interruptible("你好", driver.stop_event, **kwargs)
 
     def test_cancelled_capture_never_loads_model_or_opens_microphone(self):

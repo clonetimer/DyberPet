@@ -22,6 +22,8 @@ python -m unittest discover -s tests -v
 
 最终结果：**673 tests / 668 passed / 5 skipped / 0 failures**，29.799 秒，进程退出码 0。
 
+首轮远端完整套件暴露旧版 Qt 的模块替身要求后，另建与 CI 一致的 **Python 3.11.18 / PySide6 6.5.2 / PyOpenGL 3.1.10 / Pillow 12.3.0** 本地运行时，修正替身后再次完整运行：**673 tests / 668 passed / 5 skipped / 0 failures**，27.075 秒，进程退出码 0。没有改动本批生产功能代码。
+
 | 关键覆盖 | 最终套件中的范围 |
 | --- | --- |
 | Qt 控件与事件循环 | 74 项；包含本批 16 项活动/取消用例、既有助手和任务审阅回归 |
@@ -30,7 +32,7 @@ python -m unittest discover -s tests -v
 | Qt 与实际 HTTP 联动 | 一个用例分别运行聊天 SSE 与草案 JSON 两种真实连接；点击停止后服务端观察到断开，UI 恢复且无历史/草案发布 |
 | 语音生命周期 | 新增 14 项受控驱动回归：加载/打开/初始化时停止、ready 时机和所属线程清理 |
 | 原生桥接 | 6 项回归，包含助手气泡关闭后仍保留朗读状态及已解锁动作 |
-| 语法和差异 | 10 个修改/新增 Python 文件通过 Python 3.9 grammar 解析；assistant compileall 与 git diff --check 通过 |
+| 语法和差异 | 本批共 11 个修改/新增 Python 文件通过 Python 3.9 grammar 解析；assistant compileall 与 git diff --check 通过 |
 
 上述 HTTP 服务是协议 fixture，不是 LLM；受控语音驱动不是实机。Python 3.9 grammar 检查仅证明语法兼容，实际 Python 3.9/3.11 与 Windows Qt 6.5.2 结果由对应 CI 提供。
 
@@ -52,6 +54,15 @@ python -m unittest discover -s tests -v
 4. **完整套件 native 崩溃：** 最初完整运行在后续 Qt 事件循环发生段错误，不能算通过。缩小到三项取消/语音测试与主线程 GC 后，native 栈定位到已关闭无父窗口的 QLabel 析构和父布局通知。仅将设备 ready 回调中的强窗口引用改为弱引用，同一复现通过；新增回归也证明保留设备回调不会继续保留已关闭窗口。未禁用 GC、未调整测试顺序、未更改 fixture 清理来取得最终通过。随后重新运行完整套件得到上面的最终结果。
 
 独立审阅复核了准备失败、旁路错误和弱回调修复。保留的诊断日志不作为用户交付物；可复用结论已写入 [开发经验](../DEVELOPMENT_EXPERIENCE.md) 第 16–17 条。
+
+## 首轮远端检查与 CI 补修
+
+功能提交 `a0dab4cc4dc206c73ee74a3800ced1dbaa32d783` 的助手 6 作业、Windows 便携包、Linux X11 源码/冻结程序和 Live2D 检查均通过。额外触发的 [角色导入完整套件](https://github.com/clonetimer/DyberPet/actions/runs/44242637307) 未通过，不能将首轮写成所有 CI 绿色：
+
+- Ubuntu 的 `latest` 镜像已漂移到 26.04，Python 3.9 安装步骤无可用构建。固定该矩阵为 Ubuntu 24.04，继续保留 Python 3.9/3.11 检查。
+- PySide6 6.5.2 的 Shiboken 导入钩子读取模块 `__name__`，原 `SimpleNamespace` 语音替身没有完整模块结构。两份语音测试改用 `types.ModuleType`，保留所有行为断言；随后在上述精确旧版 Qt 环境中完成整套通过。
+
+补修只涉及工作流矩阵、测试替身和验证/经验说明。最终分支 SHA 的所有检查及新产物在 PR 更新，不将首轮产物误记为新提交的产物。具体经验见第 6、18 条。
 
 ## 界面证据与能力边界
 
