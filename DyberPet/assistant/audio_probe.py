@@ -55,13 +55,13 @@ def probe_microphone(stop_event, *, microphone=None, sample_rate: int = 16000,
                 if (isinstance(default_rate, (int, float))
                         and not isinstance(default_rate, bool)
                         and math.isfinite(default_rate)
-                        and 8000 <= default_rate <= 48000):
+                        and 8000 <= default_rate <= 192000):
                     candidates.append(int(round(default_rate)))
         except Exception:
             # Device metadata may be unavailable on a host API; common rates
             # below still provide a bounded negotiation path.
             pass
-        candidates.extend((48000, 44100, 32000, 22050, 16000, 8000))
+        candidates.extend((192000, 96000, 88200, 48000, 44100, 32000, 22050, 16000, 8000))
         unique_rates = tuple(dict.fromkeys(candidates))
         stream = None
         selected_rate = None
@@ -82,7 +82,7 @@ def probe_microphone(stop_event, *, microphone=None, sample_rate: int = 16000,
         if stream is None:
             detail = failures[-1] if failures else "no supported sample rate"
             raise VoiceUnavailable(
-                "麦克风不接受 16/48/44.1/32/22.05/8 kHz 常见采样率；"
+                "麦克风不接受 16/192/96/88.2/48/44.1/32/22.05/8 kHz 常见采样率；"
                 "请检查设备格式或系统音频服务：" + detail)
         frames_limit = int(selected_rate * duration_seconds)
         started = time.monotonic()
