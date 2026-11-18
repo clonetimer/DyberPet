@@ -12,11 +12,13 @@ on:
       - "DyberPet/assistant/audio_probe.py"
       - "DyberPet/assistant/audio_settings.py"
       - "DyberPet/assistant/ui.py"
+      - "DyberPet/assistant/trial_records.py"
       - "DyberPet/assistant/voice_readiness.py"
       - "tests/test_assistant_linux_tts.py"
       - "tests/test_assistant_linux_tts_readiness.py"
       - "tests/test_assistant_linux_voice_compatibility.py"
       - "tests/test_assistant_audio_probe.py"
+      - "tests/test_assistant_trial_records.py"
       - "tests/test_assistant_audio_settings_qt.py"
       - "docs/pet_assistant.md"
       - "docs/linux_acceptance.md"
@@ -96,6 +98,7 @@ jobs:
           python -m unittest discover -s tests -p "test_assistant_linux_tts.py" -v
           python -m unittest discover -s tests -p "test_assistant_linux_tts_readiness.py" -v
           python -m unittest discover -s tests -p "test_assistant_linux_voice_compatibility.py" -v
+          python -m unittest discover -s tests -p "test_assistant_audio_probe.py" -v
           output="$(mktemp --suffix=.wav)"
           printf 'DyberPet offline speech synthesis smoke test.' | espeak-ng --stdin -w "$output"
           test -s "$output"

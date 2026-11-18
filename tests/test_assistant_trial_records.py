@@ -163,6 +163,15 @@ class TrialRecorderTests(_ModuleTest):
         with self.assertRaises(ValueError):
             self.recorder.clear()
 
+    def test_microphone_probe_is_a_supported_content_free_activity_kind(self):
+        run = self.recorder.begin("audio_probe")
+        self.clock.now = 101.0
+        self.recorder.ready(run)
+        self.clock.now = 102.0
+        self.recorder.finish(run, "completed")
+        self.assertEqual(self.row()["kind"], "audio_probe")
+        self.assertEqual(self.row()["outcome"], "completed")
+
     def test_feedback_is_explicit_and_snapshot_does_not_share_mutable_state(self):
         run = self.recorder.begin("speech")
         self.recorder.observe(run, engine_completed=True)
