@@ -311,6 +311,7 @@ def _assistant_package_smoke():
     from DyberPet.assistant.portable import inspect_assets
     from DyberPet.assistant.ui import PetAssistantDialog
     from DyberPet.assistant.persona import PERSONAS
+    from DyberPet.assistant.speech import split_speech_text
     report = {"resource_root": os.getcwd(), "assets": inspect_assets(os.getcwd()),
               "persona_count": len(PERSONAS), "assistant_dialog": False,
               "optional_voice_imports": {}}
@@ -322,8 +323,28 @@ def _assistant_package_smoke():
             "Kitty", Path(temp) / "sandbox",
             role_root=Path(os.getcwd()) / "res" / "role")
         report["assistant_dialog"] = bool(
-            dialog.workspace.root.is_dir() and dialog.persona.count() >= 7)
+            dialog.workspace.root.is_dir() and dialog.persona.count() >= 7
+            and dialog.voice_chat_button.isEnabled()
+            and not dialog.voice_end_button.isEnabled()
+            and not dialog.voice_conversation.active and dialog._job is None)
+        report["voice_conversation_starts_off"] = not dialog.voice_conversation.active
+        report["voice_settings_available"] = bool(
+            dialog.audio_settings.device_selector.count() >= 1
+            and dialog.audio_settings.voice_selector.count() >= 1
+            and dialog.audio_settings.rate_spin.minimum() == 100
+            and dialog.audio_settings.rate_spin.maximum() == 230
+            and dialog.audio_settings.refresh_button.isEnabled()
+            and not dialog.audio_settings.toggle_button.isChecked()
+            and dialog._job is None)
         dialog.close()
+    sample = "完整播报检查。" * 200
+    chunks = split_speech_text(sample)
+    report["complete_speech_segmentation_verified"] = bool(
+        len(chunks) > 1 and all(len(chunk) <= 500 for chunk in chunks)
+        and "".join(chunks) == sample)
+    if not (report["voice_settings_available"]
+            and report["complete_speech_segmentation_verified"]):
+        raise RuntimeError("Portable voice settings or complete speech unavailable")
     # Exercise the actual packaged role converter with an original synthetic
     # PNG so missing Pillow/tool modules cannot pass an EXE startup-only smoke.
     from DyberPet.assistant.character_import_smoke import verify_portable_character_importer

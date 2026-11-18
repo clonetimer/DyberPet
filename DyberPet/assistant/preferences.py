@@ -29,6 +29,8 @@ def defaults() -> dict:
             "ppl_url": DEFAULT_PPL_URL,
             "ppl_enabled": False,
             "voice_model": "",
+            "microphone": None,
+            "voice_profiles": {},
             "bubble_enabled": True,
             "auto_speak": False,
             "motion_enabled": True,
@@ -63,6 +65,28 @@ def validate(raw) -> dict:
                 or not isinstance(key, str) or key not in PERSONAS):
             raise ValueError("Invalid character persona mapping")
     result["personas"] = dict(persona)
+    microphone = raw.get("microphone")
+    if microphone is not None:
+        if (not isinstance(microphone, dict)
+                or not isinstance(microphone.get("name"), str)
+                or not microphone["name"].strip() or len(microphone["name"]) > 256
+                or not isinstance(microphone.get("host_api"), str)
+                or not microphone["host_api"].strip() or len(microphone["host_api"]) > 128):
+            raise ValueError("Invalid microphone selection")
+        result["microphone"] = {key: microphone[key] for key in ("name", "host_api")}
+    profiles = raw.get("voice_profiles", {})
+    if not isinstance(profiles, dict) or len(profiles) > 100:
+        raise ValueError("Invalid character voice settings")
+    for character, profile in profiles.items():
+        if (not isinstance(character, str) or len(character) > 120
+                or not isinstance(profile, dict)
+                or not isinstance(profile.get("voice_id"), str)
+                or len(profile["voice_id"]) > 512
+                or type(profile.get("rate")) is not int
+                or not 100 <= profile["rate"] <= 230):
+            raise ValueError("Invalid character voice profile")
+        result["voice_profiles"][character] = {
+            "voice_id": profile["voice_id"], "rate": profile["rate"]}
     return result
 
 

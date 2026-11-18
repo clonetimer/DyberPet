@@ -110,15 +110,24 @@ class NativeStepGaitTests(unittest.TestCase):
                 "expressions": [], "motion_groups": {},
                 "hit_areas": {}, "extra_motions": {}}
         fake = FakeModel()
+        # Isolate persisted placement for the whole window lifetime, including
+        # construction and close. Renderer ordering needs room to walk left.
+        settings_patch = patch("DyberPet.DyberSettings.doro_live2d_dialog.QSettings")
+        settings = settings_patch.start().return_value
+        self.addCleanup(settings_patch.stop)
+        settings.value.return_value = [0, 100, 360, 370]
+        screens_patch = patch.object(DoroDesktopWindow, "_available_screens",
+                                     return_value=[(0, 0, 800, 600)])
+        screens_patch.start()
+        self.addCleanup(screens_patch.stop)
         window = DoroDesktopWindow(info)
+        window.move(200, 100)
         window.model = fake
         window.live2d = type("FakeLive", (), {"clearBuffer": staticmethod(
             lambda: calls.append("clear"))})()
         try:
-            with patch("DyberPet.DyberSettings.doro_live2d_dialog.QSettings"):
-                # Bypass user settings in activation; the event is native
-                # loadSucceeded, not 'window shown'.
-                window._on_model_ready()
+            # The event is native loadSucceeded, not 'window shown'.
+            window._on_model_ready()
             self.assertIsNotNone(window._gait)
             self.assertTrue(window.start_walk(-1))
             window._gait.tick(.05, 200, 0, 500)

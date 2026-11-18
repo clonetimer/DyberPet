@@ -9,6 +9,7 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
+    from PySide6.QtCore import QCoreApplication, QEvent
     from PySide6.QtWidgets import QApplication, QMessageBox
 except ImportError:
     QApplication = QMessageBox = None
@@ -24,10 +25,94 @@ class AssistantQtTests(unittest.TestCase):
         from DyberPet.assistant.ui import PetAssistantDialog
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.dialog = PetAssistantDialog("咕嘎", Path(self.tmp.name) / "files")
-        self.addCleanup(self.dialog.close)
+        self.dialog = PetAssistantDialog(
+            "咕嘎", Path(self.tmp.name) / "files",
+            store_path=Path(self.tmp.name) / "companion.sqlite3")
+        self.addCleanup(self.dispose_dialog)
+
+    def dispose_dialog(self):
+        self.dialog.close()
+        if self.dialog._job is not None:
+            self.assertTrue(self.dialog._job.wait(3000))
+            self.app.processEvents()
+        # Mock call histories can retain a closed window until a later worker
+        # triggers Python GC. Destroy its native Qt tree on the GUI thread now.
+        self.dialog.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+    def test_ai_reply_note_is_created_only_after_user_confirmation(self):
+        self.dialog._last_reply = "这是 AI 生成的便签内容。"
+        with patch("PySide6.QtWidgets.QInputDialog.getText",
+                   return_value=("AI便签.md", True)):
+            with patch("PySide6.QtWidgets.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.Yes):
+                self.dialog.save_reply_as_note()
+        saved = self.dialog.workspace.root / "AI便签.md"
+        self.assertTrue(saved.is_file())
+        self.assertEqual(saved.read_text(encoding="utf-8"), "这是 AI 生成的便签内容。")
+
+    def test_ai_reply_note_cancel_does_not_write_file(self):
+        self.dialog._last_reply = "不应保存"
+        with patch("PySide6.QtWidgets.QInputDialog.getText",
+                   return_value=("", False)):
+            self.dialog.save_reply_as_note()
+        self.assertEqual(self.dialog.workspace.list_files(), [])
+
+    def test_ai_reply_note_uses_approval_runtime_and_records_audit(self):
+        self.dialog._last_reply = "通过审批中心保存。"
+        with patch("PySide6.QtWidgets.QInputDialog.getText",
+                   return_value=("approved.md", True)):
+            with patch("PySide6.QtWidgets.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.Yes):
+                self.dialog.save_reply_as_note()
+        self.assertEqual(
+            (self.dialog.workspace.root / "approved.md").read_text(encoding="utf-8"),
+            "通过审批中心保存。")
+        self.assertIn("executed", [x["status"] for x in self.dialog._action_runtime.audit_log()])
+
+    def test_selected_workspace_file_requires_approval_and_is_role_scoped(self):
+        self.dialog.workspace.create("context.md", "文件里的资料")
+        with patch("PySide6.QtWidgets.QInputDialog.getItem",
+                   return_value=("context.md", True)):
+            with patch("PySide6.QtWidgets.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.Yes):
+                self.dialog.attach_workspace_file()
+        self.assertEqual(self.dialog._pending_file_context["name"], "context.md")
+        self.assertEqual(self.dialog._pending_file_context["content"], "文件里的资料")
+        self.dialog.set_character("Doro")
+        self.assertIsNone(self.dialog._pending_file_context)
+
+    def test_attached_file_is_passed_to_one_local_turn_and_then_consumed(self):
+        self.dialog.llm_model.setText("local-model")
+        self.dialog.message.setText("请总结文件")
+        self.dialog._pending_file_context = {
+            "name": "brief.md", "content": "用户选定的参考资料"}
+        captured = {}
+
+        def fake_submit(task, on_success, *args, stream=False, on_progress=None, **kwargs):
+            result = task(lambda _: None)
+            captured["result"] = result
+            on_success(result)
+
+        with patch("DyberPet.assistant.ui.stream_local_chat",
+                   return_value="总结完成") as stream:
+            with patch.object(self.dialog, "_submit", side_effect=fake_submit):
+                self.dialog.send_message()
+        self.assertEqual(stream.call_args.kwargs["file_context"], {
+            "name": "brief.md", "content": "用户选定的参考资料"})
+        self.assertEqual(captured["result"][4]["name"], "brief.md")
+        self.assertIsNone(self.dialog._pending_file_context)
+        self.assertEqual(self.dialog._last_reply, "总结完成")
+
+    def test_reset_workspace_clears_selected_file_context(self):
+        self.dialog._pending_file_context = {
+            "name": "previous-folder.md", "content": "private data"}
+        self.dialog.reset_workspace()
+        self.assertIsNone(self.dialog._pending_file_context)
 
     def test_dialog_persona_and_file_actions_exist(self):
+        self.assertIsNotNone(self.dialog._action_runtime)
+        self.assertTrue(hasattr(self.dialog, "action_audit_button"))
         self.assertEqual(self.dialog.persona.currentData(), "guga")
         self.assertFalse(self.dialog.ppl_enabled.isChecked())
         self.assertTrue(self.dialog.workspace.root.is_dir())
@@ -46,6 +131,100 @@ class AssistantQtTests(unittest.TestCase):
         self.dialog._message_reply(("咕嘎", "old persona text"))
         self.assertEqual(len(replies), 1)
         self.assertNotIn("old persona text", self.dialog.chat_log.toPlainText())
+
+    def test_clear_character_history_keeps_memories(self):
+        self.dialog._conversation_store.append_turn("咕嘎", "你好", "你好呀")
+        self.dialog._conversation_store.add_memory("咕嘎", "保留的记忆")
+        with patch("PySide6.QtWidgets.QMessageBox.question",
+                   return_value=QMessageBox.StandardButton.Yes):
+            self.dialog.clear_character_history()
+        self.assertEqual(self.dialog._conversation_store.recent_messages("咕嘎"), [])
+        self.assertEqual(len(self.dialog._conversation_store.list_memories("咕嘎")), 1)
+
+    def test_character_history_restores_and_memory_is_role_scoped(self):
+        self.dialog._conversation_store.append_turn("咕嘎", "你好", "你好呀")
+        self.dialog._conversation_store.append_turn("Doro", "汪", "Doro!")
+        self.dialog.set_character("Doro")
+        self.assertIn("Doro：Doro!", self.dialog.chat_log.toPlainText())
+        self.assertNotIn("你好呀", self.dialog.chat_log.toPlainText())
+        self.dialog._conversation_store.add_memory("咕嘎", "用户喜欢航天器仿真")
+        self.assertEqual(self.dialog._conversation_store.list_memories("Doro"), [])
+        self.assertEqual(len(self.dialog._conversation_store.list_memories("咕嘎")), 1)
+
+    def test_switching_character_stops_listening_and_discards_old_transcript(self):
+        import threading
+        self.dialog._listen_stop_event = threading.Event()
+        self.dialog._listening = True
+        generation = self.dialog._session_generation
+        self.dialog.set_character("Doro")
+        self.assertTrue(self.dialog._listen_stop_event.is_set())
+        self.assertFalse(self.dialog._listening)
+        self.dialog._heard_continuous(("咕嘎", generation, "旧角色语音"))
+        self.assertNotIn("旧角色语音", self.dialog.message.text())
+
+    def test_close_waits_for_continuous_microphone_worker(self):
+        import threading
+        class FakeEvent:
+            def __init__(self):
+                self.ignored = False
+            def ignore(self):
+                self.ignored = True
+        self.dialog._listen_stop_event = threading.Event()
+        self.dialog._listening = True
+        self.dialog._job = object()
+        event = FakeEvent()
+        self.dialog.closeEvent(event)
+        self.assertTrue(event.ignored)
+        self.assertTrue(self.dialog._listen_stop_event.is_set())
+        self.dialog._job = None
+        self.dialog._listening = False
+        self.dialog._closing_after_listen = False
+
+    def test_tts_stop_button_sets_worker_event(self):
+        import threading
+        self.dialog._speech_stop_event = threading.Event()
+        self.dialog._speaking_session = ("咕嘎", self.dialog._session_generation)
+        self.dialog.stop_speak_button.setEnabled(True)
+        self.dialog.stop_speaking()
+        self.assertTrue(self.dialog._speech_stop_event.is_set())
+        self.assertFalse(self.dialog.stop_speak_button.isEnabled())
+
+    def test_continuous_voice_controls_are_explicit_and_stop_event_is_set(self):
+        import threading
+        self.assertEqual(self.dialog.listen_button.text(), "开始连续监听")
+        self.assertFalse(self.dialog.stop_listen_button.isEnabled())
+        self.dialog._listen_stop_event = threading.Event()
+        self.dialog._listening = True
+        self.dialog.stop_listening()
+        self.assertTrue(self.dialog._listen_stop_event.is_set())
+        self.assertFalse(self.dialog.stop_listen_button.isEnabled())
+
+    def test_streamed_reply_is_incremental_and_not_duplicated(self):
+        self.dialog.chat_log.clear()
+        self.dialog._stream_reply_open = True
+        generation = self.dialog._session_generation
+        self.dialog._append_stream_delta("第一段", "咕嘎", generation)
+        self.dialog._append_stream_delta("第二段", "咕嘎", generation)
+        self.assertIn("第一段第二段", self.dialog.chat_log.toPlainText())
+        before = self.dialog.chat_log.toPlainText()
+        self.dialog._message_reply(("咕嘎", generation, "第一段第二段"))
+        self.assertEqual(self.dialog.chat_log.toPlainText(), before)
+        self.assertFalse(self.dialog._stream_reply_open)
+
+    def test_stream_delta_from_previous_role_generation_is_ignored(self):
+        self.dialog.chat_log.clear()
+        self.dialog._append_stream_delta("stale", "咕嘎", self.dialog._session_generation - 1)
+        self.dialog._append_stream_delta("wrong role", "Doro", self.dialog._session_generation)
+        self.assertEqual(self.dialog.chat_log.toPlainText(), "")
+
+    def test_interrupted_stream_is_explicitly_marked(self):
+        self.dialog.chat_log.clear()
+        self.dialog._stream_reply_open = True
+        self.dialog._append_stream_delta("partial", "咕嘎", self.dialog._session_generation)
+        self.dialog._job_error("connection closed")
+        self.assertIn("partial", self.dialog.chat_log.toPlainText())
+        self.assertIn("回复中断", self.dialog.chat_log.toPlainText())
+        self.assertFalse(self.dialog._stream_reply_open)
 
     def test_speech_lifecycle_only_reports_selected_character(self):
         started, stopped = [], []
@@ -115,16 +294,19 @@ class AssistantQtTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=Path.home()) as staging:
             specific = Path(staging) / "MyPetNotes"
             specific.mkdir()
+            # These selectors need no call history. MagicMock's recorded parent
+            # can retain the dialog in a cycle until a later HTTP worker's GC,
+            # which would destroy its Qt widget tree outside the GUI thread.
             with patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory",
-                       return_value=str(specific)), patch(
+                       new=lambda *_args, **_kwargs: str(specific)), patch(
                        "PySide6.QtWidgets.QMessageBox.warning",
-                       return_value=QMessageBox.StandardButton.No):
+                       new=lambda *_args, **_kwargs: QMessageBox.StandardButton.No):
                 self.dialog.grant_session_folder()
             self.assertNotEqual(self.dialog.workspace.root, specific)
             with patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory",
-                       return_value=str(specific)), patch(
+                       new=lambda *_args, **_kwargs: str(specific)), patch(
                        "PySide6.QtWidgets.QMessageBox.warning",
-                       return_value=QMessageBox.StandardButton.Yes):
+                       new=lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes):
                 self.dialog.grant_session_folder()
             self.assertEqual(self.dialog.workspace.root, specific.resolve())
             self.dialog.workspace.create("pet.txt", "local")
@@ -297,23 +479,31 @@ class AssistantQtTests(unittest.TestCase):
             self.dialog.create_file()
         self.assertEqual(self.dialog.workspace.list_files(), ["note.txt"])
 
-    def test_delete_requires_confirmation_and_supports_restore(self):
+    def test_delete_and_restore_each_require_approval(self):
         self.dialog.workspace.create("pet.md", "hello")
         with patch("PySide6.QtWidgets.QInputDialog.getItem",
                    return_value=("pet.md", True)), patch(
-                       "PySide6.QtWidgets.QMessageBox.warning",
+                       "PySide6.QtWidgets.QMessageBox.question",
                        return_value=QMessageBox.StandardButton.No):
             self.dialog.delete_file()
         self.assertEqual(self.dialog.workspace.list_files(), ["pet.md"])
         with patch("PySide6.QtWidgets.QInputDialog.getItem",
                    return_value=("pet.md", True)), patch(
-                       "PySide6.QtWidgets.QMessageBox.warning",
+                       "PySide6.QtWidgets.QMessageBox.question",
                        return_value=QMessageBox.StandardButton.Yes):
             self.dialog.delete_file()
         self.assertEqual(self.dialog.workspace.list_files(), [])
         record = self.dialog.workspace.deleted_files()[0]
         with patch("PySide6.QtWidgets.QInputDialog.getItem",
-                   return_value=(record, True)):
+                   return_value=(record, True)), patch(
+                       "PySide6.QtWidgets.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.No):
+            self.dialog.restore_file()
+        self.assertEqual(self.dialog.workspace.list_files(), [])
+        with patch("PySide6.QtWidgets.QInputDialog.getItem",
+                   return_value=(record, True)), patch(
+                       "PySide6.QtWidgets.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.Yes):
             self.dialog.restore_file()
         self.assertEqual(self.dialog.workspace.list_files(), ["pet.md"])
 

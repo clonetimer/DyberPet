@@ -1,10 +1,10 @@
-# DyberPet Windows Portable — main personal candidate
+# DyberPet Windows Portable — personal candidate
 
 **Purpose:** Produce a review-only portable Windows folder; not an official release, not yet a signed installer or a verified audio-device build.
 
 ## One-command build (PowerShell, Windows)
 
-Clone `clonetimer/DyberPet` and check out `main`. Use Python 3.11.
+Clone `clonetimer/DyberPet` and check out the revision being tested. The AI-runtime continuation, including first-use setup and trial diagnostics, is on `feat/ai-companion-runtime-20261117` / [PR #99](https://github.com/clonetimer/DyberPet/pull/99); it is not yet merged into `main`. Use the exact artifact linked in the PR Validation for that head, or check out that branch to build it. Use Python 3.11.
 
 ```powershell
 python -m pip install -r requirements-windows-portable.txt
@@ -21,8 +21,9 @@ The build creates `dist/DyberPet/DyberPet.exe` plus **editable** `res/` and `dat
 2. Launch `DyberPet.exe`; it will select its executable folder as the resource root even when started from a shortcut or another working directory.
 3. Right-click the pet and choose `Desktop Pet Assistant (Files / Voice / Persona)`. Create a new `note.txt` in the dedicated Documents workspace, then move it to the app's recoverable area and restore it.
 4. Test default `Kitty` first. Configure LM Studio and PPL only if you run them separately; disabled integrations must not prevent basic desktop pet behavior.
-5. If desired, download a local Vosk recognition model separately, grant microphone permissions and test `录音识别（4秒）`; check Chinese TTS availability on that Windows computer. The acoustic model, copyrighted audio and voice cloning models are **never** included in the ZIP.
+5. Configure a separately downloaded Vosk model, then use **检查语音条件**. In **试用与诊断**, click **开始连续监听**, speak, and click **停止**; review the returned text in the assistant input before sending. Click **试听示例** to check local TTS, and record whether it was audible. The current UI uses continuous listening; the four-second function remains only a compatibility interface. The acoustic model, copyrighted audio and voice cloning models are **never** included in the ZIP.
 6. Check actions, DPI, multi-monitor behavior, taskbar/tray, closing/reopening dialogs, and available character sprite packs **on a real Windows desktop**. A headless Actions smoke does not certify these.
+7. For a problem report, open **试用与诊断**, preview the diagnostic JSON, then save it to a new filename. The report contains bounded status/count/timing and process-resource observations, not conversation/transcription text or paths. Export does not send a message or upload data. See [trial instructions and measurement scope](pet_assistant.md#本机试用与诊断).
 
 ## Verify built-in character importing (without installing Python)
 
@@ -32,7 +33,7 @@ The automated EXE smoke uses temporary, original geometry and leaves `res/role` 
 
 ## Boundary and known gaps
 
-- This is a **portable ZIP candidate**, not an MSI/NSIS installer, service, or automatic updater. The implementation has been merged into `main`; no official GitHub Stable Release, MSI/NSIS installer, or code-signing certification has been completed.
+- This is a **portable ZIP candidate**, not an MSI/NSIS installer, service, or automatic updater. The base packaging implementation is in `main`; the current AI-runtime continuation remains on PR #99. No official GitHub Stable Release, MSI/NSIS installer, or code-signing certification has been completed.
 - Some older DyberPet code stores saves relative to the executable; choose a writable folder. Data migration/backup and a signed installer are not yet implemented.
 - Character source and speech fidelity still require separately verified, licensed materials. CI only packages the already tracked resources.
 - If Windows security products block execution, record the executable hash and exact warning. Do not disable security protections as a workaround.
