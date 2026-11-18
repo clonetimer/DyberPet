@@ -172,7 +172,7 @@ class VoiceLifecycleTests(unittest.TestCase):
     def speak(self, driver, **kwargs):
         with patch.dict(sys.modules, {
             "pyttsx3": _driver_module("pyttsx3", init=driver.init)
-        }):
+        }), patch("DyberPet.assistant.speech.sys.platform", "win32"): 
             return speak_interruptible("你好", driver.stop_event, **kwargs)
 
     def test_voice_failure_defaults_completion_to_unknown_and_keeps_message(self):

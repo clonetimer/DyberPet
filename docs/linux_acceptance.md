@@ -4,13 +4,13 @@
 
 ## 阶段与合格判据
 
-1. **L0 资源/依赖**：Python 3.11 与 Pillow/PySide6/Fluent Widgets，系统提供 X11/XCB、Xvfb；源码和冻结可执行文件都能找到 `res/language`、`res/role/sys`、`res/items`。资源定位不能依赖从仓库根目录双击。
+1. **L0 资源/依赖**：Python 3.11 与 Pillow/PySide6/Fluent Widgets，系统提供 X11/XCB、Xvfb；Linux 离线朗读另需 `espeak-ng` 系统命令；源码和冻结可执行文件都能找到 `res/language`、`res/role/sys`、`res/items`。资源定位不能依赖从仓库根目录双击。
 2. **L1 真实 Linux Qt**：Ubuntu 中用 Xvfb 建立 **X11/XCB** 显示服务器，调用实际 `QPixmap`/`PetConfig`，打开真实的角色管理 QWidget 和“原神角色库”选择对话框。这里不是 Qt 的 `offscreen` 平台模拟。
 3. **L2 本地角色**：使用原创合成图测试个人导入、123 模板、已安装/待导入盘点、配置 SHA-256 绑定和撤销不改原始角色。原创星芽必须为 7 类动作/46 帧。
 4. **L3 可执行程序**：Linux PyInstaller **onedir** 生成的二进制，从无关工作目录在 Xvfb 内分别启动 `--assistant-smoke` 和 `--linux-ui-smoke`；检查结构化报告后才上传 `DyberPet-Linux-Personal-x86_64.tar.gz`。
 5. **L4 保留项**：真实 Ubuntu GNOME/KDE 的系统托盘、真实物理屏幕/多屏和 Wayland 会话、中文配音清晰度、麦克风、原神角色原画一致性、长期运行与掉电恢复需人工验收。Xvfb/X11 自动化通过 **不表示 L4 通过**。
 
-**Linux 命名规范**：原始 Python 包叫 `DyberPet`，Linux ELF 启动器命名为 `DyberPetDesktop`（避免 PyInstaller Linux 启动时把同名 ELF 误当成 Python 包目录）；产品名称保持 DyberPet。
+**Linux 命名规范**：原始 Python 包叫 `DyberPet`，Linux ELF 启动器命名为 `DyberPetDesktop`（避免 PyInstaller Linux 启动时把同名 ELF 误当成 Python 包目录）；产品名称保持 DyberPet。\n\n## Linux 离线朗读依赖\n\nUbuntu/Debian 用户需自行安装系统级 eSpeak NG：\n\n```bash\nsudo apt update\nsudo apt install espeak-ng\nespeak-ng --version\n```\n\nLinux 朗读通过 `espeak-ng --stdin` 子进程输出声音；停止操作终止本次子进程，不依赖 pyttsx3 2.99 的 eSpeak 外部事件循环。文本只写入标准输入，不进入命令行参数。Linux 便携包不捆绑系统合成器，故必须在目标机器安装此依赖。自动化合约与 WAV 合成测试不等同于实体音频设备验收。
 
 ## 从 GitHub Actions 工件安装
 

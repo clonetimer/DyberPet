@@ -45,7 +45,9 @@ class VoiceReadinessTests(unittest.TestCase):
             name: _discoverable_module(name) if name in present else None
             for name in _AUDIO_MODULES
         }
-        with patch.dict(sys.modules, modules):
+        with patch.dict(sys.modules, modules), \
+                patch("DyberPet.assistant.voice_readiness.shutil.which",
+                      return_value="/usr/bin/espeak-ng"):
             return self.voice.inspect_voice_readiness(str(model_dir))
 
     def test_missing_components_name_installation_actions(self):

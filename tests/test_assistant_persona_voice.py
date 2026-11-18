@@ -382,7 +382,7 @@ class PersonaContractTests(unittest.TestCase):
         ready = []
         with patch.dict(sys.modules, {
             "pyttsx3": _driver_module("pyttsx3", init=lambda: engine)
-        }):
+        }), patch("DyberPet.assistant.speech.sys.platform", "win32"): 
             result = speak_interruptible(
                 "你好", stop, on_ready=lambda: ready.append(True))
         self.assertFalse(result)

@@ -6,6 +6,7 @@ No audio module is imported, model loaded, or device queried by this module.
 from __future__ import annotations
 
 import importlib.util
+import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -42,8 +43,6 @@ def _inspect_model_directory(model_dir: str) -> tuple[bool, str]:
         folder = Path(model_dir.strip()).expanduser()
         if not folder.is_dir():
             return False, "模型目录不存在或不是文件夹；请先解压 Vosk 模型，再重新选择实际模型目录。"
-        # Vosk supports both current and legacy marker layouts. The remaining
-        # model contents and native compatibility are checked only when loaded.
         layouts = (
             ("am/final.mdl", "conf/model.conf"),
             ("final.mdl", "mfcc.conf"),
@@ -76,17 +75,30 @@ def inspect_voice_readiness(model_dir: str) -> VoiceReadiness:
         recognition_messages.append("识别组件和 Vosk 模型目录结构初检通过。")
     recognition_messages.append("尚未加载模型，也未测试麦克风或音频驱动。")
 
-    tts_ready = _discoverable("pyttsx3")
-    if tts_ready:
-        tts_message = "已发现 pyttsx3，朗读组件初检通过。"
-    else:
-        tts_message = (
-            "未能发现 pyttsx3；" + _component_help(("pyttsx3",))
+    tts_missing = []
+    if not _discoverable("pyttsx3"):
+        tts_missing.append("pyttsx3")
+    espeak_path = None
+    if sys.platform.startswith("linux"):
+        espeak_path = shutil.which("espeak-ng")
+    tts_ready = not tts_missing and (
+        not sys.platform.startswith("linux") or espeak_path is not None)
+    tts_messages = []
+    if tts_missing:
+        tts_messages.append("未能发现 pyttsx3；" + _component_help(tts_missing))
+    if sys.platform.startswith("linux") and espeak_path is None:
+        tts_messages.append(
+            "Linux 朗读还需要系统命令 espeak-ng。Ubuntu/Debian 可运行 "
+            "sudo apt install espeak-ng；便携包不会自动安装系统软件包。"
         )
-    tts_message += "尚未测试系统语音驱动或扬声器。"
+    if tts_ready:
+        tts_messages.append("已发现 pyttsx3 与 Linux eSpeak NG 播放组件，朗读前置条件初检通过。"
+                            if sys.platform.startswith("linux")
+                            else "已发现 pyttsx3，朗读组件初检通过。")
+    tts_messages.append("尚未测试系统语音驱动、麦克风或扬声器。")
     return VoiceReadiness(
         recognition_ready=recognition_ready,
         recognition_message="".join(recognition_messages),
         tts_ready=tts_ready,
-        tts_message=tts_message,
+        tts_message="".join(tts_messages),
     )

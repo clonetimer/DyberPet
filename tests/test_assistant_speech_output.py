@@ -184,6 +184,7 @@ class SpeechOutputTests(unittest.TestCase):
         module = types.ModuleType("pyttsx3")
         module.init = engine.initialize
         with patch.dict(sys.modules, {"pyttsx3": module}), \
+                patch.object(speech.sys, "platform", "win32"), \
                 patch.object(speech.time, "monotonic", engine.clock.monotonic), \
                 patch.object(speech.time, "sleep", engine.clock.advance):
             if once:
