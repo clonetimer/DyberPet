@@ -283,16 +283,19 @@ class AssistantQtTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=Path.home()) as staging:
             specific = Path(staging) / "MyPetNotes"
             specific.mkdir()
+            # These selectors need no call history. MagicMock's recorded parent
+            # can retain the dialog in a cycle until a later HTTP worker's GC,
+            # which would destroy its Qt widget tree outside the GUI thread.
             with patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory",
-                       return_value=str(specific)), patch(
+                       new=lambda *_args, **_kwargs: str(specific)), patch(
                        "PySide6.QtWidgets.QMessageBox.warning",
-                       return_value=QMessageBox.StandardButton.No):
+                       new=lambda *_args, **_kwargs: QMessageBox.StandardButton.No):
                 self.dialog.grant_session_folder()
             self.assertNotEqual(self.dialog.workspace.root, specific)
             with patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory",
-                       return_value=str(specific)), patch(
+                       new=lambda *_args, **_kwargs: str(specific)), patch(
                        "PySide6.QtWidgets.QMessageBox.warning",
-                       return_value=QMessageBox.StandardButton.Yes):
+                       new=lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes):
                 self.dialog.grant_session_folder()
             self.assertEqual(self.dialog.workspace.root, specific.resolve())
             self.dialog.workspace.create("pet.txt", "local")

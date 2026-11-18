@@ -12,7 +12,10 @@ from pathlib import Path
 
 
 class VoiceUnavailable(RuntimeError):
-    pass
+    def __init__(self, message, *, engine_completed=None):
+        super().__init__(message)
+        self.engine_completed = (
+            engine_completed if isinstance(engine_completed, bool) else None)
 
 
 def recognize_once(model_dir: str | Path, *, seconds: float = 4.0,
@@ -157,10 +160,12 @@ def speak_once(text: str, *, rate: int = 170, on_ready=None) -> None:
 
 def speak_interruptible(text: str, stop_event, *, rate: int = 170,
                         on_ready=None, max_seconds: float = 180.0) -> bool:
-    """Speak locally while pumping the engine loop; return False if interrupted.
+    """Speak locally; return True on completion or False for a requested stop.
 
     The engine is created and driven on the calling worker thread. The UI only
     sets a thread-safe event; it never calls into the speech driver cross-thread.
+    A driver-reported incomplete utterance without a stop request is a failure.
+    Failures retain only a boolean completion value actually observed in a callback.
     """
     if not isinstance(text, str) or not text.strip():
         return True
@@ -180,6 +185,13 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
     engine = None
     loop_started = False
     finished = threading.Event()
+    utterance_completed = None
+
+    def on_finished(name, completed):
+        nonlocal utterance_completed
+        utterance_completed = completed if isinstance(completed, bool) else None
+        finished.set()
+
     try:
         if stop_event.is_set():
             return False
@@ -189,8 +201,7 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
         if stop_event.is_set():
             return False
         engine.setProperty("rate", rate)
-        engine.connect("finished-utterance",
-                       lambda name, completed: finished.set())
+        engine.connect("finished-utterance", on_finished)
         if stop_event.is_set():
             return False
         engine.say(text[:500])
@@ -208,14 +219,19 @@ def speak_interruptible(text: str, stop_event, *, rate: int = 170,
                 raise VoiceUnavailable("Speech playback exceeded its safety timeout")
             engine.iterate()
             time.sleep(0.01)
-        interrupted = stop_event.is_set() and not finished.is_set()
-        if interrupted:
+        if stop_event.is_set():
             engine.stop()
-        return not interrupted
-    except VoiceUnavailable:
+            return False
+        if not utterance_completed:
+            raise VoiceUnavailable("Speech playback did not complete")
+        return True
+    except VoiceUnavailable as exc:
+        exc.engine_completed = utterance_completed
         raise
     except Exception as exc:
-        raise VoiceUnavailable("Interruptible offline speech failed: " + str(exc)) from exc
+        raise VoiceUnavailable(
+            "Interruptible offline speech failed: " + str(exc),
+            engine_completed=utterance_completed) from exc
     finally:
         if engine is not None:
             try:

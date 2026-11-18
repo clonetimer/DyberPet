@@ -78,10 +78,15 @@ class _RecognitionDriver:
 
 
 class _SpeechDriver:
-    def __init__(self, stop, *, stop_at=None, finish_on_iterate=False):
+    def __init__(self, stop, *, stop_at=None, finish_on_iterate=False,
+                 finish_completed=True, stop_after_finish=False,
+                 iterate_error=None):
         self.stop_event = stop
         self.stop_at = stop_at
         self.finish_on_iterate = finish_on_iterate
+        self.finish_completed = finish_completed
+        self.stop_after_finish = stop_after_finish
+        self.iterate_error = iterate_error
         self.events = []
         self.threads = []
         self.finished = None
@@ -112,9 +117,13 @@ class _SpeechDriver:
     def iterate(self):
         self.record("iterate")
         if self.finish_on_iterate:
-            self.finished("utterance", True)
+            self.finished("utterance", self.finish_completed)
+            if self.stop_after_finish:
+                self.stop_event.set()
         else:
             self.stop_event.set()
+        if self.iterate_error is not None:
+            raise self.iterate_error
 
     def stop(self):
         self.record("stop")
@@ -134,6 +143,22 @@ class VoiceLifecycleTests(unittest.TestCase):
             "pyttsx3": _driver_module("pyttsx3", init=driver.init)
         }):
             return speak_interruptible("你好", driver.stop_event, **kwargs)
+
+    def test_voice_failure_defaults_completion_to_unknown_and_keeps_message(self):
+        failure = VoiceUnavailable("audio unavailable")
+        self.assertEqual(str(failure), "audio unavailable")
+        self.assertEqual(failure.args, ("audio unavailable",))
+        self.assertIsNone(getattr(failure, "engine_completed", "missing"))
+
+    def test_voice_failure_keeps_only_boolean_completion_metadata(self):
+        for value, expected in ((False, False), (True, True), (None, None),
+                                (0, None), (1, None), ("false", None),
+                                ({"private": "value"}, None)):
+            with self.subTest(value=value):
+                failure = VoiceUnavailable("audio unavailable",
+                                           engine_completed=value)
+                self.assertIs(failure.engine_completed, expected)
+                self.assertEqual(str(failure), "audio unavailable")
 
     def test_cancelled_capture_never_loads_model_or_opens_microphone(self):
         stop = threading.Event()
@@ -241,6 +266,84 @@ class VoiceLifecycleTests(unittest.TestCase):
                           "iterate", "stop", "end"])
         self.assertEqual(set(driver.threads), set(worker_ids))
         self.assertNotEqual(worker_ids, [threading.get_ident()])
+
+    def test_uncompleted_speech_without_user_stop_reports_failure_and_cleans_up(self):
+        driver = _SpeechDriver(threading.Event(), finish_on_iterate=True,
+                               finish_completed=False)
+        with self.assertRaisesRegex(VoiceUnavailable, "did not complete") as raised:
+            self.speak(driver)
+        self.assertIs(getattr(raised.exception, "engine_completed", None), False)
+        self.assertFalse(driver.stop_event.is_set())
+        self.assertEqual(driver.events[-2:], ["stop", "end"])
+
+    def test_stop_before_finish_callback_returns_cancelled_for_both_completion_flags(self):
+        for completed in (False, True):
+            with self.subTest(completed=completed):
+                driver = _SpeechDriver(threading.Event(), stop_at="iterate",
+                                       finish_on_iterate=True,
+                                       finish_completed=completed)
+                self.assertFalse(self.speak(driver))
+                self.assertEqual(driver.events[-2:], ["stop", "end"])
+
+    def test_stop_after_finish_callback_returns_cancelled_for_both_completion_flags(self):
+        for completed in (False, True):
+            with self.subTest(completed=completed):
+                driver = _SpeechDriver(threading.Event(), finish_on_iterate=True,
+                                       finish_completed=completed,
+                                       stop_after_finish=True)
+                self.assertFalse(self.speak(driver))
+                self.assertEqual(driver.events[-2:], ["stop", "end"])
+
+    def test_driver_error_is_not_masked_by_completion_or_stop(self):
+        for completed in (False, True):
+            for stop_after_finish in (False, True):
+                with self.subTest(completed=completed,
+                                  stop_after_finish=stop_after_finish):
+                    failure = OSError("driver failed after completion callback")
+                    driver = _SpeechDriver(
+                        threading.Event(), finish_on_iterate=True,
+                        finish_completed=completed,
+                        stop_after_finish=stop_after_finish,
+                        iterate_error=failure)
+                    with self.assertRaisesRegex(
+                            VoiceUnavailable, "driver failed") as raised:
+                        self.speak(driver)
+                    self.assertIs(raised.exception.__cause__, failure)
+                    self.assertIs(getattr(raised.exception, "engine_completed", None),
+                                  completed)
+                    self.assertEqual(driver.events[-2:], ["stop", "end"])
+
+    def test_driver_error_without_finish_callback_keeps_completion_unknown(self):
+        driver = _SpeechDriver(threading.Event(),
+                               iterate_error=OSError("driver stopped before callback"))
+        with self.assertRaisesRegex(VoiceUnavailable, "before callback") as raised:
+            self.speak(driver)
+        self.assertIsNone(getattr(raised.exception, "engine_completed", "missing"))
+        self.assertEqual(driver.events[-2:], ["stop", "end"])
+
+    def test_driver_voice_failure_uses_only_this_utterances_observed_completion(self):
+        for completed in (None, False, True):
+            with self.subTest(completed=completed):
+                failure = VoiceUnavailable("driver voice failure",
+                                           engine_completed=True)
+                driver = _SpeechDriver(
+                    threading.Event(), finish_on_iterate=completed is not None,
+                    finish_completed=completed, iterate_error=failure)
+                with self.assertRaisesRegex(VoiceUnavailable, "driver voice") as raised:
+                    self.speak(driver)
+                self.assertIs(raised.exception, failure)
+                self.assertIs(raised.exception.engine_completed, completed)
+                self.assertEqual(driver.events[-2:], ["stop", "end"])
+
+    def test_invalid_finish_callback_value_cannot_claim_completion(self):
+        for completed in (0, 1, "false", {"private": "value"}):
+            with self.subTest(completed=completed):
+                driver = _SpeechDriver(threading.Event(), finish_on_iterate=True,
+                                       finish_completed=completed)
+                with self.assertRaises(VoiceUnavailable) as raised:
+                    self.speak(driver)
+                self.assertIsNone(getattr(raised.exception, "engine_completed", "missing"))
+                self.assertEqual(driver.events[-2:], ["stop", "end"])
 
 
 if __name__ == "__main__":
