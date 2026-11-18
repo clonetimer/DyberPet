@@ -1007,7 +1007,7 @@ class PetAssistantDialog(QDialog):
             self._job_error(str(exc))
 
     def closeEvent(self, event):
-        if self._job is not None and (self._listening or self._speaking_session is not None):
+        if self._job is not None:
             self._closing_after_worker = True
             self.stop_listening()
             self.stop_speaking()
