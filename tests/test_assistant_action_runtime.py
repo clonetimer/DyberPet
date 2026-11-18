@@ -63,6 +63,28 @@ class ActionRuntimeTests(unittest.TestCase):
                 self.runtime.approve(plan["request_id"], True)
         self.assertFalse((self.workspace.root / "expired.md").exists())
 
+    def test_read_file_requires_approval_and_returns_utf8_text(self):
+        path = self.workspace.create("analysis.md", "first line\\nsecond line")
+        plan = self.runtime.prepare("read_file", {"name": path.name})
+        with self.assertRaises(ActionDenied):
+            self.runtime.execute(plan["request_id"])
+        self.runtime.approve(plan["request_id"], True)
+        result = self.runtime.execute(plan["request_id"])
+        self.assertEqual(result["result"]["content"], "first line\\nsecond line")
+        self.assertNotIn("first line", repr(self.runtime.audit_log()))
+
+    def test_read_file_rejects_binary_invalid_utf8_and_large_context(self):
+        (self.workspace.root / "binary.txt").write_bytes(b"\\xff")
+        plan = self.runtime.prepare("read_file", {"name": "binary.txt"})
+        self.runtime.approve(plan["request_id"], True)
+        with self.assertRaisesRegex(ActionDenied, "UTF-8"):
+            self.runtime.execute(plan["request_id"])
+        (self.workspace.root / "large.md").write_text("x" * 16001, encoding="utf-8")
+        plan = self.runtime.prepare("read_file", {"name": "large.md"})
+        self.runtime.approve(plan["request_id"], True)
+        with self.assertRaisesRegex(ActionDenied, "16,000"):
+            self.runtime.execute(plan["request_id"])
+
     def test_only_registered_actions_are_accepted(self):
         with self.assertRaises(ActionDenied):
             self.runtime.prepare("run_shell", {"command": "whoami"})
