@@ -410,5 +410,5 @@
 
 - **改了什么：** 为 Linux eSpeak NG 子进程补充“忽略 terminate”的故障注入测试，确认工作线程在短等待窗口结束后升级为 kill，并且不会启动下一段语音。
 - **为什么：** 正常停止测试只证明协作式子进程会退出；系统音频后端卡死或子进程处于不可及时响应状态时，单独调用 terminate 并不构成有界取消保证。
-- **踩坑：** 不能只断言 stop_event 被置位，也不能只断言 terminate 被调用；必须模拟子进程忽略 terminate，检查 kill 确实发生并最终 wait 回收。
+- **踩坑：** 不能只断言 stop_event 被置位，也不能只断言 terminate 被调用；必须模拟子进程忽略 terminate，检查 kill 确实发生并最终 wait 回收。第一版模拟器在第一次 wait 时错误地返回了 `None`，被生产逻辑正确识别为非零退出；修正为第一次 wait 明确抛出 `TimeoutExpired`，之后只在 kill 后返回退出码。
 - **验证：** 新增 Linux 进程合约测试，检查 terminate 超时后 kill 升级、当前子进程回收、后续语音段不启动；由 Linux X11 acceptance job 执行。
