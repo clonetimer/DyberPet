@@ -93,6 +93,12 @@ class AssistantQtTests(unittest.TestCase):
         self.assertIsNone(self.dialog._pending_file_context)
         self.assertEqual(self.dialog._last_reply, "总结完成")
 
+    def test_reset_workspace_clears_selected_file_context(self):
+        self.dialog._pending_file_context = {
+            "name": "previous-folder.md", "content": "private data"}
+        self.dialog.reset_workspace()
+        self.assertIsNone(self.dialog._pending_file_context)
+
     def test_dialog_persona_and_file_actions_exist(self):
         self.assertIsNotNone(self.dialog._action_runtime)
         self.assertTrue(hasattr(self.dialog, "action_audit_button"))
