@@ -29,7 +29,8 @@ class ActionDenied(RuntimeError):
 class ActionRuntime:
     """Small allow-list executor with one-shot approvals and local audit."""
 
-    ALLOWED_ACTIONS = frozenset(("create_file", "create_note", "trash_file", "restore_file"))
+    ALLOWED_ACTIONS = frozenset(("create_file", "create_note", "trash_file", "restore_file", "read_file"))
+    MAX_MODEL_FILE_CONTEXT_CHARS = 16000
 
     def __init__(self, workspace: PetWorkspace, audit_path: Optional[Path] = None,
                  *, approval_ttl: int = APPROVAL_TTL_SECONDS):
@@ -131,7 +132,7 @@ class ActionRuntime:
             args = {"name": name}
             target = str(path)
             preview = "Move to recoverable workspace trash: " + target
-        else:
+        elif action == "restore_file":
             key = args.get("key", "")
             if not isinstance(key, str) or key not in self.workspace.deleted_files():
                 raise ActionDenied("Restore key is not present in the workspace trash")
@@ -141,6 +142,17 @@ class ActionRuntime:
             args = {"key": key}
             target = str(self.workspace.root / name)
             preview = "Restore workspace file to: " + target
+        else:
+            name = self.workspace.validate_name(args.get("name", ""))
+            path = self.workspace.root / name
+            if path.is_symlink() or not path.is_file():
+                raise ActionDenied("Only an existing regular workspace file can be read")
+            if path.stat().st_size > MAX_ACTION_CONTENT:
+                raise ActionDenied("Selected file exceeds 256 KiB")
+            args = {"name": name}
+            target = str(path)
+            preview = ("Read this workspace file and send its content to the configured "
+                       "local AI model for this turn only: " + target)
 
         request_id = uuid.uuid4().hex
         created = time.monotonic()
@@ -212,6 +224,19 @@ class ActionRuntime:
             elif action == "restore_file":
                 result = self.workspace.restore(args["key"])
                 value = {"path": str(result), "name": result.name}
+            elif action == "read_file":
+                path = self.workspace.root / args["name"]
+                if path.is_symlink() or not path.is_file():
+                    raise ActionDenied("Selected file is no longer a regular workspace file")
+                if path.stat().st_size > MAX_ACTION_CONTENT:
+                    raise ActionDenied("Selected file exceeds 256 KiB")
+                try:
+                    content = path.read_text(encoding="utf-8")
+                except UnicodeDecodeError as exc:
+                    raise ActionDenied("Selected file must be UTF-8 text") from exc
+                if len(content) > self.MAX_MODEL_FILE_CONTEXT_CHARS:
+                    raise ActionDenied("Selected file exceeds the 16,000-character AI context limit")
+                value = {"name": path.name, "content": content, "characters": len(content)}
             else:  # Defensive even though prepare is allow-listed.
                 raise ActionDenied("Action is not registered")
         except Exception as exc:
