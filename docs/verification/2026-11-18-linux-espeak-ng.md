@@ -80,3 +80,12 @@ Linux 被动就绪检查同时检查 Python 端 pyttsx3 音色目录组件和系
 在 Linux X11 工作流中增加 `test_assistant_linux_voice_compatibility.py`。测试读取当前 pyttsx3 实际枚举的所有 eSpeak 音色 ID，再逐个调用 `espeak-ng -v <voice-id> --stdin -w <temporary.wav>`，验证每个 ID 都能合成非空 WAV；每项最多 10 秒，临时文件在测试结束时清理。
 
 这项测试验证的是“设置面板音色目录 → Linux CLI 后端”标识兼容性，不验证实体扬声器输出、发音自然度或用户所需语言的音质。最终结果应以新增测试所在的最新 PR head 的 Linux CI 为准。
+
+
+## 131 个实际枚举音色的 CLI 兼容结果
+
+PR head `3f36ab0` 的 Linux X11 job 在真实 Ubuntu 24.04 音色目录中由 pyttsx3 枚举出 **131 个音色 ID**，逐个调用 eSpeak NG 1.51 CLI 合成临时 WAV，**131/131 成功**，专项测试耗时 1.071 秒。
+
+覆盖包含普通话 `sit/cmn`、普通话拼音 `sit/cmn-latn-pinyin`、粤语 `sit/yue`、粤语拼音 `sit/yue-latn-jyutping` 等 ID。完整 ID 清单保存在 [Linux X11 CI 日志](https://github.com/clonetimer/DyberPet/actions/runs/44279268751) 的 `LINUX_ESPEAK_VOICE_COMPATIBILITY_IDS` 输出中。
+
+这证明当前 CI 安装的 pyttsx3/eSpeak 音色目录与 eSpeak NG CLI 参数兼容，不代表所有发行版、第三方 voice data、或中文发音质量均相同；用户目标机器仍应执行实际试听。
