@@ -202,7 +202,8 @@ class VoiceReadinessTests(unittest.TestCase):
                 "raise AssertionError('audio driver imported during passive check')\n",
                 encoding="utf-8",
             )
-        with patch.dict(sys.modules), patch.object(sys, "path", [str(modules_dir)] + sys.path):
+        with patch.dict(sys.modules), patch.object(sys, "path", [str(modules_dir)] + sys.path), \\
+                patch("DyberPet.assistant.voice_readiness.shutil.which", return_value="/usr/bin/espeak-ng"):
             for name in _AUDIO_MODULES:
                 sys.modules.pop(name, None)
             importlib.invalidate_caches()
