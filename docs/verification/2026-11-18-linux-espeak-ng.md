@@ -73,3 +73,10 @@ Linux 被动就绪检查同时检查 Python 端 pyttsx3 音色目录组件和系
 4. 验证麦克风实际采集和语音识别；本批没有宣称识别链路已通过实机验收。
 
 因此，本批结论是：**Linux eSpeak NG 子进程后端、停止/分段合约、源码 X11 和冻结程序门禁已通过；物理音频设备与语音质量仍待实机验收。**
+
+
+## 增补：pyttsx3 音色 ID 与 eSpeak NG CLI 兼容性
+
+在 Linux X11 工作流中增加 `test_assistant_linux_voice_compatibility.py`。测试读取当前 pyttsx3 实际枚举的所有 eSpeak 音色 ID，再逐个调用 `espeak-ng -v <voice-id> --stdin -w <temporary.wav>`，验证每个 ID 都能合成非空 WAV；每项最多 10 秒，临时文件在测试结束时清理。
+
+这项测试验证的是“设置面板音色目录 → Linux CLI 后端”标识兼容性，不验证实体扬声器输出、发音自然度或用户所需语言的音质。最终结果应以新增测试所在的最新 PR head 的 Linux CI 为准。
