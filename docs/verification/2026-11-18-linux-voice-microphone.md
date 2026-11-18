@@ -45,3 +45,14 @@ This proves the PulseAudio server → PortAudio → DyberPet capture path for a 
 A second Linux integration session is added separately from the native PulseAudio test. CI first stops the PulseAudio daemon, starts `pipewire`, `wireplumber` and `pipewire-pulse` inside an isolated D-Bus session and `XDG_RUNTIME_DIR`, creates a named 48 kHz null source via the PulseAudio compatibility protocol, then runs the same product `probe_microphone` PortAudio capture test with exact host/device matching.
 
 This specifically validates the PipeWire-provided PulseAudio compatibility server. It does not claim native PipeWire PortAudio host API support or physical ALSA hardware support. Final status must be taken from the Linux workflow for the new PR head.
+
+
+## ALSA host API integration
+
+Linux X11 CI adds a dedicated ALSA null PCM test. It writes a temporary ALSA configuration (outside the repository and user home) mapping the default PCM to the ALSA null plugin, sets `ALSA_CONFIG_PATH`, then requires PortAudio to expose an ALSA input host and opens the selected device through the product `probe_microphone` implementation. The test reads PCM and verifies stream cleanup. It does not fall back to PulseAudio and fails if the ALSA host input is unavailable.
+
+This verifies the PortAudio ALSA host API against a virtual null PCM. It does not certify physical ALSA hardware, mixer controls, device permissions or hotplug behavior.
+
+## CI dependency installation bounds
+
+The Linux source and frozen jobs now use apt Acquire retry and HTTP/HTTPS timeout options plus an 8-minute outer timeout for package index and system package installation. This makes mirror/network stalls fail within a bounded interval rather than holding the Linux acceptance workflow indefinitely.

@@ -475,3 +475,18 @@
 - **为什么：** 许多 Linux 桌面使用 PipeWire 提供 PulseAudio 兼容服务。仅在原生 PulseAudio daemon 下通过，不能证明 pipewire-pulse 兼容层的设备枚举、采样率协商和输入流打开可用。
 - **踩坑：** 两种服务不能争用同一个 PulseAudio socket；必须先停止原 daemon，再创建独立用户运行目录和 D-Bus 会话。该测试验证 PipeWire 的 PulseAudio 兼容层，不等于 PortAudio 原生 PipeWire host API 或 ALSA 直连硬件已通过。
 - **验证：** 专用 CI step 使用 `pipewire`、`wireplumber`、`pipewire-pulse` 独立启动，要求 `pactl info` 就绪并创建精确命名 source，再显式运行真实 PortAudio 采集测试；不允许回退到其他输入设备。
+
+
+## 63. ALSA 直连验收必须走 PortAudio ALSA host，而非 PulseAudio 默认设备
+
+- **改了什么：** Linux CI 新增 ALSA null PCM 测试，使用独立 `ALSA_CONFIG_PATH` 将默认 PCM 映射到 ALSA null 插件，要求 sounddevice 枚举 ALSA host API，并通过产品 `probe_microphone` 精确选择 ALSA 设备、打开流、读取 PCM、计算指标和关闭。
+- **为什么：** PulseAudio 和 pipewire-pulse 都可能经由同一个 PulseAudio host API；它们不能证明 PortAudio 的 ALSA host API 本身能打开输入流。必须显式选 ALSA host，防止测试意外走 PulseAudio。
+- **踩坑：** ALSA null PCM 只验证 ALSA host API、PCM 打开和数据读取，不代表实体声卡、硬件 mixer、热插拔或权限体验。测试配置放在临时文件并通过 `ALSA_CONFIG_PATH` 注入，不能覆盖 runner 或用户的系统音频配置。
+- **验证：** Linux X11 job 在独立步骤创建临时 ALSA 配置并设置 `DYBERPET_ALSA_INTEGRATION=1`；测试要求发现 ALSA host input 并实际读取，缺少时失败而不回退到 PulseAudio。
+  
+## 64. 系统包安装要有网络重试、请求超时和总时限
+
+- **改了什么：** Linux source/frozen 两个 job 的 apt 更新与安装命令增加 Acquire 重试、HTTP/HTTPS 请求超时和 8 分钟总时限。
+- **为什么：** Linux 音频栈测试增加系统依赖后，CI 若卡在 apt 网络或镜像源，会占用整个工作流时限，且无法区分网络问题和产品测试失败。
+- **踩坑：** 不能无限等待，也不能在安装失败时继续把后续测试当成通过。使用明确 timeout 让失败成为可诊断的 job 终态，并保留原始 apt 输出。
+- **验证：** Linux workflow 对 source/frozen 两处系统依赖安装使用相同的有界策略；最终以新 head 的两项 Linux job 状态为准。
