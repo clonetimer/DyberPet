@@ -1049,13 +1049,6 @@ class PetAssistantDialog(QDialog):
         except WorkspaceError as exc:
             self._job_error(str(exc))
             return
-        if QMessageBox.question(
-                self, "确认保存 AI 回复",
-                "仅在当前授权的桌宠工作区新建文件，不覆盖已有文件：\n"
-                + str(self.workspace.root / validated),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
-            return
         result = self._execute_user_approved_action(
             "create_note", {"name": validated, "content": self._last_reply},
             title="确认保存 AI 回复")
@@ -1074,7 +1067,7 @@ class PetAssistantDialog(QDialog):
             return None
         answer = QMessageBox.question(
             self, title,
-            plan["preview"] + "\\n\\n此操作需要本次明确授权；授权 60 秒内有效且只能使用一次。",
+            plan["preview"] + "\n\n此操作需要本次明确授权；授权 60 秒内有效且只能使用一次。",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
         try:
@@ -1107,9 +1100,9 @@ class PetAssistantDialog(QDialog):
             for row in rows:
                 stamp = datetime.fromtimestamp(row["created_at"]).strftime("%Y-%m-%d %H:%M:%S")
                 lines.append(
-                    f'{stamp}  [{row["status"]}]  {row["action"]}\\n'
-                    f'目标：{row["target"]}\\n说明：{row["detail"]}')
-            view.setPlainText("\\n\\n".join(lines))
+                    f'{stamp}  [{row["status"]}]  {row["action"]}\n'
+                    f'目标：{row["target"]}\n说明：{row["detail"]}')
+            view.setPlainText("\n\n".join(lines))
         layout.addWidget(view)
         close_button = QPushButton("关闭")
         close_button.clicked.connect(dialog.accept)
@@ -1124,11 +1117,6 @@ class PetAssistantDialog(QDialog):
         content, ok = QInputDialog.getMultiLineText(
             self, "文件内容", "输入 UTF-8 文本：")
         if not ok:
-            return
-        if QMessageBox.question(
-                self, "确认创建文件",
-                f"仅在当前授权目录内创建：{name}\n{self.workspace.root}\n不覆盖任何已有文件。"
-                ) != QMessageBox.StandardButton.Yes:
             return
         result = self._execute_user_approved_action(
             "create_file", {"name": name, "content": content},
@@ -1145,14 +1133,6 @@ class PetAssistantDialog(QDialog):
         name, ok = QInputDialog.getItem(
             self, "选择文件", "删除到桌宠可恢复区：", entries, 0, False)
         if not ok:
-            return
-        if QMessageBox.warning(
-                self, "确认移入可恢复区",
-                "仅移动当前授权目录内的文件，不会永久删除。\n"
-                + str(self.workspace.root) + "\n确认移动：" + name,
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No
-                ) != QMessageBox.StandardButton.Yes:
             return
         result = self._execute_user_approved_action(
             "trash_file", {"name": name}, title="确认移入可恢复区")
