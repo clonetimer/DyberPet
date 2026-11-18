@@ -6,6 +6,7 @@ consume a short-lived approval to execute it inside PetWorkspace.
 """
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 import threading
 import time
@@ -149,10 +150,14 @@ class ActionRuntime:
                 raise ActionDenied("Only an existing regular workspace file can be read")
             if path.stat().st_size > MAX_ACTION_CONTENT:
                 raise ActionDenied("Selected file exceeds 256 KiB")
-            args = {"name": name}
+            file_bytes = path.read_bytes()
+            if len(file_bytes) > MAX_ACTION_CONTENT:
+                raise ActionDenied("Selected file exceeds 256 KiB")
+            args = {"name": name, "sha256": hashlib.sha256(file_bytes).hexdigest()}
             target = str(path)
             preview = ("Read this workspace file and send its content to the configured "
-                       "local AI model for this turn only: " + target)
+                       "local AI model for this turn only: " + target
+                       + " (SHA-256 " + args["sha256"][:16] + "…)")
 
         request_id = uuid.uuid4().hex
         created = time.monotonic()
@@ -228,10 +233,13 @@ class ActionRuntime:
                 path = self.workspace.root / args["name"]
                 if path.is_symlink() or not path.is_file():
                     raise ActionDenied("Selected file is no longer a regular workspace file")
-                if path.stat().st_size > MAX_ACTION_CONTENT:
+                file_bytes = path.read_bytes()
+                if len(file_bytes) > MAX_ACTION_CONTENT:
                     raise ActionDenied("Selected file exceeds 256 KiB")
+                if hashlib.sha256(file_bytes).hexdigest() != args["sha256"]:
+                    raise ActionDenied("Selected file changed after approval; review and approve it again")
                 try:
-                    content = path.read_text(encoding="utf-8")
+                    content = file_bytes.decode("utf-8")
                 except UnicodeDecodeError as exc:
                     raise ActionDenied("Selected file must be UTF-8 text") from exc
                 if len(content) > self.MAX_MODEL_FILE_CONTEXT_CHARS:
