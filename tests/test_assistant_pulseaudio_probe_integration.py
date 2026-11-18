@@ -19,23 +19,24 @@ class PulseAudioProbeIntegrationTests(unittest.TestCase):
         import sounddevice as sd
 
         hosts = sd.query_hostapis()
-        devices = sd.query_devices()
-        default = subprocess.run(["pactl", "get-default-source"], check=True, text=True, capture_output=True, timeout=5).stdout.strip()
-        candidates = []
-        for device in devices:
-            if not isinstance(device, dict) or device.get("max_input_channels", 0) < 1:
-                continue
-            host_index = device.get("hostapi")
-            if not isinstance(host_index, int) or not 0 <= host_index < len(hosts):
-                continue
-            host_name = str(hosts[host_index].get("name", ""))
-            device_name = str(device.get("name", ""))
-            if "pulse" in host_name.lower() or "pulse" in device_name.lower():
-                candidates.append((device_name, host_name))
-        exact = [item for item in candidates if item[0] == default]
-        self.assertTrue(exact, "PortAudio does not expose the exact default PulseAudio source: " + default)
-        self.assertEqual(len(exact), 1, "default PulseAudio source identity is ambiguous")
-        name, host_api = exact[0]
+        default = subprocess.run(
+            ["pactl", "get-default-source"], check=True, text=True,
+            capture_output=True, timeout=5).stdout.strip()
+        expected = os.environ.get("DYBERPET_EXPECTED_PULSE_SOURCE", "")
+        self.assertTrue(expected, "CI must declare the exact PulseAudio source under test")
+        self.assertEqual(default, expected, "PulseAudio default source is not the test source")
+        default_input = sd.default.device[0]
+        self.assertIsInstance(default_input, int, "PortAudio has no default input device")
+        device = sd.query_devices(default_input, "input")
+        self.assertIsInstance(device, dict)
+        host_index = device.get("hostapi")
+        self.assertIsInstance(host_index, int)
+        self.assertTrue(0 <= host_index < len(hosts))
+        host_api = str(hosts[host_index].get("name", ""))
+        self.assertIn("pulse", host_api.lower(),
+                      "PortAudio default input is not using the PulseAudio host API: " + host_api)
+        name = str(device.get("name", ""))
+        self.assertTrue(name, "PortAudio default PulseAudio input has no name")
         result = probe_microphone(
             threading.Event(),
             microphone={"name": name, "host_api": host_api},

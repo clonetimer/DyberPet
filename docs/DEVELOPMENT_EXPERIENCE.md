@@ -498,3 +498,11 @@
 - **为什么：** 桌面音频栈可能同时暴露物理麦克风、monitor source、蓝牙输入和虚拟设备。任意选择第一项会让测试实际打开错误设备，造成与新建 null source 无关的假阳性或不稳定失败。
 - **踩坑：** 服务端的 default source 名称与 PortAudio 设备名必须精确对应，并检查唯一性；PipeWire Pulse 兼容层优先使用其稳定支持的 null-sink monitor，不假设所有 PulseAudio 模块均已实现。
 - **验证：** 两种音频服务均设置确定的 default source；集成测试只打开与该名称完全匹配的 PortAudio 设备，缺失或歧义时直接失败，不回退。
+
+
+## 66. PulseAudio default source 与 PortAudio 默认输入是两个不同命名空间
+
+- **改了什么：** 集成测试分别校验 `pactl get-default-source` 与 CI 期望的虚拟 source 名称，并检查 PortAudio 默认输入设备属于 PulseAudio Host API；随后将 PortAudio 的确切设备名和 Host API 名交给产品 `probe_microphone` 精确解析并采集。
+- **为什么：** PulseAudio server source 名称不保证与 PortAudio 暴露的 device name 相同。PortAudio 的 PulseAudio Host API 可能将服务端默认 source 抽象为统一默认输入设备。直接用两边字符串相等会错误失败；从所有输入设备中随便挑一个又会造成假阳性。
+- **踩坑：** 应分别验证服务器默认 source 身份与 PortAudio 实际选中的 Host API，再将 PortAudio 身份传给产品函数；PipeWire Pulse 测试使用 null-sink monitor source，并检查 pactl 默认源确实切换到它。不能只依赖 `pactl info` 中服务启动前的 Default Source 字段。
+- **验证：** 新增回归断言精确 Pulse source、PortAudio 默认输入索引和 PulseAudio Host API；两种服务分别设置 `DYBERPET_EXPECTED_PULSE_SOURCE`，任何 source 不匹配或 Host API 不匹配都失败。
