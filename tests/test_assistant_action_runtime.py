@@ -73,6 +73,14 @@ class ActionRuntimeTests(unittest.TestCase):
         self.assertEqual(result["result"]["content"], "first line\nsecond line")
         self.assertNotIn("first line", repr(self.runtime.audit_log()))
 
+    def test_read_file_rejects_content_changed_after_user_approval(self):
+        path = self.workspace.create("mutable.md", "approved content")
+        plan = self.runtime.prepare("read_file", {"name": path.name})
+        self.runtime.approve(plan["request_id"], True)
+        path.write_text("changed after preview", encoding="utf-8")
+        with self.assertRaisesRegex(ActionDenied, "changed after approval"):
+            self.runtime.execute(plan["request_id"])
+
     def test_read_file_rejects_binary_invalid_utf8_and_large_context(self):
         (self.workspace.root / "binary.txt").write_bytes(bytes([255]))
         plan = self.runtime.prepare("read_file", {"name": "binary.txt"})
