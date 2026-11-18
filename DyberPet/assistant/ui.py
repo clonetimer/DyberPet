@@ -1142,7 +1142,9 @@ class PetAssistantDialog(QDialog):
         close_button = QPushButton("关闭")
         close_button.clicked.connect(dialog.accept)
         layout.addWidget(close_button)
-        dialog.exec()
+        self._action_audit_dialog = dialog
+        dialog.finished.connect(lambda _: setattr(self, "_action_audit_dialog", None))
+        dialog.open()
 
     def create_file(self):
         name, ok = QInputDialog.getText(
