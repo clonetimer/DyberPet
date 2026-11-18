@@ -4,6 +4,7 @@ import http.client
 import os
 import socket
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import patch
@@ -36,6 +37,7 @@ class RequestCancellationTests(unittest.TestCase):
         self.requests = []
         self.arrived = threading.Event()
         self.disconnected = threading.Event()
+        self.release = threading.Event()
         self.mode = "json"
         self.body = b'{"ok":true}'
         owner = self
@@ -60,6 +62,10 @@ class RequestCancellationTests(unittest.TestCase):
                     self.end_headers()
                     self.wfile.write(response)
                     return
+                if owner.mode == "inert_headers":
+                    owner.arrived.set()
+                    owner.release.wait()
+                    return
                 if owner.mode in ("stall_headers", "ppl_create"):
                     owner.arrived.set()
                     self.wait_for_disconnect()
@@ -77,14 +83,29 @@ class RequestCancellationTests(unittest.TestCase):
                     return
                 self.send_response(200)
                 self.send_header("Connection", "close")
-                if owner.mode == "stall_json":
+                if owner.mode == "chunked_sse":
+                    self.send_header("Transfer-Encoding", "chunked")
+                elif owner.mode in ("stall_json", "inert_json"):
                     self.send_header("Content-Length", str(len(owner.body) + 100))
-                elif owner.mode not in ("stall_sse", "sse"):
+                elif owner.mode not in ("stall_sse", "inert_sse", "slow_sse", "sse"):
                     self.send_header("Content-Length", str(len(owner.body)))
                 self.end_headers()
                 try:
-                    if owner.mode == "stall_sse":
+                    if owner.mode in ("stall_sse", "inert_sse"):
                         self.wfile.write(_delta("第一段"))
+                    elif owner.mode in ("slow_sse", "chunked_sse"):
+                        for fragment in (_delta("第一段")[:8],
+                                         _delta("第一段")[8:],
+                                         _delta("第二段"), b"data: [DONE]\n\n"):
+                            if owner.mode == "chunked_sse":
+                                self.wfile.write(("{:X}\r\n".format(len(fragment))).encode()
+                                                 + fragment + b"\r\n")
+                            else:
+                                self.wfile.write(fragment)
+                            self.wfile.flush()
+                            time.sleep(.15)
+                        if owner.mode == "chunked_sse":
+                            self.wfile.write(b"0\r\n\r\n")
                     elif owner.mode == "sse":
                         self.wfile.write(owner.body)
                     else:
@@ -93,6 +114,8 @@ class RequestCancellationTests(unittest.TestCase):
                     owner.arrived.set()
                     if owner.mode in ("stall_sse", "stall_json"):
                         self.wait_for_disconnect()
+                    elif owner.mode in ("inert_sse", "inert_json"):
+                        owner.release.wait()
                 except (BrokenPipeError, ConnectionResetError):
                     owner.disconnected.set()
 
@@ -117,6 +140,7 @@ class RequestCancellationTests(unittest.TestCase):
         self.addCleanup(self.shutdown)
 
     def shutdown(self):
+        self.release.set()
         for token in self.tokens:
             token.cancel()
         for worker in self.workers:
@@ -221,6 +245,66 @@ class RequestCancellationTests(unittest.TestCase):
             "创建记录", model="local-model", base_url=self.endpoint, cancel_token=token))
         self.assertTrue(self.arrived.wait(2))
         self.assert_cancelled(token, worker, result)
+
+    def test_cancel_does_not_depend_on_os_shutdown_waking_response_reader(self):
+        # An inert peer does not close in response to our FIN. Some platforms
+        # also leave the current timeout-mode read blocked after local shutdown.
+        for mode in ("inert_headers", "inert_sse", "inert_json"):
+            with self.subTest(mode=mode):
+                self.mode = mode
+                self.arrived.clear()
+                self.release.clear()
+                token = self.token()
+                pieces = []
+                operation = (lambda: _json_request(
+                    self.endpoint + "/json", cancel_token=token, timeout=10))
+                if mode != "inert_json":
+                    operation = lambda: self.stream(token, pieces.append)
+                worker, result = self.start_request(operation)
+                self.assertTrue(self.arrived.wait(2))
+                try:
+                    # Replace only the platform wakeup boundary. HTTP and the
+                    # cancellation token remain real; the server stays held.
+                    with patch.object(socket.socket, "shutdown", new=lambda *_args: None):
+                        token.cancel()
+                    worker.join(timeout=1)
+                    self.assertFalse(worker.is_alive(),
+                                     "Cancel is waiting for peer data or the read timeout")
+                    self.assertIsInstance(result.get("error"), RequestCancelled)
+                    self.assertNotIn("value", result)
+                    self.assertFalse(self.release.is_set())
+                    if mode == "inert_sse":
+                        self.assertLessEqual(len(pieces), 1)
+                finally:
+                    self.release.set()
+                    worker.join(timeout=2)
+
+    def test_polling_keeps_fragmented_stream_intact_across_quiet_intervals(self):
+        self.mode = "slow_sse"
+        token = self.token()
+        pieces = []
+        self.assertEqual(self.stream(token, pieces.append), "第一段第二段")
+        self.assertEqual(pieces, ["第一段", "第二段"])
+
+    def test_polling_preserves_http_chunk_framing(self):
+        self.mode = "chunked_sse"
+        pieces = []
+        self.assertEqual(self.stream(self.token(), pieces.append), "第一段第二段")
+        self.assertEqual(pieces, ["第一段", "第二段"])
+
+    def test_polling_preserves_requested_response_timeout(self):
+        self.mode = "inert_headers"
+        token = self.token()
+        started = time.monotonic()
+        try:
+            with self.assertRaises(AssistantServiceError) as raised:
+                _json_request(self.endpoint + "/json", cancel_token=token, timeout=.2)
+            self.assertEqual(raised.exception.code, "timeout")
+            self.assertGreaterEqual(time.monotonic() - started, .15)
+            self.assertFalse(token.cancelled)
+            self.assertFalse(self.release.is_set())
+        finally:
+            self.release.set()
 
     def test_cancellation_in_delta_callback_never_returns_completed_answer(self):
         self.mode = "sse"

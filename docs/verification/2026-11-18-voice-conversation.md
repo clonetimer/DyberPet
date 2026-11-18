@@ -13,7 +13,7 @@
 
 ## 测试边界
 
-新增 64 项：一句话识别 33、原生状态反馈 16、Qt 会话集成 15。音频测试替换物理驱动或设备边界，实际捕获循环、Qt/QThread、事件排队、本地 HTTP、聊天客户端与 SQLite 仍按生产路径运行。
+新增 68 项：一句话识别 33、原生状态反馈 16、Qt 会话集成 15、HTTP 取消与读取兼容 4。音频测试替换物理驱动或设备边界，实际捕获循环、Qt/QThread、事件排队、本地 HTTP、聊天客户端与 SQLite 仍按生产路径运行。
 
 Qt 集成检查两轮成功对话、第三轮监听、只有两次朗读、同场一个识别器、麦克风与 TTS 不重叠；请求带既有历史和上一轮回复，不带待手动发送附件。其他用例覆盖部分识别、停止已排队成功、阶段之间结束、生成/朗读打断、普通停止按钮、配置/角色变化、关闭、空语句、TTS 失败、20 轮、真实 QTimer 到期及固定控制条。
 
@@ -35,14 +35,14 @@ Linux 使用 `QT_QPA_PLATFORM=offscreen`、独立 `XDG_CONFIG_HOME` 和 PyOpenGL
 QT_QPA_PLATFORM=offscreen python -X faulthandler -m unittest discover -s tests -v
 ```
 
-固定控制条和产品代码确定，并包含下文 Windows 测试等待修复后，按环境依次执行完整套件：
+固定控制条和产品代码确定，并包含下文 Windows 测试等待修复与响应取消修复后，按环境依次执行完整套件：
 
 | 实际运行时 | 最终结果 |
 | --- | --- |
-| Python 3.9.25 / PySide6 6.5.2 | **861 项，856 通过，5 环境跳过，0 失败；36.762 秒** |
-| Python 3.11.18 / PySide6 6.5.2 | **861 项，856 通过，5 环境跳过，0 失败；35.618 秒** |
-| Python 3.12.14 / PySide6 6.8.3 | **861 项，856 通过，5 环境跳过，0 失败；34.932 秒** |
-| Python 3.9 语法及编译 | 本批 9 个新增/修改 Python 文件均通过 |
+| Python 3.9.25 / PySide6 6.5.2 | **865 项，860 通过，5 环境跳过，0 失败；41.509 秒** |
+| Python 3.11.18 / PySide6 6.5.2 | **865 项，860 通过，5 环境跳过，0 失败；40.847 秒** |
+| Python 3.12.14 / PySide6 6.8.3 | **865 项，860 通过，5 环境跳过，0 失败；37.775 秒** |
+| Python 3.9 语法及编译 | 本批 11 个新增/修改 Python 文件均通过 |
 | 变更格式 | `git diff --check` 通过 |
 
 5 个既有本地跳过项：独立 PPL checkout、完整桌面依赖下的原生手势、精灵画布及两个指针手势用例。142 项助手 Qt 集成实际执行；不把跳过项计为通过。远端 PPL 真实服务、平台 GUI 与实际 EXE 另按本批提交核验。
@@ -61,11 +61,27 @@ QT_QPA_PLATFORM=offscreen python -X faulthandler -m unittest discover -s tests -
 
 正式修改只涉及本测试模块：所有短等待同时处理 GUI 事件并让出 GIL；保留原 3 秒/5 秒上限及历史、语音次数、重叠和 phase 断言；HTTP 门闩保持到显式清理，证明取消无需等待服务正常完成；失败时附任务状态。15 项回归与同样 50ms 调度压力下的 3 个相关用例通过。没有为了 CI 改动生产会话/HTTP/音频代码，也没有增加超时、重排或跳过测试。
 
-独立审阅者完成定向复核：对实际修复后的测试，同时施加 50ms 切换间隔与第三轮 ready 前 20ms 准备，三项仍在原超时下全部通过（1.566 秒）。上述三套最终完整回归随后均通过；产品源文件与 `e97ec6c` 完全相同。
+独立审阅者完成定向复核：对实际修复后的测试，同时施加 50ms 切换间隔与第三轮 ready 前 20ms 准备，三项仍在原超时下全部通过（1.566 秒）。该测试修复阶段的三套完整 861 项回归均通过；当时产品源文件与 `e97ec6c` 完全相同。
 
 Windows 取消超时未在本地精确复现；其路径同样观察到等待方式造成的延迟，是否解决以新 SHA 的原 Windows 作业为准。`e97ec6c` 虽已成功生成 Windows 包并在实际 EXE 报告 `voice_conversation_starts_off=true`，仍不能作为通过整批验收的候选；最终包与门禁另记于 PR。
 
-### 产品审阅与证据边界
+### Windows 保持连接场景的响应取消
+
+测试等待修复提交 `270e40c282beb2c6d4eafdecadb15d763c39fcaf` 在 [Windows Qt](https://github.com/clonetimer/DyberPet/actions/runs/44262120185/job/134657712236) 与 [Windows 3.9](https://github.com/clonetimer/DyberPet/actions/runs/44262120191/job/134657712216)、[3.11 完整矩阵](https://github.com/clonetimer/DyberPet/actions/runs/44262120191/job/134657712494)均确认 20 轮与末尾 listening 已通过，但三者仍有同一个打断失败。新诊断明确为 kind=chat、worker_running=True、listen_count=1；不是新监听线程已经建立后仅计数迟到。
+
+定向审阅在真实 Qt/HTTP 路径跟踪：控制器调用正确 token，停止标志生效，shutdown 使用的仍是 response 的 SocketIO 所持有 socket。HTTP/1.0 的 will_close 会清除 connection.sock 并标记关闭，但实际句柄因 makefile 引用仍有效；没有发现漏调用或注册错对象。旧服务夹具则会在收到 FIN 后关闭服务端；本次保持 Event 等待的服务不会帮助客户端唤醒。
+
+本地新增可控 OS 唤醒边界对照：真实 HTTP 服务分别保持响应头、SSE 和 JSON，仅让 socket.shutdown 不产生唤醒，三种原实现全部不能在原测试时限退出。随后在 HTTP 缓冲层之下增加非阻塞原始读取，最多每 100ms 检查取消；复用真实未缓冲 SocketIO，保留连接提前 close 时的句柄所有权，由 worker 关闭。原 HTTP 解析器、代理/重定向限制、响应上限与请求写入均保留。读取超时仍按原请求设置，不把 100ms 轮询当成模型超时，也不在已超时的缓冲 reader 上重试。
+
+请求合约 15 项和语音 Qt 15 项通过；新增回归还覆盖 150ms 无数据间隔中的分片 SSE、HTTP chunk framing 与 0.2 秒原超时分类。该对照证明取消不再依赖 shutdown 唤醒，并未在 Linux 上声称捕获 Windows 的原生 select 堆栈；最终仍用新 SHA 的原 Windows 作业验收。
+
+独立定向审阅未发现待修缺陷。在 15 项请求合约外加只读资源追踪后，确认每项用例进入清理前，所有捕获客户端 socket 的 fileno 均为 -1，token 的注册 socket 集合均为空；15 项通过（1.624 秒）。另在实际 Qt 生成打断用例中只令 socket.shutdown 无效果，保留真实传输、controller、worker、历史断言、服务端门闩与原 3 秒时限，0.307 秒通过并恢复监听，未完成回复未写入历史。
+
+[Python 3.9 socket.makefile 文档](https://docs.python.org/3.9/library/socket.html#socket.socket.makefile)说明超时可能破坏文件缓冲状态，也说明 makefile 引用与 socket 关闭的所有权关系。相同 Python 3.9/3.11 的实际探针与官方实现用于选择缓冲层以下的修正位置。
+
+100ms 是读取等待中的检查片段，不是整条取消链或模型服务 GPU 停止的时延承诺。DNS/连接、原请求写入与第三方音频驱动的既有停止边界仍适用。
+
+### 产品审阅结论
 
 一次独立整批审阅读取实际 controller → dialog → QThread 清理及 PetWidget → Interaction_worker 路径，没有发现 Critical、Important 或 Minor 缺陷。审阅者独立执行初始 63 项新增测试、后来加入的固定控制条回归，以及 8 个额外真实 Qt/HTTP 检查，均通过：监听/朗读打断后恢复；生成和朗读期间配置 A→B→A 不复活；旧生成/朗读停止按钮结束会话；空 HTTP 回复无朗读/历史；批准记忆和 PPL 快照进入请求而附件不进入。
 
