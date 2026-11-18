@@ -13,7 +13,6 @@ from unittest.mock import patch
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QRect
-    from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication
 except ImportError:
     QApplication = None
@@ -134,7 +133,9 @@ class VoiceConversationQtTests(unittest.TestCase):
                                       + "\n\n").encode("utf-8"))
                     self.wfile.flush()
                     owner.partial_sent.set()
-                    owner.reply_gate.wait(3)
+                    # Deliberately held replies stay held until the test or
+                    # unconditional server cleanup releases them.
+                    owner.reply_gate.wait()
                     self.wfile.write(b"data: [DONE]\n\n")
                     self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError, OSError):
@@ -181,9 +182,34 @@ class VoiceConversationQtTests(unittest.TestCase):
 
     def wait_for(self, predicate, *, timeout=3):
         deadline = time.monotonic() + timeout
-        while not predicate() and time.monotonic() < deadline:
-            QTest.qWait(10)
-        self.assertTrue(predicate(), "Voice turn did not reach the expected observable state")
+        while time.monotonic() < deadline:
+            self.app.processEvents()
+            if predicate():
+                return
+            # qWait can hold the GIL in these Qt bindings. Python HTTP
+            # and audio workers need a real scheduling opportunity as well.
+            time.sleep(0.005)
+        self.app.processEvents()
+        self.assertTrue(predicate(), "Voice turn did not reach the expected state: "
+                        + repr(self.operation_state()))
+
+    def operation_state(self):
+        job = self.dialog._job
+        return {"kind": self.dialog._activity_kind,
+                "outcome": self.dialog._activity_outcome,
+                "worker_running": job.isRunning() if job is not None else False,
+                "voice_active": self.dialog.voice_conversation.active,
+                "phase": self.dialog.voice_chat_status.text(),
+                "listen_count": self.audio.listen_count,
+                "speech_count": len(self.audio.speeches),
+                "request_count": len(self.requests)}
+
+    def pump_events(self, milliseconds):
+        deadline = time.monotonic() + milliseconds / 1000
+        while time.monotonic() < deadline:
+            self.app.processEvents()
+            time.sleep(0.005)
+        self.app.processEvents()
 
     def start(self):
         previous = self.audio.listen_count
@@ -211,7 +237,9 @@ class VoiceConversationQtTests(unittest.TestCase):
         self.wait_for(lambda: self.audio.listen_count == 2)
         self.audio.inputs.put("第二句")
         self.wait_for(lambda: self.audio.listen_count == 3)
-        QTest.qWait(130)
+        self.wait_for(lambda: phases.count(("咕嘎", "listening")) == 3)
+        # Give the existing 100 ms automatic-read window time to run too.
+        self.pump_events(130)
         self.end()
 
         self.assertEqual(self.audio.speeches, ["本地回复1", "本地回复2"])
@@ -263,7 +291,7 @@ class VoiceConversationQtTests(unittest.TestCase):
         self.assertTrue(job.wait(1000))
         self.dialog.voice_end_button.click()
         self.wait_for(lambda: self.dialog._job is None)
-        QTest.qWait(30)
+        self.pump_events(30)
         self.assertEqual(self.requests, [])
         self.assertEqual(self.audio.listen_count, 1)
         self.assertFalse(self.dialog.voice_conversation.active)
@@ -274,7 +302,7 @@ class VoiceConversationQtTests(unittest.TestCase):
         self.dialog._job.finished.connect(self.dialog.end_voice_conversation)
         self.audio.inputs.put("完成监听后马上结束")
         self.wait_for(lambda: self.dialog._job is None)
-        QTest.qWait(30)
+        self.pump_events(30)
         self.assertEqual(self.requests, [])
         self.assertFalse(self.dialog.voice_conversation.active)
         for button in (self.dialog.send_button, self.dialog.plan_button,
@@ -294,6 +322,7 @@ class VoiceConversationQtTests(unittest.TestCase):
         self.wait_for(lambda: "本地回复1" in self.dialog.chat_log.toPlainText())
         self.dialog.voice_interrupt_button.click()
         self.wait_for(lambda: self.audio.listen_count == 2)
+        self.assertFalse(self.reply_gate.is_set())
         self.assertTrue(self.dialog.voice_conversation.active)
         self.assertEqual(self.audio.speeches, [])
         self.assertEqual(self.dialog.message.text(), "")
@@ -310,7 +339,7 @@ class VoiceConversationQtTests(unittest.TestCase):
         self.dialog.voice_interrupt_button.click()
         self.dialog.voice_end_button.click()
         self.wait_for(lambda: self.dialog._job is None)
-        QTest.qWait(30)
+        self.pump_events(30)
         self.assertEqual(self.audio.listen_count, 1)
         self.assertFalse(self.dialog.voice_conversation.active)
         self.assertFalse(self.audio.overlap)
@@ -321,7 +350,7 @@ class VoiceConversationQtTests(unittest.TestCase):
         self.start()
         self.dialog.stop_listen_button.click()
         self.wait_for(lambda: self.dialog._job is None)
-        QTest.qWait(30)
+        self.pump_events(30)
         self.assertFalse(self.dialog.voice_conversation.active)
         self.assertEqual(self.requests, [])
         self.assertEqual(self.dialog.message.text(), "")
@@ -343,7 +372,7 @@ class VoiceConversationQtTests(unittest.TestCase):
                 count = self.audio.listen_count
                 change()
                 self.wait_for(lambda: self.dialog._job is None)
-                QTest.qWait(20)
+                self.pump_events(20)
                 self.assertFalse(self.dialog.voice_conversation.active)
                 self.assertEqual(self.audio.listen_count, count)
         self.assertEqual(self.requests, [])
@@ -355,7 +384,7 @@ class VoiceConversationQtTests(unittest.TestCase):
         self.dialog.close()
         self.wait_for(lambda: self.dialog._job is None and not self.dialog.isVisible())
         self.dialog.microphone_ready.emit("咕嘎", generation, stop)
-        QTest.qWait(20)
+        self.pump_events(20)
         self.assertFalse(self.dialog.voice_conversation.active)
         self.assertEqual(self.audio.listen_count, 1)
 
@@ -366,7 +395,7 @@ class VoiceConversationQtTests(unittest.TestCase):
                 count = self.audio.listen_count
                 self.audio.inputs.put(value)
                 self.wait_for(lambda: self.dialog._job is None)
-                QTest.qWait(30)
+                self.pump_events(30)
                 self.assertFalse(self.dialog.voice_conversation.active)
                 self.assertEqual(self.audio.listen_count, count)
         self.assertEqual(self.requests, [])
