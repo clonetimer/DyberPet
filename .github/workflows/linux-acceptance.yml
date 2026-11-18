@@ -18,6 +18,7 @@ on:
       - "tests/test_assistant_linux_tts_readiness.py"
       - "tests/test_assistant_linux_voice_compatibility.py"
       - "tests/test_assistant_audio_probe.py"
+      - "tests/test_assistant_audio_settings_qt.py"
       - "tests/test_assistant_trial_records.py"
       - "tests/test_assistant_audio_settings_qt.py"
       - "docs/pet_assistant.md"

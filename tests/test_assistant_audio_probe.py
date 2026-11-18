@@ -60,6 +60,37 @@ class AudioProbeTests(unittest.TestCase):
         self.assertFalse(hasattr(result, "audio"))
         self.assertFalse(hasattr(result, "pcm"))
 
+    def test_unsupported_16khz_falls_back_to_device_default_rate(self):
+        stream = _Stream(samples=[1000, -1000])
+        attempts = []
+        module = ModuleType("sounddevice")
+        module.query_devices = lambda *args, **kwargs: {"default_samplerate": 48000}
+        def open_stream(**options):
+            attempts.append(options["samplerate"])
+            if options["samplerate"] == 16000:
+                raise ValueError("Invalid sample rate")
+            return stream
+        module.RawInputStream = open_stream
+        with patch.dict("sys.modules", {"sounddevice": module}):
+            result = probe_microphone(threading.Event(), duration_seconds=0.25)
+        self.assertEqual(attempts, [16000, 48000])
+        self.assertEqual(result.sample_rate, 48000)
+        self.assertEqual(result.frames, 12000)
+        self.assertTrue(stream.closed)
+
+    def test_reports_clear_error_when_all_supported_rates_are_rejected(self):
+        module = ModuleType("sounddevice")
+        module.query_devices = lambda *args, **kwargs: {"default_samplerate": 48000}
+        attempts = []
+        def reject(**options):
+            attempts.append(options["samplerate"])
+            raise ValueError("unsupported format")
+        module.RawInputStream = reject
+        with patch.dict("sys.modules", {"sounddevice": module}):
+            with self.assertRaisesRegex(VoiceUnavailable, "不接受"):
+                probe_microphone(threading.Event(), duration_seconds=0.25)
+        self.assertEqual(attempts, [16000, 48000, 44100, 32000, 22050, 8000])
+
     def test_clipping_is_counted_without_retaining_samples(self):
         stream = _Stream(samples=[32767, -32768, 100])
         result, _ = self.run_probe(stream, duration_seconds=0.25)

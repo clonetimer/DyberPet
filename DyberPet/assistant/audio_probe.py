@@ -45,11 +45,46 @@ def probe_microphone(stop_event, *, microphone=None, sample_rate: int = 16000,
         device = resolve_microphone(microphone, sd)
         if stop_event.is_set():
             return None
-        frames_limit = int(sample_rate * duration_seconds)
-        stream = sd.RawInputStream(
-            samplerate=sample_rate, blocksize=min(4000, frames_limit),
-            channels=1, dtype="int16",
-            **({} if device is None else {"device": device}))
+        requested_rate = sample_rate
+        candidates = [requested_rate]
+        try:
+            info = (sd.query_devices(device, "input") if device is not None
+                    else sd.query_devices(kind="input"))
+            if isinstance(info, dict):
+                default_rate = info.get("default_samplerate")
+                if (isinstance(default_rate, (int, float))
+                        and not isinstance(default_rate, bool)
+                        and math.isfinite(default_rate)
+                        and 8000 <= default_rate <= 48000):
+                    candidates.append(int(round(default_rate)))
+        except Exception:
+            # Device metadata may be unavailable on a host API; common rates
+            # below still provide a bounded negotiation path.
+            pass
+        candidates.extend((48000, 44100, 32000, 22050, 16000, 8000))
+        unique_rates = tuple(dict.fromkeys(candidates))
+        stream = None
+        selected_rate = None
+        failures = []
+        for candidate in unique_rates:
+            if stop_event.is_set():
+                return None
+            frames_limit = int(candidate * duration_seconds)
+            try:
+                stream = sd.RawInputStream(
+                    samplerate=candidate, blocksize=min(4000, frames_limit),
+                    channels=1, dtype="int16",
+                    **({} if device is None else {"device": device}))
+                selected_rate = candidate
+                break
+            except Exception as exc:
+                failures.append(str(exc).splitlines()[0][:120])
+        if stream is None:
+            detail = failures[-1] if failures else "no supported sample rate"
+            raise VoiceUnavailable(
+                "麦克风不接受 16/48/44.1/32/22.05/8 kHz 常见采样率；"
+                "请检查设备格式或系统音频服务：" + detail)
+        frames_limit = int(selected_rate * duration_seconds)
         started = time.monotonic()
         captured = 0
         sum_squares = 0
@@ -84,7 +119,7 @@ def probe_microphone(stop_event, *, microphone=None, sample_rate: int = 16000,
             raise VoiceUnavailable("麦克风测试采集时间不足；请重新测试")
         elapsed = max(0.0, time.monotonic() - started)
         return MicrophoneProbeResult(
-            sample_rate=sample_rate,
+            sample_rate=selected_rate,
             frames=captured,
             duration_seconds=elapsed,
             rms=math.sqrt(sum_squares / captured),

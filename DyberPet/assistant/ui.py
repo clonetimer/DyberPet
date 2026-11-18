@@ -943,8 +943,8 @@ class PetAssistantDialog(QDialog):
         else:
             quality = "已采集到输入信号；这只验证采集链路，不代表语音识别准确率。"
         self.audio_settings.status_label.setText(
-            "麦克风测试完成：{:.2f} 秒，{} 帧，RMS {:.1f}，峰值 {}，削波 {} 帧。{}".format(
-                result.duration_seconds, result.frames, rms, peak, clipped, quality))
+            "麦克风测试完成：{} Hz，{:.2f} 秒，{} 帧，RMS {:.1f}，峰值 {}，削波 {} 帧。{}".format(
+                result.sample_rate, result.duration_seconds, result.frames, rms, peak, clipped, quality))
         self.status.setText("麦克风采集测试完成；音频样本未保存。")
 
     def _audio_options_ready(self, catalog):
