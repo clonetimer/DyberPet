@@ -15,14 +15,15 @@ from time import monotonic
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout, QHBoxLayout, QInputDialog,
-    QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout,
+    QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea,
+    QVBoxLayout, QWidget,
 )
 
 from .files import PetWorkspace, WorkspaceError, validate_session_folder
 from .action_runtime import ActionRuntime, ActionDenied
 from .persona import (
     DEFAULT_CHAT_URL, DEFAULT_PPL_URL, PERSONAS, PPLCharacterClient,
-    chat_local, stream_local_chat, list_local_models, AssistantServiceError,
+    chat_local, stream_local_chat, list_local_models, AssistantServiceError, _local_base,
 )
 from .voice import (
     recognize_once, recognize_until_stopped, speak_interruptible, speak_once,
@@ -44,6 +45,8 @@ from .task_plan import TaskSession
 from .task_planner import generate_task_plan
 from .task_review import TaskReviewDialog
 from .request_control import CancellationToken, RequestCancelled
+from .service_diagnostics import service_error_hint
+from .voice_readiness import inspect_voice_readiness
 
 
 def _weak_ready_callback(owner, signal_name, *args):
@@ -79,6 +82,8 @@ class _AssistantJob(QThread):
             self.success.emit(result)
         except RequestCancelled:
             self.cancelled.emit()
+        except AssistantServiceError as exc:
+            self.failed.emit(service_error_hint(exc))
         except Exception as exc:
             self.failed.emit(str(exc))
 
@@ -116,6 +121,11 @@ class PetAssistantDialog(QDialog):
         self._job_success_handler = None
         self._job_progress_handler = None
         self._request_token = None
+        self._setup_job = None
+        self._model_check_revision = 0
+        self._voice_check_revision = 0
+        self._model_catalog_endpoint = None
+        self._model_catalog = ()
         self._request_text = ""
         self._job_cancel_requested = False
         self._activity_kind = None
@@ -157,6 +167,9 @@ class PetAssistantDialog(QDialog):
         self._activity_timer.setInterval(250)
         self._activity_timer.timeout.connect(self._refresh_activity)
         self._apply_preferences()
+        self.llm_endpoint.textChanged.connect(self._model_endpoint_changed)
+        self.llm_model.textChanged.connect(self._model_choice_changed)
+        self.voice_model.textChanged.connect(self._voice_path_changed)
         self.persona.currentIndexChanged.connect(self._persona_changed)
         self._sync_guga_controls()
         self._restore_character_history()
@@ -167,8 +180,16 @@ class PetAssistantDialog(QDialog):
 
     def _build_ui(self):
         self.setWindowTitle("桌宠助手 · " + self.character_name)
-        self.resize(560, 580)
-        body = QVBoxLayout(self)
+        available = self.screen().availableGeometry()
+        self.resize(min(900, available.width() - 40), min(820, available.height() - 60))
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        self.content_scroll = QScrollArea(self)
+        self.content_scroll.setWidgetResizable(True)
+        content = QWidget()
+        body = QVBoxLayout(content)
+        self.content_scroll.setWidget(content)
+        outer.addWidget(self.content_scroll)
         title = QLabel("人设、语音与受控文件操作（本地优先）")
         body.addWidget(title)
 
@@ -190,15 +211,27 @@ class PetAssistantDialog(QDialog):
         form.addRow(self.ppl_snapshot_button)
 
         self.llm_endpoint = QLineEdit(DEFAULT_CHAT_URL)
-        self.llm_model = QLineEdit()
-        self.llm_model.setPlaceholderText("例如：本地 LM Studio 已加载模型的 ID")
+        self.model_selector = QComboBox()
+        self.model_selector.setEditable(True)
+        self.model_selector.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.model_selector.setMinimumContentsLength(18)
+        self.model_selector.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.llm_model = self.model_selector.lineEdit()
+        self.llm_model.setPlaceholderText("检查连接后选择模型，也可手动输入 ID")
         form.addRow("本地模型地址", self.llm_endpoint)
         model_row = QHBoxLayout()
-        model_row.addWidget(self.llm_model, 1)
-        detect_button = QPushButton("检测")
-        detect_button.clicked.connect(self.detect_models)
-        model_row.addWidget(detect_button)
-        form.addRow("模型 ID", model_row)
+        model_row.addWidget(self.model_selector, 1)
+        self.detect_button = QPushButton("检查连接 / 刷新模型")
+        self.detect_button.setAutoDefault(False)
+        self.detect_button.clicked.connect(self.detect_models)
+        model_row.addWidget(self.detect_button)
+        form.addRow("聊天模型", model_row)
+        self.model_status = QLabel(
+            "尚未检查连接；启动 LM Studio 本地服务后，点击“检查连接 / 刷新模型”。")
+        self.model_status.setWordWrap(True)
+        self.model_status.setTextFormat(Qt.TextFormat.PlainText)
+        form.addRow(self.model_status)
         self.voice_model = QLineEdit()
         self.voice_model.setPlaceholderText("Vosk 已下载的本地模型文件夹路径")
         voice_model_row = QHBoxLayout()
@@ -207,6 +240,16 @@ class PetAssistantDialog(QDialog):
         browse_button.clicked.connect(self.browse_voice_model)
         voice_model_row.addWidget(browse_button)
         form.addRow("离线识别模型", voice_model_row)
+        self.voice_check_button = QPushButton("检查语音条件（不录音、不发声）")
+        self.voice_check_button.setAutoDefault(False)
+        self.voice_check_button.clicked.connect(self.check_voice_setup)
+        form.addRow(self.voice_check_button)
+        self.voice_status = QLabel("识别：请选择已解压的 Vosk 模型目录，再检查语音条件。")
+        self.tts_status = QLabel("朗读：尚未检查；系统 TTS 与识别模型独立。")
+        for label in (self.voice_status, self.tts_status):
+            label.setWordWrap(True)
+            label.setTextFormat(Qt.TextFormat.PlainText)
+            form.addRow(label)
         self.bubble_enabled = QCheckBox("对话回复/文件操作时显示桌宠气泡")
         self.auto_speak = QCheckBox("自动朗读模型回复（本机离线 TTS）")
         self.motion_enabled = QCheckBox("角色运动增强（Doro步速／派蒙悬浮）")
@@ -770,8 +813,10 @@ class PetAssistantDialog(QDialog):
         self._activity_phase = {
             "chat": "正在等待模型回复", "plan": "正在生成任务草案",
             "listen": "正在准备麦克风", "speech": "正在准备朗读",
+            "models": "正在检查模型连接", "voice_check": "正在检查语音条件",
             "other": "正在执行本地任务",
         }[kind]
+        self.stop_generation_button.setText("停止检查" if kind == "models" else "停止生成")
         self._activity_timer.start()
         self._refresh_activity()
 
@@ -803,6 +848,7 @@ class PetAssistantDialog(QDialog):
             self._activity_phase = {
                 "chat": "回复已完成", "plan": "任务草案已生成",
                 "listen": "识别已完成", "speech": "朗读已完成",
+                "models": "连接检查已完成", "voice_check": "语音条件已检查",
                 "other": "本地任务已完成",
             }.get(self._activity_kind, "就绪")
         self._activity_timer.stop()
@@ -815,7 +861,8 @@ class PetAssistantDialog(QDialog):
         self._job_cancel_requested = True
         self._request_token.cancel()
         self.stop_generation_button.setEnabled(False)
-        self._activity_phase = "正在停止生成"
+        self._activity_phase = ("正在停止检查" if self._activity_kind == "models"
+                                else "正在停止生成")
         self._refresh_activity()
         if self._stream_reply_open:
             self.chat_log.appendPlainText("（用户停止；以上为未完成的回复）")
@@ -824,7 +871,11 @@ class PetAssistantDialog(QDialog):
             self._last_reply = ""
             if not self.message.text().strip():
                 self.message.setText(self._request_text)
-        self.status.setText("正在停止本次生成；已显示文字和待重试附件保留。")
+        if self._activity_kind == "models":
+            self.model_status.setText("连接检查已请求停止；可在检查结束后重试。")
+            self.status.setText("正在停止连接检查；输入和附件已保留。")
+        else:
+            self.status.setText("正在停止本次生成；已显示文字和待重试附件保留。")
 
     def _submit(self, task, on_success, *args, stream=False,
                 on_progress=None, **kwargs):
@@ -838,6 +889,8 @@ class PetAssistantDialog(QDialog):
         self.listen_button.setEnabled(False)
         self.ppl_button.setEnabled(False)
         self.speak_button.setEnabled(False)
+        self.detect_button.setEnabled(False)
+        self.voice_check_button.setEnabled(False)
         job = _AssistantJob(task, *args, stream=stream, **kwargs)
         self._job = job
         self._job_generation = self._session_generation
@@ -855,6 +908,7 @@ class PetAssistantDialog(QDialog):
         if (self._job_generation == self._session_generation
                 and not self._closing_after_worker
                 and not self._job_cancel_requested
+                and self._setup_job_is_current()
                 and self._job_success_handler is not None):
             if not self._activity_outcome:
                 self._activity_outcome = "completed"
@@ -873,10 +927,19 @@ class PetAssistantDialog(QDialog):
             self._job_error(detail, worker_failed=True)
 
     def _job_failed(self, detail):
-        if self._job_cancel_requested:
+        if self._job_cancel_requested or not self._setup_job_is_current():
             return
         if self._job_generation == self._session_generation and not self._closing_after_worker:
             self._activity_outcome = "failed"
+            if self._activity_kind == "models":
+                self._model_catalog_endpoint = None
+                self._replace_model_choices(())
+                self.model_status.setText(detail)
+            elif self._activity_kind == "voice_check":
+                self.voice_status.setText("识别检查未完成：" + detail)
+                self.tts_status.setText("朗读：本次检查未完成，请重试。")
+            elif self._activity_kind == "chat" and not self.message.text().strip():
+                self.message.setText(self._request_text)
         self._scoped_job_error(detail, self._job_generation)
 
     def _job_cancelled(self):
@@ -885,16 +948,20 @@ class PetAssistantDialog(QDialog):
     def _job_finished(self):
         self._finish_speech_visuals()
         self._finish_activity()
+        if self._job_cancel_requested:
+            self._finish_setup_cancel()
         if (self._job_cancel_requested and self._request_token is not None
                 and self._job_generation == self._session_generation
-                and not self._closing_after_worker):
-            self.status.setText("本次生成已停止；可修改输入后重新发送。")
+                and not self._closing_after_worker and self._setup_job_is_current()):
+            self.status.setText("连接检查已停止；可再次检查。" if self._activity_kind == "models"
+                                else "本次生成已停止；可修改输入后重新发送。")
         job = self._job
         self._job = None
         self._job_generation = None
         self._job_success_handler = None
         self._job_progress_handler = None
         self._request_token = None
+        self._setup_job = None
         self._request_text = ""
         self.stop_generation_button.setEnabled(False)
         self._listening = False
@@ -903,7 +970,8 @@ class PetAssistantDialog(QDialog):
         self.stop_listen_button.setEnabled(False)
         self.stop_speak_button.setEnabled(False)
         for button in (self.send_button, self.plan_button, self.listen_button,
-                       self.ppl_button, self.speak_button):
+                       self.ppl_button, self.speak_button, self.detect_button,
+                       self.voice_check_button):
             button.setEnabled(True)
         if job is not None:
             job.deleteLater()
@@ -967,16 +1035,130 @@ class PetAssistantDialog(QDialog):
             self.character_name)
 
     def detect_models(self):
-        self.status.setText("正在读取本地 LM Studio 模型列表…")
+        if self._job is not None:
+            self.status.setText("上一项任务仍在执行；结束后可检查连接。")
+            return
+        endpoint = self.llm_endpoint.text().strip()
+        self._model_catalog_endpoint = None
+        self._replace_model_choices(())
+        self._setup_job = ("models", self._model_check_revision, endpoint)
+        token = CancellationToken()
+        self._request_token = token
+        self._begin_activity("models")
+        self.stop_generation_button.setEnabled(True)
+        self.model_status.setText("正在读取本地服务列出的模型；本次检查不会发送聊天内容。")
+        self.status.setText("正在检查连接；可点击“停止检查”。")
         self._submit(list_local_models, self._choose_model,
-                     self.llm_endpoint.text())
+                     endpoint, cancel_token=token)
 
     def _choose_model(self, names):
-        name, ok = QInputDialog.getItem(
-            self, "本地模型", "选择已加载的模型：", names, 0, False)
-        if ok:
-            self.llm_model.setText(name)
-            self.status.setText("已选择本地模型：" + name)
+        self._model_catalog_endpoint = self.llm_endpoint.text().strip()
+        self._replace_model_choices(names, select_single=True)
+        self._model_choice_changed()
+        self.status.setText("已读取本地模型列表；选择聊天模型后发送消息即可验证回复。")
+
+    def _replace_model_choices(self, names, *, select_single=False):
+        current = self.llm_model.text()
+        self._model_catalog = tuple(names)
+        selector_blocked = self.model_selector.blockSignals(True)
+        editor_blocked = self.llm_model.blockSignals(True)
+        try:
+            self.model_selector.clear()
+            self.model_selector.addItems(list(names))
+            chosen = (names[0] if select_single and len(names) == 1
+                      and not current.strip() else current)
+            self.model_selector.setCurrentIndex(self.model_selector.findText(chosen))
+            self.model_selector.setEditText(chosen)
+        finally:
+            self.llm_model.blockSignals(editor_blocked)
+            self.model_selector.blockSignals(selector_blocked)
+
+    def _model_choice_changed(self, _text=None):
+        if self._model_catalog_endpoint != self.llm_endpoint.text().strip():
+            return
+        model = self.llm_model.text().strip()
+        if not model:
+            note = "请从下拉框选择聊天模型，或手动输入 ID。"
+        elif model not in self._model_catalog:
+            note = "当前手填 ID 未在本次列表中，请核对或重新选择。"
+        else:
+            note = "已选择模型：" + model + "。"
+        self.model_status.setText("服务可连接。" + note + "尚未验证生成，列表不代表已加载。")
+
+    def _model_endpoint_changed(self, _text):
+        self._model_check_revision += 1
+        self._model_catalog_endpoint = None
+        self._replace_model_choices(())
+        self.model_status.setText("地址已更改，请重新检查连接；已保留手填模型 ID。")
+        if self._setup_job is not None and self._setup_job[0] == "models":
+            if self._request_token is not None:
+                self._request_token.cancel()
+            self._job_cancel_requested = True
+            self.stop_generation_button.setEnabled(False)
+            self._activity_phase = "正在停止旧地址检查"
+            self._refresh_activity()
+            self.status.setText("地址已更改；旧检查结束后可重新检查。")
+
+    def _voice_path_changed(self, _text):
+        self._voice_check_revision += 1
+        self.voice_status.setText("识别：模型目录已更改，请重新检查语音条件。")
+        if self._setup_job is not None and self._setup_job[0] == "voice":
+            self._activity_outcome = "cancelled"
+            self.tts_status.setText("朗读：请等待旧检查结束后重新检查。")
+
+    def _setup_job_is_current(self):
+        if self._setup_job is None:
+            return True
+        kind, revision, value = self._setup_job
+        if kind == "models":
+            return (revision == self._model_check_revision
+                    and value == self.llm_endpoint.text().strip())
+        return (revision == self._voice_check_revision
+                and value == self.voice_model.text().strip())
+
+    def _finish_setup_cancel(self):
+        if (self._setup_job is None or not self._setup_job_is_current()
+                or self._activity_outcome in ("completed", "failed")):
+            return
+        if self._setup_job[0] == "models":
+            self.model_status.setText("连接检查已停止，请重新检查。")
+        else:
+            self.voice_status.setText("识别：检查已停止，请重新检查语音条件。")
+            self.tts_status.setText("朗读：检查已停止，请重新检查语音条件。")
+
+    def check_voice_setup(self):
+        if self._job is not None:
+            self.status.setText("上一项任务仍在执行；结束后可检查语音条件。")
+            return
+        path = self.voice_model.text().strip()
+        self._setup_job = ("voice", self._voice_check_revision, path)
+        self._begin_activity("voice_check")
+        self.voice_status.setText("识别：正在检查组件与模型目录，不会打开麦克风。")
+        self.tts_status.setText("朗读：正在检查组件，不会发声。")
+        self._submit(inspect_voice_readiness, self._voice_setup_checked, path)
+
+    def _voice_setup_checked(self, result):
+        self.voice_status.setText("识别：" + result.recognition_message)
+        self.tts_status.setText("朗读：" + result.tts_message)
+        self.status.setText("语音条件已检查；实际录音和朗读仍须由你点击启动。")
+
+    def _chat_configuration_ready(self):
+        try:
+            _local_base(self.llm_endpoint.text())
+        except AssistantServiceError as exc:
+            detail = service_error_hint(exc)
+            self.model_status.setText(detail)
+            self.status.setText(detail + " 输入与附件已保留。")
+            self.llm_endpoint.setFocus()
+            return False
+        model = self.llm_model.text().strip()
+        if not model or len(model) > 120 or any(ord(ch) < 32 or ord(ch) == 127 for ch in model):
+            detail = "请选择或填写聊天模型 ID；可先点击“检查连接 / 刷新模型”。"
+            self.model_status.setText(detail)
+            self.status.setText(detail + " 输入与附件已保留。")
+            self.llm_model.setFocus()
+            return False
+        return True
 
     def browse_voice_model(self):
         folder = QFileDialog.getExistingDirectory(
@@ -1017,6 +1199,8 @@ class PetAssistantDialog(QDialog):
             return
         text = self.message.text().strip()
         if not text:
+            return
+        if not self._chat_configuration_ready():
             return
         # The assistant only replies as text; the output is never passed to
         # PetWorkspace and cannot mutate user files.
@@ -1133,6 +1317,7 @@ class PetAssistantDialog(QDialog):
             session.cancel()
 
     def _invalidate_assistant_scope(self, reason):
+        self._finish_setup_cancel()
         if self._request_token is not None:
             self._request_token.cancel()
         if self._job is not None:
@@ -1173,6 +1358,8 @@ class PetAssistantDialog(QDialog):
         text = self.message.text().strip()
         if not text:
             self.status.setText("先输入要创建的文件和内容要求，再生成任务草案。")
+            return
+        if not self._chat_configuration_ready():
             return
         if self._action_runtime is None:
             self._job_error("安全操作中心不可用：" + self._action_runtime_error)

@@ -4,17 +4,18 @@
 
 ## 已核验基线与本轮边界
 
-下列结果来自**可停止请求与活动反馈这一批开发开始前已核验的基线**，不能自动用于证明后续修改通过。源码基线是 [`9945a311cdfe60532e8d136c33cb4103217cd2ba`](https://github.com/clonetimer/DyberPet/commit/9945a311cdfe60532e8d136c33cb4103217cd2ba)，已包含受审阅的多步骤文件草案，分支为 `feat/ai-companion-runtime-20261117`。本记录不声称新一轮 CI、实机或性能验收已经完成。
+本次首次使用闭环接续的源码基线是 [`069d6d4cdaa42cc1faf4ad781574a539359fabb6`](https://github.com/clonetimer/DyberPet/commit/069d6d4cdaa42cc1faf4ad781574a539359fabb6)，分支为 `feat/ai-companion-runtime-20261117` / PR #99。下列是该基线的已核验结果，不能直接证明后续修改通过。更早的任务草案阶段见 [草案验证记录](verification/2026-11-18-approved-task-plans.md)，活动反馈阶段见 [活动验证记录](verification/2026-11-18-assistant-activity.md)。
 
 | 证据 | 基线记录 | 可以证明的范围 |
 | --- | --- | --- |
-| 桌宠助手 CI | [运行 44238875042](https://github.com/clonetimer/DyberPet/actions/runs/44238875042)，6 个作业通过 | Windows/Linux × Python 3.9/3.11 单测、Windows Qt 离屏 GUI、固定版本 PPL 的真实 HTTP 合约；具体范围见 [工作流](../.github/workflows/pet-assistant.yml) |
-| Windows 便携包 | [运行 44238875036](https://github.com/clonetimer/DyberPet/actions/runs/44238875036)，构建和打包后 EXE 冒烟通过 | 冻结依赖、资源定位、离屏助手与指定导入流程；工作流还会检查移除测试演示资源后的最终包，见 [工作流](../.github/workflows/windows-portable.yml) |
-| Windows Actions 产物 | [Artifact 14398872144](https://github.com/clonetimer/DyberPet/actions/runs/44238875036/artifacts/14398872144)，元数据大小 `107861245` 字节 | 标识该次上传产物；不能替代用户机器上的运行验收，下载可用性受保留期影响 |
+| 桌宠助手 CI | [运行 44243625785](https://github.com/clonetimer/DyberPet/actions/runs/44243625785)，6 个作业通过 | Windows/Linux × Python 3.9/3.11 单测、Windows Qt 离屏 GUI、固定版本 PPL 的真实 HTTP 合约 |
+| 全部相关工作流 | 同一 SHA 的助手、Windows、角色导入、Linux X11、Live2D 合计 5 组 / 17 个作业通过 | 接续时读取 GitHub Actions 实际运行与作业结论；没有以旧状态记录推断新结果 |
+| Windows 便携包 | [运行 44243625721](https://github.com/clonetimer/DyberPet/actions/runs/44243625721)，构建和打包后 EXE 冒烟通过 | 冻结依赖、资源定位、离屏助手与指定导入流程；不等同于设备音频验收 |
+| Windows Actions 产物 | [Artifact 14399964845](https://github.com/clonetimer/DyberPet/actions/runs/44243625721/artifacts/14399964845)，元数据大小 `107873577` 字节 | 基线产物；本批候选以 PR #99 中新提交对应产物为准 |
 
-上述 artifact 的已记录 SHA-256 为 `d2b91064aa01a877b21bb665ed0ba57f723143543e648b17b73c39d93e662ba2`。记录摘要时应明确它属于哪一层产物；不能把 Actions artifact 的摘要直接当作其中内层 ZIP 或 EXE 的摘要。
+上述 Actions artifact 的已记录 SHA-256 为 `a47a4c02f3ed92fe71c5a4d2ad6600e24a60bd18a1136f0eba49f47a81cfd542`，不等于内层 ZIP 或 EXE 的摘要。
 
-这份基线的本地完整发现结果为 631 项测试、626 项通过、5 项环境跳过，具体跳过项与环境见 [文件任务草案验证记录](verification/2026-11-18-approved-task-plans.md)。新一批的测试和运行应另按新提交记录。
+本次在新 checkout 重跑基线：673 项测试、668 项通过、5 项环境跳过，26.975 秒。本批新增行为与测试另记于 [首次使用验证记录](verification/2026-11-18-assistant-first-use.md)。
 
 尚无本次助手能力的实机麦克风、真实本地模型延迟、长期运行资源占用及完整用户流程验收结果。固定 PPL 服务的合约测试有真实进程与 HTTP 证据；它仍不等于用户本机的全部服务组合已验收。
 
@@ -147,6 +148,55 @@
 - **原因：** 将模块放入 `sys.modules` 时，只提供业务方法不足以模拟模块。旧版 Shiboken 的导入钩子还会读取模块元数据；Qt 和语音测试处于同一进程时才触发这条路径。
 - **实践：** 使用标准库 `types.ModuleType` 构造 sounddevice、vosk 和 pyttsx3 替身，再挂载受控驱动方法。保留真实生产捕获/播报循环及原行为断言，不降低测试范围。测试运行时应包含实际支持的 Python/Qt 组合，不能只凭更新版本通过推断旧版兼容。
 - **验证：** [既有语音合约](../tests/test_assistant_persona_voice.py) 和 [语音生命周期测试](../tests/test_assistant_voice_lifecycle.py) 的模块替身均采用此结构。首轮失败证据来自 [角色导入 CI 44242637307](https://github.com/clonetimer/DyberPet/actions/runs/44242637307)；修复后的精确版本本地及远端结果见 [本批验证记录](verification/2026-11-18-assistant-activity.md) 与 PR。
+
+## 19. 模型列表成功不等于模型已加载
+
+- **改了什么：** 用可编辑下拉框呈现本地服务列出的模型，保留手填 ID；空输入且只有一个候选时才自动填入。状态明确写出“尚未验证生成”。
+- **为什么：** 首次使用不应要求用户猜模型 ID，也不能擅自替换已有选择。
+- **踩坑：** `/v1/models` 在 LM Studio 的 JIT 模式下可能包含已下载但未加载的模型，[官方契约](https://lmstudio.ai/docs/developer/openai-compat/models)没有保证每个 ID 都是可聊天模型。旧提示“选择已加载的模型”过度推断了接口含义。
+- **验证：** [模型发现测试](../tests/test_assistant_model_discovery.py)使用真实回环 GET，验证无请求体、有序去重、ID 与响应上限；[首次使用 Qt 测试](../tests/test_assistant_setup_qt.py)覆盖单候选、多候选、手填和刷新期间修改选择。
+
+## 20. 连接诊断要覆盖不同传输与地址解析错误
+
+- **改了什么：** `AssistantServiceError` 增加兼容旧调用的分类，模型发现复用取消令牌，JSON/SSE 使用一致 HTTP 错误分类；界面提供中文下一步提示。
+- **为什么：** 用户需要知道应修改地址、启动服务、等待模型还是核对认证，不能只收到一段通用异常。
+- **踩坑：** `urlsplit()` 和 `.port` 都可能抛出 `ValueError`；空 user-info 不能只用真值判断。普通 urllib 与可取消连接的异常也不同。诊断不复制服务错误正文，应用自身协议细节则保留必要的有界提示。
+- **验证：** [发现/诊断合约](../tests/test_assistant_model_discovery.py)覆盖拒绝连接、超时、HTTP 状态、重定向、无模型、坏响应、代理隔离与取消。401/403 提示核对认证要求，不引导关闭认证。
+
+## 21. 配置变化也需要拒绝迟到结果
+
+- **改了什么：** 模型检查绑定地址与修改代次；语音检查绑定路径与修改代次。修改地址会取消旧检查并清空旧候选，保留用户输入。缺配置和失败请求不消耗问题与附件。
+- **为什么：** 角色会话代次无法识别同一角色内的地址和路径变化；旧结果可能把新配置误报为已就绪。
+- **踩坑：** 只比较最终地址不够——用户可能从 A 改成 B 再改回 A。刷新模型时 Qt 会自动选中第一项，也必须显式恢复用户选择。恢复问题只能填入空输入框，不能覆盖用户已输入的新问题。
+- **验证：** [实际 Qt 回归](../tests/test_assistant_setup_qt.py)验证 A→B→A、迟到错误、关闭、取消后重试、刷新中编辑、配置缺失与请求失败后的输入保留。
+
+## 22. 语音初检应被动执行并分别报告能力
+
+- **改了什么：** 新增纯标准库的组件与目录检查，识别和 TTS 独立显示；检查不导入音频驱动、不加载模型、不枚举或打开设备。
+- **为什么：** 用户应该先看清缺少哪些条件；检查按钮不能意外开启麦克风或发声，缺少 Vosk 也不应遮掉 TTS 状态。
+- **踩坑：** `find_spec` 在模块替身缺少 `__spec__` 时会抛出 `ValueError`，需要按组件降级。Vosk 当前与旧版目录标识必须成对匹配，不能把混合或外层目录报成有效模型；结构存在不证明模型内容和设备可用。冻结 EXE 缺组件时，向系统 Python 执行 pip 不能修复当前程序，因此便携版提示重新完整解压或取得匹配候选包，源码版才提示在对应 Python 环境安装依赖。
+- **验证：** [被动检查测试](../tests/test_assistant_voice_readiness.py)使用“可发现但导入即报错”的临时音频模块验证无驱动导入，覆盖目录布局、缺项和路径错误；[Vosk 官方源码](https://github.com/alphacep/vosk-api/blob/master/src/model.cc)为布局依据。
+
+## 23. 新增帮助文案后必须检查实际窗口尺寸
+
+- **改了什么：** 助手内容加入滚动容器，初始窗口按当前屏幕可用区域限制大小；原控件及行为保留。
+- **为什么：** 设置提示增加后，较小屏幕仍需能访问聊天与底部文件操作。
+- **踩坑：** `resize()` 不能压过 Qt 布局的最小尺寸。实际渲染发现最低高度达到 977 逻辑像素，单纯调整初始高度无效，需要让内容滚动。
+- **验证：** 真实 Qt 渲染截图和窗口/滚动范围记录列入 [本批验证记录](verification/2026-11-18-assistant-first-use.md)。截图证明布局和控件呈现，不证明真实模型或音频验收。
+
+## 24. 取消检查也要结束设置区状态
+
+- **改了什么：** 关闭窗口、切换会话或主动停止检查时，将对应设置标签收敛为“已停止，请重新检查”，仍丢弃所有迟到结果。
+- **为什么：** 助手窗口会被复用，隐藏不等于重新构造；工作线程结束后不能残留“正在检查”。
+- **踩坑：** 仅恢复按钮和释放 worker 不足以结束其他区域的状态。独立审阅复现关闭后重开的问题，随后又复现角色切换同一缺口。只有检查仍绑定当前配置且未成功/失败时才改为取消，避免覆盖新配置提示或已完成结果。
+- **验证：** [首次使用 Qt 测试](../tests/test_assistant_setup_qt.py)新增模型/语音关闭重开及角色切换回归，先观察失败，再修复通过。
+
+## 25. 共享服务诊断不能默认所有错误都来自模型
+
+- **改了什么：** 共享传输的连接、响应和 HTTP 404 提示保持服务中立；模型专属操作说明继续放在模型设置区与用户指南。
+- **为什么：** 同一 `AssistantServiceError` 也用于 PPL 关系状态服务，PPL 失败时不应引导用户启动 LM Studio 或修正 OpenAI 模型 ID。
+- **踩坑：** 首次使用改进中的全局异常格式化会影响旧功能。独立审阅发现此兼容性回归；通过实际 Qt 聊天前的 PPL 请求路径复现后修复，没有增加新的 PPL 功能。
+- **验证：** [Qt 回归](../tests/test_assistant_setup_qt.py)的 PPL 连接/404 分支先失败后通过，并确认原问题保留。
 
 ## 后续更新方式
 

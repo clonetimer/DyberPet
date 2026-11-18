@@ -22,26 +22,54 @@ DEFAULT_CHAT_URL = "http://127.0.0.1:1234"
 
 
 class AssistantServiceError(RuntimeError):
-    def __init__(self, message, *, status_code=None):
+    def __init__(self, message, *, status_code=None, code="service"):
         super().__init__(message)
         self.status_code = status_code
+        self.code = code
 
 
 def _local_base(url: str) -> str:
-    parsed = urllib.parse.urlsplit(url.strip())
+    if not isinstance(url, str) or not url.isprintable():
+        raise AssistantServiceError("Invalid local service address", code="invalid_endpoint")
+    base = url.strip()
+    try:
+        parsed = urllib.parse.urlsplit(base)
+        port = parsed.port
+    except ValueError as exc:
+        raise AssistantServiceError(
+            "Invalid local service address", code="invalid_endpoint") from exc
     if (parsed.scheme != "http" or parsed.hostname not in
             ("127.0.0.1", "localhost", "::1") or
-            parsed.username or parsed.password or parsed.query or
+            parsed.username is not None or parsed.password is not None or parsed.query or
             parsed.fragment or parsed.path not in ("", "/")):
-        raise AssistantServiceError("Only local HTTP service base URLs are supported")
-    if parsed.port is None:
-        raise AssistantServiceError("Specify local service TCP port")
-    return url.strip().rstrip("/")
+        raise AssistantServiceError(
+            "Only local HTTP service base URLs are supported", code="invalid_endpoint")
+    if port is None or port == 0:
+        raise AssistantServiceError("Specify local service TCP port", code="invalid_endpoint")
+    return base.rstrip("/")
+
+
+def _http_error(status: int) -> AssistantServiceError:
+    if 300 <= status < 400:
+        return AssistantServiceError(
+            "Service redirect blocked", status_code=status, code="redirect")
+    return AssistantServiceError(
+        f"Local service HTTP {status}", status_code=status, code="http")
+
+
+def _transport_error(error: Exception) -> AssistantServiceError:
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    if isinstance(reason, TimeoutError):
+        return AssistantServiceError("Local service request timed out", code="timeout")
+    if isinstance(reason, http.client.HTTPException):
+        return AssistantServiceError("Invalid local service HTTP response", code="response")
+    return AssistantServiceError("Could not connect to local service", code="connection")
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        raise AssistantServiceError("Service redirect blocked")
+        fp.close()
+        raise _http_error(code)
 
 
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
@@ -62,29 +90,26 @@ def _json_request(url: str, *, data: dict | None = None, timeout: float = 5,
         context = (_OPENER.open(request, timeout=timeout) if cancel_token is None else
                    cancellable_response(request, timeout=timeout, cancel_token=cancel_token))
         with context as response:
-            if 300 <= response.status < 400:
-                raise AssistantServiceError("Service redirect blocked")
-            if response.status >= 400:
-                raise AssistantServiceError(
-                    f"Local service HTTP {response.status}", status_code=response.status)
             if response.status not in (200, 201):
-                raise AssistantServiceError("Unexpected response status")
+                raise _http_error(response.status)
             payload = response.read(512 * 1024 + 1)
             if cancel_token is not None:
                 cancel_token.raise_if_cancelled()
             if len(payload) > 512 * 1024:
-                raise AssistantServiceError("Response exceeds 512 KiB")
+                raise AssistantServiceError("Response exceeds 512 KiB", code="response")
             decoder = json.loads if json_decoder is None else json_decoder
             result = decoder(payload.decode("utf-8"))
             if cancel_token is not None:
                 cancel_token.raise_if_cancelled()
             return result
     except urllib.error.HTTPError as exc:
-        raise AssistantServiceError(
-            f"Local service HTTP {exc.code}", status_code=exc.code) from exc
-    except (urllib.error.URLError, TimeoutError, ValueError, OSError,
+        exc.close()
+        raise _http_error(exc.code) from exc
+    except (ValueError, RecursionError) as exc:
+        raise AssistantServiceError("Invalid local service JSON response", code="response") from exc
+    except (urllib.error.URLError, TimeoutError, OSError,
             http.client.HTTPException) as exc:
-        raise AssistantServiceError("Local service request failed: " + str(exc)) from exc
+        raise _transport_error(exc) from exc
 
 
 @dataclass(frozen=True)
@@ -211,19 +236,28 @@ def make_system_prompt(persona_key: str, relationship: dict | None = None,
     return prompt
 
 
-def list_local_models(base_url: str = DEFAULT_CHAT_URL) -> list[str]:
-    """Discover model IDs from a local LM Studio OpenAI-compatible service."""
-    result = _json_request(_local_base(base_url) + "/v1/models", timeout=5)
+def list_local_models(base_url: str = DEFAULT_CHAT_URL, *, cancel_token=None) -> list[str]:
+    """List server-visible model IDs; availability does not imply chat readiness."""
+    if cancel_token is not None:
+        cancel_token.raise_if_cancelled()
+    options = {} if cancel_token is None else {"cancel_token": cancel_token}
+    result = _json_request(_local_base(base_url) + "/v1/models", timeout=5, **options)
     if not isinstance(result, dict) or not isinstance(result.get("data"), list):
-        raise AssistantServiceError("Local model list has an invalid response")
+        raise AssistantServiceError("Local model list has an invalid response", code="response")
     names = []
     for item in result["data"][:100]:
         if isinstance(item, dict) and isinstance(item.get("id"), str):
-            name = item["id"].strip()
+            raw_name = item["id"]
+            if not raw_name.isprintable():
+                continue
+            name = raw_name.strip()
             if name and len(name) <= 120 and name not in names:
                 names.append(name)
+    if cancel_token is not None:
+        cancel_token.raise_if_cancelled()
     if not names:
-        raise AssistantServiceError("No local model IDs returned; load a model first")
+        raise AssistantServiceError(
+            "No local model IDs returned; check the service model list", code="no_models")
     return names
 
 
@@ -327,13 +361,8 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
         context = (_OPENER.open(request, timeout=timeout) if cancel_token is None else
                    cancellable_response(request, timeout=timeout, cancel_token=cancel_token))
         with context as response:
-            if 300 <= response.status < 400:
-                raise AssistantServiceError("Service redirect blocked")
-            if response.status >= 400:
-                raise AssistantServiceError(
-                    f"Local service HTTP {response.status}", status_code=response.status)
             if response.status != 200:
-                raise AssistantServiceError("Unexpected streaming response status")
+                raise _http_error(response.status)
             while True:
                 if cancel_token is not None:
                     cancel_token.raise_if_cancelled()
@@ -360,9 +389,8 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
                 except ValueError as exc:
                     raise AssistantServiceError("Malformed local model stream event") from exc
                 if isinstance(event, dict) and event.get("error"):
-                    detail = event["error"]
-                    message = detail.get("message") if isinstance(detail, dict) else str(detail)
-                    raise AssistantServiceError("Local model stream error: " + str(message)[:300])
+                    raise AssistantServiceError(
+                        "Local model stream returned an error", code="response")
                 choices = event.get("choices") if isinstance(event, dict) else None
                 if not isinstance(choices, list) or not choices:
                     continue
@@ -388,11 +416,13 @@ def stream_local_chat(text: str, *, on_delta, persona_key="companion", state=Non
     except AssistantServiceError:
         raise
     except urllib.error.HTTPError as exc:
-        raise AssistantServiceError(
-            f"Local service HTTP {exc.code}", status_code=exc.code) from exc
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError,
+        exc.close()
+        raise _http_error(exc.code) from exc
+    except (ValueError, RecursionError) as exc:
+        raise AssistantServiceError("Invalid local model stream response", code="response") from exc
+    except (urllib.error.URLError, TimeoutError, OSError,
             http.client.HTTPException) as exc:
-        raise AssistantServiceError("Local model stream failed: " + str(exc)) from exc
+        raise _transport_error(exc) from exc
 
     if cancel_token is not None:
         cancel_token.raise_if_cancelled()

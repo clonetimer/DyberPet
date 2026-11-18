@@ -48,7 +48,15 @@
   <img src="https://raw.githubusercontent.com/ChaozhongLiu/DyberPet/main/docs/DyberPet.gif" alt="DyberPet interface demo" width="92%">
 </p>
 
-## Windows 便携版候选包（代码已合入 main）
+## 当前 AI 助手改造进度（2026-11-18）
+
+本轮接续开发位于 [`feat/ai-companion-runtime-20261117` / PR #99](https://github.com/clonetimer/DyberPet/pull/99)，尚未作为正式版合入 `main`。该分支已有流式聊天、角色隔离的本地历史与手动记忆、连续语音、可停止朗读、逐步审批文件任务、停止生成和活动反馈。
+
+**新增首次使用闭环**：在助手中点击“检查连接 / 刷新模型”，直接从可编辑下拉框选择本地服务列出的模型；连接失败会提示下一步操作。点击“检查语音条件”可分别查看识别组件、Vosk 模型目录和朗读组件的缺项。检查过程不会发送聊天内容、打开麦克风或播放声音。配置缺失及请求失败时保留输入，修改地址后丢弃旧检查结果；窗口可滚动，较小屏幕也能访问底部操作。
+
+按 [三步开始使用](docs/pet_assistant.md#三步开始使用) 配置。模型列表可读取与语音组件可发现都属于初检，真实模型回复、设备音频和资源占用仍需本机验证。阶段改动、踩坑与回归入口持续记入 [开发经验](docs/DEVELOPMENT_EXPERIENCE.md)；候选包和对应提交的 CI 见 PR #99。
+
+## Windows 便携版候选包（基础打包代码已合入 main）
 
 新增了可复现的 [Windows EXE 便携打包与自动自检](docs/windows_portable.md)：GitHub Actions 运行 PyInstaller 构建，在不同工作目录下启动**实际打包的 EXE**，检查桌宠助手 Qt 窗口、必需资源及可选离线语音模块，并提供 ZIP 测试产物。已验证打包程序能初始化，但**尚未完成实机麦克风、系统托盘、真实角色动画与音频质量验收**；不是正式安装程序或 Release。
 
