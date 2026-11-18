@@ -145,11 +145,22 @@ class ActionRuntime:
         request_id = uuid.uuid4().hex
         created = time.monotonic()
         with self._lock:
+            expired = [key for key, value in self._pending.items()
+                       if created - value["created"] > self.approval_ttl]
+            for key in expired:
+                self._pending.pop(key, None)
+            if len(self._pending) >= 128:
+                raise ActionDenied("Too many pending actions; finish or cancel an existing request")
             self._pending[request_id] = {
                 "action": action, "arguments": args, "target": target,
                 "created": created, "approved": False,
             }
-        self._record(request_id, action, target, "prepared", "Awaiting explicit user approval")
+        try:
+            self._record(request_id, action, target, "prepared", "Awaiting explicit user approval")
+        except Exception:
+            with self._lock:
+                self._pending.pop(request_id, None)
+            raise
         return {
             "request_id": request_id, "action": action, "preview": preview,
             "approval_required": True, "expires_in_seconds": self.approval_ttl,
@@ -206,8 +217,17 @@ class ActionRuntime:
         except Exception as exc:
             self._record(request_id, action, pending["target"], "failed", str(exc))
             raise
-        self._record(request_id, action, pending["target"], "executed", "Completed successfully")
-        return {"request_id": request_id, "action": action, "result": value}
+        audit_warning = ""
+        try:
+            self._record(request_id, action, pending["target"], "executed", "Completed successfully")
+        except Exception as exc:
+            # The file action has already completed. Never report it as failed
+            # or invite a duplicate retry just because the audit volume failed.
+            audit_warning = "Action completed but audit write failed: " + str(exc)[:300]
+        return {
+            "request_id": request_id, "action": action, "result": value,
+            "audit_warning": audit_warning,
+        }
 
     def audit_log(self, *, limit: int = 100) -> list[dict]:
         if type(limit) is not int or not 1 <= limit <= 500:
