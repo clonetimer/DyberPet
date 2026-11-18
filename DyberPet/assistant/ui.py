@@ -1,6 +1,7 @@
 """Q版桌宠 assistant dialog: explicit file tools, local voice and PPL persona.
 
-Each operation is started by a direct user click. AI text never grants file
+Network/audio sessions start with a direct user action; an explicitly opened
+voice conversation can continue its own turns. AI text never grants file
 permissions or triggers filesystem actions. No network calls on the Qt thread.
 """
 from __future__ import annotations
@@ -15,7 +16,7 @@ from time import monotonic
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout, QHBoxLayout, QInputDialog,
-    QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea,
+    QGroupBox, QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea,
     QVBoxLayout, QWidget,
 )
 
@@ -49,6 +50,7 @@ from .service_diagnostics import service_error_hint
 from .voice_readiness import inspect_voice_readiness
 from .trial_records import TrialRecorder
 from .trial_dialog import TrialDialog
+from .voice_session import VoiceConversation
 
 
 def _weak_ready_callback(owner, signal_name, *args):
@@ -107,11 +109,13 @@ class PetAssistantDialog(QDialog):
     speech_finished = Signal(str)
     voice_engine_ready = Signal(str, str, object)
     microphone_ready = Signal(str, int, object)
+    interaction_changed = Signal(str, str)
 
     def __init__(self, character_name: str, workspace: Path, parent=None,
                  role_root: Path | None = None, store_path: Path | None = None):
         super().__init__(parent)
         self.character_name = character_name
+        self._interaction_state = (character_name, "idle")
         self.role_root = Path(role_root) if role_root is not None else Path.cwd() / "res" / "role"
         self._default_workspace = Path(workspace)
         self.workspace = PetWorkspace(self._default_workspace)
@@ -178,6 +182,7 @@ class PetAssistantDialog(QDialog):
             self._prefs = default_preferences()
             self._prefs_error = str(exc)
         self._build_ui()
+        self.voice_conversation = VoiceConversation(self)
         self._activity_timer = QTimer(self)
         self._activity_timer.setInterval(250)
         self._activity_timer.timeout.connect(self._refresh_activity)
@@ -185,6 +190,9 @@ class PetAssistantDialog(QDialog):
         self.llm_endpoint.textChanged.connect(self._model_endpoint_changed)
         self.llm_model.textChanged.connect(self._model_choice_changed)
         self.voice_model.textChanged.connect(self._voice_path_changed)
+        for editor in (self.llm_endpoint, self.llm_model, self.voice_model, self.ppl_endpoint):
+            editor.textChanged.connect(self.voice_conversation.configuration_changed)
+        self.ppl_enabled.toggled.connect(self.voice_conversation.configuration_changed)
         self.persona.currentIndexChanged.connect(self._persona_changed)
         self._sync_guga_controls()
         self._restore_character_history()
@@ -207,6 +215,34 @@ class PetAssistantDialog(QDialog):
         outer.addWidget(self.content_scroll)
         title = QLabel("人设、语音与受控文件操作（本地优先）")
         body.addWidget(title)
+
+        voice_chat = QGroupBox("语音对话 · 轮流说话")
+        voice_chat_layout = QVBoxLayout(voice_chat)
+        explanation = QLabel(
+            "开启后，说完一句会自动发给当前本地模型并朗读回复，然后继续听。"
+            "键盘草稿和待发送附件保留；随时可以结束。")
+        explanation.setWordWrap(True)
+        explanation.setTextFormat(Qt.TextFormat.PlainText)
+        voice_chat_layout.addWidget(explanation)
+        voice_chat_buttons = QHBoxLayout()
+        self.voice_chat_button = QPushButton("开始语音对话")
+        self.voice_interrupt_button = QPushButton("打断，继续听")
+        self.voice_end_button = QPushButton("结束语音对话")
+        self.voice_interrupt_button.setEnabled(False)
+        self.voice_end_button.setEnabled(False)
+        for button in (self.voice_chat_button, self.voice_interrupt_button, self.voice_end_button):
+            button.setAutoDefault(False)
+            voice_chat_buttons.addWidget(button)
+        self.voice_chat_button.clicked.connect(self.start_voice_conversation)
+        self.voice_interrupt_button.clicked.connect(self.interrupt_voice_conversation)
+        self.voice_end_button.clicked.connect(self.end_voice_conversation)
+        voice_chat_layout.addLayout(voice_chat_buttons)
+        self.voice_chat_status = QLabel("未开启；麦克风和朗读按轮次交替工作。")
+        self.voice_chat_status.setWordWrap(True)
+        self.voice_chat_status.setTextFormat(Qt.TextFormat.PlainText)
+        voice_chat_layout.addWidget(self.voice_chat_status)
+        # Keep interrupt/end reachable while the user scrolls through replies.
+        outer.insertWidget(0, voice_chat)
 
         form = QFormLayout()
         self.persona = QComboBox()
@@ -841,7 +877,24 @@ class PetAssistantDialog(QDialog):
             "models": "停止检查", "model_probe": "停止试聊",
         }.get(kind, "停止生成"))
         self._activity_timer.start()
+        if kind in ("chat", "plan", "model_probe"):
+            self._set_interaction_phase("thinking")
         self._refresh_activity()
+
+    def _set_interaction_phase(self, phase):
+        state = (self.character_name, phase)
+        if state != self._interaction_state:
+            self._interaction_state = state
+            self.interaction_changed.emit(*state)
+
+    def start_voice_conversation(self):
+        self.voice_conversation.start()
+
+    def interrupt_voice_conversation(self):
+        self.voice_conversation.interrupt()
+
+    def end_voice_conversation(self):
+        self.voice_conversation.stop()
 
     def _refresh_activity(self):
         self._trial_recorder.sample(self._trial_run_id)
@@ -881,6 +934,10 @@ class PetAssistantDialog(QDialog):
         self._refresh_activity()
 
     def stop_generation(self, *, reason="user"):
+        voice = self.voice_conversation
+        if voice.active and voice.owns_job and not voice.controlling_stop:
+            voice.stop(stop_reason=reason)
+            return
         if (self._job is None or self._request_token is None
                 or self._job_cancel_requested or self._activity_outcome):
             return
@@ -906,6 +963,9 @@ class PetAssistantDialog(QDialog):
 
     def _submit(self, task, on_success, *args, stream=False,
                 on_progress=None, **kwargs):
+        if self.voice_conversation.active and not self.voice_conversation.dispatching:
+            self.status.setText("语音对话进行中；请先结束，再开始其他操作。")
+            return False
         if self._job is not None:
             self.status.setText("上一项语音/对话任务仍在执行")
             return
@@ -933,6 +993,8 @@ class PetAssistantDialog(QDialog):
         job.finished.connect(self._job_finished)
         job.start()
         self._sync_trial_window(refresh=True)
+        self.voice_conversation.sync_controls()
+        return True
 
     def _job_succeeded(self, result):
         if (self._job_generation == self._session_generation
@@ -968,6 +1030,7 @@ class PetAssistantDialog(QDialog):
                     self._trial_run_id,
                     engine_completed=getattr(self._job, "engine_completed", None))
             self._trial_notice("本次操作未完成，请查看最近操作中的提示。")
+            self.voice_conversation.failed(detail)
             if self._activity_kind == "models":
                 self._model_catalog_endpoint = None
                 self._replace_model_choices(())
@@ -990,6 +1053,7 @@ class PetAssistantDialog(QDialog):
         self._trial_run_id = None
         self._finish_speech_visuals()
         self._finish_activity()
+        self._set_interaction_phase("idle")
         if self._job_cancel_requested:
             self._finish_setup_cancel()
         if (self._job_cancel_requested and self._request_token is not None
@@ -1021,6 +1085,7 @@ class PetAssistantDialog(QDialog):
         if self._closing_after_worker:
             self._closing_after_worker = False
             QTimer.singleShot(0, self.close)
+        self.voice_conversation.job_finished(outcome)
 
     def _on_voice_engine_ready(self, character, text, stop_event=None):
         if (self._speaking_session is None
@@ -1034,6 +1099,8 @@ class PetAssistantDialog(QDialog):
         self._trial_recorder.ready(self._trial_run_id)
         self._activity_phase = "正在朗读"
         self._refresh_activity()
+        self._set_interaction_phase("speaking")
+        self.voice_conversation.speech_ready()
         self.speech_started.emit(character, text[:120])
 
     def _on_microphone_ready(self, character, generation, stop_event):
@@ -1042,6 +1109,8 @@ class PetAssistantDialog(QDialog):
                 or not self._listening or self._closing_after_worker):
             return
         self._activity_phase = "正在监听"
+        self._set_interaction_phase("listening")
+        self.voice_conversation.microphone_ready()
         self._trial_recorder.ready(self._trial_run_id)
         self._refresh_activity()
         self.status.setText("麦克风已打开；音频只在内存中处理，点击“停止监听”结束。")
@@ -1100,7 +1169,9 @@ class PetAssistantDialog(QDialog):
                 and not self._listen_stop_event.is_set())
             or (self._speech_stop_event is not None and self._speaking_session is not None
                 and not self._speech_stop_event.is_set()))
-        self._trial_dialog.set_busy(self._job is not None, can_stop=bool(can_stop))
+        voice_active = self.voice_conversation.active
+        self._trial_dialog.set_busy(self._job is not None or voice_active,
+                                    can_stop=bool(can_stop or voice_active))
         if refresh:
             self._trial_dialog.refresh_report()
 
@@ -1125,6 +1196,9 @@ class PetAssistantDialog(QDialog):
             self.stop_generation(reason="configuration_changed")
 
     def _stop_trial_operation(self):
+        if self.voice_conversation.active:
+            self.end_voice_conversation()
+            return
         if self._activity_kind == "listen":
             self.stop_listening()
         elif self._activity_kind == "speech":
@@ -1356,19 +1430,25 @@ class PetAssistantDialog(QDialog):
                     ) != QMessageBox.StandardButton.Yes:
                 return
             self._ppl_snapshot = content
+            self.voice_conversation.configuration_changed()
             self.status.setText("PPL 渲染快照已加载：" + file.name)
         except (OSError, UnicodeError, ValueError) as exc:
             self._job_error(str(exc))
 
     def send_message(self):
+        if self.voice_conversation.active:
+            self.status.setText("语音对话进行中，键盘草稿已保留；结束后可发送。")
+            return
+        self._send_chat(self.message.text().strip())
+
+    def _send_chat(self, text, *, voice_turn=False, on_reply=None):
         if self._job is not None:
             self.status.setText("上一项语音/对话任务仍在执行，输入已保留。")
-            return
-        text = self.message.text().strip()
+            return False
         if not text:
-            return
+            return False
         if not self._chat_configuration_ready():
-            return
+            return False
         # The assistant only replies as text; the output is never passed to
         # PetWorkspace and cannot mutate user files.
         endpoint, model = self.llm_endpoint.text(), self.llm_model.text()
@@ -1377,7 +1457,7 @@ class PetAssistantDialog(QDialog):
         generation = self._session_generation
         ppl = (self.ppl_endpoint.text() if self.ppl_enabled.isChecked()
                else None)
-        file_context = self._pending_file_context
+        file_context = None if voice_turn else self._pending_file_context
         try:
             history = (self._conversation_store.recent_messages(character, limit=12)
                        if self._conversation_store else [])
@@ -1388,11 +1468,12 @@ class PetAssistantDialog(QDialog):
             return
         token = CancellationToken()
         self._request_token = token
-        self._request_text = text
+        self._request_text = "" if voice_turn else text
         self._last_reply = ""
         self._begin_activity("chat")
         self.stop_generation_button.setEnabled(True)
-        self.message.clear()
+        if not voice_turn:
+            self.message.clear()
         self.chat_log.appendPlainText("你：" + text)
         if file_context:
             self.chat_log.appendPlainText("本轮已附加用户确认的文件：" + file_context["name"])
@@ -1411,18 +1492,18 @@ class PetAssistantDialog(QDialog):
             token.raise_if_cancelled()
             return character, generation, text, answer, file_context
 
-        self._submit(
-            task, self._message_reply, stream=True,
+        return self._submit(
+            task, on_reply or self._message_reply, stream=True,
             on_progress=lambda piece: self._append_stream_delta(
                 piece, character, generation))
 
-    def _message_reply(self, result):
+    def _message_reply(self, result, *, voice_turn=False):
         if isinstance(result, tuple):
             if len(result) == 5:
                 character, generation, user_text, reply, file_context = result
                 if generation != self._session_generation:
                     return
-                if self._pending_file_context == file_context:
+                if not voice_turn and self._pending_file_context == file_context:
                     self._pending_file_context = None
             elif len(result) == 4:
                 character, generation, user_text, reply = result
@@ -1455,17 +1536,18 @@ class PetAssistantDialog(QDialog):
         self._stream_reply_open = False
         # When auto-read is enabled, the native bubble appears when TTS
         # starts, not seconds earlier during model response handling.
-        will_speak = self.auto_speak.isChecked() and self.isVisible()
+        will_speak = (voice_turn or self.auto_speak.isChecked()) and self.isVisible()
         if self.bubble_enabled.isChecked() and not will_speak:
             self.reply_ready.emit(reply[:120])
         if not will_speak:
             self._emit_selected_animation()
         self.status.setText(history_warning or "回复已生成；点击朗读按钮可使用离线语音播报。")
-        if self.auto_speak.isChecked() and self.isVisible():
+        if not voice_turn and self.auto_speak.isChecked() and self.isVisible():
             QTimer.singleShot(100, self._auto_read_reply)
 
     def _auto_read_reply(self):
-        if self._job is None and self.auto_speak.isChecked() and self.isVisible():
+        if (self._job is None and not self.voice_conversation.active
+                and self.auto_speak.isChecked() and self.isVisible()):
             self.read_reply()
 
     def _cancel_task_plan(self, reason):
@@ -1485,6 +1567,7 @@ class PetAssistantDialog(QDialog):
             session.cancel()
 
     def _invalidate_assistant_scope(self, reason, *, stop_reason="scope_changed"):
+        self.voice_conversation.stop(reason, stop_reason=stop_reason, cancel_job=False)
         if self._job is not None:
             self._trial_recorder.request_stop(self._trial_run_id, stop_reason)
         self._trial_recorder.reset_feedback()
@@ -1517,6 +1600,8 @@ class PetAssistantDialog(QDialog):
         self._listening = False
         self.stop_speaking()
         self._finish_speech_visuals()
+        if self._job is None:
+            self._set_interaction_phase("idle")
 
     def _persona_changed(self, _index):
         self._invalidate_assistant_scope("人设已切换，旧任务草案已取消。")
@@ -1648,6 +1733,10 @@ class PetAssistantDialog(QDialog):
                      on_progress=self._heard_partial)
 
     def stop_listening(self):
+        voice = self.voice_conversation
+        if voice.active and voice.owns_job and not voice.controlling_stop:
+            voice.stop()
+            return
         if self._listen_stop_event is not None and self._listening:
             self._trial_recorder.request_stop(self._trial_run_id, "user")
             self._listen_stop_event.set()
@@ -1725,6 +1814,10 @@ class PetAssistantDialog(QDialog):
         self.status.setText("朗读结束" if finished else "朗读已停止")
 
     def stop_speaking(self):
+        voice = self.voice_conversation
+        if voice.active and voice.owns_job and not voice.controlling_stop:
+            voice.stop()
+            return
         if self._speech_stop_event is not None and self._speaking_session is not None:
             self._trial_recorder.request_stop(self._trial_run_id, "user")
             self._speech_stop_event.set()

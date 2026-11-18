@@ -28,6 +28,7 @@ from DyberPet.custom_widgets import RoundBarBase, LevelBadge
 from DyberPet.bubbleManager import BubbleManager
 from DyberPet.assistant.character_motion import style_for, GROUND
 from DyberPet.assistant.speech_sync import available_talk_action
+from DyberPet.assistant.interaction_sync import available_interaction_action
 from DyberPet.assistant.preferences import load as load_assistant_preferences
 
 # initialize settings
@@ -1081,6 +1082,8 @@ class PetWidget(QWidget):
             self._pet_assistant.motion_toggled.connect(self._set_character_motion_enabled)
             self._pet_assistant.speech_started.connect(self._assistant_speech_started)
             self._pet_assistant.speech_finished.connect(self._assistant_speech_finished)
+            self._pet_assistant.interaction_changed.connect(
+                self._assistant_interaction_changed)
         else:
             self._pet_assistant.set_character(self.curr_pet_name)
         self._sync_assistant_actions()
@@ -1120,6 +1123,48 @@ class PetWidget(QWidget):
         talk = available_talk_action(options)
         if talk is not None:
             self._assistant_play_action(talk)
+
+    def _assistant_interaction_changed(self, character, phase):
+        """Acknowledge voice phases once, while native user interaction wins."""
+        if (character != self.curr_pet_name
+                or phase not in ("idle", "listening", "thinking", "speaking", "stopping")):
+            return
+        state = (character, phase)
+        if getattr(self, "_assistant_interaction_state", None) == state:
+            return
+        self._assistant_interaction_state = state
+        # Speech keeps its existing started/finished channel. Ending a phase
+        # never stops native animation, including one the user has since chosen.
+        if phase not in ("listening", "thinking"):
+            return
+
+        workers = getattr(self, "workers", {})
+        interaction = workers.get("Interaction")
+        animation = workers.get("Animation")
+        pet_conf = getattr(self, "pet_conf", None)
+        available = settings.act_data.allAct_params.get(character, {})
+        if (interaction is not None and animation is not None
+                and getattr(interaction, "pet_conf", None) is pet_conf
+                and getattr(pet_conf, "petname", None) == character
+                and settings.petname == character
+                and getattr(interaction, "interact", "unknown") is None
+                and not getattr(interaction, "is_killed", True)
+                and not getattr(interaction, "is_paused", True)
+                and not getattr(animation, "is_killed", True)
+                and not getattr(animation, "is_paused", True)
+                and not settings.draging and settings.onfloor != 0
+                and not self.is_follow_mouse and not settings.focus_timer_on
+                and not settings.defaultAct.get(character)):
+            action = available_interaction_action(
+                available, pet_conf, phase, hp_tier=settings.pet_data.hp_tier)
+            if action is not None:
+                self._assistant_play_action(action)
+                return
+
+        assistant = getattr(self, "_pet_assistant", None)
+        if assistant is None or assistant.bubble_enabled.isChecked():
+            self._assistant_notice_bubble(
+                "正在听你说话…" if phase == "listening" else "正在思考…")
 
     def _assistant_speech_finished(self, character):
         if character == self.curr_pet_name:
@@ -1270,6 +1315,7 @@ class PetWidget(QWidget):
         :return:
         """
         self.curr_pet_name = pet_name
+        self._assistant_interaction_state = None
         settings.petname = pet_name
         settings.tunable_scale = settings.scale_dict.get(pet_name, 1.0)
         pic_dict = _load_all_pic(pet_name)

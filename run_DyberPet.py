@@ -322,7 +322,11 @@ def _assistant_package_smoke():
             "Kitty", Path(temp) / "sandbox",
             role_root=Path(os.getcwd()) / "res" / "role")
         report["assistant_dialog"] = bool(
-            dialog.workspace.root.is_dir() and dialog.persona.count() >= 7)
+            dialog.workspace.root.is_dir() and dialog.persona.count() >= 7
+            and dialog.voice_chat_button.isEnabled()
+            and not dialog.voice_end_button.isEnabled()
+            and not dialog.voice_conversation.active and dialog._job is None)
+        report["voice_conversation_starts_off"] = not dialog.voice_conversation.active
         dialog.close()
     # Exercise the actual packaged role converter with an original synthetic
     # PNG so missing Pillow/tool modules cannot pass an EXE startup-only smoke.
