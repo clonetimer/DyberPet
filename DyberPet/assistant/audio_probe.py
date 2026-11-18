@@ -115,7 +115,7 @@ def probe_microphone(stop_event, *, microphone=None, sample_rate: int = 16000,
                 stream.close()
         if stop_event.is_set():
             return None
-        if captured < max(1, int(sample_rate * 0.25)):
+        if captured < max(1, int(selected_rate * 0.25)):
             raise VoiceUnavailable("麦克风测试采集时间不足；请重新测试")
         elapsed = max(0.0, time.monotonic() - started)
         return MicrophoneProbeResult(

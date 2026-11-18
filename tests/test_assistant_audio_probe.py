@@ -78,6 +78,22 @@ class AudioProbeTests(unittest.TestCase):
         self.assertEqual(result.frames, 24000)
         self.assertTrue(stream.closed)
 
+    def test_low_rate_fallback_uses_actual_rate_for_minimum_capture_frames(self):
+        stream = _Stream(samples=[500, -500])
+        module = ModuleType("sounddevice")
+        module.query_devices = lambda *args, **kwargs: {"default_samplerate": 8000}
+        def open_stream(**options):
+            if options["samplerate"] != 8000:
+                raise ValueError("unsupported sample rate")
+            return stream
+        module.RawInputStream = open_stream
+        with patch.dict("sys.modules", {"sounddevice": module}):
+            result = probe_microphone(threading.Event(), duration_seconds=0.25)
+        self.assertEqual(result.sample_rate, 8000)
+        self.assertEqual(result.frames, 2000)
+        self.assertAlmostEqual(result.frames / result.sample_rate, 0.25)
+        self.assertTrue(stream.closed)
+
     def test_reports_clear_error_when_all_supported_rates_are_rejected(self):
         module = ModuleType("sounddevice")
         module.query_devices = lambda *args, **kwargs: {"default_samplerate": 48000}

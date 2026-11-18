@@ -506,3 +506,11 @@
 - **为什么：** PulseAudio server source 名称不保证与 PortAudio 暴露的 device name 相同。PortAudio 的 PulseAudio Host API 可能将服务端默认 source 抽象为统一默认输入设备。直接用两边字符串相等会错误失败；从所有输入设备中随便挑一个又会造成假阳性。
 - **踩坑：** 应分别验证服务器默认 source 身份与 PortAudio 实际选中的 Host API，再将 PortAudio 身份传给产品函数；PipeWire Pulse 测试使用 null-sink monitor source，并检查 pactl 默认源确实切换到它。不能只依赖 `pactl info` 中服务启动前的 Default Source 字段。
 - **验证：** 新增回归断言精确 Pulse source、PortAudio 默认输入索引和 PulseAudio Host API；两种服务分别设置 `DYBERPET_EXPECTED_PULSE_SOURCE`，任何 source 不匹配或 Host API 不匹配都失败。
+
+
+## 67. 采集有效时长必须按最终协商成功的采样率计算
+
+- **改了什么：** 将麦克风最短采集帧数门槛从请求采样率改为实际打开的 `selected_rate`，并新增 16 kHz 被拒绝、设备回退到 8 kHz 后成功采集 0.25 秒的回归测试。
+- **为什么：** 采样率协商会改变同一时间窗口所需的帧数。8 kHz 下 0.25 秒为 2000 帧，而 16 kHz 下为 4000 帧；沿用请求采样率会误判低采样率设备采集不足。
+- **踩坑：** 所有依赖时间的采集指标（目标帧数、最短帧数、耗时解释）都必须基于实际成功打开的采样率，不能混用请求值和实际值。
+- **验证：** 新增 8 kHz 回退测试，断言 2000 帧按实际 8 kHz 等于 0.25 秒且流正常关闭；与 96 kHz 默认回退测试并行覆盖高低两端。

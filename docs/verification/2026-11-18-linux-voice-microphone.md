@@ -77,3 +77,8 @@ A failed run on head `f59dd6f` showed that `pactl get-default-source` correctly 
 3. Uses that exact PortAudio device name + Host API identity with the product `probe_microphone` function.
 
 This avoids both false negatives from comparing unlike names and false positives from arbitrarily selecting any PulseAudio-capable device. The PipeWire run uses the null-sink monitor source as its expected default.
+
+
+## Sample-rate threshold correction
+
+A code review found that the minimum 250 ms capture-frame threshold still used the originally requested sample rate after fallback. This incorrectly rejected a valid 8 kHz capture (2,000 frames over 250 ms) when the requested rate was 16 kHz. The implementation now calculates the threshold using the successfully opened `selected_rate`. A regression test covers 16 kHz rejection followed by 8 kHz device-default success and verifies exactly 2,000 frames are accepted.
