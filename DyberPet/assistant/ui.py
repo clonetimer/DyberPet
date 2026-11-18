@@ -1012,6 +1012,7 @@ class PetAssistantDialog(QDialog):
             return
         try:
             self.workspace = PetWorkspace(approved)
+            self._pending_file_context = None
             if self._action_runtime is not None:
                 self._action_runtime.set_workspace(self.workspace)
             self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
@@ -1042,6 +1043,7 @@ class PetAssistantDialog(QDialog):
 
     def reset_workspace(self):
         self.workspace = PetWorkspace(self._default_workspace)
+        self._pending_file_context = None
         if self._action_runtime is not None:
             self._action_runtime.set_workspace(self.workspace)
         self.folder_label.setText("当前文件操作目录：" + str(self.workspace.root))
